@@ -1,5 +1,4 @@
 import React from 'react';
-import Link from 'next/link';
 
 export default function Home() {
   return (
@@ -8,12 +7,12 @@ export default function Home() {
       <header className="max-w-6xl w-full mx-auto flex items-center justify-between py-6">
         <div className="text-xl font-bold tracking-widest font-mono text-[#6366f1]">CHURNAUT</div>
         <div className="flex items-center space-x-6 font-mono text-sm">
-          <Link href="/login" className="text-gray-400 hover:text-white transition-colors">
+          <a href="/login" className="text-gray-400 hover:text-white transition-colors">
             SIGN IN
-          </Link>
-          <Link href="/signup" className="border border-[#1a1f2e] hover:border-[#6366f1] text-white px-4 py-2 rounded transition-all">
+          </a>
+          <a href="/signup" className="border border-[#1a1f2e] hover:border-[#6366f1] text-white px-4 py-2 rounded transition-all">
             GET STARTED
-          </Link>
+          </a>
         </div>
       </header>
 
@@ -29,18 +28,18 @@ export default function Home() {
           Churnaut routes leads, injects custom copy, and serves Calendly slots in real-time, matching incoming signals with priority-based rules.
         </p>
         <div className="flex flex-col sm:flex-row gap-4 items-center justify-center pt-4">
-          <Link
+          <a
             href="/signup"
-            className="w-full sm:w-auto bg-[#6366f1] hover:bg-[#5053e1] text-white font-mono text-sm py-3.5 px-8 rounded transition-all active:scale-[0.98] shadow-lg shadow-[#6366f1]/15"
+            className="w-full sm:w-auto bg-[#6366f1] hover:bg-[#5053e1] text-white font-mono text-sm py-3.5 px-8 rounded transition-all active:scale-[0.98] shadow-lg shadow-[#6366f1]/15 text-center"
           >
             INITIALIZE WORKSPACE
-          </Link>
-          <Link
+          </a>
+          <a
             href="/login"
-            className="w-full sm:w-auto border border-[#1a1f2e] hover:border-gray-500 text-gray-300 hover:text-white font-mono text-sm py-3.5 px-8 rounded transition-all"
+            className="w-full sm:w-auto border border-[#1a1f2e] hover:border-gray-500 text-gray-300 hover:text-white font-mono text-sm py-3.5 px-8 rounded transition-all text-center"
           >
             ACCESS DASHBOARD
-          </Link>
+          </a>
         </div>
       </section>
 
