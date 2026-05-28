@@ -1,2 +1,67 @@
-// Shared TypeScript types and interfaces
-export {};
+export interface Client {
+  id: string;
+  created_at: string;
+  company_name: string;
+  domain: string;
+  plan: string;
+  snippet_key: string;
+  crm_type?: string;
+  crm_api_key?: string;
+  calendly_token?: string;
+  stripe_customer_id?: string;
+  active: boolean;
+}
+
+export interface Session {
+  id: string;
+  client_id: string;
+  created_at: string;
+  expires_at?: string;
+  prospect_name?: string;
+  prospect_email?: string;
+  company_name?: string;
+  job_title?: string;
+  signal_type?: string;
+  assigned_rep?: string;
+  calendar_url?: string;
+  crm_deal_id?: string;
+  clicked_at?: string;
+  click_count: number;
+  converted: boolean;
+  converted_at?: string;
+  visitor_token?: string;
+}
+
+export interface RuleCondition {
+  field: keyof Session | string;
+  operator: 'equals' | 'not_equals' | 'contains' | 'starts_with' | 'ends_with' | 'is_empty' | 'is_not_empty';
+  value?: string;
+}
+
+export interface RoutingRule {
+  id: string;
+  client_id: string;
+  priority: number;
+  active: boolean;
+  signal_type?: string;
+  conditions: RuleCondition[] | { rules: RuleCondition[] } | any;
+  action_type: 'show_calendar' | 'inject_copy' | string;
+  action_payload: {
+    selector?: string;
+    [key: string]: any;
+  };
+  target_selector?: string;
+  variant_content?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Swap {
+  selector: string;
+  content: string;
+}
+
+export interface ResolveResponse {
+  visitor_token?: string;
+  swaps: Swap[];
+}
