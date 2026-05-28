@@ -4,6 +4,11 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
+// Fallback placeholders to prevent createClient from throwing a fatal runtime crash if variables are missing in Vercel settings
+const safeUrl = supabaseUrl || 'https://placeholder-project.supabase.co';
+const safeAnonKey = supabaseAnonKey || 'placeholder-anon-key-to-prevent-crash';
+const safeServiceKey = supabaseServiceKey || 'placeholder-service-key-to-prevent-crash';
+
 // Custom cookie-based storage for Supabase auth persistence
 const cookieStorage = {
   getItem: (key: string): string | null => {
@@ -35,7 +40,7 @@ const cookieStorage = {
 };
 
 // Browser client using the public anonymous key (honors Row Level Security)
-export const supabaseBrowser: SupabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+export const supabaseBrowser: SupabaseClient = createClient(safeUrl, safeAnonKey, {
   auth: {
     persistSession: true,
     storageKey: 'sb-auth-token',
@@ -44,4 +49,4 @@ export const supabaseBrowser: SupabaseClient = createClient(supabaseUrl, supabas
 });
 
 // Server/Admin client using the service role key (bypasses Row Level Security)
-export const supabaseAdmin: SupabaseClient = createClient(supabaseUrl, supabaseServiceKey);
+export const supabaseAdmin: SupabaseClient = createClient(safeUrl, safeServiceKey);
