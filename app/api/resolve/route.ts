@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { supabaseAdmin } from '@/lib/supabase';
 import { redis, ratelimit } from '@/lib/redis';
-import { matchRule } from '@/lib/rules-engine';
+import { evaluateRules } from '@/lib/rules-engine';
 import { Session, RoutingRule } from '@/types';
 
 // CORS headers configuration helper
@@ -146,7 +146,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 6. Evaluate matching rule
-    const matchedRule = matchRule(session, rules);
+    const matchedRule = evaluateRules(session, rules);
 
     // 7. Build the instructions swaps
     const swaps: Array<{ selector: string; content: string }> = [];
