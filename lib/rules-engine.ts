@@ -1,4 +1,4 @@
-import { RoutingRule, Session } from '../types';
+import { RoutingRule, Session } from '../types/index';
 
 /**
  * Iterates through routing rules in order and returns the first rule where all conditions match the session data.

@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { supabaseAdmin } from '@/lib/supabase';
 import { redis, ratelimit } from '@/lib/redis';
 import { evaluateRules } from '@/lib/rules-engine';
-import { Session, RoutingRule } from '@/types';
+import { Session, RoutingRule } from '@/types/index';
 
 // CORS headers configuration helper
 const corsHeaders = {
