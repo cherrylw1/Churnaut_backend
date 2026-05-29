@@ -390,9 +390,9 @@ export default function RulesPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+      <div className="flex flex-row gap-6 items-start w-full">
         {/* Left Side: Rule Cards Drag Area */}
-        <div className="lg:col-span-3 space-y-4">
+        <div className={`${selectedRule ? 'w-[calc(60%-12px)]' : 'w-full'} space-y-4 flex-shrink-0 transition-all duration-200`}>
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-mono text-[#6366f1] tracking-widest uppercase bg-[#1a1f2e]/40 py-1 px-2.5 rounded border border-[#1a1f2e]">
               Priority List (Drag to Reorder)
@@ -451,8 +451,10 @@ export default function RulesPage() {
 
                       {/* Variant Preview */}
                       {rule.variant_content && (
-                        <div className="bg-[#080B0F] border border-[#1a1f2e] p-2.5 rounded text-xs font-mono text-gray-400 max-h-16 overflow-hidden truncate">
-                          {rule.variant_content}
+                        <div className="bg-[#080B0F] border border-[#1a1f2e] py-1.5 px-2.5 rounded text-xs font-mono text-gray-400 h-[30px] overflow-hidden flex items-center max-w-full">
+                          <div className="truncate w-full">
+                            {rule.variant_content}
+                          </div>
                         </div>
                       )}
                     </div>
@@ -495,8 +497,8 @@ export default function RulesPage() {
         </div>
 
         {/* Right Side: Edit Panel */}
-        <div className="lg:col-span-2">
-          {selectedRule ? (
+        {selectedRule && (
+          <div className="w-[calc(40%-12px)] flex-shrink-0">
             <div className="border border-[#1a1f2e] bg-[#0d1117]/20 rounded-lg p-6 space-y-6">
               <div className="flex justify-between items-center border-b border-[#1a1f2e] pb-4">
                 <h2 className="text-sm font-bold tracking-wider font-mono text-[#6366f1] uppercase">
@@ -650,12 +652,8 @@ export default function RulesPage() {
                 </div>
               </form>
             </div>
-          ) : (
-            <div className="border border-[#1a1f2e] bg-[#0d1117]/10 rounded-lg p-8 text-center text-gray-500 font-mono text-xs">
-              Select a rule card on the left to configure details.
-            </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* CREATE RULE MODAL */}
