@@ -34,6 +34,8 @@ CREATE TABLE IF NOT EXISTS sessions (
     assigned_rep text,
     calendar_url text,
     crm_deal_id text,
+    deal_stage text,
+    visitor_type text,
     clicked_at timestamptz,
     click_count integer DEFAULT 0,
     converted boolean DEFAULT false,
@@ -147,3 +149,29 @@ CREATE POLICY "Clients can view their own analytics events" ON analytics_events
 CREATE POLICY "Snippet can insert analytics events" ON analytics_events
     FOR INSERT TO anon, authenticated
     WITH CHECK (true);
+
+-- ==========================================
+-- 5. WEBHOOK MAPPINGS TABLE
+-- ==========================================
+CREATE TABLE IF NOT EXISTS webhook_mappings (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    client_id uuid REFERENCES clients(id) ON DELETE CASCADE,
+    external_field text NOT NULL,
+    internal_field text NOT NULL,
+    created_at timestamptz DEFAULT now()
+);
+
+-- INDEX FOR PERFORMANCE
+CREATE INDEX IF NOT EXISTS idx_webhook_mappings_client_id ON webhook_mappings(client_id);
+
+-- RLS POLICIES FOR WEBHOOK MAPPINGS
+ALTER TABLE webhook_mappings ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Clients can view their own webhook mappings" ON webhook_mappings
+    FOR SELECT TO authenticated
+    USING (client_id = auth.uid());
+
+CREATE POLICY "Clients can manage their own webhook mappings" ON webhook_mappings
+    FOR ALL TO authenticated
+    USING (client_id = auth.uid())
+    WITH CHECK (client_id = auth.uid());
