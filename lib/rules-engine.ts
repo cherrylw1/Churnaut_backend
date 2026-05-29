@@ -44,6 +44,24 @@ export function evaluateRules(
           isMatch = false;
         }
       }
+
+      // Evaluate deal_stage_equals (exact match, case-insensitive)
+      if (isMatch && 'deal_stage_equals' in conditions) {
+        const targetStage = (conditions.deal_stage_equals ?? '').toString().toLowerCase().trim();
+        const sessionStage = ((session as unknown as Record<string, string>).deal_stage ?? '').toString().toLowerCase().trim();
+        if (sessionStage !== targetStage) {
+          isMatch = false;
+        }
+      }
+
+      // Evaluate visitor_type_equals (exact match, case-insensitive)
+      if (isMatch && 'visitor_type_equals' in conditions) {
+        const targetType = (conditions.visitor_type_equals ?? '').toString().toLowerCase().trim();
+        const sessionType = ((session as unknown as Record<string, string>).visitor_type ?? '').toString().toLowerCase().trim();
+        if (sessionType !== targetType) {
+          isMatch = false;
+        }
+      }
     }
 
     if (isMatch) {
