@@ -7,6 +7,7 @@ export default function OnboardingPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [completed, setCompleted] = useState(false);
 
   // Form States
   const [crm, setCrm] = useState('HubSpot');
@@ -43,7 +44,8 @@ export default function OnboardingPage() {
       });
 
       if (res.ok) {
-        // Redirect to rules page on success
+        setCompleted(true);
+        // Explicit redirect to /dashboard/rules
         router.push('/dashboard/rules');
       } else {
         const errorData = await res.json();
@@ -104,7 +106,9 @@ export default function OnboardingPage() {
             </h1>
           </div>
           <div className="text-right">
-            <span className="text-xs font-mono text-gray-400">Step {step} of 5</span>
+            <span className="text-xs font-mono text-gray-400">
+              {completed ? 'Complete' : `Step ${step} of 5`}
+            </span>
           </div>
         </div>
 
@@ -118,7 +122,29 @@ export default function OnboardingPage() {
 
         {/* Card Body - Content scroll */}
         <div className="p-8 flex-1 flex flex-col justify-between space-y-6">
-          {loading ? (
+          {completed ? (
+            /* CONFIRMATION SCREEN */
+            <div className="flex-1 flex flex-col items-center justify-center space-y-6 py-8">
+              <div className="w-12 h-12 rounded-full border border-green-500 bg-green-950/20 flex items-center justify-center text-[#10b981] text-xl font-bold font-mono">
+                ✓
+              </div>
+              <div className="text-center space-y-2">
+                <h2 className="text-sm font-mono font-bold text-white uppercase tracking-wider">
+                  WORKSPACE INITIALIZED
+                </h2>
+                <p className="text-xs font-mono text-gray-400 max-w-sm mx-auto leading-relaxed">
+                  Your AI-generated rules have been compiled and saved. Redirecting to your Routing Rules board...
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => router.push('/dashboard/rules')}
+                className="bg-[#6366f1] hover:bg-[#5053e1] text-white font-mono text-xs py-2.5 px-6 rounded transition-all active:scale-[0.98] uppercase tracking-wide"
+              >
+                Go to Dashboard
+              </button>
+            </div>
+          ) : loading ? (
             /* LOADING SCREEN */
             <div className="flex-1 flex flex-col items-center justify-center space-y-4 py-12">
               <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
@@ -294,7 +320,7 @@ export default function OnboardingPage() {
           )}
 
           {/* Navigation Controls */}
-          {!loading && (
+          {!loading && !completed && (
             <div className="flex justify-between items-center pt-5 border-t border-[#1a1f2e]">
               <button
                 type="button"
