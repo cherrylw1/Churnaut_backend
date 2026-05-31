@@ -21,9 +21,14 @@ export async function OPTIONS() {
 
 export async function POST(req: NextRequest) {
   try {
-    // 1. Parse request body and get client_id, sid fields
+    // 1. Parse request body and get client_id, signals, cookie fields
     const body = await req.json();
-    const { client_id: clientIdParam, sid } = body;
+    const { client_id: clientIdParam, signals, cookie } = body;
+    const sid = signals?.sid;
+
+    if (cookie) {
+      console.log('[DEBUG] Resolve request cookie present:', cookie);
+    }
 
     if (!clientIdParam) {
       return NextResponse.json(
