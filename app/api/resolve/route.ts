@@ -22,7 +22,7 @@ export async function OPTIONS() {
 
 // Request validation schema
 const resolveSchema = z.object({
-  client_id: z.string().uuid(),
+  client_id: z.string(),
   sid: z.string().optional().nullable(),
   gclid: z.string().optional().nullable(),
   fbclid: z.string().optional().nullable(),
@@ -43,7 +43,24 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { client_id, sid, gclid, fbclid, li_fat_id, cookie } = result.data;
+    const { client_id: snippetKey, sid, gclid, fbclid, li_fat_id, cookie } = result.data;
+
+    // Look up the client using snippetKey (which is the client_id field from request body)
+    const { data: clientData, error: clientError } = await supabaseAdmin
+      .from('clients')
+      .select('id')
+      .eq('snippet_key', snippetKey)
+      .maybeSingle();
+
+    if (clientError || !clientData) {
+      console.error('[Resolve Error] Client lookup failed or not found for snippetKey:', snippetKey, clientError);
+      return NextResponse.json(
+        { error: 'Unauthorized: invalid client key' },
+        { status: 401, headers: corsHeaders }
+      );
+    }
+
+    const client_id = clientData.id;
 
     // 2. Rate limiting based on client_id
     try {
