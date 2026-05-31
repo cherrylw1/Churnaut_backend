@@ -66,6 +66,16 @@ export default function RulesPage() {
   const [editVariantContent, setEditVariantContent] = useState('');
   const [updatingRule, setUpdatingRule] = useState(false);
 
+  // AI Copywriter states
+  const [showAiPanel, setShowAiPanel] = useState(false);
+  const [aiSignalType, setAiSignalType] = useState('Cold Email');
+  const [aiJobTitle, setAiJobTitle] = useState('');
+  const [aiIndustry, setAiIndustry] = useState('');
+  const [aiCompanySize, setAiCompanySize] = useState('200-500');
+  const [aiTone, setAiTone] = useState('direct');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
+
   // Drag and drop local state
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
@@ -192,6 +202,11 @@ export default function RulesPage() {
       setEditActionContent(extractActionContent(selectedRule));
       setEditTargetSelector(selectedRule.target_selector || '.sr-target');
       setEditVariantContent(selectedRule.variant_content || '');
+
+      // Pre-fill AI copywriter states
+      setAiSignalType(selectedRule.signal_type || 'Any');
+      setAiSuggestions([]);
+      setShowAiPanel(false);
     }
   }, [selectedRule]);
 
@@ -356,6 +371,39 @@ export default function RulesPage() {
       alert('An error occurred while updating rule.');
     } finally {
       setUpdatingRule(false);
+    }
+  };
+
+  // Generate copy using AI Copywriter API
+  const handleGenerateCopy = async () => {
+    if (aiLoading) return;
+    setAiLoading(true);
+    setAiSuggestions([]);
+    try {
+      const res = await fetch('/api/ai/copywriter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          signal_type: aiSignalType,
+          job_title: aiJobTitle,
+          industry: aiIndustry,
+          company_size: aiCompanySize,
+          desired_tone: aiTone,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setAiSuggestions(data.variants || []);
+      } else {
+        const errData = await res.json();
+        alert(errData.error || 'Failed to generate copy.');
+      }
+    } catch (err) {
+      console.error('Error generating AI variants:', err);
+      alert('An error occurred during AI copy generation.');
+    } finally {
+      setAiLoading(false);
     }
   };
 
@@ -622,9 +670,18 @@ export default function RulesPage() {
 
                 {/* Variant Content Copy Swaps */}
                 <div className="space-y-1.5">
-                  <label className="block text-[10px] font-mono text-gray-400 uppercase tracking-wider">
-                    Variant Content (HTML / Text Swap)
-                  </label>
+                  <div className="flex justify-between items-center">
+                    <label className="block text-[10px] font-mono text-gray-400 uppercase tracking-wider">
+                      Variant Content (HTML / Text Swap)
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setShowAiPanel(!showAiPanel)}
+                      className="text-[10px] font-mono text-[#6366f1] hover:underline bg-[#1a1f2e]/60 px-2 py-0.5 rounded border border-[#1a1f2e] flex items-center gap-1 transition-colors"
+                    >
+                      ✨ AI Copywriter
+                    </button>
+                  </div>
                   <textarea
                     rows={4}
                     value={editVariantContent}
@@ -632,6 +689,116 @@ export default function RulesPage() {
                     placeholder="Wrote personalized markup or templates. Supports {{ prospect_name }}, {{ company_name }} tokens."
                     className="w-full bg-[#080B0F] border border-[#1a1f2e] focus:border-[#6366f1] outline-none text-xs px-3 py-2 rounded text-white font-mono"
                   />
+
+                  {/* Inline AI Copywriter Panel */}
+                  {showAiPanel && (
+                    <div className="mt-3 p-4 bg-[#080B0F] border border-[#1a1f2e] rounded-lg space-y-3 font-mono text-xs">
+                      <div className="flex justify-between items-center border-b border-[#1a1f2e] pb-2">
+                        <span className="text-[10px] text-[#6366f1] font-bold uppercase tracking-wider">AI Copywriter</span>
+                        <button
+                          type="button"
+                          onClick={() => setShowAiPanel(false)}
+                          className="text-gray-400 hover:text-white"
+                        >
+                          [x]
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <label className="block text-[9px] text-gray-400 uppercase">Signal Type</label>
+                          <input
+                            type="text"
+                            value={aiSignalType}
+                            onChange={(e) => setAiSignalType(e.target.value)}
+                            className="w-full bg-[#0d1117] border border-[#1a1f2e] focus:border-[#6366f1] outline-none px-2 py-1.5 rounded text-white text-[11px]"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="block text-[9px] text-gray-400 uppercase">Job Title</label>
+                          <input
+                            type="text"
+                            value={aiJobTitle}
+                            onChange={(e) => setAiJobTitle(e.target.value)}
+                            placeholder="e.g. VP of Marketing"
+                            className="w-full bg-[#0d1117] border border-[#1a1f2e] focus:border-[#6366f1] outline-none px-2 py-1.5 rounded text-white text-[11px]"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="space-y-1">
+                          <label className="block text-[9px] text-gray-400 uppercase">Industry</label>
+                          <input
+                            type="text"
+                            value={aiIndustry}
+                            onChange={(e) => setAiIndustry(e.target.value)}
+                            placeholder="e.g. SaaS"
+                            className="w-full bg-[#0d1117] border border-[#1a1f2e] focus:border-[#6366f1] outline-none px-2 py-1.5 rounded text-white text-[11px]"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="block text-[9px] text-gray-400 uppercase">Size</label>
+                          <select
+                            value={aiCompanySize}
+                            onChange={(e) => setAiCompanySize(e.target.value)}
+                            className="w-full bg-[#0d1117] border border-[#1a1f2e] focus:border-[#6366f1] outline-none px-1.5 py-1.5 rounded text-white text-[11px]"
+                          >
+                            <option value="1-50">1-50</option>
+                            <option value="50-200">50-200</option>
+                            <option value="200-500">200-500</option>
+                            <option value="500-2000">500-2000</option>
+                            <option value="2000+">2000+</option>
+                          </select>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="block text-[9px] text-gray-400 uppercase">Tone</label>
+                          <select
+                            value={aiTone}
+                            onChange={(e) => setAiTone(e.target.value)}
+                            className="w-full bg-[#0d1117] border border-[#1a1f2e] focus:border-[#6366f1] outline-none px-1.5 py-1.5 rounded text-white text-[11px]"
+                          >
+                            <option value="direct">direct</option>
+                            <option value="warm">warm</option>
+                            <option value="urgent">urgent</option>
+                            <option value="consultative">consultative</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="pt-2">
+                        <button
+                          type="button"
+                          disabled={aiLoading}
+                          onClick={handleGenerateCopy}
+                          className="w-full bg-[#6366f1] hover:bg-[#5053e1] disabled:opacity-50 text-white py-2 px-3 rounded text-[10px] font-bold tracking-wider"
+                        >
+                          {aiLoading ? 'GENERATING CTAs...' : 'GENERATE OPTIONS'}
+                        </button>
+                      </div>
+
+                      {aiSuggestions.length > 0 && (
+                        <div className="space-y-2 pt-2 border-t border-[#1a1f2e]">
+                          <label className="block text-[9px] text-gray-400 uppercase tracking-widest font-bold">Select a Variant (Click to use):</label>
+                          <div className="space-y-1.5">
+                            {aiSuggestions.map((suggestion, idx) => (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => {
+                                  setEditVariantContent(suggestion);
+                                  setShowAiPanel(false);
+                                }}
+                                className="w-full text-left bg-[#0d1117] hover:bg-[#1a1f2e]/40 border border-[#1a1f2e] hover:border-[#6366f1] p-2 rounded text-[11px] text-gray-300 hover:text-white transition-colors"
+                              >
+                                {suggestion}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="pt-4 flex justify-between gap-3">
