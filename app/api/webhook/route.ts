@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     
     if (uuidRegex.test(key)) {
-      clientQuery = clientQuery.eq('id', key);
+      clientQuery = clientQuery.or(`snippet_key.eq.${key},id.eq.${key},crm_api_key.eq.${key}`);
     } else {
       clientQuery = clientQuery.or(`snippet_key.eq.${key},crm_api_key.eq.${key}`);
     }
