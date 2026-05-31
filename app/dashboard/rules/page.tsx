@@ -27,6 +27,10 @@ const CONDITION_OPTIONS = [
   'Company name equals',
   'Deal stage equals',
   'Visitor type equals',
+  'UTM campaign contains',
+  'UTM source equals',
+  'UTM medium equals',
+  'UTM content contains',
 ];
 
 // Action types mapping
@@ -105,6 +109,18 @@ export default function RulesPage() {
     if (conditions.visitor_type_equals) {
       parts.push(`Visitor type equals "${conditions.visitor_type_equals}"`);
     }
+    if (conditions.utm_campaign_contains) {
+      parts.push(`UTM campaign contains "${conditions.utm_campaign_contains}"`);
+    }
+    if (conditions.utm_source_equals) {
+      parts.push(`UTM source equals "${conditions.utm_source_equals}"`);
+    }
+    if (conditions.utm_medium_equals) {
+      parts.push(`UTM medium equals "${conditions.utm_medium_equals}"`);
+    }
+    if (conditions.utm_content_contains) {
+      parts.push(`UTM content contains "${conditions.utm_content_contains}"`);
+    }
     return parts.length > 0 ? parts.join(' AND ') : 'Any visitor';
   };
 
@@ -125,6 +141,18 @@ export default function RulesPage() {
     if (conditions.visitor_type_equals) {
       return { type: 'Visitor type equals', value: conditions.visitor_type_equals };
     }
+    if (conditions.utm_campaign_contains) {
+      return { type: 'UTM campaign contains', value: conditions.utm_campaign_contains };
+    }
+    if (conditions.utm_source_equals) {
+      return { type: 'UTM source equals', value: conditions.utm_source_equals };
+    }
+    if (conditions.utm_medium_equals) {
+      return { type: 'UTM medium equals', value: conditions.utm_medium_equals };
+    }
+    if (conditions.utm_content_contains) {
+      return { type: 'UTM content contains', value: conditions.utm_content_contains };
+    }
     return { type: 'Any visitor', value: '' };
   };
 
@@ -141,6 +169,18 @@ export default function RulesPage() {
     }
     if (type === 'Visitor type equals') {
       return { visitor_type_equals: value };
+    }
+    if (type === 'UTM campaign contains') {
+      return { utm_campaign_contains: value };
+    }
+    if (type === 'UTM source equals') {
+      return { utm_source_equals: value };
+    }
+    if (type === 'UTM medium equals') {
+      return { utm_medium_equals: value };
+    }
+    if (type === 'UTM content contains') {
+      return { utm_content_contains: value };
     }
     return {};
   };
