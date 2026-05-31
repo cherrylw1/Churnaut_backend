@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
 import { supabaseAdmin } from '@/lib/supabase';
-import { redis, ratelimit } from '@/lib/redis';
+import { ratelimit } from '@/lib/redis';
 import { evaluateRules } from '@/lib/rules-engine';
-import { Session, RoutingRule } from '@/types/index';
+import { Session } from '@/types/index';
 
 // CORS headers configuration helper
 const corsHeaders = {
@@ -20,40 +19,28 @@ export async function OPTIONS() {
   });
 }
 
-// Request validation schema
-const resolveSchema = z.object({
-  client_id: z.string(),
-  sid: z.string().optional().nullable(),
-  gclid: z.string().optional().nullable(),
-  fbclid: z.string().optional().nullable(),
-  li_fat_id: z.string().optional().nullable(),
-  cookie: z.string().optional().nullable(),
-});
-
 export async function POST(req: NextRequest) {
   try {
-    // 1. Validate request body
+    // 1. Parse request body and get client_id, sid fields
     const body = await req.json();
-    const result = resolveSchema.safeParse(body);
-    
-    if (!result.success) {
+    const { client_id: clientIdParam, sid } = body;
+
+    if (!clientIdParam) {
       return NextResponse.json(
-        { error: 'Invalid request parameters', details: result.error.flatten() },
+        { error: 'Missing client_id parameter' },
         { status: 400, headers: corsHeaders }
       );
     }
 
-    const { client_id: snippetKey, sid, gclid, fbclid, li_fat_id, cookie } = result.data;
-
-    // Look up the client using snippetKey (which is the client_id field from request body)
+    // 2. Look up the client in the clients table by snippet_key matching client_id
     const { data: clientData, error: clientError } = await supabaseAdmin
       .from('clients')
       .select('id')
-      .eq('snippet_key', snippetKey)
+      .eq('snippet_key', clientIdParam)
       .maybeSingle();
 
     if (clientError || !clientData) {
-      console.error('[Resolve Error] Client lookup failed or not found for snippetKey:', snippetKey, clientError);
+      console.error('[Resolve Error] Client lookup failed for key:', clientIdParam, clientError);
       return NextResponse.json(
         { error: 'Unauthorized: invalid client key' },
         { status: 401, headers: corsHeaders }
@@ -61,9 +48,8 @@ export async function POST(req: NextRequest) {
     }
 
     const client_id = clientData.id;
-    console.log('[DEBUG] Resolved client_id UUID:', client_id);
 
-    // 2. Rate limiting based on client_id
+    // Rate limiting
     try {
       const { success } = await ratelimit.limit(client_id);
       if (!success) {
@@ -74,162 +60,70 @@ export async function POST(req: NextRequest) {
       }
     } catch (rlError) {
       console.error('[RateLimit Error] Failed to enforce rate limiting:', rlError);
-      // Soft fail on ratelimit errors to prevent breaking resolve calls
     }
 
-    // Determine the primary signal
-    const primarySignal = sid || gclid || fbclid || li_fat_id || cookie;
-
-    // 3. Cache lookup (Temporarily disabled)
-    let cacheKey = '';
-    if (primarySignal) {
-      cacheKey = `resolve:${client_id}:${primarySignal}`;
-      /*
-      try {
-        const cached = await redis.get(cacheKey);
-        if (cached) {
-          const instructions = typeof cached === 'string' ? JSON.parse(cached) : cached;
-          return NextResponse.json(instructions, { headers: corsHeaders });
-        }
-      } catch (cacheError) {
-        console.error('[Cache Error] Failed cache read:', cacheError);
-      }
-      */
-    }
-
-    // 4. Query Supabase for session data (Cache Miss)
+    // 3. Look up the session in the sessions table by id matching sid
     let session: Session | null = null;
-    let signalType = '';
-
-    try {
-      if (sid) {
-        signalType = 'sid';
-        const { data, error } = await supabaseAdmin
-          .from('sessions')
-          .select('*')
-          .eq('id', sid)
-          .eq('client_id', client_id)
-          .maybeSingle();
-
-        if (error) throw error;
-        session = data;
-      } else if (gclid) {
-        signalType = 'google_ads';
-      } else if (fbclid) {
-        signalType = 'facebook_ads';
-      } else if (li_fat_id) {
-        signalType = 'linkedin_ads';
-      } else if (cookie) {
-        signalType = 'cookie';
-        const { data, error } = await supabaseAdmin
-          .from('sessions')
-          .select('*')
-          .eq('visitor_token', cookie)
-          .eq('client_id', client_id)
-          .maybeSingle();
-
-        if (error) throw error;
-        session = data;
-      }
-    } catch (dbError) {
-      console.error('[DB Error] Failed to fetch session data:', dbError);
-    }
-
-    // If no existing session was found, synthesize a minimal session mock
-    if (!session) {
-      session = {
-        id: sid || '',
-        client_id,
-        signal_type: signalType,
-        click_count: 0,
-        converted: false,
-        created_at: new Date().toISOString(),
-      };
-    } else if (signalType && !session.signal_type) {
-      session.signal_type = signalType;
-    }
-    console.log('[DEBUG] Fetched/Synthesized session:', JSON.stringify(session, null, 2));
-
-    // 5. Query active routing rules belonging to this client, ordered by priority
-    let rules: RoutingRule[] = [];
-    try {
+    if (sid) {
       const { data, error } = await supabaseAdmin
-        .from('routing_rules')
+        .from('sessions')
         .select('*')
+        .eq('id', sid)
         .eq('client_id', client_id)
-        .eq('active', true)
-        .order('priority', { ascending: true });
+        .maybeSingle();
 
-      if (error) throw error;
-      rules = data || [];
-    } catch (rulesError) {
-      console.error('[DB Error] Failed to fetch routing rules:', rulesError);
+      if (!error) {
+        session = data;
+      }
     }
-    console.log(`[DEBUG] Found ${rules.length} active routing rules. Signal types:`, rules.map(r => r.signal_type || 'Any'));
 
-    // 6. Evaluate matching rule
+    // 4. Fetch all active routing rules for the client ordered by priority ascending
+    const { data: rulesData, error: rulesError } = await supabaseAdmin
+      .from('routing_rules')
+      .select('*')
+      .eq('client_id', client_id)
+      .eq('active', true)
+      .order('priority', { ascending: true });
+
+    if (rulesError) {
+      console.error('[Resolve Error] Rules lookup failed:', rulesError);
+    }
+
+    const rules = rulesData || [];
+
+    // 5. Call evaluateRules with the session and rules
     const matchedRule = evaluateRules(session, rules);
-    console.log('[DEBUG] Matched routing rule:', matchedRule ? JSON.stringify(matchedRule, null, 2) : 'null');
 
-    // 7. Build the instructions swaps
-    const swaps: Array<{ selector: string; content: string }> = [];
-    const visitorToken = session?.visitor_token || cookie || crypto.randomUUID();
-
-    if (matchedRule !== null && matchedRule.target_selector !== null && matchedRule.target_selector !== undefined) {
-      let content = matchedRule.variant_content || '';
-      if (matchedRule.action_type === 'show_calendar') {
-        const calendarUrl = matchedRule.action_payload?.calendar_url || session?.calendar_url || '';
-        content = `<iframe src="${calendarUrl}" width="100%" height="100%" frameborder="0"></iframe>`;
-      }
-      swaps.push({
-        selector: matchedRule.target_selector,
-        content: content,
-      });
+    // 6. If matchedRule is null or matchedRule.target_selector is null, return JSON: {visitor_token: null, swaps: []}
+    if (!matchedRule || matchedRule.target_selector === null || matchedRule.target_selector === undefined) {
+      return NextResponse.json(
+        { visitor_token: null, swaps: [] },
+        { headers: corsHeaders }
+      );
     }
 
-    const instructions = {
-      visitor_token: visitorToken,
-      swaps,
+    // 7. Build one swap: {selector: matchedRule.target_selector, content: matchedRule.variant_content}
+    let content = matchedRule.variant_content || '';
+    if (matchedRule.action_type === 'show_calendar') {
+      const calendarUrl = matchedRule.action_payload?.calendar_url || session?.calendar_url || '';
+      content = `<iframe src="${calendarUrl}" width="100%" height="100%" frameborder="0"></iframe>`;
+    }
+
+    const swap = {
+      selector: matchedRule.target_selector,
+      content: content,
     };
-    console.log('[DEBUG] Generated swaps array:', JSON.stringify(swaps, null, 2));
 
-    // 8. Log analytics event asynchronously
-    if (matchedRule) {
-      (async () => {
-        try {
-          const { error } = await supabaseAdmin
-            .from('analytics_events')
-            .insert({
-              client_id,
-              session_id: session?.id || null,
-              rule_id: matchedRule.id,
-              event_type: 'resolve',
-              signal_type: signalType || null,
-              metadata: {
-                rule_priority: matchedRule.priority,
-                action_type: matchedRule.action_type,
-              },
-            });
-          if (error) {
-            console.error('[Analytics Error] Failed to log resolving event:', error);
-          }
-        } catch (err) {
-          console.error('[Analytics Exception] Failed to execute analytics log:', err);
-        }
-      })();
-    }
+    // 8. Return JSON: {visitor_token: session?.visitor_token, swaps: [the swap object]}
+    const visitor_token = session?.visitor_token || null;
 
-    // 9. Cache instructions in Redis with a 300 second TTL
-    if (primarySignal && cacheKey) {
-      try {
-        await redis.setex(cacheKey, 300, JSON.stringify(instructions));
-      } catch (cacheSetError) {
-        console.error('[Cache Set Error] Failed to write to cache:', cacheSetError);
-      }
-    }
-
-    // 10. Return CORS-enabled JSON
-    return NextResponse.json(instructions, { headers: corsHeaders });
+    return NextResponse.json(
+      {
+        visitor_token,
+        swaps: [swap],
+      },
+      { headers: corsHeaders }
+    );
 
   } catch (error) {
     console.error('[Resolve Error] Unhandled exception occurred:', error);
