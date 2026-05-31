@@ -30,6 +30,16 @@ export interface Session {
   converted: boolean;
   converted_at?: string;
   visitor_token?: string;
+  metadata?: {
+    utms?: {
+      utm_source?: string | null;
+      utm_medium?: string | null;
+      utm_campaign?: string | null;
+      utm_content?: string | null;
+      utm_term?: string | null;
+    };
+    [key: string]: unknown;
+  };
 }
 
 export interface RuleCondition {

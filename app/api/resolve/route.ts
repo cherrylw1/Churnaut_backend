@@ -23,8 +23,12 @@ export async function POST(req: NextRequest) {
   try {
     // 1. Parse request body and get client_id, signals, cookie fields
     const body = await req.json();
-    const { client_id: clientIdParam, signals, cookie } = body;
+    const { client_id: clientIdParam, signals, cookie, utms } = body;
     const sid = signals?.sid;
+    const gclid = signals?.gclid;
+    const fbclid = signals?.fbclid;
+    const li_fat_id = signals?.li_fat_id;
+    const ttclid = signals?.ttclid;
 
     if (cookie) {
       console.log('[DEBUG] Resolve request cookie present:', cookie);
@@ -107,6 +111,41 @@ export async function POST(req: NextRequest) {
       if (!error && data) {
         session = data;
       }
+    }
+
+    // Resolve signal type based on incoming parameters
+    let resolvedSignalType: string | undefined = undefined;
+    if (ttclid) {
+      resolvedSignalType = 'tiktok_ad';
+    } else if (!sid && gclid) {
+      resolvedSignalType = 'google_ad';
+    } else if (fbclid) {
+      resolvedSignalType = 'meta_ad';
+    } else if (li_fat_id) {
+      resolvedSignalType = 'linkedin_ad';
+    }
+
+    if (session) {
+      if (resolvedSignalType && !session.signal_type) {
+        session.signal_type = resolvedSignalType;
+      }
+    } else {
+      session = {
+        id: sid || '',
+        client_id,
+        signal_type: resolvedSignalType || (sid ? 'sid' : (cookie ? 'cookie' : undefined)),
+        click_count: 0,
+        converted: false,
+        created_at: new Date().toISOString(),
+      } as Session;
+    }
+
+    // Store the utms object in the session metadata
+    if (session) {
+      session.metadata = {
+        ...(session.metadata || {}),
+        utms: utms || {},
+      };
     }
 
     // Helper to log analytics events asynchronously

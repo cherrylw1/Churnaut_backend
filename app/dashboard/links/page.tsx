@@ -8,6 +8,7 @@ const SIGNAL_OPTIONS = [
   'Cold Email',
   'LinkedIn Ad',
   'Google Ad',
+  'TikTok Ad',
   'QR Code',
   'G2 Referral',
   'Webinar Follow-up',

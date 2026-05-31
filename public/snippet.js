@@ -55,12 +55,18 @@
   var gclid = urlParams.get("gclid");
   var fbclid = urlParams.get("fbclid");
   var liFatId = urlParams.get("li_fat_id");
+  var ttclid = urlParams.get("ttclid");
+  var utmSource = urlParams.get("utm_source");
+  var utmMedium = urlParams.get("utm_medium");
+  var utmCampaign = urlParams.get("utm_campaign");
+  var utmContent = urlParams.get("utm_content");
+  var utmTerm = urlParams.get("utm_term");
 
   // 3. Read first-party tracking cookie
   var visitorCookie = getCookie("_sr_visitor");
 
   // 4. Exit immediately if no tracking signals or active cookie exists
-  if (!sid && !gclid && !fbclid && !liFatId && !visitorCookie) {
+  if (!sid && !gclid && !fbclid && !liFatId && !ttclid && !utmSource && !utmMedium && !utmCampaign && !utmContent && !utmTerm && !visitorCookie) {
     return;
   }
 
@@ -79,6 +85,14 @@
       gclid: gclid,
       fbclid: fbclid,
       li_fat_id: liFatId,
+      ttclid: ttclid,
+    },
+    utms: {
+      utm_source: utmSource,
+      utm_medium: utmMedium,
+      utm_campaign: utmCampaign,
+      utm_content: utmContent,
+      utm_term: utmTerm,
     },
   };
 

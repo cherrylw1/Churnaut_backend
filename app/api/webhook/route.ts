@@ -71,9 +71,19 @@ export async function POST(req: NextRequest) {
       // Soft-fail: continue without mappings, using standard fallback keys
     }
 
+    const isLinkedInLeadGen = payload.linkedin_lead_gen_form_id !== undefined || payload.li_form_id !== undefined;
+
     // 4. Apply Mappings to Transform Payload
     const transformed: Record<string, unknown> = {};
-    if (mappings && mappings.length > 0) {
+    if (isLinkedInLeadGen) {
+      const firstName = (payload.firstName || '') as string;
+      const lastName = (payload.lastName || '') as string;
+      transformed.prospect_name = [firstName, lastName].filter(Boolean).join(' ') || null;
+      transformed.prospect_email = payload.emailAddress || null;
+      transformed.job_title = payload.title || null;
+      transformed.company_name = payload.companyName || null;
+      transformed.signal_type = 'linkedin_lead_gen';
+    } else if (mappings && mappings.length > 0) {
       for (const mapping of mappings) {
         const val = getValueByPath(payload, mapping.external_field);
         if (val !== undefined) {
@@ -120,26 +130,28 @@ export async function POST(req: NextRequest) {
     const sessionId = transformed.session_id as string | undefined;
     const email = (transformed.visitor_email || transformed.prospect_email) as string | undefined;
 
-    if (sessionId) {
-      const { data } = await supabaseAdmin
-        .from('sessions')
-        .select('*')
-        .eq('id', sessionId)
-        .eq('client_id', clientId)
-        .maybeSingle();
-      session = data;
-    }
+    if (!isLinkedInLeadGen) {
+      if (sessionId) {
+        const { data } = await supabaseAdmin
+          .from('sessions')
+          .select('*')
+          .eq('id', sessionId)
+          .eq('client_id', clientId)
+          .maybeSingle();
+        session = data;
+      }
 
-    if (!session && email) {
-      const { data } = await supabaseAdmin
-        .from('sessions')
-        .select('*')
-        .eq('prospect_email', email)
-        .eq('client_id', clientId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      session = data;
+      if (!session && email) {
+        const { data } = await supabaseAdmin
+          .from('sessions')
+          .select('*')
+          .eq('prospect_email', email)
+          .eq('client_id', clientId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        session = data;
+      }
     }
 
     let isNewSession = false;
@@ -187,7 +199,7 @@ export async function POST(req: NextRequest) {
       if (updatedSession) {
         session = updatedSession;
       }
-    } else if (email) {
+    } else if (email || isLinkedInLeadGen) {
       // 7. Create a new session if email matches and no session exists
       isNewSession = true;
       let newSid = generateSessionId();
@@ -216,9 +228,9 @@ export async function POST(req: NextRequest) {
       const insertPayload: Record<string, unknown> = {
         id: finalSessionId,
         client_id: clientId,
-        signal_type: 'crm_webhook',
+        signal_type: isLinkedInLeadGen ? 'linkedin_lead_gen' : (transformed.signal_type || 'crm_webhook'),
         prospect_name: transformed.prospect_name || null,
-        prospect_email: email,
+        prospect_email: email || null,
         company_name: transformed.company_name || null,
         job_title: transformed.job_title || null,
         assigned_rep: transformed.assigned_rep || null,
@@ -270,7 +282,7 @@ export async function POST(req: NextRequest) {
         client_id: clientId,
         session_id: session?.id || null,
         event_type: 'webhook',
-        signal_type: 'crm_webhook',
+        signal_type: isLinkedInLeadGen ? 'linkedin_lead_gen' : 'crm_webhook',
         metadata: {
           webhook_action: isNewSession ? 'create_session' : session ? 'update_session' : 'no_action',
           payload,
@@ -281,11 +293,27 @@ export async function POST(req: NextRequest) {
       console.error('[Webhook Ingestion Error] Failed to log event:', logErr);
     }
 
-    return NextResponse.json({
+    let trackedUrl = '';
+    if (client) {
+      let domain = client.domain || '';
+      if (domain && !domain.startsWith('http://') && !domain.startsWith('https://')) {
+        domain = 'https://' + domain;
+      }
+      const separator = domain.endsWith('/') ? '' : '/';
+      trackedUrl = `${domain}${separator}?sid=${finalSessionId}`;
+    }
+
+    const responseObj: Record<string, unknown> = {
       success: true,
       message: isNewSession ? 'New session created successfully' : 'Session updated successfully',
       session_id: finalSessionId,
-    });
+    };
+
+    if (isLinkedInLeadGen) {
+      responseObj.tracked_url = trackedUrl;
+    }
+
+    return NextResponse.json(responseObj);
 
   } catch (err) {
     console.error('[Webhook Route Exception] Unhandled error:', err);
