@@ -175,3 +175,33 @@ CREATE POLICY "Clients can manage their own webhook mappings" ON webhook_mapping
     FOR ALL TO authenticated
     USING (client_id = auth.uid())
     WITH CHECK (client_id = auth.uid());
+
+-- ==========================================
+-- 6. CRM TOKENS TABLE
+-- ==========================================
+CREATE TABLE IF NOT EXISTS crm_tokens (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    client_id uuid REFERENCES clients(id) ON DELETE CASCADE,
+    crm_type text NOT NULL,
+    access_token text NOT NULL,
+    refresh_token text NOT NULL,
+    expires_at timestamptz,
+    created_at timestamptz DEFAULT now(),
+    updated_at timestamptz DEFAULT now()
+);
+
+-- INDEX FOR PERFORMANCE
+CREATE INDEX IF NOT EXISTS idx_crm_tokens_client_id_crm_type ON crm_tokens(client_id, crm_type);
+
+-- RLS POLICIES FOR CRM TOKENS
+ALTER TABLE crm_tokens ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Clients can view their own crm tokens" ON crm_tokens
+    FOR SELECT TO authenticated
+    USING (client_id = auth.uid());
+
+CREATE POLICY "Clients can manage their own crm tokens" ON crm_tokens
+    FOR ALL TO authenticated
+    USING (client_id = auth.uid())
+    WITH CHECK (client_id = auth.uid());
+
