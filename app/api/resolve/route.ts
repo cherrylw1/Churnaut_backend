@@ -109,6 +109,39 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Helper to log analytics events asynchronously
+    const logAnalyticsEvent = (
+      eventType: 'rule_triggered' | 'no_match',
+      ruleId: string | null,
+      selector: string | null = null,
+      preview: string | null = null
+    ) => {
+      const detectedSignal = session?.signal_type || (sid ? 'sid' : (cookie ? 'cookie' : null));
+      (async () => {
+        try {
+          const { error } = await supabaseAdmin
+            .from('analytics_events')
+            .insert({
+              client_id,
+              session_id: session?.id || null,
+              rule_id: ruleId,
+              event_type: eventType,
+              signal_type: detectedSignal,
+              created_at: new Date().toISOString(),
+              metadata: {
+                selector,
+                content_preview: preview,
+              },
+            });
+          if (error) {
+            console.error('[Analytics Error] Failed to log analytics event:', error);
+          }
+        } catch (err) {
+          console.error('[Analytics Exception] Failed to execute analytics log:', err);
+        }
+      })();
+    };
+
     // 4. Fetch all active routing rules for the client ordered by priority ascending
     const { data: rulesData, error: rulesError } = await supabaseAdmin
       .from('routing_rules')
@@ -128,6 +161,7 @@ export async function POST(req: NextRequest) {
 
     // 6. If matchedRule is null or matchedRule.target_selector is null, return JSON: {visitor_token: null, swaps: []}
     if (!matchedRule || matchedRule.target_selector === null || matchedRule.target_selector === undefined) {
+      logAnalyticsEvent('no_match', null);
       return NextResponse.json(
         { visitor_token: null, swaps: [] },
         { headers: corsHeaders }
@@ -145,6 +179,10 @@ export async function POST(req: NextRequest) {
       selector: matchedRule.target_selector,
       content: content,
     };
+
+    // Log rule triggered event
+    const contentPreview = content.length > 100 ? content.slice(0, 100) + '...' : content;
+    logAnalyticsEvent('rule_triggered', matchedRule.id, matchedRule.target_selector, contentPreview);
 
     // 8. Cache instructions in Redis with a 300 second TTL
     const visitor_token = session?.visitor_token || null;
