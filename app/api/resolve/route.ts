@@ -177,22 +177,19 @@ export async function POST(req: NextRequest) {
       const selector = matchedRule.target_selector || matchedRule.action_payload?.selector || '.sr-target';
       let content = '';
 
-      if (matchedRule.action_type === 'show_calendar') {
+      const copy = matchedRule.variant_content || matchedRule.action_payload?.variant_content || '';
+
+      if (copy) {
+        // If variant_content exists, always use it regardless of action_type
+        content = copy
+          .replace(/\{\{\s*prospect_name\s*\}\}/g, session?.prospect_name || 'there')
+          .replace(/\{\{\s*company_name\s*\}\}/g, session?.company_name || 'your company')
+          .replace(/\{\{\s*job_title\s*\}\}/g, session?.job_title || 'your role')
+          .replace(/\{\{\s*assigned_rep\s*\}\}/g, session?.assigned_rep || 'our representative');
+      } else if (matchedRule.action_type === 'show_calendar') {
         const calendarUrl = session?.calendar_url || matchedRule.action_payload?.calendar_url || '';
         if (calendarUrl) {
           content = `<iframe src="${calendarUrl}" width="100%" height="100%" frameborder="0"></iframe>`;
-        }
-      } else if (matchedRule.action_type === 'inject_copy') {
-        const copy = matchedRule.variant_content || matchedRule.action_payload?.variant_content || '';
-        if (copy && session) {
-          // Replace dynamic tokens
-          content = copy
-            .replace(/\{\{\s*prospect_name\s*\}\}/g, session.prospect_name || 'there')
-            .replace(/\{\{\s*company_name\s*\}\}/g, session.company_name || 'your company')
-            .replace(/\{\{\s*job_title\s*\}\}/g, session.job_title || 'your role')
-            .replace(/\{\{\s*assigned_rep\s*\}\}/g, session.assigned_rep || 'our representative');
-        } else {
-          content = copy;
         }
       }
 
