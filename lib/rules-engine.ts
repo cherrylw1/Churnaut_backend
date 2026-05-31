@@ -18,8 +18,13 @@ export function evaluateRules(
 
   for (const rule of rules) {
     // 1. Check signal_type match if the rule specifies it
-    if (rule.signal_type && rule.signal_type !== session.signal_type) {
-      continue;
+    if (rule.signal_type) {
+      const normalize = (val: string | null | undefined) => {
+        return (val || '').toString().toLowerCase().trim().replace(/\s+/g, '_');
+      };
+      if (normalize(rule.signal_type) !== normalize(session.signal_type)) {
+        continue;
+      }
     }
 
     // 2. Check conditions inside the conditions object
