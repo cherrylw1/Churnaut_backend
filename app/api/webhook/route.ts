@@ -40,17 +40,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing client_key or Authorization Bearer token' }, { status: 401 });
     }
 
-    // Lookup client by ID (if UUID), snippet_key, or crm_api_key
-    let clientQuery = supabaseAdmin.from('clients').select('*');
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    
-    if (uuidRegex.test(key)) {
-      clientQuery = clientQuery.or(`snippet_key.eq.${key},id.eq.${key},crm_api_key.eq.${key}`);
-    } else {
-      clientQuery = clientQuery.or(`snippet_key.eq.${key},crm_api_key.eq.${key}`);
-    }
-
-    const { data: client, error: clientErr } = await clientQuery.maybeSingle();
+    // Lookup client by snippet_key matching the incoming key
+    const { data: client, error: clientErr } = await supabaseAdmin
+      .from('clients')
+      .select('*')
+      .eq('snippet_key', key)
+      .maybeSingle();
 
     if (clientErr || !client) {
       console.error('[Webhook Auth Error] Failed client lookup:', clientErr);
