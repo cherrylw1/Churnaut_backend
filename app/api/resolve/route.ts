@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { ratelimit } from '@/lib/redis';
+import { ratelimit, redis } from '@/lib/redis';
 import { evaluateRules } from '@/lib/rules-engine';
 import { Session } from '@/types/index';
 
@@ -67,6 +67,21 @@ export async function POST(req: NextRequest) {
       console.error('[RateLimit Error] Failed to enforce rate limiting:', rlError);
     }
 
+    const primarySignal = sid || cookie;
+    let cacheKey = '';
+    if (primarySignal) {
+      cacheKey = `resolve:${client_id}:${primarySignal}`;
+      try {
+        const cached = await redis.get(cacheKey);
+        if (cached) {
+          const instructions = typeof cached === 'string' ? JSON.parse(cached) : cached;
+          return NextResponse.json(instructions, { headers: corsHeaders });
+        }
+      } catch (cacheError) {
+        console.error('[Cache Error] Failed cache read:', cacheError);
+      }
+    }
+
     // 3. Look up the session in the sessions table by id matching sid
     let session: Session | null = null;
     if (sid) {
@@ -118,16 +133,22 @@ export async function POST(req: NextRequest) {
       content: content,
     };
 
-    // 8. Return JSON: {visitor_token: session?.visitor_token, swaps: [the swap object]}
+    // 8. Cache instructions in Redis with a 300 second TTL
     const visitor_token = session?.visitor_token || null;
+    const instructions = {
+      visitor_token,
+      swaps: [swap],
+    };
 
-    return NextResponse.json(
-      {
-        visitor_token,
-        swaps: [swap],
-      },
-      { headers: corsHeaders }
-    );
+    if (primarySignal && cacheKey) {
+      try {
+        await redis.setex(cacheKey, 300, JSON.stringify(instructions));
+      } catch (cacheSetError) {
+        console.error('[Cache Set Error] Failed to write to cache:', cacheSetError);
+      }
+    }
+
+    return NextResponse.json(instructions, { headers: corsHeaders });
 
   } catch (error) {
     console.error('[Resolve Error] Unhandled exception occurred:', error);
