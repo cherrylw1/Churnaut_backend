@@ -61,6 +61,7 @@ export async function POST(req: NextRequest) {
     }
 
     const client_id = clientData.id;
+    console.log('[DEBUG] Resolved client_id UUID:', client_id);
 
     // 2. Rate limiting based on client_id
     try {
@@ -145,6 +146,7 @@ export async function POST(req: NextRequest) {
     } else if (signalType && !session.signal_type) {
       session.signal_type = signalType;
     }
+    console.log('[DEBUG] Fetched/Synthesized session:', JSON.stringify(session, null, 2));
 
     // 5. Query active routing rules belonging to this client, ordered by priority
     let rules: RoutingRule[] = [];
@@ -161,9 +163,11 @@ export async function POST(req: NextRequest) {
     } catch (rulesError) {
       console.error('[DB Error] Failed to fetch routing rules:', rulesError);
     }
+    console.log(`[DEBUG] Found ${rules.length} active routing rules. Signal types:`, rules.map(r => r.signal_type || 'Any'));
 
     // 6. Evaluate matching rule
     const matchedRule = evaluateRules(session, rules);
+    console.log('[DEBUG] Matched routing rule:', matchedRule ? JSON.stringify(matchedRule, null, 2) : 'null');
 
     // 7. Build the instructions swaps
     const swaps: Array<{ selector: string; content: string }> = [];
@@ -201,6 +205,7 @@ export async function POST(req: NextRequest) {
       visitor_token: visitorToken,
       swaps,
     };
+    console.log('[DEBUG] Generated swaps array:', JSON.stringify(swaps, null, 2));
 
     // 8. Log analytics event asynchronously
     if (matchedRule) {
