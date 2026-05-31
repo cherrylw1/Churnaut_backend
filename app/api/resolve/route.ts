@@ -80,10 +80,11 @@ export async function POST(req: NextRequest) {
     // Determine the primary signal
     const primarySignal = sid || gclid || fbclid || li_fat_id || cookie;
 
-    // 3. Cache lookup
+    // 3. Cache lookup (Temporarily disabled)
     let cacheKey = '';
     if (primarySignal) {
       cacheKey = `resolve:${client_id}:${primarySignal}`;
+      /*
       try {
         const cached = await redis.get(cacheKey);
         if (cached) {
@@ -93,6 +94,7 @@ export async function POST(req: NextRequest) {
       } catch (cacheError) {
         console.error('[Cache Error] Failed cache read:', cacheError);
       }
+      */
     }
 
     // 4. Query Supabase for session data (Cache Miss)
