@@ -69,7 +69,6 @@ export async function POST(req: NextRequest) {
         .from('sessions')
         .select('*')
         .eq('id', sid)
-        .eq('client_id', client_id)
         .maybeSingle();
 
       if (!error) {
