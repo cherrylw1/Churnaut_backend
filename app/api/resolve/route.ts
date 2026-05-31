@@ -96,6 +96,19 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Fallback: Look up the session by visitor_token matching cookie
+    if (!session && cookie) {
+      const { data, error } = await supabaseAdmin
+        .from('sessions')
+        .select('*')
+        .eq('visitor_token', cookie)
+        .maybeSingle();
+
+      if (!error && data) {
+        session = data;
+      }
+    }
+
     // 4. Fetch all active routing rules for the client ordered by priority ascending
     const { data: rulesData, error: rulesError } = await supabaseAdmin
       .from('routing_rules')
