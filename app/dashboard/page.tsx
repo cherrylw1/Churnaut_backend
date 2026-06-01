@@ -66,8 +66,13 @@ export default function DashboardPage() {
         if (user && user.email) {
           const localPart = user.email.split('@')[0];
           if (localPart) {
-            const name = localPart.charAt(0).toUpperCase() + localPart.slice(1);
-            setFirstName(name);
+            const cleanPart = localPart.replace(/\d/g, '');
+            if (cleanPart) {
+              const name = cleanPart.charAt(0).toUpperCase() + cleanPart.slice(1);
+              setFirstName(name);
+            } else {
+              setFirstName('');
+            }
           } else {
             setFirstName('');
           }
