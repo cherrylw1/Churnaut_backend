@@ -4,8 +4,6 @@ import React, { useState, useEffect } from 'react';
 import {
   Sparkles,
   AlertTriangle,
-  AlertCircle,
-  CheckCircle,
   RefreshCw,
   Send,
   Copy,
@@ -13,7 +11,7 @@ import {
   ChevronUp,
   Zap,
   Mail,
-  Users,
+  Brain,
 } from 'lucide-react';
 
 interface ScoutDealDetail {
@@ -89,6 +87,21 @@ export default function ScoutDashboard() {
   const [expandedEmails, setExpandedEmails] = useState<Record<string, boolean>>({});
   const [scoreChanges, setScoreChanges] = useState<string[]>([]);
   const [blindSpots, setBlindSpots] = useState<RepBlindSpotReport[]>([]);
+
+  // Layout States
+  const [activeTab, setActiveTab] = useState<'red' | 'amber' | 'green'>('red');
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({
+    triggers: true,       // Default collapsed
+    pipelineHealth: false, // Default expanded
+    repIntelligence: false, // Default expanded
+  });
+
+  const toggleSection = (section: string) => {
+    setCollapsedSections((prev) => ({
+      ...prev,
+      [section]: !prev[section],
+    }));
+  };
 
   // Nudge/Notify Modal State
   const [showModal, setShowModal] = useState(false);
@@ -345,7 +358,7 @@ export default function ScoutDashboard() {
   return (
     <div className="space-y-6 text-gray-300">
       {/* 1. HEADER SECTION */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center border-b border-[#1a1f2e] pb-6 gap-4">
+      <div className="flex justify-between items-center border-b border-[#1a1f2e] pb-6 gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-wider font-mono text-white flex items-center gap-2">
             <Sparkles className="text-[#6366f1] w-6 h-6 animate-pulse" />
@@ -354,41 +367,20 @@ export default function ScoutDashboard() {
           <p className="text-xs font-mono text-gray-400 mt-1">Pipeline Intelligence — Powered by AI</p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-4 w-full lg:w-auto">
-          {/* Pressure Score Display */}
-          {snapshot && pressureStatus && (
-            <div className={`border rounded-lg p-3 px-5 flex items-center gap-4 ${pressureStatus.borderClass}`}>
-              <div>
-                <span className="text-[10px] font-mono text-gray-500 block uppercase tracking-wider">Pressure Score</span>
-                <span className="text-3xl font-extrabold font-mono text-white block mt-0.5">
-                  {snapshot.pressure_score}
-                </span>
-              </div>
-              <div className="border-l border-[#1a1f2e] pl-4">
-                <span className="text-[10px] font-mono text-gray-500 block uppercase tracking-wider">Status</span>
-                <span className={`text-xs font-mono font-bold block mt-1 uppercase ${pressureStatus.textClass}`}>
-                  {pressureStatus.label}
-                </span>
-              </div>
-            </div>
+        <div className="flex flex-col items-end gap-1.5">
+          <button
+            onClick={handleRunAnalysis}
+            disabled={runningScout || loading}
+            className="bg-[#6366f1] hover:bg-[#5053e1] disabled:opacity-50 text-white font-mono text-xs py-2.5 px-4 rounded transition-all active:scale-[0.98] flex items-center gap-2"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${runningScout ? 'animate-spin' : ''}`} />
+            {runningScout ? 'RUNNING SCOUT ANALYSIS...' : 'RUN SCOUT ANALYSIS'}
+          </button>
+          {snapshot && (
+            <span className="text-[9px] font-mono text-gray-500 uppercase">
+              Last Analyzed: {new Date(snapshot.created_at).toLocaleString()}
+            </span>
           )}
-
-          {/* Action Trigger Buttons */}
-          <div className="flex flex-col items-end gap-1.5 ml-auto lg:ml-0">
-            <button
-              onClick={handleRunAnalysis}
-              disabled={runningScout || loading}
-              className="bg-[#6366f1] hover:bg-[#5053e1] disabled:opacity-50 text-white font-mono text-xs py-2.5 px-4 rounded transition-all active:scale-[0.98] flex items-center gap-2"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${runningScout ? 'animate-spin' : ''}`} />
-              {runningScout ? 'RUNNING SCOUT ANALYSIS...' : 'RUN SCOUT ANALYSIS'}
-            </button>
-            {snapshot && (
-              <span className="text-[9px] font-mono text-gray-500 uppercase">
-                Last Analyzed: {new Date(snapshot.created_at).toLocaleString()}
-              </span>
-            )}
-          </div>
         </div>
       </div>
 
@@ -397,11 +389,85 @@ export default function ScoutDashboard() {
           RETRIEVING SCOUT PIPELINE INTEL...
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* LEFT: Acceleration triggers and Deal Lists */}
-          <div className="lg:col-span-2 space-y-6">
+        <div className="space-y-6 max-w-5xl mx-auto">
+          {/* SECTION 1 — PIPELINE OVERVIEW (always expanded, not collapsible) */}
+          <div className="space-y-3">
+            <div className="border-b border-[#1a1f2e] pb-1.5">
+              <h2 className="text-xs font-bold font-mono tracking-wider text-indigo-400 uppercase">
+                SECTION 1 — PIPELINE OVERVIEW
+              </h2>
+            </div>
             
-            {/* SCOUT INBOX SECTION */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Card 1: Pressure Score Display */}
+              {snapshot && pressureStatus ? (
+                <div className={`border rounded-lg p-5 flex items-center justify-between gap-4 bg-[#0d1117]/25 ${pressureStatus.borderClass}`}>
+                  <div>
+                    <span className="text-[10px] font-mono text-gray-500 block uppercase tracking-wider">Pressure Score</span>
+                    <span className="text-4xl font-extrabold font-mono text-white block mt-1">
+                      {snapshot.pressure_score}
+                    </span>
+                  </div>
+                  <div className="border-l border-[#1a1f2e] pl-6 flex-1">
+                    <span className="text-[10px] font-mono text-gray-500 block uppercase tracking-wider">Status</span>
+                    <span className={`text-xs font-mono font-bold block mt-1 uppercase ${pressureStatus.textClass}`}>
+                      {pressureStatus.label}
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div className="border border-[#1a1f2e] bg-[#0d1117]/10 p-5 rounded-lg text-center text-xs font-mono text-gray-500">
+                  No snapshot data available.
+                </div>
+              )}
+
+              {/* Card 2: Scout Pipeline Diagnostics */}
+              {snapshot ? (
+                <div className="border border-[#1a1f2e] bg-[#0d1117]/20 rounded-lg p-5 flex flex-col justify-between gap-4">
+                  <div className="flex justify-between items-center border-b border-[#1a1f2e]/60 pb-2">
+                    <span className="text-[10px] font-mono text-gray-500 uppercase tracking-wider">Total Pipeline Value</span>
+                    <span className="text-lg font-bold font-mono text-green-400">
+                      {formatCurrency(snapshot.total_pipeline_value)}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3 text-center">
+                    <div className="border border-[#1a1f2e] bg-[#080B0F]/30 p-2.5 rounded-lg">
+                      <span className="text-[9px] font-mono text-red-500 block uppercase font-bold">At Risk</span>
+                      <span className="text-lg font-bold font-mono text-white block mt-0.5">
+                        {snapshot.red_count}
+                      </span>
+                    </div>
+                    <div className="border border-[#1a1f2e] bg-[#080B0F]/30 p-2.5 rounded-lg">
+                      <span className="text-[9px] font-mono text-yellow-500 block uppercase font-bold">Warning</span>
+                      <span className="text-lg font-bold font-mono text-white block mt-0.5">
+                        {snapshot.amber_count}
+                      </span>
+                    </div>
+                    <div className="border border-[#1a1f2e] bg-[#080B0F]/30 p-2.5 rounded-lg">
+                      <span className="text-[9px] font-mono text-green-500 block uppercase font-bold">Healthy</span>
+                      <span className="text-lg font-bold font-mono text-white block mt-0.5">
+                        {snapshot.green_count}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="border border-[#1a1f2e] bg-[#0d1117]/10 p-5 rounded-lg text-center text-xs font-mono text-gray-500">
+                  No diagnostics available.
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* SECTION 2 — SCOUT INBOX (always expanded, not collapsible) */}
+          <div className="space-y-3">
+            <div className="border-b border-[#1a1f2e] pb-1.5">
+              <h2 className="text-xs font-bold font-mono tracking-wider text-indigo-400 uppercase">
+                SECTION 2 — SCOUT INBOX
+              </h2>
+            </div>
+            
             <div className="border border-[#1a1f2e] border-l-4 border-l-amber-500 bg-[#0d1117]/40 rounded-lg p-4 font-mono text-xs space-y-2">
               <div className="flex items-center gap-2 text-white font-bold tracking-wider uppercase">
                 <Zap className="text-amber-500 w-4 h-4 fill-amber-500/20" />
@@ -420,443 +486,451 @@ export default function ScoutDashboard() {
                 )}
               </div>
             </div>
-
-            {/* 2. DEAL ACCELERATION TRIGGERS PANEL */}
-            <div className="border border-[#1a1f2e] bg-[#0d1117]/20 rounded-lg p-5 space-y-4">
-              <div className="flex items-center gap-2 border-b border-[#1a1f2e] pb-3">
-                <Zap className="text-yellow-500 w-4 h-4" />
-                <h2 className="text-xs font-bold tracking-wider font-mono uppercase text-white">
-                  DEAL ACCELERATION TRIGGERS (LAST 24 HOURS)
-                </h2>
-              </div>
-
-              {triggers.length === 0 ? (
-                <div className="py-8 text-center border border-dashed border-[#1a1f2e] rounded bg-[#080B0F]/30">
-                  <p className="text-xs font-mono text-gray-500">No acceleration triggers in the last 24 hours.</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {triggers.map((trigger, idx) => (
-                    <div
-                      key={idx}
-                      className="border border-[#1a1f2e] bg-[#080B0F]/60 p-4 rounded-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:border-yellow-900/50 transition-colors"
-                    >
-                      <div className="space-y-1 md:space-y-0.5">
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-sm font-bold text-white">{trigger.prospect_name}</span>
-                          <span className="text-gray-600 font-mono text-xs">|</span>
-                          <span className="font-mono text-xs text-gray-400">{trigger.company_name}</span>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] font-mono text-gray-500">
-                          <span>Stage: <span className="text-gray-300">{trigger.deal_stage}</span></span>
-                          <span>Value: <span className="text-green-500">{formatCurrency(trigger.deal_value)}</span></span>
-                          {trigger.last_visit_timestamp && (
-                            <span>Visited: <span className="text-yellow-500">{new Date(trigger.last_visit_timestamp).toLocaleTimeString()}</span></span>
-                          )}
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => openNotifyModal(trigger)}
-                        className="w-full md:w-auto bg-[#6366f1] hover:bg-[#5053e1] text-white font-mono text-[10px] px-3.5 py-2 rounded transition-colors active:scale-[0.98] flex items-center justify-center gap-1.5"
-                      >
-                        <Mail className="w-3 h-3" />
-                        NOTIFY REP
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* 3. RED DEALS (EXPANDED BY DEFAULT) */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between border-b border-[#1a1f2e] pb-2">
-                <h2 className="text-xs font-bold font-mono tracking-wider text-red-500 uppercase flex items-center gap-1.5">
-                  <AlertTriangle className="w-4 h-4" />
-                  RED DEALS ({redDeals.length})
-                </h2>
-              </div>
-
-              {redDeals.length === 0 ? (
-                <div className="py-6 text-center border border-[#1a1f2e] rounded bg-[#080B0F]/20">
-                  <p className="text-xs font-mono text-gray-500">No red-scored deals in this snapshot.</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {redDeals.map((deal) => {
-                    const isExpanded = expandedDeals[deal.deal_id] !== false;
-                    const isEmailOpen = expandedEmails[deal.deal_id] === true;
-                    return (
-                      <div
-                        key={deal.deal_id}
-                        className="border border-[#1a1f2e] bg-[#0d1117]/35 rounded-lg overflow-hidden border-l-4 border-l-red-600 transition-all"
-                      >
-                        {/* Summary Header Toggler */}
-                        <div
-                          onClick={() => toggleCard(deal.deal_id)}
-                          className="p-4 flex justify-between items-center cursor-pointer hover:bg-[#080B0F]/30 select-none"
-                        >
-                          <div className="space-y-1">
-                            <h3 className="font-mono text-sm font-bold text-white">{deal.deal_name}</h3>
-                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] font-mono text-gray-500">
-                              <span>Rep: <span className="text-gray-300">{deal.rep_name}</span></span>
-                              <span>Value: <span className="text-green-500">{formatCurrency(deal.deal_value)}</span></span>
-                              <span>Stage: <span className="text-gray-300">{deal.stage}</span></span>
-                            </div>
-                          </div>
-                          <div>
-                            {isExpanded ? (
-                              <ChevronUp className="w-4 h-4 text-gray-500" />
-                            ) : (
-                              <ChevronDown className="w-4 h-4 text-gray-500" />
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Expanded details */}
-                        {isExpanded && (
-                          <div className="p-4 pt-0 border-t border-[#1a1f2e] space-y-4 bg-[#080B0F]/10">
-                            {/* Key metrics grid */}
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 border-b border-[#1a1f2e] py-3.5 text-[10px] font-mono">
-                              <div>
-                                <span className="text-gray-500 block uppercase">Days In Stage</span>
-                                <span className="text-white text-xs font-bold block mt-0.5">{deal.days_in_stage}d</span>
-                              </div>
-                              <div>
-                                <span className="text-gray-500 block uppercase">Last Activity</span>
-                                <span className="text-white text-xs font-bold block mt-0.5">
-                                  {deal.last_activity_days !== null ? `${deal.last_activity_days}d ago` : 'None logged'}
-                                </span>
-                              </div>
-                              <div>
-                                <span className="text-gray-500 block uppercase">Contact Engagement</span>
-                                <span className="text-white text-xs font-bold block mt-0.5">{deal.contact_count} contacts</span>
-                              </div>
-                              <div>
-                                <span className="text-gray-500 block uppercase">Recent Web Visits</span>
-                                <span className="text-white text-xs font-bold block mt-0.5">{deal.website_visits_7d} visits (7d)</span>
-                              </div>
-                            </div>
-
-                            {/* Risk description */}
-                            <div className="space-y-1 text-xs">
-                              <span className="font-mono text-[9px] font-bold text-red-500 uppercase tracking-wider block">Primary Risk Factor</span>
-                              <p className="font-mono text-red-400/90 leading-relaxed">{deal.primary_risk}</p>
-                            </div>
-
-                            {/* Next action highlighted box */}
-                            <div className="bg-red-950/10 border border-red-900/30 p-3 rounded-lg space-y-1 text-xs">
-                              <span className="font-mono text-[9px] font-bold text-red-400 uppercase tracking-wider block">Recommended Rep Action (Today)</span>
-                              <p className="font-mono text-gray-200">{deal.next_action}</p>
-                            </div>
-
-                            {/* Actions block */}
-                            <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 pt-2">
-                              {deal.draft_email ? (
-                                <button
-                                  onClick={() => toggleEmail(deal.deal_id)}
-                                  className="border border-[#1a1f2e] hover:border-gray-500 text-gray-400 hover:text-white font-mono text-[10px] py-2 px-3 rounded transition-all flex items-center justify-center gap-1.5"
-                                >
-                                  <Mail className="w-3.5 h-3.5" />
-                                  {isEmailOpen ? 'HIDE DRAFT EMAIL' : 'VIEW DRAFT EMAIL'}
-                                </button>
-                              ) : (
-                                <div />
-                              )}
-
-                              <button
-                                onClick={() => openNudgeModal(deal)}
-                                className="bg-[#6366f1] hover:bg-[#5053e1] text-white font-mono text-xs py-2 px-4 rounded transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
-                              >
-                                <Send className="w-3.5 h-3.5" />
-                                NUDGE REP
-                              </button>
-                            </div>
-
-                            {/* Collapsible Draft Email Section */}
-                            {isEmailOpen && deal.draft_email && (
-                              <div className="border border-[#1a1f2e] bg-[#080B0F]/80 p-4 rounded-lg space-y-3 relative">
-                                <span className="font-mono text-[9px] font-bold text-indigo-400 uppercase tracking-widest block">AI DRAFT EMAIL</span>
-                                <div className="font-mono text-xs text-gray-400 whitespace-pre-wrap bg-black/20 p-3 rounded select-text leading-relaxed border border-[#1a1f2e]">
-                                  {deal.draft_email}
-                                </div>
-                                <div className="flex justify-end">
-                                  <button
-                                    onClick={() => copyToClipboard(deal.draft_email || '')}
-                                    className="border border-[#1a1f2e] hover:border-gray-500 hover:bg-[#080B0F] text-gray-400 hover:text-white font-mono text-[9px] py-1.5 px-2.5 rounded transition-all flex items-center gap-1"
-                                  >
-                                    <Copy className="w-3 h-3" />
-                                    COPY EMAIL
-                                  </button>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* 4. AMBER DEALS (COLLAPSED BY DEFAULT) */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between border-b border-[#1a1f2e] pb-2">
-                <h2 className="text-xs font-bold font-mono tracking-wider text-yellow-500 uppercase flex items-center gap-1.5">
-                  <AlertCircle className="w-4 h-4" />
-                  AMBER DEALS ({amberDeals.length})
-                </h2>
-              </div>
-
-              {amberDeals.length === 0 ? (
-                <div className="py-4 text-center border border-[#1a1f2e] rounded bg-[#080B0F]/10">
-                  <p className="text-xs font-mono text-gray-500">No amber-scored deals in this snapshot.</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {amberDeals.map((deal) => {
-                    const isExpanded = expandedDeals[deal.deal_id] === true;
-                    return (
-                      <div
-                        key={deal.deal_id}
-                        className="border border-[#1a1f2e] bg-[#0d1117]/20 rounded-lg overflow-hidden border-l-4 border-l-yellow-500 transition-all"
-                      >
-                        {/* Summary Header Toggler */}
-                        <div
-                          onClick={() => toggleCard(deal.deal_id)}
-                          className="p-4 flex justify-between items-center cursor-pointer hover:bg-[#080B0F]/20 select-none"
-                        >
-                          <div className="space-y-1">
-                            <h3 className="font-mono text-sm font-bold text-white">{deal.deal_name}</h3>
-                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] font-mono text-gray-500">
-                              <span>Rep: <span className="text-gray-300">{deal.rep_name}</span></span>
-                              <span>Value: <span className="text-green-500">{formatCurrency(deal.deal_value)}</span></span>
-                              <span>Stage: <span className="text-gray-300">{deal.stage}</span></span>
-                            </div>
-                          </div>
-                          <div>
-                            {isExpanded ? (
-                              <ChevronUp className="w-4 h-4 text-gray-500" />
-                            ) : (
-                              <ChevronDown className="w-4 h-4 text-gray-500" />
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Expanded details */}
-                        {isExpanded && (
-                          <div className="p-4 pt-0 border-t border-[#1a1f2e] space-y-4 bg-[#080B0F]/10">
-                            {/* Key metrics grid */}
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 border-b border-[#1a1f2e] py-3.5 text-[10px] font-mono">
-                              <div>
-                                <span className="text-gray-500 block uppercase">Days In Stage</span>
-                                <span className="text-white text-xs font-bold block mt-0.5">{deal.days_in_stage}d</span>
-                              </div>
-                              <div>
-                                <span className="text-gray-500 block uppercase">Last Activity</span>
-                                <span className="text-white text-xs font-bold block mt-0.5">
-                                  {deal.last_activity_days !== null ? `${deal.last_activity_days}d ago` : 'None logged'}
-                                </span>
-                              </div>
-                              <div>
-                                <span className="text-gray-500 block uppercase">Contact Engagement</span>
-                                <span className="text-white text-xs font-bold block mt-0.5">{deal.contact_count} contacts</span>
-                              </div>
-                              <div>
-                                <span className="text-gray-500 block uppercase">Recent Web Visits</span>
-                                <span className="text-white text-xs font-bold block mt-0.5">{deal.website_visits_7d} visits (7d)</span>
-                              </div>
-                            </div>
-
-                            {/* Risk description */}
-                            <div className="space-y-1 text-xs">
-                              <span className="font-mono text-[9px] font-bold text-yellow-500 uppercase tracking-wider block">Primary Risk Factor</span>
-                              <p className="font-mono text-yellow-400/90 leading-relaxed">{deal.primary_risk}</p>
-                            </div>
-
-                            {/* Next action highlighted box */}
-                            <div className="bg-yellow-950/10 border border-yellow-900/30 p-3 rounded-lg space-y-1 text-xs">
-                              <span className="font-mono text-[9px] font-bold text-yellow-400 uppercase tracking-wider block">Recommended Rep Action (Today)</span>
-                              <p className="font-mono text-gray-200">{deal.next_action}</p>
-                            </div>
-
-                            {/* Actions block */}
-                            <div className="flex justify-end pt-2">
-                              <button
-                                onClick={() => openNudgeModal(deal)}
-                                className="bg-[#6366f1] hover:bg-[#5053e1] text-white font-mono text-xs py-2 px-4 rounded transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
-                              >
-                                <Send className="w-3.5 h-3.5" />
-                                NUDGE REP
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* 5. GREEN DEALS (COMPACT COLLAPSED LIST) */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between border-b border-[#1a1f2e] pb-2">
-                <h2 className="text-xs font-bold font-mono tracking-wider text-green-500 uppercase flex items-center gap-1.5">
-                  <CheckCircle className="w-4 h-4" />
-                  GREEN DEALS ({greenDeals.length})
-                </h2>
-              </div>
-
-              {greenDeals.length === 0 ? (
-                <div className="py-4 text-center border border-[#1a1f2e] rounded bg-[#080B0F]/10">
-                  <p className="text-xs font-mono text-gray-500">No green-scored deals in this snapshot.</p>
-                </div>
-              ) : (
-                <div className="border border-[#1a1f2e] bg-[#0d1117]/10 rounded-lg divide-y divide-[#1a1f2e] overflow-hidden">
-                  {greenDeals.map((deal) => (
-                    <div
-                      key={deal.deal_id}
-                      className="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 hover:bg-[#080B0F]/20 transition-colors border-l-4 border-l-green-600"
-                    >
-                      <div className="space-y-0.5">
-                        <span className="font-mono text-sm font-bold text-white">{deal.deal_name}</span>
-                        <div className="flex items-center gap-3 text-[10px] font-mono text-gray-500">
-                          <span>Rep: <span className="text-gray-300">{deal.rep_name}</span></span>
-                          <span>Stage: <span className="text-gray-300">{deal.stage}</span></span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-4 justify-between w-full sm:w-auto">
-                        <span className="font-mono text-xs font-bold text-green-400">{formatCurrency(deal.deal_value)}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* 6. REP BLIND SPOT DETECTION */}
-            <div className="border border-[#1a1f2e] bg-[#0d1117]/20 rounded-lg p-5 space-y-4">
-              <div className="flex items-center gap-2 border-b border-[#1a1f2e] pb-3">
-                <Users className="text-indigo-400 w-4 h-4" />
-                <AlertTriangle className="text-yellow-500 w-3.5 h-3.5" />
-                <h2 className="text-xs font-bold tracking-wider font-mono uppercase text-white">
-                  REP BLIND SPOTS
-                </h2>
-              </div>
-
-              {blindSpots.length === 0 || blindSpots.reduce((acc, report) => acc + (report.blind_spots?.length || 0), 0) === 0 ? (
-                <div className="py-8 text-center border border-dashed border-[#1a1f2e] rounded bg-[#080B0F]/30">
-                  <p className="text-xs font-mono text-gray-500">No blind spots detected across your team.</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {blindSpots.map((report, idx) => {
-                    const hasSpots = report.blind_spots && report.blind_spots.length > 0;
-                    return (
-                      <div
-                        key={idx}
-                        className="border border-[#1a1f2e] bg-[#080B0F]/60 p-4 rounded-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:border-indigo-900/40 transition-colors"
-                      >
-                        <div className="space-y-1.5 w-full">
-                          <div className="flex items-center justify-between">
-                            <span className="font-mono text-sm font-bold text-white">{report.rep_name}</span>
-                            <span className="font-mono text-[10px] text-gray-500 uppercase">
-                              {report.deal_count} {report.deal_count === 1 ? 'DEAL' : 'DEALS'}
-                            </span>
-                          </div>
-
-                          {!hasSpots ? (
-                            <div className="text-[10px] font-mono text-green-500 uppercase tracking-wider flex items-center gap-1.5">
-                              <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                              No blind spots detected
-                            </div>
-                          ) : (
-                            <div className="flex flex-wrap gap-2 pt-1">
-                              {report.blind_spots.map((spot, sIdx) => {
-                                const isCritical = spot.severity === 'critical';
-                                const badgeColorClass = isCritical
-                                  ? 'bg-red-950/40 text-red-400 border-red-900/50'
-                                  : 'bg-amber-950/40 text-amber-500 border-amber-900/50';
-                                return (
-                                  <div
-                                    key={sIdx}
-                                    className={`flex flex-col border p-2 rounded text-[11px] font-mono w-full sm:w-auto sm:max-w-xs ${badgeColorClass}`}
-                                  >
-                                    <div className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-[9px] mb-0.5">
-                                      <span className={`w-1.5 h-1.5 rounded-full ${isCritical ? 'bg-red-500' : 'bg-amber-500'}`} />
-                                      {spot.type}
-                                    </div>
-                                    <div className="text-gray-400 text-[10px] leading-relaxed">
-                                      {spot.description}
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
           </div>
 
-          {/* RIGHT SIDEBAR: Snapshot Analytics Quick Panel */}
-          <div className="space-y-6">
-            <div className="border border-[#1a1f2e] bg-[#0d1117]/20 rounded-lg p-5 space-y-6">
-              <div className="border-b border-[#1a1f2e] pb-3">
-                <h2 className="text-xs font-bold tracking-wider font-mono text-[#6366f1] uppercase">
-                  SCOUT PIPELINE DIAGNOSTICS
-                </h2>
-              </div>
-
-              {snapshot ? (
-                <div className="space-y-5">
-                  {/* Pipeline Value card */}
-                  <div className="border border-[#1a1f2e] bg-[#080B0F]/40 p-4 rounded-lg space-y-1">
-                    <span className="text-[10px] font-mono text-gray-500 uppercase block">Total Pipeline Value</span>
-                    <span className="text-2xl font-extrabold font-mono text-green-400">
-                      {formatCurrency(snapshot.total_pipeline_value)}
-                    </span>
-                  </div>
-
-                  {/* Summary Metric Counters */}
-                  <div className="grid grid-cols-3 gap-3 text-center">
-                    <div className="border border-[#1a1f2e] bg-[#080B0F]/30 p-3 rounded-lg">
-                      <span className="text-[9px] font-mono text-red-500 block uppercase font-bold">At Risk</span>
-                      <span className="text-xl font-bold font-mono text-white block mt-1">
-                        {snapshot.red_count}
-                      </span>
-                    </div>
-                    <div className="border border-[#1a1f2e] bg-[#080B0F]/30 p-3 rounded-lg">
-                      <span className="text-[9px] font-mono text-yellow-500 block uppercase font-bold">Warning</span>
-                      <span className="text-xl font-bold font-mono text-white block mt-1">
-                        {snapshot.amber_count}
-                      </span>
-                    </div>
-                    <div className="border border-[#1a1f2e] bg-[#080B0F]/30 p-3 rounded-lg">
-                      <span className="text-[9px] font-mono text-green-500 block uppercase font-bold">Healthy</span>
-                      <span className="text-xl font-bold font-mono text-white block mt-1">
-                        {snapshot.green_count}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Quick diagnostic message */}
-                  <div className="text-xs font-mono border border-[#1a1f2e] p-3 rounded bg-indigo-950/5 border-indigo-900/10 leading-relaxed text-indigo-300">
-                    Scout AI continuously monitors pipeline velocity. Deals flagged as RED are missing buying signals or have stalled and need immediate attention.
-                  </div>
-                </div>
+          {/* SECTION 3 — DEAL ACCELERATION TRIGGERS (collapsible, default collapsed) */}
+          <div className="border border-[#1a1f2e] bg-[#0d1117]/10 rounded-lg overflow-hidden">
+            <button
+              onClick={() => toggleSection('triggers')}
+              className="w-full flex justify-between items-center p-4 bg-[#161b22]/30 hover:bg-[#161b22]/55 border-b border-[#1a1f2e] transition-colors select-none text-left"
+            >
+              <span className="font-mono text-xs font-bold tracking-wider text-white uppercase flex items-center gap-2">
+                <Zap className="text-yellow-500 w-3.5 h-3.5" />
+                SECTION 3 — DEAL ACCELERATION TRIGGERS
+              </span>
+              {collapsedSections.triggers ? (
+                <ChevronDown className="w-4 h-4 text-gray-400" />
               ) : (
-                <div className="py-8 text-center text-xs font-mono text-gray-500">
-                  No snapshot data available. Please run analysis.
-                </div>
+                <ChevronUp className="w-4 h-4 text-gray-400" />
               )}
+            </button>
+
+            <div
+              className={`transition-all duration-300 ease-in-out overflow-hidden ${
+                collapsedSections.triggers ? 'max-h-0 opacity-0' : 'max-h-[2000px] opacity-100'
+              }`}
+            >
+              <div className="p-5 space-y-4">
+                {triggers.length === 0 ? (
+                  <div className="py-8 text-center border border-dashed border-[#1a1f2e] rounded bg-[#080B0F]/30">
+                    <p className="text-xs font-mono text-gray-500">No acceleration triggers in the last 24 hours.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {triggers.map((trigger, idx) => (
+                      <div
+                        key={idx}
+                        className="border border-[#1a1f2e] bg-[#080B0F]/60 p-4 rounded-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:border-yellow-900/50 transition-colors"
+                      >
+                        <div className="space-y-1 md:space-y-0.5">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-sm font-bold text-white">{trigger.prospect_name}</span>
+                            <span className="text-gray-600 font-mono text-xs">|</span>
+                            <span className="font-mono text-xs text-gray-400">{trigger.company_name}</span>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] font-mono text-gray-500">
+                            <span>Stage: <span className="text-gray-300">{trigger.deal_stage}</span></span>
+                            <span>Value: <span className="text-green-500">{formatCurrency(trigger.deal_value)}</span></span>
+                            {trigger.last_visit_timestamp && (
+                              <span>Visited: <span className="text-yellow-500">{new Date(trigger.last_visit_timestamp).toLocaleTimeString()}</span></span>
+                            )}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => openNotifyModal(trigger)}
+                          className="w-full md:w-auto bg-[#6366f1] hover:bg-[#5053e1] text-white font-mono text-[10px] px-3.5 py-2 rounded transition-colors active:scale-[0.98] flex items-center justify-center gap-1.5"
+                        >
+                          <Mail className="w-3 h-3" />
+                          NOTIFY REP
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* SECTION 4 — PIPELINE HEALTH (collapsible, default expanded) */}
+          <div className="border border-[#1a1f2e] bg-[#0d1117]/10 rounded-lg overflow-hidden">
+            <button
+              onClick={() => toggleSection('pipelineHealth')}
+              className="w-full flex justify-between items-center p-4 bg-[#161b22]/30 hover:bg-[#161b22]/55 border-b border-[#1a1f2e] transition-colors select-none text-left"
+            >
+              <span className="font-mono text-xs font-bold tracking-wider text-white uppercase flex items-center gap-2">
+                <AlertTriangle className="text-red-500 w-3.5 h-3.5" />
+                SECTION 4 — PIPELINE HEALTH
+              </span>
+              {collapsedSections.pipelineHealth ? (
+                <ChevronDown className="w-4 h-4 text-gray-400" />
+              ) : (
+                <ChevronUp className="w-4 h-4 text-gray-400" />
+              )}
+            </button>
+
+            <div
+              className={`transition-all duration-300 ease-in-out overflow-hidden ${
+                collapsedSections.pipelineHealth ? 'max-h-0 opacity-0' : 'max-h-[5000px] opacity-100'
+              }`}
+            >
+              <div className="p-5 space-y-4">
+                {/* Tabs Header */}
+                <div className="flex border-b border-[#1a1f2e] font-mono text-xs mb-4">
+                  <button
+                    onClick={() => setActiveTab('red')}
+                    className={`flex-1 py-3 text-center border-b-2 font-bold transition-all uppercase ${
+                      activeTab === 'red'
+                        ? 'border-red-500 text-red-500 bg-red-950/10'
+                        : 'border-transparent text-gray-500 hover:text-gray-300 hover:bg-[#161b22]/20'
+                    }`}
+                  >
+                    AT RISK ({redDeals.length})
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('amber')}
+                    className={`flex-1 py-3 text-center border-b-2 font-bold transition-all uppercase ${
+                      activeTab === 'amber'
+                        ? 'border-yellow-500 text-yellow-500 bg-yellow-950/10'
+                        : 'border-transparent text-gray-500 hover:text-gray-300 hover:bg-[#161b22]/20'
+                    }`}
+                  >
+                    WARNING ({amberDeals.length})
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('green')}
+                    className={`flex-1 py-3 text-center border-b-2 font-bold transition-all uppercase ${
+                      activeTab === 'green'
+                        ? 'border-green-500 text-green-500 bg-green-950/10'
+                        : 'border-transparent text-gray-500 hover:text-gray-300 hover:bg-[#161b22]/20'
+                    }`}
+                  >
+                    HEALTHY ({greenDeals.length})
+                  </button>
+                </div>
+
+                {/* Tab content: AT RISK */}
+                {activeTab === 'red' && (
+                  <div className="space-y-4">
+                    {redDeals.length === 0 ? (
+                      <div className="py-8 text-center border border-[#1a1f2e] rounded bg-[#080B0F]/20">
+                        <p className="text-xs font-mono text-gray-500">No red-scored deals in this snapshot.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {redDeals.map((deal) => {
+                          const isExpanded = expandedDeals[deal.deal_id] !== false;
+                          const isEmailOpen = expandedEmails[deal.deal_id] === true;
+                          return (
+                            <div
+                              key={deal.deal_id}
+                              className="border border-[#1a1f2e] bg-[#0d1117]/35 rounded-lg overflow-hidden border-l-4 border-l-red-600 transition-all"
+                            >
+                              <div
+                                onClick={() => toggleCard(deal.deal_id)}
+                                className="p-4 flex justify-between items-center cursor-pointer hover:bg-[#080B0F]/30 select-none"
+                              >
+                                <div className="space-y-1">
+                                  <h3 className="font-mono text-sm font-bold text-white">{deal.deal_name}</h3>
+                                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] font-mono text-gray-500">
+                                    <span>Rep: <span className="text-gray-300">{deal.rep_name}</span></span>
+                                    <span>Value: <span className="text-green-500">{formatCurrency(deal.deal_value)}</span></span>
+                                    <span>Stage: <span className="text-gray-300">{deal.stage}</span></span>
+                                  </div>
+                                </div>
+                                <div>
+                                  {isExpanded ? (
+                                    <ChevronUp className="w-4 h-4 text-gray-500" />
+                                  ) : (
+                                    <ChevronDown className="w-4 h-4 text-gray-500" />
+                                  )}
+                                </div>
+                              </div>
+
+                              {isExpanded && (
+                                <div className="p-4 pt-0 border-t border-[#1a1f2e] space-y-4 bg-[#080B0F]/10">
+                                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 border-b border-[#1a1f2e] py-3.5 text-[10px] font-mono">
+                                    <div>
+                                      <span className="text-gray-500 block uppercase">Days In Stage</span>
+                                      <span className="text-white text-xs font-bold block mt-0.5">{deal.days_in_stage}d</span>
+                                    </div>
+                                    <div>
+                                      <span className="text-gray-500 block uppercase">Last Activity</span>
+                                      <span className="text-white text-xs font-bold block mt-0.5">
+                                        {deal.last_activity_days !== null ? `${deal.last_activity_days}d ago` : 'None logged'}
+                                      </span>
+                                    </div>
+                                    <div>
+                                      <span className="text-gray-500 block uppercase">Contact Engagement</span>
+                                      <span className="text-white text-xs font-bold block mt-0.5">{deal.contact_count} contacts</span>
+                                    </div>
+                                    <div>
+                                      <span className="text-gray-500 block uppercase">Recent Web Visits</span>
+                                      <span className="text-white text-xs font-bold block mt-0.5">{deal.website_visits_7d} visits (7d)</span>
+                                    </div>
+                                  </div>
+
+                                  <div className="space-y-1 text-xs">
+                                    <span className="font-mono text-[9px] font-bold text-red-500 uppercase tracking-wider block">Primary Risk Factor</span>
+                                    <p className="font-mono text-red-400/90 leading-relaxed">{deal.primary_risk}</p>
+                                  </div>
+
+                                  <div className="bg-red-950/10 border border-red-900/30 p-3 rounded-lg space-y-1 text-xs">
+                                    <span className="font-mono text-[9px] font-bold text-red-400 uppercase tracking-wider block">Recommended Rep Action (Today)</span>
+                                    <p className="font-mono text-gray-200">{deal.next_action}</p>
+                                  </div>
+
+                                  <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 pt-2">
+                                    {deal.draft_email ? (
+                                      <button
+                                        onClick={() => toggleEmail(deal.deal_id)}
+                                        className="border border-[#1a1f2e] hover:border-gray-500 text-gray-400 hover:text-white font-mono text-[10px] py-2 px-3 rounded transition-all flex items-center justify-center gap-1.5"
+                                      >
+                                        <Mail className="w-3.5 h-3.5" />
+                                        {isEmailOpen ? 'HIDE DRAFT EMAIL' : 'VIEW DRAFT EMAIL'}
+                                      </button>
+                                    ) : (
+                                      <div />
+                                    )}
+
+                                    <button
+                                      onClick={() => openNudgeModal(deal)}
+                                      className="bg-[#6366f1] hover:bg-[#5053e1] text-white font-mono text-xs py-2 px-4 rounded transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
+                                    >
+                                      <Send className="w-3.5 h-3.5" />
+                                      NUDGE REP
+                                    </button>
+                                  </div>
+
+                                  {isEmailOpen && deal.draft_email && (
+                                    <div className="border border-[#1a1f2e] bg-[#080B0F]/80 p-4 rounded-lg space-y-3 relative">
+                                      <span className="font-mono text-[9px] font-bold text-indigo-400 uppercase tracking-widest block">AI DRAFT EMAIL</span>
+                                      <div className="font-mono text-xs text-gray-400 whitespace-pre-wrap bg-black/20 p-3 rounded select-text leading-relaxed border border-[#1a1f2e]">
+                                        {deal.draft_email}
+                                      </div>
+                                      <div className="flex justify-end">
+                                        <button
+                                          onClick={() => copyToClipboard(deal.draft_email || '')}
+                                          className="border border-[#1a1f2e] hover:border-gray-500 hover:bg-[#080B0F] text-gray-400 hover:text-white font-mono text-[9px] py-1.5 px-2.5 rounded transition-all flex items-center gap-1"
+                                        >
+                                          <Copy className="w-3 h-3" />
+                                          COPY EMAIL
+                                        </button>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Tab content: WARNING */}
+                {activeTab === 'amber' && (
+                  <div className="space-y-4">
+                    {amberDeals.length === 0 ? (
+                      <div className="py-8 text-center border border-[#1a1f2e] rounded bg-[#080B0F]/10">
+                        <p className="text-xs font-mono text-gray-500">No amber-scored deals in this snapshot.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {amberDeals.map((deal) => {
+                          const isExpanded = expandedDeals[deal.deal_id] === true;
+                          return (
+                            <div
+                              key={deal.deal_id}
+                              className="border border-[#1a1f2e] bg-[#0d1117]/20 rounded-lg overflow-hidden border-l-4 border-l-yellow-500 transition-all"
+                            >
+                              <div
+                                onClick={() => toggleCard(deal.deal_id)}
+                                className="p-4 flex justify-between items-center cursor-pointer hover:bg-[#080B0F]/20 select-none"
+                              >
+                                <div className="space-y-1">
+                                  <h3 className="font-mono text-sm font-bold text-white">{deal.deal_name}</h3>
+                                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] font-mono text-gray-500">
+                                    <span>Rep: <span className="text-gray-300">{deal.rep_name}</span></span>
+                                    <span>Value: <span className="text-green-500">{formatCurrency(deal.deal_value)}</span></span>
+                                    <span>Stage: <span className="text-gray-300">{deal.stage}</span></span>
+                                  </div>
+                                </div>
+                                <div>
+                                  {isExpanded ? (
+                                    <ChevronUp className="w-4 h-4 text-gray-500" />
+                                  ) : (
+                                    <ChevronDown className="w-4 h-4 text-gray-500" />
+                                  )}
+                                </div>
+                              </div>
+
+                              {isExpanded && (
+                                <div className="p-4 pt-0 border-t border-[#1a1f2e] space-y-4 bg-[#080B0F]/10">
+                                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 border-b border-[#1a1f2e] py-3.5 text-[10px] font-mono">
+                                    <div>
+                                      <span className="text-gray-500 block uppercase">Days In Stage</span>
+                                      <span className="text-white text-xs font-bold block mt-0.5">{deal.days_in_stage}d</span>
+                                    </div>
+                                    <div>
+                                      <span className="text-gray-500 block uppercase">Last Activity</span>
+                                      <span className="text-white text-xs font-bold block mt-0.5">
+                                        {deal.last_activity_days !== null ? `${deal.last_activity_days}d ago` : 'None logged'}
+                                      </span>
+                                    </div>
+                                    <div>
+                                      <span className="text-gray-500 block uppercase">Contact Engagement</span>
+                                      <span className="text-white text-xs font-bold block mt-0.5">{deal.contact_count} contacts</span>
+                                    </div>
+                                    <div>
+                                      <span className="text-gray-500 block uppercase">Recent Web Visits</span>
+                                      <span className="text-white text-xs font-bold block mt-0.5">{deal.website_visits_7d} visits (7d)</span>
+                                    </div>
+                                  </div>
+
+                                  <div className="space-y-1 text-xs">
+                                    <span className="font-mono text-[9px] font-bold text-yellow-500 uppercase tracking-wider block">Primary Risk Factor</span>
+                                    <p className="font-mono text-yellow-400/90 leading-relaxed">{deal.primary_risk}</p>
+                                  </div>
+
+                                  <div className="bg-yellow-950/10 border border-yellow-900/30 p-3 rounded-lg space-y-1 text-xs">
+                                    <span className="font-mono text-[9px] font-bold text-yellow-400 uppercase tracking-wider block">Recommended Rep Action (Today)</span>
+                                    <p className="font-mono text-gray-200">{deal.next_action}</p>
+                                  </div>
+
+                                  <div className="flex justify-end pt-2">
+                                    <button
+                                      onClick={() => openNudgeModal(deal)}
+                                      className="bg-[#6366f1] hover:bg-[#5053e1] text-white font-mono text-xs py-2 px-4 rounded transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
+                                    >
+                                      <Send className="w-3.5 h-3.5" />
+                                      NUDGE REP
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Tab content: HEALTHY */}
+                {activeTab === 'green' && (
+                  <div className="space-y-4">
+                    {greenDeals.length === 0 ? (
+                      <div className="py-8 text-center border border-[#1a1f2e] rounded bg-[#080B0F]/10">
+                        <p className="text-xs font-mono text-gray-500">No green-scored deals in this snapshot.</p>
+                      </div>
+                    ) : (
+                      <div className="border border-[#1a1f2e] bg-[#0d1117]/10 rounded-lg divide-y divide-[#1a1f2e] overflow-hidden">
+                        {greenDeals.map((deal) => (
+                          <div
+                            key={deal.deal_id}
+                            className="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 hover:bg-[#080B0F]/20 transition-colors border-l-4 border-l-green-600"
+                          >
+                            <div className="space-y-0.5">
+                              <span className="font-mono text-sm font-bold text-white">{deal.deal_name}</span>
+                              <div className="flex items-center gap-3 text-[10px] font-mono text-gray-500">
+                                <span>Rep: <span className="text-gray-300">{deal.rep_name}</span></span>
+                                <span>Stage: <span className="text-gray-300">{deal.stage}</span></span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-4 justify-between w-full sm:w-auto">
+                              <span className="font-mono text-xs font-bold text-green-400">{formatCurrency(deal.deal_value)}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* SECTION 5 — REP INTELLIGENCE (collapsible, default expanded) */}
+          <div className="border border-[#1a1f2e] bg-[#0d1117]/10 rounded-lg overflow-hidden">
+            <button
+              onClick={() => toggleSection('repIntelligence')}
+              className="w-full flex justify-between items-center p-4 bg-[#161b22]/30 hover:bg-[#161b22]/55 border-b border-[#1a1f2e] transition-colors select-none text-left"
+            >
+              <span className="font-mono text-xs font-bold tracking-wider text-white uppercase flex items-center gap-2">
+                <Brain className="text-indigo-400 w-3.5 h-3.5" />
+                SECTION 5 — REP INTELLIGENCE
+              </span>
+              {collapsedSections.repIntelligence ? (
+                <ChevronDown className="w-4 h-4 text-gray-400" />
+              ) : (
+                <ChevronUp className="w-4 h-4 text-gray-400" />
+              )}
+            </button>
+
+            <div
+              className={`transition-all duration-300 ease-in-out overflow-hidden ${
+                collapsedSections.repIntelligence ? 'max-h-0 opacity-0' : 'max-h-[3000px] opacity-100'
+              }`}
+            >
+              <div className="p-5 space-y-4">
+                {blindSpots.length === 0 || blindSpots.reduce((acc, report) => acc + (report.blind_spots?.length || 0), 0) === 0 ? (
+                  <div className="py-8 text-center border border-dashed border-[#1a1f2e] rounded bg-[#080B0F]/30">
+                    <p className="text-xs font-mono text-gray-500">No blind spots detected across your team.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {blindSpots.map((report, idx) => {
+                      const hasSpots = report.blind_spots && report.blind_spots.length > 0;
+                      return (
+                        <div
+                          key={idx}
+                          className="border border-[#1a1f2e] bg-[#080B0F]/60 p-4 rounded-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:border-indigo-900/40 transition-colors"
+                        >
+                          <div className="space-y-1.5 w-full">
+                            <div className="flex items-center justify-between">
+                              <span className="font-mono text-sm font-bold text-white">{report.rep_name}</span>
+                              <span className="font-mono text-[10px] text-gray-500 uppercase">
+                                {report.deal_count} {report.deal_count === 1 ? 'DEAL' : 'DEALS'}
+                              </span>
+                            </div>
+
+                            {!hasSpots ? (
+                              <div className="text-[10px] font-mono text-green-500 uppercase tracking-wider flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                                No blind spots detected
+                              </div>
+                            ) : (
+                              <div className="flex flex-wrap gap-2 pt-1">
+                                {report.blind_spots.map((spot, sIdx) => {
+                                  const isCritical = spot.severity === 'critical';
+                                  const badgeColorClass = isCritical
+                                    ? 'bg-red-950/40 text-red-400 border-red-900/50'
+                                    : 'bg-amber-950/40 text-amber-500 border-amber-900/50';
+                                  return (
+                                    <div
+                                      key={sIdx}
+                                      className={`flex flex-col border p-2 rounded text-[11px] font-mono w-full sm:w-auto sm:max-w-xs ${badgeColorClass}`}
+                                    >
+                                      <div className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-[9px] mb-0.5">
+                                        <span className={`w-1.5 h-1.5 rounded-full ${isCritical ? 'bg-red-500' : 'bg-amber-500'}`} />
+                                        {spot.type}
+                                      </div>
+                                      <div className="text-gray-400 text-[10px] leading-relaxed">
+                                        {spot.description}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
