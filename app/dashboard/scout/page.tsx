@@ -12,6 +12,7 @@ import {
   Zap,
   Mail,
   Brain,
+  Skull,
 } from 'lucide-react';
 
 interface ScoutDealDetail {
@@ -77,6 +78,21 @@ interface RepBlindSpotReport {
   blind_spots: BlindSpot[];
 }
 
+interface DealObituary {
+  id: string;
+  deal_id: string;
+  deal_name: string;
+  deal_value: number;
+  close_date: string | null;
+  stage_died_in: string;
+  days_in_final_stage: number;
+  likely_cause: string;
+  what_rep_could_do: string;
+  pattern_match: string;
+  full_obituary: string;
+  created_at: string;
+}
+
 export default function ScoutDashboard() {
   const [snapshot, setSnapshot] = useState<PipelineSnapshot | null>(null);
   const [deals, setDeals] = useState<ScoutDealDetail[]>([]);
@@ -87,6 +103,8 @@ export default function ScoutDashboard() {
   const [expandedEmails, setExpandedEmails] = useState<Record<string, boolean>>({});
   const [scoreChanges, setScoreChanges] = useState<string[]>([]);
   const [blindSpots, setBlindSpots] = useState<RepBlindSpotReport[]>([]);
+  const [obituaries, setObituaries] = useState<DealObituary[]>([]);
+  const [generatingObits, setGeneratingObits] = useState(false);
 
   // Layout States
   const [activeTab, setActiveTab] = useState<'red' | 'amber' | 'green'>('red');
@@ -94,6 +112,7 @@ export default function ScoutDashboard() {
     triggers: true,       // Default collapsed
     pipelineHealth: false, // Default expanded
     repIntelligence: false, // Default expanded
+    obituaries: true,     // Default collapsed
   });
 
   const toggleSection = (section: string) => {
@@ -160,10 +179,47 @@ export default function ScoutDashboard() {
         const bsData = await bsRes.json();
         setBlindSpots(bsData || []);
       }
+
+      // Fetch Deal Obituaries
+      await fetchObituaries();
     } catch (err) {
       console.error('Failed to load Scout pipeline details:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchObituaries = async () => {
+    try {
+      const res = await fetch('/api/scout/obituaries');
+      if (res.ok) {
+        const data = await res.json();
+        setObituaries(data || []);
+      }
+    } catch (err) {
+      console.error('Failed to load deal obituaries:', err);
+    }
+  };
+
+  const handleGenerateObituaries = async () => {
+    if (generatingObits) return;
+    setGeneratingObits(true);
+    try {
+      const res = await fetch('/api/scout/obituaries', {
+        method: 'POST',
+      });
+      if (res.ok) {
+        const data = await res.json();
+        alert(`Successfully generated ${data.count} new deal obituaries.`);
+        await fetchObituaries();
+      } else {
+        alert('Failed to generate deal obituaries.');
+      }
+    } catch (err) {
+      console.error('Error generating obituaries:', err);
+      alert('An error occurred during obituary generation.');
+    } finally {
+      setGeneratingObits(false);
     }
   };
 
@@ -928,6 +984,98 @@ export default function ScoutDashboard() {
                         </div>
                       );
                     })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* SECTION 6 — DEAL OBITUARIES (collapsible, default collapsed) */}
+          <div className="border border-[#1a1f2e] bg-[#0d1117]/10 rounded-lg overflow-hidden">
+            <button
+              onClick={() => toggleSection('obituaries')}
+              className="w-full flex justify-between items-center p-4 bg-[#161b22]/30 hover:bg-[#161b22]/55 border-b border-[#1a1f2e] transition-colors select-none text-left"
+            >
+              <span className="font-mono text-xs font-bold tracking-wider text-white uppercase flex items-center gap-2">
+                <Skull className="text-red-500 w-3.5 h-3.5" />
+                SECTION 6 — DEAL OBITUARIES
+              </span>
+              {collapsedSections.obituaries ? (
+                <ChevronDown className="w-4 h-4 text-gray-400" />
+              ) : (
+                <ChevronUp className="w-4 h-4 text-gray-400" />
+              )}
+            </button>
+
+            <div
+              className={`transition-all duration-300 ease-in-out overflow-hidden ${
+                collapsedSections.obituaries ? 'max-h-0 opacity-0' : 'max-h-[3000px] opacity-100'
+              }`}
+            >
+              <div className="p-5 space-y-4">
+                <div className="flex justify-between items-center">
+                  <div className="text-[10px] font-mono text-gray-500 uppercase tracking-widest">
+                    Post-Mortem Deal Reviews
+                  </div>
+                  <button
+                    onClick={handleGenerateObituaries}
+                    disabled={generatingObits}
+                    className="border border-red-900/60 bg-red-950/20 hover:bg-red-900/30 text-red-400 hover:text-red-300 font-mono text-[10px] font-bold py-1.5 px-3 rounded uppercase tracking-wider flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${generatingObits ? 'animate-spin' : ''}`} />
+                    {generatingObits ? 'GENERATING...' : 'GENERATE OBITUARIES'}
+                  </button>
+                </div>
+
+                {obituaries.length === 0 ? (
+                  <div className="py-8 text-center border border-dashed border-[#1a1f2e] rounded bg-[#080B0F]/30">
+                    <p className="text-xs font-mono text-gray-500 max-w-md mx-auto leading-relaxed">
+                      No closed-lost deals found. Obituaries are generated automatically when deals are marked lost in HubSpot.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {obituaries.map((obit, idx) => (
+                      <div
+                        key={idx}
+                        className="border border-[#1a1f2e] bg-[#080B0F]/60 p-4 rounded-lg flex flex-col justify-between gap-3 hover:border-red-900/40 transition-colors font-mono"
+                      >
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-start">
+                            <span className="text-sm font-bold text-white leading-snug">{obit.deal_name}</span>
+                            <span className="text-xs font-bold text-red-400">{formatCurrency(obit.deal_value)}</span>
+                          </div>
+                          <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-gray-500 uppercase">
+                            <span>Died in: <strong className="text-gray-300">{obit.stage_died_in}</strong></span>
+                            {obit.days_in_final_stage !== undefined && (
+                              <span>Days in stage: <strong className="text-gray-300">{obit.days_in_final_stage}</strong></span>
+                            )}
+                            {obit.close_date && (
+                              <span>Lost Date: <strong className="text-gray-300">{obit.close_date.split('T')[0]}</strong></span>
+                            )}
+                          </div>
+                          
+                          <p className="text-xs text-gray-300 leading-relaxed pt-1.5 border-t border-[#1a1f2e]/60">
+                            {obit.full_obituary}
+                          </p>
+                        </div>
+
+                        <div className="space-y-1.5 text-[10px] pt-1.5 border-t border-[#1a1f2e]/30">
+                          <div>
+                            <span className="text-red-500/80 font-bold uppercase tracking-wider">Likely Cause: </span>
+                            <span className="text-gray-400">{obit.likely_cause}</span>
+                          </div>
+                          <div>
+                            <span className="text-indigo-400 font-bold uppercase tracking-wider">Loss Pattern: </span>
+                            <span className="text-gray-400">{obit.pattern_match}</span>
+                          </div>
+                          <div>
+                            <span className="text-green-400 font-bold uppercase tracking-wider">Advice: </span>
+                            <span className="text-gray-400">{obit.what_rep_could_do}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>

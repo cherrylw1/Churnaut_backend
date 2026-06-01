@@ -14,6 +14,13 @@ export interface ScoutDeal {
   website_visits_7d: number;
 }
 
+interface ActivityProperties {
+  notes_last_contacted?: string;
+  hs_last_booked_meeting_date?: string;
+  hs_last_sales_activity_timestamp?: string;
+  hs_last_activity_date?: string;
+}
+
 /**
  * Fetches HubSpot pipeline data for a given client, enriches it with contact info
  * and recent website visits, and returns a sanitized list of open deals.
@@ -156,13 +163,6 @@ interface HubSpotDealResult {
     hubspot_owner_id?: string;
     hs_last_activity_date?: string;
   };
-}
-
-interface ActivityProperties {
-  notes_last_contacted?: string;
-  hs_last_booked_meeting_date?: string;
-  hs_last_sales_activity_timestamp?: string;
-  hs_last_activity_date?: string;
 }
 
   // 5. Fetch associated contacts and last activity details for each deal
@@ -382,3 +382,236 @@ interface ActivityProperties {
 
   return scoredDeals;
 }
+
+export interface ScoutClosedLostDeal {
+  deal_id: string;
+  deal_name: string;
+  stage: string;
+  deal_value: number;
+  close_date: string | null;
+  days_in_stage: number;
+  last_activity_days: number | null;
+  contact_count: number;
+}
+
+export async function fetchClosedLostDeals(clientId: string): Promise<ScoutClosedLostDeal[]> {
+  if (!clientId) {
+    throw new Error('Missing client ID');
+  }
+
+  // 1. Look up the HubSpot access token in the crm_tokens table
+  const { data: tokens, error: tokenError } = await supabaseAdmin
+    .from('crm_tokens')
+    .select('access_token, refresh_token, expires_at')
+    .eq('client_id', clientId)
+    .eq('crm_type', 'hubspot')
+    .order('updated_at', { ascending: false });
+
+  if (tokenError) {
+    console.error('[Scout Closed Lost] Error fetching HubSpot token from crm_tokens:', tokenError);
+  }
+
+  const tokenData = tokens && tokens.length > 0 ? tokens[0] : null;
+  if (!tokenData) {
+    console.warn(`[Scout Closed Lost] No HubSpot OAuth connection found for client ${clientId}`);
+    return [];
+  }
+
+  // 2. Decrypt the access token
+  let accessToken = decrypt(tokenData.access_token);
+  if (!accessToken) {
+    throw new Error('Failed to decrypt HubSpot access token');
+  }
+
+  // Check token expiration (refresh if expired or expiring within 5 minutes)
+  const expiresAt = tokenData.expires_at ? new Date(tokenData.expires_at).getTime() : 0;
+  const isExpired = expiresAt === 0 || expiresAt - Date.now() < 5 * 60 * 1000;
+
+  if (isExpired && tokenData.refresh_token) {
+    console.log('[HubSpot Closed Lost] Access token is expired or expiring soon. Refreshing...');
+    try {
+      const decryptedRefreshToken = decrypt(tokenData.refresh_token);
+      
+      const params = new URLSearchParams();
+      params.append('grant_type', 'refresh_token');
+      params.append('client_id', process.env.HUBSPOT_CLIENT_ID || '');
+      params.append('client_secret', process.env.HUBSPOT_CLIENT_SECRET || '');
+      params.append('redirect_uri', 'https://app.churnaut.com/api/oauth/hubspot/callback');
+      params.append('refresh_token', decryptedRefreshToken);
+
+      const refreshRes = await fetch('https://api.hubapi.com/oauth/v1/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: params.toString(),
+      });
+
+      if (!refreshRes.ok) {
+        const errBody = await refreshRes.text();
+        console.error('[HubSpot Closed Lost] Token refresh failed status:', refreshRes.status, errBody);
+      } else {
+        const refreshData = await refreshRes.json();
+        const newAccessToken = refreshData.access_token;
+        const newRefreshToken = refreshData.refresh_token;
+        const newExpiresAt = new Date(Date.now() + 1800 * 1000).toISOString();
+
+        const encryptedAccess = encrypt(newAccessToken);
+        const encryptedRefresh = encrypt(newRefreshToken);
+
+        const { error: updateError } = await supabaseAdmin
+          .from('crm_tokens')
+          .update({
+            access_token: encryptedAccess,
+            refresh_token: encryptedRefresh,
+            expires_at: newExpiresAt,
+            updated_at: new Date().toISOString()
+          })
+          .eq('client_id', clientId)
+          .eq('crm_type', 'hubspot');
+
+        if (updateError) {
+          console.error('[HubSpot Closed Lost] Failed to update refreshed tokens in DB:', updateError.message);
+        } else {
+          console.log('[HubSpot Closed Lost] Token refreshed and updated successfully.');
+          accessToken = newAccessToken;
+        }
+      }
+    } catch (refreshErr) {
+      console.error('[HubSpot Closed Lost] Exception during token refresh:', refreshErr);
+    }
+  }
+
+  // 3. Search closed lost deals from HubSpot CRM
+  const searchUrl = 'https://api.hubapi.com/crm/v3/objects/deals/search';
+  const searchRes = await fetch(searchUrl, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      filterGroups: [
+        {
+          filters: [
+            {
+              propertyName: 'dealstage',
+              operator: 'EQ',
+              value: 'closedlost'
+            }
+          ]
+        }
+      ],
+      properties: ['dealname', 'dealstage', 'amount', 'closedate', 'createdate', 'hs_lastmodifieddate', 'hubspot_owner_id', 'hs_last_activity_date'],
+      limit: 100
+    })
+  });
+
+  if (!searchRes.ok) {
+    const errBody = await searchRes.json().catch(() => ({}));
+    console.error(`[Scout Closed Lost API Error] Deals search failed:`, errBody);
+    throw new Error(`Failed to search closedlost deals: ${searchRes.statusText}`);
+  }
+
+  const searchData = await searchRes.json();
+  const rawDeals = searchData.results || [];
+
+  interface HubSpotDealResult {
+    id: string;
+    properties: {
+      dealname?: string;
+      dealstage?: string;
+      amount?: string;
+      closedate?: string;
+      createdate?: string;
+      hs_lastmodifieddate?: string;
+      hubspot_owner_id?: string;
+      hs_last_activity_date?: string;
+    };
+  }
+
+  // 4. Fetch associated contacts and last activity details
+  const closedLostDeals: ScoutClosedLostDeal[] = await Promise.all(
+    (rawDeals as HubSpotDealResult[]).map(async (deal) => {
+      const dealId = deal.id;
+
+      // Call associations endpoint for contacts
+      let contactIds: string[] = [];
+      try {
+        const assocRes = await fetch(`https://api.hubapi.com/crm/v3/objects/deals/${dealId}/associations/contacts`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+          },
+        });
+        if (assocRes.ok) {
+          const assocData = await assocRes.json();
+          contactIds = (assocData.results || []).map((r: { id: string }) => r.id);
+        }
+      } catch (err) {
+        console.error(`[Scout Closed Lost Error] Failed to fetch contacts for deal ${dealId}:`, err);
+      }
+
+      // Call details endpoint for activity properties
+      let activityProperties: ActivityProperties = {};
+      try {
+        const activityRes = await fetch(
+          `https://api.hubapi.com/crm/v3/objects/deals/${dealId}?properties=notes_last_contacted,hs_last_booked_meeting_date,hs_last_sales_activity_timestamp,hs_last_activity_date`,
+          {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+            },
+          }
+        );
+        if (activityRes.ok) {
+          const activityData = await activityRes.json();
+          activityProperties = activityData.properties || {};
+        }
+      } catch (err) {
+        console.error(`[Scout Closed Lost Error] Failed to fetch last activity for deal ${dealId}:`, err);
+      }
+
+      const dealProps = deal.properties || {};
+      const createdate = dealProps.createdate;
+      const hs_last_sales_activity_timestamp = activityProperties.hs_last_sales_activity_timestamp;
+
+      // Calculate days_in_stage (or final stage duration)
+      let days_in_stage = 0;
+      if (createdate) {
+        const diffMs = Date.now() - new Date(createdate).getTime();
+        days_in_stage = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+      }
+
+      // Calculate last_activity_days
+      let last_activity_days: number | null = null;
+      let lastActivityTimestamp = activityProperties.hs_last_activity_date || dealProps.hs_last_activity_date || hs_last_sales_activity_timestamp;
+
+      if (!lastActivityTimestamp && activityProperties.notes_last_contacted) {
+        lastActivityTimestamp = activityProperties.notes_last_contacted;
+      }
+      if (!lastActivityTimestamp && activityProperties.hs_last_booked_meeting_date) {
+        lastActivityTimestamp = activityProperties.hs_last_booked_meeting_date;
+      }
+
+      if (lastActivityTimestamp) {
+        const diffMs = Date.now() - new Date(lastActivityTimestamp).getTime();
+        last_activity_days = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+      }
+
+      return {
+        deal_id: deal.id,
+        deal_name: dealProps.dealname || 'Unnamed Deal',
+        stage: dealProps.dealstage || 'closedlost',
+        deal_value: dealProps.amount ? parseFloat(dealProps.amount) : 0,
+        close_date: dealProps.closedate || null,
+        days_in_stage,
+        last_activity_days,
+        contact_count: contactIds.length,
+      };
+    })
+  );
+
+  return closedLostDeals;
+}
+

@@ -1,5 +1,5 @@
 import { redis } from '@/lib/redis';
-import { ScoutDeal } from './integrations/hubspot-pipeline';
+import { ScoutDeal, ScoutClosedLostDeal } from './integrations/hubspot-pipeline';
 import { supabaseAdmin } from '@/lib/supabase';
 
 export interface ScoredDeal {
@@ -316,3 +316,139 @@ export async function calculateDealPatterns(clientId: string) {
     return null;
   }
 }
+
+export async function generateDealObituary(
+  clientId: string,
+  deal: ScoutClosedLostDeal
+): Promise<unknown> {
+  if (!clientId || !deal || !deal.deal_id) {
+    throw new Error('Missing client ID or deal details');
+  }
+
+  // 1. Check if an obituary already exists for this deal_id
+  const { data: existing, error: findError } = await supabaseAdmin
+    .from('deal_obituaries')
+    .select('id')
+    .eq('client_id', clientId)
+    .eq('deal_id', deal.deal_id)
+    .maybeSingle();
+
+  if (findError) {
+    console.error(`[Scout Obituary] Error searching for existing obituary for deal ${deal.deal_id}:`, findError);
+  }
+
+  if (existing) {
+    console.log(`[Scout Obituary] Obituary already exists for deal ${deal.deal_id}, skipping generation.`);
+    return existing;
+  }
+
+  // 2. Build Gemini prompt
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error('Gemini API key is not configured in the environment');
+  }
+
+  const prompt = `
+You are Scout, a B2B sales coach writing a deal post-mortem. Be direct, specific, and actionable.
+
+Analyze the following closed-lost deal information:
+- Deal ID: ${deal.deal_id}
+- Deal Name: ${deal.deal_name}
+- Stage Died In: ${deal.stage}
+- Deal Value: $${deal.deal_value}
+- Close Date: ${deal.close_date || 'Unknown'}
+- Days in final stage: ${deal.days_in_stage}
+- Days since last activity prior to loss: ${deal.last_activity_days ?? 'Unknown'}
+- Total contacts engaged: ${deal.contact_count}
+
+Write a post-mortem review of this lost deal.
+You must respond with a single, valid JSON object containing exactly these keys at the root:
+1. "likely_cause": a short summary of the likely cause of death (under 20 words).
+2. "what_rep_could_do": actionable advice on what the representative could have done differently to save the deal (under 25 words).
+3. "pattern_match": a short description referencing if this matches common loss patterns (e.g. lack of multithreading, stage stagnation, ghosting after pricing) (under 20 words).
+4. "full_obituary": a detailed review (3-4 sentences, plain English, direct tone).
+
+Return ONLY the JSON. No markdown wrappers (no \`\`\`json block), no conversational text, no explanations. Just raw JSON.
+`;
+
+  // 3. Invoke Gemini
+  const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`;
+  const geminiRes = await fetch(geminiUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      contents: [
+        {
+          parts: [
+            {
+              text: prompt,
+            },
+          ],
+        },
+      ],
+    }),
+  });
+
+  if (!geminiRes.ok) {
+    const errText = await geminiRes.text();
+    console.error(`[Scout Obituary API Error] Gemini returned status ${geminiRes.status}:`, errText);
+    throw new Error(`Gemini API call failed: ${geminiRes.statusText}`);
+  }
+
+  const resData = await geminiRes.json();
+  const rawText = resData.candidates?.[0]?.content?.parts?.[0]?.text;
+
+  if (!rawText) {
+    throw new Error('Invalid response structure from Gemini model');
+  }
+
+  let cleanedText = rawText.trim();
+  if (cleanedText.startsWith('```')) {
+    cleanedText = cleanedText.replace(/^```[a-zA-Z]*\n/, '').replace(/\n```$/, '').trim();
+  }
+
+  let parsed: {
+    likely_cause: string;
+    what_rep_could_do: string;
+    pattern_match: string;
+    full_obituary: string;
+  };
+
+  try {
+    parsed = JSON.parse(cleanedText);
+  } catch (parseErr) {
+    console.error('[Scout Obituary Parse Error] Failed to parse JSON:', cleanedText, parseErr);
+    throw new Error('Failed to parse Scout AI obituary response as valid JSON');
+  }
+
+  // 4. Upsert into deal_obituaries
+  const insertData = {
+    client_id: clientId,
+    deal_id: deal.deal_id,
+    deal_name: deal.deal_name,
+    deal_value: deal.deal_value,
+    close_date: deal.close_date,
+    stage_died_in: deal.stage,
+    days_in_final_stage: deal.days_in_stage,
+    likely_cause: parsed.likely_cause || 'No clear cause identified.',
+    what_rep_could_do: parsed.what_rep_could_do || 'Review deal timeline and activity history.',
+    pattern_match: parsed.pattern_match || 'General loss pattern.',
+    full_obituary: parsed.full_obituary || 'No detailed obituary generated.',
+  };
+
+  const { data: upsertData, error: upsertError } = await supabaseAdmin
+    .from('deal_obituaries')
+    .upsert(insertData, { onConflict: 'client_id,deal_id' })
+    .select()
+    .maybeSingle();
+
+  if (upsertError) {
+    console.error('[Scout Obituary] Error upserting obituary:', upsertError);
+    throw upsertError;
+  }
+
+  return upsertData || insertData;
+}
+
