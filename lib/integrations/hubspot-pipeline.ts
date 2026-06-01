@@ -132,19 +132,40 @@ export async function fetchHubSpotPipeline(clientId: string): Promise<ScoutDeal[
   console.log('[HubSpot Pipeline debug] Decrypted access token:', accessToken.substring(0, 20) + '...');
 
   // 4. Fetch open deals from HubSpot CRM
-  const dealsUrl = 'https://api.hubapi.com/crm/v3/objects/deals?properties=dealname,dealstage,amount,closedate,createdate,hs_lastmodifieddate,hubspot_owner_id,hs_last_activity_date&limit=100&archived=false';
-  console.log('[HubSpot Pipeline debug] Fetching open deals from URL:', dealsUrl);
-  const dealsRes = await fetch(dealsUrl, {
-    method: 'GET',
+  const searchUrl = 'https://api.hubapi.com/crm/v3/objects/deals/search';
+  console.log('[HubSpot Pipeline debug] Fetching open deals from Search URL:', searchUrl);
+  const dealsRes = await fetch(searchUrl, {
+    method: 'POST',
     headers: {
       'Authorization': `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
     },
+    body: JSON.stringify({
+      filterGroups: [
+        {
+          filters: [
+            { propertyName: 'dealstage', operator: 'NEQ', value: 'closedwon' },
+            { propertyName: 'dealstage', operator: 'NEQ', value: 'closedlost' }
+          ]
+        }
+      ],
+      properties: [
+        'dealname',
+        'dealstage',
+        'amount',
+        'closedate',
+        'createdate',
+        'hs_lastmodifieddate',
+        'hubspot_owner_id',
+        'hs_last_activity_date'
+      ],
+      limit: 100
+    })
   });
 
   if (!dealsRes.ok) {
     const errBody = await dealsRes.json().catch(() => ({}));
-    console.error(`[Scout Pipeline API Error] Deals fetch from URL "${dealsUrl}" failed with status ${dealsRes.status}:`, errBody);
+    console.error(`[Scout Pipeline API Error] Deals fetch from Search URL "${searchUrl}" failed with status ${dealsRes.status}:`, errBody);
     throw new Error(`Failed to fetch deals from HubSpot: ${dealsRes.statusText}`);
   }
 
@@ -164,6 +185,10 @@ interface HubSpotDealResult {
     hs_last_activity_date?: string;
   };
 }
+
+  // Log how many deals are returned and what their stages are after the fix
+  const dealStages = (rawDeals as HubSpotDealResult[]).map((d) => d.properties?.dealstage || 'unknown');
+  console.log(`[HubSpot Pipeline] Returned ${rawDeals.length} deals with stages:`, dealStages);
 
   // 5. Fetch associated contacts and last activity details for each deal
   const detailedDeals = await Promise.all(
