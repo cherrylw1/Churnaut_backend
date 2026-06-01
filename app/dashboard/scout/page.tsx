@@ -223,23 +223,23 @@ export default function ScoutDashboard() {
 
   // Get Pressure Score formatting classes
   const getPressureStatus = (score: number) => {
-    if (score <= 40) {
-      return {
-        borderClass: 'border-red-900/50 bg-red-950/10',
-        textClass: 'text-red-500',
-        label: 'Pipeline at risk',
-      };
-    } else if (score <= 70) {
-      return {
-        borderClass: 'border-yellow-900/50 bg-yellow-950/10',
-        textClass: 'text-yellow-500',
-        label: 'Pipeline needs attention',
-      };
-    } else {
+    if (score <= 30) {
       return {
         borderClass: 'border-green-900/50 bg-green-950/10',
         textClass: 'text-green-500',
-        label: 'Pipeline healthy',
+        label: 'PIPELINE HEALTHY',
+      };
+    } else if (score <= 60) {
+      return {
+        borderClass: 'border-yellow-900/50 bg-yellow-950/10',
+        textClass: 'text-yellow-500',
+        label: 'PIPELINE NEEDS ATTENTION',
+      };
+    } else {
+      return {
+        borderClass: 'border-red-900/50 bg-red-950/10',
+        textClass: 'text-red-500',
+        label: 'PIPELINE AT RISK',
       };
     }
   };
