@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { fetchHubSpotPipeline } from '@/lib/integrations/hubspot-pipeline';
+import { fetchHubSpotPipeline, ScoutDeal } from '@/lib/integrations/hubspot-pipeline';
 import { scoreDealsWithScout, calculateDealPatterns, ScoutScoreResult } from '@/lib/scout-scoring';
 
 export const dynamic = 'force-dynamic';
@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
     console.log('[Scout Score POST] Client lookup successful. client_id:', clientId, 'crm_type: hubspot');
 
     // 2. Fetch HubSpot pipeline deals
-    let deals;
+    let deals: ScoutDeal[];
     try {
       deals = await fetchHubSpotPipeline(clientId);
       console.log(`[Scout Score POST] fetchHubSpotPipeline returned ${deals.length} deals`);
@@ -35,6 +35,31 @@ export async function POST(req: NextRequest) {
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);
       console.error('[Scout Score POST] Error in fetchHubSpotPipeline:', errMsg);
+      throw err;
+    }
+
+    // Cleanup step: delete stale deals from deal_scores
+    const currentDealIds = deals.map((d) => d.deal_id);
+    console.log(`[Scout Score POST] Cleaning up stale deal_scores. Current active deal IDs:`, currentDealIds);
+    try {
+      let deleteQuery = supabaseAdmin
+        .from('deal_scores')
+        .delete()
+        .eq('client_id', clientId);
+
+      if (currentDealIds.length > 0) {
+        deleteQuery = deleteQuery.not('deal_id', 'in', `(${currentDealIds.join(',')})`);
+      }
+
+      const { error: deleteError } = await deleteQuery;
+      if (deleteError) {
+        console.error('[Scout Score POST] Error cleaning up stale deal_scores:', deleteError);
+        throw deleteError;
+      }
+      console.log('[Scout Score POST] Stale deal_scores cleanup completed successfully');
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      console.error('[Scout Score POST] Failed during deal_scores cleanup:', errMsg);
       throw err;
     }
 
