@@ -6,6 +6,7 @@ import { supabaseBrowser } from '@/lib/supabase';
 
 export default function SignupPage() {
   const router = useRouter();
+  const [fullName, setFullName] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -22,6 +23,11 @@ export default function SignupPage() {
       const { data, error } = await supabaseBrowser.auth.signUp({
         email,
         password,
+        options: {
+          data: {
+            full_name: fullName,
+          },
+        },
       });
 
       if (error) {
@@ -83,6 +89,22 @@ export default function SignupPage() {
         )}
 
         <form onSubmit={handleSignup} className="space-y-6">
+          <div className="space-y-2">
+            <label htmlFor="fullName" className="block text-xs font-mono text-gray-400 uppercase tracking-wider">
+              Your Name
+            </label>
+            <input
+              id="fullName"
+              type="text"
+              required
+              disabled={loading}
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder="John Smith"
+              className="w-full bg-[#0a0a0a] border border-[#1a1f2e] focus:border-[#6366f1] focus:ring-1 focus:ring-[#6366f1] outline-none text-sm px-4 py-2.5 rounded text-white transition-all font-mono"
+            />
+          </div>
+
           <div className="space-y-2">
             <label htmlFor="companyName" className="block text-xs font-mono text-gray-400 uppercase tracking-wider">
               Company Name

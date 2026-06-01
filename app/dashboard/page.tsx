@@ -63,13 +63,21 @@ export default function DashboardPage() {
     const fetchUser = async () => {
       try {
         const { data: { user } } = await supabaseBrowser.auth.getUser();
-        if (user && user.email) {
-          const localPart = user.email.split('@')[0];
-          if (localPart) {
-            const cleanPart = localPart.replace(/\d/g, '');
-            if (cleanPart) {
-              const name = cleanPart.charAt(0).toUpperCase() + cleanPart.slice(1);
-              setFirstName(name);
+        if (user) {
+          const fullName = user.user_metadata?.full_name;
+          if (fullName && typeof fullName === 'string' && fullName.trim()) {
+            const first = fullName.trim().split(/\s+/)[0];
+            setFirstName(first);
+          } else if (user.email) {
+            const localPart = user.email.split('@')[0];
+            if (localPart) {
+              const cleanPart = localPart.replace(/\d/g, '');
+              if (cleanPart) {
+                const name = cleanPart.charAt(0).toUpperCase() + cleanPart.slice(1);
+                setFirstName(name);
+              } else {
+                setFirstName('');
+              }
             } else {
               setFirstName('');
             }
