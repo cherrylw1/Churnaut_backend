@@ -286,7 +286,7 @@ export default function LinksPage() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex justify-between items-center border-b border-[#1a1f2e] pb-5">
+      <div className="flex justify-between items-center border-b border-[var(--border-subtle)] pb-5">
         <div>
           <h1 className="text-xl font-bold tracking-wider font-mono">TRACKED LINKS</h1>
           <p className="text-xs font-mono text-gray-400 mt-1">Generate personalized redirect URLs for outbound links</p>
@@ -308,7 +308,7 @@ export default function LinksPage() {
       {loading ? (
         <div className="text-center py-12 text-gray-500 font-mono text-sm">RETRIEVING LINKS...</div>
       ) : links.length === 0 ? (
-        <div className="text-center py-16 border border-[#1a1f2e] rounded-lg bg-[#0d1117]/30">
+        <div className="text-center py-16 border border-[var(--border-subtle)] rounded-lg bg-[var(--bg-surface)]">
           <p className="text-sm font-mono text-gray-400">No tracked links generated yet.</p>
           <button
             onClick={() => setModalOpen(true)}
@@ -318,11 +318,11 @@ export default function LinksPage() {
           </button>
         </div>
       ) : (
-        <div className="border border-[#1a1f2e] bg-[#0d1117]/20 rounded-lg overflow-hidden">
+        <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/50 rounded-lg overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-[#1a1f2e] bg-[#0d1117]/60 text-xs font-mono text-gray-400 uppercase">
+                <tr className="border-b border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-xs font-mono text-gray-400 uppercase">
                   <th className="py-3.5 px-4 font-normal">Prospect Name</th>
                   <th className="py-3.5 px-4 font-normal">Company</th>
                   <th className="py-3.5 px-4 font-normal">Signal Type</th>
@@ -333,17 +333,17 @@ export default function LinksPage() {
                   <th className="py-3.5 px-4 font-normal text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#1a1f2e] text-sm">
+              <tbody className="divide-y divide-[var(--border-subtle)] text-sm">
                 {links.map((link) => {
                   const status = getStatus(link.expires_at);
                   const displayUrl = buildBaseTrackedUrl(link.id);
 
                   return (
-                    <tr key={link.id} className="hover:bg-[#1a1f2e]/10 transition-colors">
+                    <tr key={link.id} className="hover:bg-[var(--border-subtle)]/10 transition-colors">
                       <td className="py-3 px-4 font-mono font-medium">{link.prospect_name || '-'}</td>
                       <td className="py-3 px-4 text-gray-300 font-mono">{link.company_name || '-'}</td>
                       <td className="py-3 px-4">
-                        <span className="text-xs px-2 py-0.5 bg-[#1a1f2e] text-gray-300 rounded font-mono border border-[#1a1f2e]">
+                        <span className="text-xs px-2 py-0.5 bg-[var(--border-subtle)] text-gray-300 rounded font-mono border border-[var(--border-subtle)]">
                           {link.signal_type || 'Other'}
                         </span>
                       </td>
@@ -368,7 +368,7 @@ export default function LinksPage() {
                       <td className="py-3 px-4 text-right">
                         <button
                           onClick={() => handleCopy(displayUrl, link.id)}
-                          className="border border-[#1a1f2e] hover:border-[#6366f1] hover:text-[#6366f1] text-xs font-mono py-1 px-2.5 rounded transition-all active:scale-[0.97]"
+                          className="border border-[var(--border-subtle)] hover:border-[#6366f1] hover:text-[#6366f1] text-xs font-mono py-1 px-2.5 rounded transition-all active:scale-[0.97]"
                         >
                           {copiedId === link.id ? 'COPIED!' : 'COPY'}
                         </button>
@@ -385,9 +385,9 @@ export default function LinksPage() {
       {/* Creation Modal */}
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fadeIn">
-          <div className="w-full max-w-2xl bg-[#080B0F] border border-[#1a1f2e] rounded-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+          <div className="w-full max-w-2xl bg-[#080B0F] border border-[var(--border-subtle)] rounded-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
             {/* Modal Header */}
-            <div className="flex justify-between items-center px-6 py-4 border-b border-[#1a1f2e]">
+            <div className="flex justify-between items-center px-6 py-4 border-b border-[var(--border-subtle)]">
               <h2 className="text-sm font-bold tracking-widest font-mono text-[#6366f1] uppercase">
                 Generate Tracked Link
               </h2>
@@ -400,7 +400,7 @@ export default function LinksPage() {
             </div>
 
             {/* Modal Tabs */}
-            <div className="flex border-b border-[#1a1f2e] bg-[#0d1117]/30">
+            <div className="flex border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]">
               <button
                 onClick={() => {
                   setGeneratedUrl(null);
@@ -437,7 +437,7 @@ export default function LinksPage() {
                 <div>
                   {generatedUrl ? (
                     /* SUCCESS SCREEN */
-                    <div className="space-y-4 border border-[#1a1f2e] p-6 rounded-lg bg-[#0d1117]/20">
+                    <div className="space-y-4 border border-[var(--border-subtle)] p-6 rounded-lg bg-[var(--bg-elevated)]/50">
                       <div className="text-center py-2">
                         <span className="text-xs font-mono text-green-400 bg-green-950/20 px-3 py-1 border border-green-900/50 rounded-full">
                           LINK GENERATED SUCCESSFULLY
@@ -452,7 +452,7 @@ export default function LinksPage() {
                             type="text"
                             readOnly
                             value={generatedUrl}
-                            className="flex-1 bg-[#080B0F] border border-[#1a1f2e] text-sm px-3 py-2 rounded text-white font-mono outline-none"
+                            className="flex-1 bg-[#080B0F] border border-[var(--border-subtle)] text-sm px-3 py-2 rounded text-white font-mono outline-none"
                           />
                           <button
                             onClick={() => handleCopy(generatedUrl, 'generated')}
@@ -465,7 +465,7 @@ export default function LinksPage() {
                       <div className="pt-4 flex justify-end">
                         <button
                           onClick={() => setGeneratedUrl(null)}
-                          className="border border-[#1a1f2e] hover:border-gray-500 text-xs font-mono py-2 px-4 rounded text-gray-300 transition-all"
+                          className="border border-[var(--border-subtle)] hover:border-gray-500 text-xs font-mono py-2 px-4 rounded text-gray-300 transition-all"
                         >
                           Generate Another
                         </button>
@@ -484,7 +484,7 @@ export default function LinksPage() {
                             value={prospectName}
                             onChange={(e) => setProspectName(e.target.value)}
                             placeholder="John Doe"
-                            className="w-full bg-[#080B0F] border border-[#1a1f2e] focus:border-[#6366f1] outline-none text-xs px-3 py-2 rounded text-white font-mono"
+                            className="w-full bg-[#080B0F] border border-[var(--border-subtle)] focus:border-[#6366f1] outline-none text-xs px-3 py-2 rounded text-white font-mono"
                           />
                         </div>
                         <div className="space-y-1.5">
@@ -496,7 +496,7 @@ export default function LinksPage() {
                             value={prospectEmail}
                             onChange={(e) => setProspectEmail(e.target.value)}
                             placeholder="john@example.com"
-                            className="w-full bg-[#080B0F] border border-[#1a1f2e] focus:border-[#6366f1] outline-none text-xs px-3 py-2 rounded text-white font-mono"
+                            className="w-full bg-[#080B0F] border border-[var(--border-subtle)] focus:border-[#6366f1] outline-none text-xs px-3 py-2 rounded text-white font-mono"
                           />
                         </div>
                       </div>
@@ -511,7 +511,7 @@ export default function LinksPage() {
                             value={companyName}
                             onChange={(e) => setCompanyName(e.target.value)}
                             placeholder="Acme Corp"
-                            className="w-full bg-[#080B0F] border border-[#1a1f2e] focus:border-[#6366f1] outline-none text-xs px-3 py-2 rounded text-white font-mono"
+                            className="w-full bg-[#080B0F] border border-[var(--border-subtle)] focus:border-[#6366f1] outline-none text-xs px-3 py-2 rounded text-white font-mono"
                           />
                         </div>
                         <div className="space-y-1.5">
@@ -523,7 +523,7 @@ export default function LinksPage() {
                             value={jobTitle}
                             onChange={(e) => setJobTitle(e.target.value)}
                             placeholder="Head of Marketing"
-                            className="w-full bg-[#080B0F] border border-[#1a1f2e] focus:border-[#6366f1] outline-none text-xs px-3 py-2 rounded text-white font-mono"
+                            className="w-full bg-[#080B0F] border border-[var(--border-subtle)] focus:border-[#6366f1] outline-none text-xs px-3 py-2 rounded text-white font-mono"
                           />
                         </div>
                       </div>
@@ -536,7 +536,7 @@ export default function LinksPage() {
                           <select
                             value={signalType}
                             onChange={(e) => setSignalType(e.target.value)}
-                            className="w-full bg-[#080B0F] border border-[#1a1f2e] focus:border-[#6366f1] outline-none text-xs px-3 py-2.5 rounded text-white font-mono"
+                            className="w-full bg-[#080B0F] border border-[var(--border-subtle)] focus:border-[#6366f1] outline-none text-xs px-3 py-2.5 rounded text-white font-mono"
                           >
                             {SIGNAL_OPTIONS.map((opt) => (
                               <option key={opt} value={opt} className="bg-[#080B0F]">
@@ -554,7 +554,7 @@ export default function LinksPage() {
                             value={assignedRep}
                             onChange={(e) => setAssignedRep(e.target.value)}
                             placeholder="Sarah Jenkins"
-                            className="w-full bg-[#080B0F] border border-[#1a1f2e] focus:border-[#6366f1] outline-none text-xs px-3 py-2 rounded text-white font-mono"
+                            className="w-full bg-[#080B0F] border border-[var(--border-subtle)] focus:border-[#6366f1] outline-none text-xs px-3 py-2 rounded text-white font-mono"
                           />
                         </div>
                       </div>
@@ -568,7 +568,7 @@ export default function LinksPage() {
                           value={calendarUrl}
                           onChange={(e) => setCalendarUrl(e.target.value)}
                           placeholder="https://calendly.com/your-representative"
-                          className="w-full bg-[#080B0F] border border-[#1a1f2e] focus:border-[#6366f1] outline-none text-xs px-3 py-2 rounded text-white font-mono"
+                          className="w-full bg-[#080B0F] border border-[var(--border-subtle)] focus:border-[#6366f1] outline-none text-xs px-3 py-2 rounded text-white font-mono"
                         />
                       </div>
 
@@ -583,7 +583,7 @@ export default function LinksPage() {
                             value={destinationUrl}
                             onChange={(e) => setDestinationUrl(e.target.value)}
                             placeholder="https://yourwebsite.com/landing-page"
-                            className="w-full bg-[#080B0F] border border-[#1a1f2e] focus:border-[#6366f1] outline-none text-xs px-3 py-2 rounded text-white font-mono"
+                            className="w-full bg-[#080B0F] border border-[var(--border-subtle)] focus:border-[#6366f1] outline-none text-xs px-3 py-2 rounded text-white font-mono"
                           />
                         </div>
                         <div className="space-y-1.5">
@@ -596,7 +596,7 @@ export default function LinksPage() {
                             value={expiresInDays}
                             onChange={(e) => setExpiresInDays(e.target.value)}
                             placeholder="30"
-                            className="w-full bg-[#080B0F] border border-[#1a1f2e] focus:border-[#6366f1] outline-none text-xs px-3 py-2 rounded text-white font-mono"
+                            className="w-full bg-[#080B0F] border border-[var(--border-subtle)] focus:border-[#6366f1] outline-none text-xs px-3 py-2 rounded text-white font-mono"
                           />
                         </div>
                       </div>
@@ -616,11 +616,11 @@ export default function LinksPage() {
               ) : (
                 /* BULK CSV TAB */
                 <div className="space-y-4">
-                  <div className="border border-dashed border-[#1a1f2e] p-8 rounded-lg text-center bg-[#0d1117]/10">
+                  <div className="border border-dashed border-[var(--border-subtle)] p-8 rounded-lg text-center bg-[var(--bg-elevated)]/30">
                     <p className="text-xs font-mono text-gray-400 mb-2">
                       Upload a CSV file containing your prospects. Required columns:
                     </p>
-                    <p className="text-[10px] font-mono text-[#6366f1] bg-[#1a1f2e]/50 py-1.5 px-3 rounded inline-block">
+                    <p className="text-[10px] font-mono text-[#6366f1] bg-[var(--border-subtle)]/50 py-1.5 px-3 rounded inline-block">
                       prospect_name, prospect_email, company_name, job_title, signal_type, assigned_rep, destination_url
                     </p>
                     <div className="mt-6 flex justify-center">
@@ -633,7 +633,7 @@ export default function LinksPage() {
                       />
                       <label
                         htmlFor="csv-file-input"
-                        className="border border-[#1a1f2e] hover:border-gray-500 text-xs font-mono py-2 px-6 rounded cursor-pointer text-gray-300 hover:text-white transition-all inline-block"
+                        className="border border-[var(--border-subtle)] hover:border-gray-500 text-xs font-mono py-2 px-6 rounded cursor-pointer text-gray-300 hover:text-white transition-all inline-block"
                       >
                         {csvFile ? `Selected: ${csvFile.name}` : 'CHOOSE CSV FILE'}
                       </label>
@@ -654,7 +654,7 @@ export default function LinksPage() {
                       <div className="flex justify-end space-x-2">
                         <button
                           onClick={() => setBulkResults(null)}
-                          className="border border-[#1a1f2e] text-xs font-mono py-2 px-4 rounded text-gray-400 hover:text-white transition-all"
+                          className="border border-[var(--border-subtle)] text-xs font-mono py-2 px-4 rounded text-gray-400 hover:text-white transition-all"
                         >
                           Clear Results
                         </button>

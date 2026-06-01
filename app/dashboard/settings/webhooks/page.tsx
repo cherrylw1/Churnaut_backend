@@ -207,7 +207,7 @@ export default function WebhooksSettingsPage() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="border-b border-[#1a1f2e] pb-5">
+      <div className="border-b border-[var(--border-subtle)] pb-5">
         <h1 className="text-xl font-bold tracking-wider font-mono">WEBHOOK SETTINGS</h1>
         <p className="text-xs font-mono text-gray-400 mt-1">Configure field mappings and receive incoming events from Hubspot, Salesforce, or other CRMs</p>
       </div>
@@ -217,7 +217,7 @@ export default function WebhooksSettingsPage() {
       ) : (
         <>
           {/* Endpoint Details Card */}
-          <div className="border border-[#1a1f2e] bg-[#0d1117]/20 rounded-lg p-6 space-y-4">
+          <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/50 rounded-lg p-6 space-y-4">
             <h2 className="text-xs font-mono font-bold text-[#6366f1] tracking-widest uppercase">
               YOUR UNIVERSAL WEBHOOK CREDENTIALS
             </h2>
@@ -230,7 +230,7 @@ export default function WebhooksSettingsPage() {
                     type="text"
                     readOnly
                     value={getWebhookUrl()}
-                    className="flex-1 bg-[#080B0F] border border-[#1a1f2e] text-xs px-3 py-2.5 rounded text-white font-mono outline-none"
+                    className="flex-1 bg-[#080B0F] border border-[var(--border-subtle)] text-xs px-3 py-2.5 rounded text-white font-mono outline-none"
                   />
                   <button
                     onClick={() => handleCopyUrl(getWebhookUrl())}
@@ -248,7 +248,7 @@ export default function WebhooksSettingsPage() {
                     type="text"
                     readOnly
                     value={client?.snippet_key || ''}
-                    className="flex-1 bg-[#080B0F] border border-[#1a1f2e] text-xs px-3 py-2.5 rounded text-white font-mono outline-none"
+                    className="flex-1 bg-[#080B0F] border border-[var(--border-subtle)] text-xs px-3 py-2.5 rounded text-white font-mono outline-none"
                   />
                   <button
                     onClick={() => handleCopyToken(client?.snippet_key || '')}
@@ -267,7 +267,7 @@ export default function WebhooksSettingsPage() {
           {/* Visual Field Mapper Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
             {/* Left Box: External Fields List */}
-            <div className="lg:col-span-2 border border-[#1a1f2e] bg-[#0d1117]/20 rounded-lg p-5 flex flex-col space-y-4">
+            <div className="lg:col-span-2 border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/50 rounded-lg p-5 flex flex-col space-y-4">
               <div>
                 <h3 className="text-xs font-mono font-bold text-gray-300 uppercase tracking-wider">
                   External Payload Fields
@@ -284,11 +284,11 @@ export default function WebhooksSettingsPage() {
                   value={newSourceField}
                   onChange={(e) => setNewSourceField(e.target.value)}
                   placeholder="e.g. contact.stage_name"
-                  className="flex-1 bg-[#080B0F] border border-[#1a1f2e] focus:border-[#6366f1] outline-none text-xs px-2.5 py-1.5 rounded text-white font-mono"
+                  className="flex-1 bg-[#080B0F] border border-[var(--border-subtle)] focus:border-[#6366f1] outline-none text-xs px-2.5 py-1.5 rounded text-white font-mono"
                 />
                 <button
                   type="submit"
-                  className="border border-[#1a1f2e] hover:border-[#6366f1] hover:text-[#6366f1] text-[10px] font-mono py-1 px-3 rounded transition-all"
+                  className="border border-[var(--border-subtle)] hover:border-[#6366f1] hover:text-[#6366f1] text-[10px] font-mono py-1 px-3 rounded transition-all"
                 >
                   + ADD
                 </button>
@@ -301,7 +301,7 @@ export default function WebhooksSettingsPage() {
                     key={field}
                     draggable
                     onDragStart={() => handleDragStart(field)}
-                    className="border border-[#1a1f2e] bg-[#080B0F] hover:border-gray-500 text-xs font-mono py-1.5 px-3 rounded cursor-grab active:cursor-grabbing text-gray-300 flex items-center gap-2 select-none"
+                    className="border border-[var(--border-subtle)] bg-[#080B0F] hover:border-gray-500 text-xs font-mono py-1.5 px-3 rounded cursor-grab active:cursor-grabbing text-gray-300 flex items-center gap-2 select-none"
                   >
                     <span className="text-gray-600">::</span>
                     {field}
@@ -311,7 +311,7 @@ export default function WebhooksSettingsPage() {
             </div>
 
             {/* Right Box: Target Drops List */}
-            <div className="lg:col-span-3 border border-[#1a1f2e] bg-[#0d1117]/20 rounded-lg p-5 space-y-4">
+            <div className="lg:col-span-3 border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/50 rounded-lg p-5 space-y-4">
               <div>
                 <h3 className="text-xs font-mono font-bold text-gray-300 uppercase tracking-wider">
                   Churnaut Internal Fields
@@ -336,8 +336,8 @@ export default function WebhooksSettingsPage() {
                         isHovered
                           ? 'border-[#6366f1] bg-[#6366f1]/5'
                           : activeMapping
-                          ? 'border-[#1a1f2e]/90 bg-[#1a1f2e]/10'
-                          : 'border-[#1a1f2e] bg-[#080B0F]/30'
+                          ? 'border-[var(--border-subtle)]/90 bg-[var(--border-subtle)]/10'
+                          : 'border-[var(--border-subtle)] bg-[#080B0F]/30'
                       }`}
                     >
                       <div className="space-y-0.5 max-w-[60%]">
@@ -353,7 +353,7 @@ export default function WebhooksSettingsPage() {
                       <div className="flex-1 flex justify-end">
                         {activeMapping ? (
                           <div className="flex items-center gap-2">
-                            <span className="text-xs font-mono px-2.5 py-1 bg-[#1a1f2e] border border-[#1a1f2e] text-[#6366f1] rounded-md">
+                            <span className="text-xs font-mono px-2.5 py-1 bg-[var(--border-subtle)] border border-[var(--border-subtle)] text-[#6366f1] rounded-md">
                               {activeMapping.external_field}
                             </span>
                             <button
@@ -364,7 +364,7 @@ export default function WebhooksSettingsPage() {
                             </button>
                           </div>
                         ) : (
-                          <div className="text-[10px] font-mono text-gray-600 border border-dashed border-[#1a1f2e] px-4 py-2 rounded">
+                          <div className="text-[10px] font-mono text-gray-600 border border-dashed border-[var(--border-subtle)] px-4 py-2 rounded">
                             DROP EXTERNAL FIELD HERE
                           </div>
                         )}
@@ -377,7 +377,7 @@ export default function WebhooksSettingsPage() {
           </div>
 
           {/* Webhook Ingestion Log */}
-          <div className="border border-[#1a1f2e] bg-[#0d1117]/20 rounded-lg p-5 space-y-4">
+          <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/50 rounded-lg p-5 space-y-4">
             <div>
               <h3 className="text-xs font-mono font-bold text-gray-300 uppercase tracking-wider">
                 Incoming Webhook Logs
@@ -388,18 +388,18 @@ export default function WebhooksSettingsPage() {
             </div>
 
             {logs.length === 0 ? (
-              <div className="text-center py-8 text-gray-600 font-mono text-xs border border-[#1a1f2e] rounded bg-[#080B0F]/10">
+              <div className="text-center py-8 text-gray-600 font-mono text-xs border border-[var(--border-subtle)] rounded bg-[#080B0F]/10">
                 No webhook calls logged yet.
               </div>
             ) : (
-              <div className="divide-y divide-[#1a1f2e] border border-[#1a1f2e] rounded bg-[#080B0F]/20 overflow-hidden">
+              <div className="divide-y divide-[var(--border-subtle)] border border-[var(--border-subtle)] rounded bg-[#080B0F]/20 overflow-hidden">
                 {logs.map((log) => {
                   const isExpanded = expandedLogId === log.id;
                   const logAction = log.metadata?.webhook_action || 'processed';
                   const dateStr = new Date(log.created_at).toLocaleString();
 
                   return (
-                    <div key={log.id} className="transition-colors hover:bg-[#1a1f2e]/10">
+                    <div key={log.id} className="transition-colors hover:bg-[var(--border-subtle)]/10">
                       {/* Log Header Row */}
                       <div
                         onClick={() => setExpandedLogId(isExpanded ? null : log.id)}
@@ -424,12 +424,12 @@ export default function WebhooksSettingsPage() {
 
                       {/* Log Details JSON */}
                       {isExpanded && (
-                        <div className="p-4 bg-[#080B0F] border-t border-[#1a1f2e] text-xs font-mono space-y-4">
+                        <div className="p-4 bg-[#080B0F] border-t border-[var(--border-subtle)] text-xs font-mono space-y-4">
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {/* Raw payload */}
                             <div className="space-y-1.5">
                               <span className="text-[10px] text-gray-500 uppercase block">Raw Payload</span>
-                              <pre className="p-3 bg-[#0d1117]/80 border border-[#1a1f2e] rounded text-gray-400 max-h-48 overflow-y-auto text-[11px] leading-relaxed">
+                              <pre className="p-3 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded text-gray-400 max-h-48 overflow-y-auto text-[11px] leading-relaxed">
                                 {JSON.stringify(log.metadata?.payload || {}, null, 2)}
                               </pre>
                             </div>
@@ -437,7 +437,7 @@ export default function WebhooksSettingsPage() {
                             {/* Transformed format */}
                             <div className="space-y-1.5">
                               <span className="text-[10px] text-gray-500 uppercase block">Transformed Format</span>
-                              <pre className="p-3 bg-[#0d1117]/80 border border-[#1a1f2e] rounded text-[#6366f1] max-h-48 overflow-y-auto text-[11px] leading-relaxed">
+                              <pre className="p-3 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded text-[#6366f1] max-h-48 overflow-y-auto text-[11px] leading-relaxed">
                                 {JSON.stringify(log.metadata?.transformed || {}, null, 2)}
                               </pre>
                             </div>

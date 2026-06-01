@@ -122,7 +122,7 @@ export default function CrmSettingsPage() {
   return (
     <div className="space-y-8 max-w-4xl">
       {/* Page Header */}
-      <div className="border-b border-[#1a1f2e] pb-5 flex justify-between items-end">
+      <div className="border-b border-[var(--border-subtle)] pb-5 flex justify-between items-end">
         <div>
           <div className="flex items-center space-x-2 text-[10px] font-mono text-gray-500 uppercase tracking-widest mb-1.5">
             <Link href="/dashboard/settings" className="hover:text-white transition-colors">
@@ -166,13 +166,13 @@ export default function CrmSettingsPage() {
 
       {/* CRM Providers Section */}
       <div className="space-y-6">
-        <h2 className="text-xs font-mono font-bold text-[#6366f1] uppercase tracking-widest bg-[#1a1f2e]/40 py-1.5 px-3 rounded border border-[#1a1f2e] inline-block">
+        <h2 className="text-xs font-mono font-bold text-[#6366f1] uppercase tracking-widest bg-[var(--border-subtle)]/40 py-1.5 px-3 rounded border border-[var(--border-subtle)] inline-block">
           Supported CRM Suites
         </h2>
 
         <div className="grid grid-cols-1 gap-6">
           {/* HubSpot Card */}
-          <div className="border border-[#1a1f2e] bg-[#0d1117]/30 rounded-lg p-6 space-y-6">
+          <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-lg p-6 space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="space-y-2">
                 <div className="flex items-center space-x-3">
@@ -188,7 +188,7 @@ export default function CrmSettingsPage() {
                       <span>CONNECTED</span>
                     </div>
                   ) : (
-                    <span className="text-[9px] font-mono font-bold bg-[#1a1f2e] text-gray-500 border border-[#1a1f2e] px-2.5 py-0.5 rounded uppercase">
+                    <span className="text-[9px] font-mono font-bold bg-[var(--border-subtle)] text-gray-500 border border-[var(--border-subtle)] px-2.5 py-0.5 rounded uppercase">
                       DISCONNECTED
                     </span>
                   )}
@@ -220,7 +220,7 @@ export default function CrmSettingsPage() {
 
             {/* If connected, show connection metadata panel */}
             {status?.connected && status.crm_type === 'hubspot' && (
-              <div className="border border-[#1a1f2e]/60 bg-[#080B0F] rounded p-4 font-mono text-xs text-gray-400 space-y-2">
+              <div className="border border-[var(--border-subtle)]/60 bg-[#080B0F] rounded p-4 font-mono text-xs text-gray-400 space-y-2">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 leading-relaxed">
                   <div>
                     <span className="text-gray-500 uppercase tracking-tight">CRM Provider:</span>{' '}
@@ -246,13 +246,13 @@ export default function CrmSettingsPage() {
           </div>
 
           {/* Salesforce Card Placeholder */}
-          <div className="border border-[#1a1f2e]/60 bg-[#0d1117]/10 rounded-lg p-6 opacity-60 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="border border-[var(--border-subtle)]/60 bg-[var(--bg-elevated)]/30 rounded-lg p-6 opacity-60 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="space-y-1.5">
               <div className="flex items-center space-x-3">
                 <h3 className="text-sm font-mono font-bold text-gray-400 uppercase tracking-wider">
                   Salesforce CRM
                 </h3>
-                <span className="text-[9px] font-mono font-bold bg-[#1a1f2e] text-gray-600 border border-[#1a1f2e]/60 px-2 py-0.5 rounded uppercase">
+                <span className="text-[9px] font-mono font-bold bg-[var(--border-subtle)] text-gray-600 border border-[var(--border-subtle)]/60 px-2 py-0.5 rounded uppercase">
                   COMING SOON
                 </span>
               </div>
@@ -263,7 +263,7 @@ export default function CrmSettingsPage() {
             <div>
               <button
                 disabled
-                className="w-full sm:w-auto bg-[#1a1f2e]/40 text-gray-600 font-mono text-xs py-2 px-5 rounded cursor-not-allowed border border-[#1a1f2e]/60"
+                className="w-full sm:w-auto bg-[var(--border-subtle)]/40 text-gray-600 font-mono text-xs py-2 px-5 rounded cursor-not-allowed border border-[var(--border-subtle)]/60"
               >
                 UNAVAILABLE
               </button>

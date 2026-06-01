@@ -94,9 +94,9 @@ export default function OnboardingPage() {
   return (
     <div className="max-w-2xl mx-auto my-8">
       {/* Outer Card Container */}
-      <div className="border border-[#1a1f2e] bg-[#0d1117]/30 rounded-lg overflow-hidden shadow-2xl flex flex-col min-h-[450px]">
+      <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-lg overflow-hidden shadow-2xl flex flex-col min-h-[450px]">
         {/* Card Header & Progress Bar */}
-        <div className="px-8 py-5 border-b border-[#1a1f2e] bg-[#0d1117]/60 flex items-center justify-between">
+        <div className="px-8 py-5 border-b border-[var(--border-subtle)] bg-[var(--bg-elevated)] flex items-center justify-between">
           <div>
             <span className="text-[10px] font-mono text-[#6366f1] tracking-widest uppercase">
               AI Setup Assistant
@@ -113,7 +113,7 @@ export default function OnboardingPage() {
         </div>
 
         {/* Dynamic Progress Indicator bar */}
-        <div className="w-full bg-[#1a1f2e] h-1">
+        <div className="w-full bg-[var(--border-subtle)] h-1">
           <div
             className="bg-[#6366f1] h-full transition-all duration-300"
             style={{ width: `${(step / 5) * 100}%` }}
@@ -178,7 +178,7 @@ export default function OnboardingPage() {
                         className={`border rounded p-3 text-left font-mono text-xs transition-all ${
                           crm === opt
                             ? 'border-[#6366f1] bg-[#6366f1]/5 text-white'
-                            : 'border-[#1a1f2e] bg-[#080B0F]/30 text-gray-400 hover:border-gray-500'
+                            : 'border-[var(--border-subtle)] bg-[#080B0F]/30 text-gray-400 hover:border-gray-500'
                         }`}
                       >
                         {opt}
@@ -209,7 +209,7 @@ export default function OnboardingPage() {
                       value={idealCustomer}
                       onChange={(e) => setIdealCustomer(e.target.value)}
                       placeholder="e.g. B2B software companies with 100+ employees seeking marketing automation tools."
-                      className="w-full bg-[#080B0F] border border-[#1a1f2e] focus:border-[#6366f1] outline-none text-xs px-3 py-2.5 rounded text-white font-mono"
+                      className="w-full bg-[#080B0F] border border-[var(--border-subtle)] focus:border-[#6366f1] outline-none text-xs px-3 py-2.5 rounded text-white font-mono"
                     />
                   </div>
                 </div>
@@ -235,7 +235,7 @@ export default function OnboardingPage() {
                         className={`border rounded p-3 text-left font-mono text-xs transition-all ${
                           companySize === opt
                             ? 'border-[#6366f1] bg-[#6366f1]/5 text-white'
-                            : 'border-[#1a1f2e] bg-[#080B0F]/30 text-gray-400 hover:border-gray-500'
+                            : 'border-[var(--border-subtle)] bg-[#080B0F]/30 text-gray-400 hover:border-gray-500'
                         }`}
                       >
                         {opt} employees
@@ -267,7 +267,7 @@ export default function OnboardingPage() {
                           className={`border rounded p-3 text-left font-mono text-xs transition-all flex justify-between items-center ${
                             isChecked
                               ? 'border-[#6366f1] bg-[#6366f1]/5 text-white'
-                              : 'border-[#1a1f2e] bg-[#080B0F]/30 text-gray-400 hover:border-gray-500'
+                              : 'border-[var(--border-subtle)] bg-[#080B0F]/30 text-gray-400 hover:border-gray-500'
                           }`}
                         >
                           <span>{opt}</span>
@@ -275,7 +275,7 @@ export default function OnboardingPage() {
                             className={`w-3.5 h-3.5 border rounded flex items-center justify-center text-[9px] ${
                               isChecked
                                 ? 'border-[#6366f1] bg-[#6366f1] text-white'
-                                : 'border-[#1a1f2e]'
+                                : 'border-[var(--border-subtle)]'
                             }`}
                           >
                             {isChecked && '✓'}
@@ -307,7 +307,7 @@ export default function OnboardingPage() {
                         className={`border rounded p-3 text-left font-mono text-xs transition-all ${
                           problem === opt
                             ? 'border-[#6366f1] bg-[#6366f1]/5 text-white'
-                            : 'border-[#1a1f2e] bg-[#080B0F]/30 text-gray-400 hover:border-gray-500'
+                            : 'border-[var(--border-subtle)] bg-[#080B0F]/30 text-gray-400 hover:border-gray-500'
                         }`}
                       >
                         {opt}
@@ -321,12 +321,12 @@ export default function OnboardingPage() {
 
           {/* Navigation Controls */}
           {!loading && !completed && (
-            <div className="flex justify-between items-center pt-5 border-t border-[#1a1f2e]">
+            <div className="flex justify-between items-center pt-5 border-t border-[var(--border-subtle)]">
               <button
                 type="button"
                 disabled={step === 1}
                 onClick={handlePrev}
-                className="border border-[#1a1f2e] hover:border-gray-500 text-xs font-mono py-2 px-6 rounded text-gray-400 hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                className="border border-[var(--border-subtle)] hover:border-gray-500 text-xs font-mono py-2 px-6 rounded text-gray-400 hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 BACK
               </button>

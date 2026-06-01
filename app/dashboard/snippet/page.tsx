@@ -79,15 +79,15 @@ export default function SnippetPage() {
   return (
     <div className="space-y-8 max-w-4xl">
       {/* Header */}
-      <div className="border-b border-[#1a1f2e] pb-5">
+      <div className="border-b border-[var(--border-subtle)] pb-5">
         <h1 className="text-xl font-bold tracking-wider font-mono">SNIPPET INSTALLATION</h1>
         <p className="text-xs font-mono text-gray-400 mt-1">Connect your website to Churnaut to enable real-time content personalizations</p>
       </div>
 
       {/* STEP 1: Installation Code */}
-      <div className="border border-[#1a1f2e] bg-[#0d1117]/30 rounded-lg p-6 space-y-4">
+      <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-lg p-6 space-y-4">
         <div className="flex items-center space-x-3">
-          <span className="text-xs font-mono font-bold bg-[#1a1f2e] border border-[#1a1f2e] text-[#6366f1] px-2 py-0.5 rounded">
+          <span className="text-xs font-mono font-bold bg-[var(--border-subtle)] border border-[var(--border-subtle)] text-[#6366f1] px-2 py-0.5 rounded">
             STEP 1
           </span>
           <h2 className="text-sm font-mono font-bold text-white uppercase tracking-wider">
@@ -99,7 +99,7 @@ export default function SnippetPage() {
         </p>
 
         {/* Monospace Code block */}
-        <div className="relative group border border-[#1a1f2e] bg-[#080B0F] rounded-lg p-4 font-mono text-xs overflow-x-auto text-gray-300">
+        <div className="relative group border border-[var(--border-subtle)] bg-[#080B0F] rounded-lg p-4 font-mono text-xs overflow-x-auto text-gray-300">
           <pre className="leading-relaxed select-all">
             {getSnippetCode()}
           </pre>
@@ -113,9 +113,9 @@ export default function SnippetPage() {
       </div>
 
       {/* STEP 2: Tag Target Elements */}
-      <div className="border border-[#1a1f2e] bg-[#0d1117]/30 rounded-lg p-6 space-y-4">
+      <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-lg p-6 space-y-4">
         <div className="flex items-center space-x-3">
-          <span className="text-xs font-mono font-bold bg-[#1a1f2e] border border-[#1a1f2e] text-[#6366f1] px-2 py-0.5 rounded">
+          <span className="text-xs font-mono font-bold bg-[var(--border-subtle)] border border-[var(--border-subtle)] text-[#6366f1] px-2 py-0.5 rounded">
             STEP 2
           </span>
           <h2 className="text-sm font-mono font-bold text-white uppercase tracking-wider">
@@ -124,12 +124,12 @@ export default function SnippetPage() {
         </div>
         <p className="text-xs font-mono text-gray-400">
           {"Add the class "}
-          <span className="text-indigo-400 font-bold bg-[#1a1f2e] px-1.5 py-0.5 rounded">sr-target</span>
+          <span className="text-indigo-400 font-bold bg-[var(--border-subtle)] px-1.5 py-0.5 rounded">sr-target</span>
           {" to any element (such as a heading, description text, or calendar wrapper) on your site where you want content swaps to happen. Alternatively, you can target specific elements using custom CSS selectors in your rules config."}
         </p>
 
         {/* Monospace Example */}
-        <div className="border border-[#1a1f2e] bg-[#080B0F] rounded-lg p-4 font-mono text-xs text-gray-300">
+        <div className="border border-[var(--border-subtle)] bg-[#080B0F] rounded-lg p-4 font-mono text-xs text-gray-300">
           <span className="text-gray-600 block mb-2">&lt;!-- Example element swaps --&gt;</span>
           <pre className="leading-relaxed">
             {`<!-- Swap a headline copy -->\n<h1 class="sr-target font-bold">Welcome to Churnaut</h1>\n\n<!-- Swap a direct scheduling button -->\n<div class="sr-target">\n  <a href="/pricing">View Plans</a>\n</div>`}
@@ -138,9 +138,9 @@ export default function SnippetPage() {
       </div>
 
       {/* STEP 3: Verify Installation */}
-      <div className="border border-[#1a1f2e] bg-[#0d1117]/30 rounded-lg p-6 space-y-4">
+      <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-lg p-6 space-y-4">
         <div className="flex items-center space-x-3">
-          <span className="text-xs font-mono font-bold bg-[#1a1f2e] border border-[#1a1f2e] text-[#6366f1] px-2 py-0.5 rounded">
+          <span className="text-xs font-mono font-bold bg-[var(--border-subtle)] border border-[var(--border-subtle)] text-[#6366f1] px-2 py-0.5 rounded">
             STEP 3
           </span>
           <h2 className="text-sm font-mono font-bold text-white uppercase tracking-wider">
@@ -197,26 +197,26 @@ export default function SnippetPage() {
 
       {/* STEP 4: Platform Guides */}
       <div className="space-y-4">
-        <h2 className="text-xs font-mono font-bold text-[#6366f1] uppercase tracking-widest bg-[#1a1f2e]/40 py-1.5 px-3 rounded border border-[#1a1f2e] inline-block">
+        <h2 className="text-xs font-mono font-bold text-[#6366f1] uppercase tracking-widest bg-[var(--border-subtle)]/40 py-1.5 px-3 rounded border border-[var(--border-subtle)] inline-block">
           Platform Setup Instructions
         </h2>
 
         <div className="space-y-3">
           {/* Custom HTML */}
-          <div className="border border-[#1a1f2e] bg-[#0d1117]/10 rounded-lg overflow-hidden">
+          <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/30 rounded-lg overflow-hidden">
             <button
               onClick={() => toggleGuide('custom')}
-              className="w-full text-left p-4 font-mono text-xs font-bold text-gray-300 uppercase hover:bg-[#1a1f2e]/20 transition-all flex justify-between items-center"
+              className="w-full text-left p-4 font-mono text-xs font-bold text-gray-300 uppercase hover:bg-[var(--border-subtle)]/20 transition-all flex justify-between items-center"
             >
               <span>Custom HTML Layouts</span>
               <span>{openGuide === 'custom' ? '[-]' : '[+]'}</span>
             </button>
             {openGuide === 'custom' && (
-              <div className="p-4 border-t border-[#1a1f2e] text-xs font-mono text-gray-400 space-y-2.5 leading-relaxed bg-[#080B0F]/20">
+              <div className="p-4 border-t border-[var(--border-subtle)] text-xs font-mono text-gray-400 space-y-2.5 leading-relaxed bg-[#080B0F]/20">
                 <p>
                   {"To install the snippet on a custom server-side or static website, paste the script tags directly inside the head block, after other third-party dependencies:"}
                 </p>
-                <div className="p-3 bg-[#080B0F] border border-[#1a1f2e] text-gray-300 rounded overflow-x-auto text-[11px]">
+                <div className="p-3 bg-[#080B0F] border border-[var(--border-subtle)] text-gray-300 rounded overflow-x-auto text-[11px]">
                   {`<!DOCTYPE html>\n<html>\n<head>\n  <meta charset="utf-8">\n  <title>Your Site</title>\n  <!-- Paste Churnaut tag below -->\n  ${getSnippetCode()}\n</head>\n<body>...</body>\n</html>`}
                 </div>
               </div>
@@ -224,16 +224,16 @@ export default function SnippetPage() {
           </div>
 
           {/* Webflow */}
-          <div className="border border-[#1a1f2e] bg-[#0d1117]/10 rounded-lg overflow-hidden">
+          <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/30 rounded-lg overflow-hidden">
             <button
               onClick={() => toggleGuide('webflow')}
-              className="w-full text-left p-4 font-mono text-xs font-bold text-gray-300 uppercase hover:bg-[#1a1f2e]/20 transition-all flex justify-between items-center"
+              className="w-full text-left p-4 font-mono text-xs font-bold text-gray-300 uppercase hover:bg-[var(--border-subtle)]/20 transition-all flex justify-between items-center"
             >
               <span>Webflow Setup</span>
               <span>{openGuide === 'webflow' ? '[-]' : '[+]'}</span>
             </button>
             {openGuide === 'webflow' && (
-              <div className="p-4 border-t border-[#1a1f2e] text-xs font-mono text-gray-400 space-y-2.5 leading-relaxed bg-[#080B0F]/20">
+              <div className="p-4 border-t border-[var(--border-subtle)] text-xs font-mono text-gray-400 space-y-2.5 leading-relaxed bg-[#080B0F]/20">
                 <p>{"1. Go to your Webflow Dashboard and select your project Project Settings."}</p>
                 <p>{"2. Navigate to the Custom Code tab."}</p>
                 <p>{"3. Paste your two-line script tag into the Head Code block text field."}</p>
@@ -243,16 +243,16 @@ export default function SnippetPage() {
           </div>
 
           {/* WordPress */}
-          <div className="border border-[#1a1f2e] bg-[#0d1117]/10 rounded-lg overflow-hidden">
+          <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/30 rounded-lg overflow-hidden">
             <button
               onClick={() => toggleGuide('wordpress')}
-              className="w-full text-left p-4 font-mono text-xs font-bold text-gray-300 uppercase hover:bg-[#1a1f2e]/20 transition-all flex justify-between items-center"
+              className="w-full text-left p-4 font-mono text-xs font-bold text-gray-300 uppercase hover:bg-[var(--border-subtle)]/20 transition-all flex justify-between items-center"
             >
               <span>WordPress Setup</span>
               <span>{openGuide === 'wordpress' ? '[-]' : '[+]'}</span>
             </button>
             {openGuide === 'wordpress' && (
-              <div className="p-4 border-t border-[#1a1f2e] text-xs font-mono text-gray-400 space-y-2.5 leading-relaxed bg-[#080B0F]/20">
+              <div className="p-4 border-t border-[var(--border-subtle)] text-xs font-mono text-gray-400 space-y-2.5 leading-relaxed bg-[#080B0F]/20">
                 <p>{"1. Log in to your WordPress Dashboard."}</p>
                 <p>{"2. Go to Plugins > Add New and install a header injection plugin like Insert Headers and Footers."}</p>
                 <p>{"3. Go to Settings > Insert Headers and Footers."}</p>
@@ -263,16 +263,16 @@ export default function SnippetPage() {
           </div>
 
           {/* Shopify */}
-          <div className="border border-[#1a1f2e] bg-[#0d1117]/10 rounded-lg overflow-hidden">
+          <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/30 rounded-lg overflow-hidden">
             <button
               onClick={() => toggleGuide('shopify')}
-              className="w-full text-left p-4 font-mono text-xs font-bold text-gray-300 uppercase hover:bg-[#1a1f2e]/20 transition-all flex justify-between items-center"
+              className="w-full text-left p-4 font-mono text-xs font-bold text-gray-300 uppercase hover:bg-[var(--border-subtle)]/20 transition-all flex justify-between items-center"
             >
               <span>Shopify Setup</span>
               <span>{openGuide === 'shopify' ? '[-]' : '[+]'}</span>
             </button>
             {openGuide === 'shopify' && (
-              <div className="p-4 border-t border-[#1a1f2e] text-xs font-mono text-gray-400 space-y-2.5 leading-relaxed bg-[#080B0F]/20">
+              <div className="p-4 border-t border-[var(--border-subtle)] text-xs font-mono text-gray-400 space-y-2.5 leading-relaxed bg-[#080B0F]/20">
                 <p>{"1. In your Shopify Admin, navigate to Online Store > Themes."}</p>
                 <p>{"2. Click Actions (...) > Edit Code under your active theme."}</p>
                 <p>{"3. Open the Layout directory and select the theme.liquid template."}</p>

@@ -133,7 +133,7 @@ export default function IcpBuilderPage() {
       ) : profile ? (
         <div className="space-y-8">
           {/* YOUR ICP CARD */}
-          <div className="border border-[#1a1f2e] border-l-4 border-l-amber-500 bg-[#0d1117]/40 rounded-lg p-5 font-mono">
+          <div className="border border-[var(--border-subtle)] border-l-4 border-l-amber-500 bg-[var(--bg-elevated)] rounded-lg p-5 font-mono">
             <div className="flex items-center gap-2 text-white font-bold tracking-wider uppercase text-xs">
               <Target className="text-amber-500 w-4 h-4" />
               YOUR ICP SUMMARY
@@ -145,14 +145,14 @@ export default function IcpBuilderPage() {
 
           {/* WIN PATTERNS */}
           <div className="space-y-3">
-            <div className="border-b border-[#1a1f2e] pb-1.5">
+            <div className="border-b border-[var(--border-subtle)] pb-1.5">
               <h2 className="text-xs font-bold font-mono tracking-wider text-indigo-400 uppercase">
                 WIN PATTERNS
               </h2>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
               {/* Stat 1: Win Count */}
-              <div className="border border-[#1a1f2e] bg-[#0d1117]/30 p-5 rounded-lg flex flex-col justify-between h-24 font-mono">
+              <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 rounded-lg flex flex-col justify-between h-24 font-mono">
                 <div className="text-[10px] text-gray-500 uppercase tracking-wider">
                   Win Count
                 </div>
@@ -164,7 +164,7 @@ export default function IcpBuilderPage() {
               </div>
 
               {/* Stat 2: Avg Deal Value */}
-              <div className="border border-[#1a1f2e] bg-[#0d1117]/30 p-5 rounded-lg flex flex-col justify-between h-24 font-mono">
+              <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 rounded-lg flex flex-col justify-between h-24 font-mono">
                 <div className="text-[10px] text-gray-500 uppercase tracking-wider">
                   Avg Deal Value
                 </div>
@@ -176,7 +176,7 @@ export default function IcpBuilderPage() {
               </div>
 
               {/* Stat 3: Avg Days to Close */}
-              <div className="border border-[#1a1f2e] bg-[#0d1117]/30 p-5 rounded-lg flex flex-col justify-between h-24 font-mono">
+              <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 rounded-lg flex flex-col justify-between h-24 font-mono">
                 <div className="text-[10px] text-gray-500 uppercase tracking-wider">
                   Avg Days to Close
                 </div>
@@ -191,7 +191,7 @@ export default function IcpBuilderPage() {
 
           {/* TOP JOB TITLES */}
           <div className="space-y-3">
-            <div className="border-b border-[#1a1f2e] pb-1.5">
+            <div className="border-b border-[var(--border-subtle)] pb-1.5">
               <h2 className="text-xs font-bold font-mono tracking-wider text-indigo-400 uppercase">
                 TOP JOB TITLES
               </h2>
@@ -201,7 +201,7 @@ export default function IcpBuilderPage() {
                 {profile.top_job_titles.map((jt, idx) => (
                   <div
                     key={idx}
-                    className="border border-[#1a1f2e] bg-[#080B0F]/60 p-4 rounded-lg flex justify-between items-center font-mono hover:border-indigo-900/40 transition-colors"
+                    className="border border-[var(--border-subtle)] bg-[#080B0F]/60 p-4 rounded-lg flex justify-between items-center font-mono hover:border-indigo-900/40 transition-colors"
                   >
                     <span className="text-sm font-bold text-white">{jt.title}</span>
                     <span className="text-xs text-gray-500 uppercase font-bold">
@@ -211,14 +211,14 @@ export default function IcpBuilderPage() {
                 ))}
               </div>
             ) : (
-              <div className="py-6 text-center border border-dashed border-[#1a1f2e] rounded bg-[#080B0F]/30 text-xs font-mono text-gray-500">
+              <div className="py-6 text-center border border-dashed border-[var(--border-subtle)] rounded bg-[#080B0F]/30 text-xs font-mono text-gray-500">
                 No job titles recorded in closed-won contact profiles.
               </div>
             )}
           </div>
 
           {/* AUTO-GENERATED RULES */}
-          <div className="border border-[#1a1f2e] bg-[#0d1117]/15 rounded-lg p-5 font-mono flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/40 rounded-lg p-5 font-mono flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div className="space-y-1">
               <h3 className="text-xs font-bold text-white uppercase tracking-wider">
                 AUTO-GENERATED RULES
@@ -236,7 +236,7 @@ export default function IcpBuilderPage() {
           </div>
         </div>
       ) : (
-        <div className="py-16 text-center border border-dashed border-[#1a1f2e] rounded-lg bg-[#080B0F]/30 flex flex-col items-center justify-center p-6 space-y-4">
+        <div className="py-16 text-center border border-dashed border-[var(--border-subtle)] rounded-lg bg-[#080B0F]/30 flex flex-col items-center justify-center p-6 space-y-4">
           <div className="w-10 h-10 rounded-full bg-indigo-950/40 border border-indigo-900/40 flex items-center justify-center text-indigo-400">
             <Lock className="w-5 h-5" />
           </div>

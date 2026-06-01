@@ -342,20 +342,20 @@ export default function ScoutDashboard() {
   const getPressureStatus = (score: number) => {
     if (score <= 30) {
       return {
-        borderClass: 'border-green-900/50 bg-green-950/10',
-        textClass: 'text-green-500',
+        borderClass: 'border-[var(--green)]/35 bg-[var(--green)]/5',
+        textClass: 'text-[var(--green)]',
         label: 'PIPELINE HEALTHY',
       };
     } else if (score <= 60) {
       return {
-        borderClass: 'border-yellow-900/50 bg-yellow-950/10',
-        textClass: 'text-yellow-500',
+        borderClass: 'border-[var(--amber)]/35 bg-[var(--amber)]/5',
+        textClass: 'text-[var(--amber)]',
         label: 'PIPELINE NEEDS ATTENTION',
       };
     } else {
       return {
-        borderClass: 'border-red-900/50 bg-red-950/10',
-        textClass: 'text-red-500',
+        borderClass: 'border-[var(--red)]/35 bg-[var(--red)]/5',
+        textClass: 'text-[var(--red)]',
         label: 'PIPELINE AT RISK',
       };
     }
@@ -414,26 +414,26 @@ export default function ScoutDashboard() {
   return (
     <div className="space-y-6 text-gray-300">
       {/* 1. HEADER SECTION */}
-      <div className="flex justify-between items-center border-b border-[#1a1f2e] pb-6 gap-4">
+      <div className="flex justify-between items-center border-b border-[var(--border-subtle)] pb-6 gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-wider font-mono text-white flex items-center gap-2">
-            <Sparkles className="text-[#6366f1] w-6 h-6 animate-pulse" />
+          <h1 className="text-[24px] font-bold text-[var(--text-primary)] font-sans flex items-center gap-2.5">
+            <Sparkles className="text-[var(--accent)] w-6 h-6 animate-pulse" />
             SCOUT AI
           </h1>
-          <p className="text-xs font-mono text-gray-400 mt-1">Pipeline Intelligence — Powered by AI</p>
+          <p className="text-xs text-[var(--text-muted)] mt-1 font-sans">Pipeline Intelligence — Powered by AI</p>
         </div>
 
         <div className="flex flex-col items-end gap-1.5">
           <button
             onClick={handleRunAnalysis}
             disabled={runningScout || loading}
-            className="bg-[#6366f1] hover:bg-[#5053e1] disabled:opacity-50 text-white font-mono text-xs py-2.5 px-4 rounded transition-all active:scale-[0.98] flex items-center gap-2"
+            className="bg-[var(--accent)] hover:bg-[var(--accent-hover)] disabled:opacity-50 text-white font-sans text-xs font-semibold py-2 px-4 rounded-[8px] transition-all active:scale-[0.98] flex items-center gap-2"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${runningScout ? 'animate-spin' : ''}`} />
             {runningScout ? 'RUNNING SCOUT ANALYSIS...' : 'RUN SCOUT ANALYSIS'}
           </button>
           {snapshot && (
-            <span className="text-[9px] font-mono text-gray-500 uppercase">
+            <span className="text-[9px] font-mono text-[var(--text-muted)] uppercase">
               Last Analyzed: {new Date(snapshot.created_at).toLocaleString()}
             </span>
           )}
@@ -448,8 +448,8 @@ export default function ScoutDashboard() {
         <div className="space-y-6 max-w-5xl mx-auto">
           {/* SECTION 1 — PIPELINE OVERVIEW (always expanded, not collapsible) */}
           <div className="space-y-3">
-            <div className="border-b border-[#1a1f2e] pb-1.5">
-              <h2 className="text-xs font-bold font-mono tracking-wider text-indigo-400 uppercase">
+            <div className="border-b border-[var(--border-subtle)] pb-1.5">
+              <h2 className="text-[13px] font-semibold tracking-[0.06em] text-[var(--text-secondary)] uppercase font-sans">
                 PIPELINE OVERVIEW
               </h2>
             </div>
@@ -457,59 +457,59 @@ export default function ScoutDashboard() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Card 1: Pressure Score Display */}
               {snapshot && pressureStatus ? (
-                <div className={`border rounded-lg p-5 flex items-center justify-between gap-4 bg-[#0d1117]/25 ${pressureStatus.borderClass}`}>
+                <div className={`border rounded-[12px] p-5 flex items-center justify-between gap-4 bg-[var(--bg-surface)] ${pressureStatus.borderClass} shadow-[0_1px_4px_rgba(0,0,0,0.25)]`}>
                   <div>
-                    <span className="text-[10px] font-mono text-gray-500 block uppercase tracking-wider">Pressure Score</span>
-                    <span className="text-4xl font-extrabold font-mono text-white block mt-1">
+                    <span className="text-[12px] font-sans font-medium text-[var(--text-muted)] block uppercase tracking-wider">Pressure Score</span>
+                    <span className="text-[48px] font-extrabold font-sans text-[var(--text-primary)] block mt-1 leading-none">
                       {snapshot.pressure_score}
                     </span>
                   </div>
-                  <div className="border-l border-[#1a1f2e] pl-6 flex-1">
-                    <span className="text-[10px] font-mono text-gray-500 block uppercase tracking-wider">Status</span>
-                    <span className={`text-xs font-mono font-bold block mt-1 uppercase ${pressureStatus.textClass}`}>
+                  <div className="border-l border-[var(--border-subtle)] pl-6 flex-1">
+                    <span className="text-[12px] font-sans font-medium text-[var(--text-muted)] block uppercase tracking-wider">Status</span>
+                    <span className={`text-xs font-sans font-bold block mt-1 uppercase ${pressureStatus.textClass}`}>
                       {pressureStatus.label}
                     </span>
                   </div>
                 </div>
               ) : (
-                <div className="border border-[#1a1f2e] bg-[#0d1117]/10 p-5 rounded-lg text-center text-xs font-mono text-gray-500">
+                <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 rounded-[12px] text-center text-xs font-mono text-[var(--text-muted)]">
                   No snapshot data available.
                 </div>
               )}
 
               {/* Card 2: Scout Pipeline Diagnostics */}
               {snapshot ? (
-                <div className="border border-[#1a1f2e] bg-[#0d1117]/20 rounded-lg p-5 flex flex-col justify-between gap-4">
-                  <div className="flex justify-between items-center border-b border-[#1a1f2e]/60 pb-2">
-                    <span className="text-[10px] font-mono text-gray-500 uppercase tracking-wider">Total Pipeline Value</span>
-                    <span className="text-lg font-bold font-mono text-green-400">
+                <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-[12px] p-5 flex flex-col justify-between gap-4 shadow-[0_1px_4px_rgba(0,0,0,0.25)]">
+                  <div className="flex justify-between items-center border-b border-[var(--border-subtle)] pb-2">
+                    <span className="text-[12px] font-sans font-medium text-[var(--text-muted)] uppercase tracking-wider">Total Pipeline Value</span>
+                    <span className="text-lg font-bold font-sans text-[var(--green)]">
                       {formatCurrency(snapshot.total_pipeline_value)}
                     </span>
                   </div>
 
                   <div className="grid grid-cols-3 gap-3 text-center">
-                    <div className="border border-[#1a1f2e] bg-[#080B0F]/30 p-2.5 rounded-lg">
-                      <span className="text-[9px] font-mono text-red-500 block uppercase font-bold">At Risk</span>
-                      <span className="text-lg font-bold font-mono text-white block mt-0.5">
+                    <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-2.5 rounded-[8px]">
+                      <span className="text-[10px] font-sans text-[var(--red)] block uppercase font-bold">At Risk</span>
+                      <span className="text-lg font-bold font-mono text-[var(--text-primary)] block mt-0.5">
                         {snapshot.red_count}
                       </span>
                     </div>
-                    <div className="border border-[#1a1f2e] bg-[#080B0F]/30 p-2.5 rounded-lg">
-                      <span className="text-[9px] font-mono text-yellow-500 block uppercase font-bold">Warning</span>
-                      <span className="text-lg font-bold font-mono text-white block mt-0.5">
+                    <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-2.5 rounded-[8px]">
+                      <span className="text-[10px] font-sans text-[var(--amber)] block uppercase font-bold">Warning</span>
+                      <span className="text-lg font-bold font-mono text-[var(--text-primary)] block mt-0.5">
                         {snapshot.amber_count}
                       </span>
                     </div>
-                    <div className="border border-[#1a1f2e] bg-[#080B0F]/30 p-2.5 rounded-lg">
-                      <span className="text-[9px] font-mono text-green-500 block uppercase font-bold">Healthy</span>
-                      <span className="text-lg font-bold font-mono text-white block mt-0.5">
+                    <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-2.5 rounded-[8px]">
+                      <span className="text-[10px] font-sans text-[var(--green)] block uppercase font-bold">Healthy</span>
+                      <span className="text-lg font-bold font-mono text-[var(--text-primary)] block mt-0.5">
                         {snapshot.green_count}
                       </span>
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="border border-[#1a1f2e] bg-[#0d1117]/10 p-5 rounded-lg text-center text-xs font-mono text-gray-500">
+                <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 rounded-[12px] text-center text-xs font-mono text-[var(--text-muted)]">
                   No diagnostics available.
                 </div>
               )}
@@ -518,24 +518,24 @@ export default function ScoutDashboard() {
 
           {/* SECTION 2 — SCOUT INBOX (always expanded, not collapsible) */}
           <div className="space-y-3">
-            <div className="border-b border-[#1a1f2e] pb-1.5">
-              <h2 className="text-xs font-bold font-mono tracking-wider text-indigo-400 uppercase">
+            <div className="border-b border-[var(--border-subtle)] pb-1.5">
+              <h2 className="text-[13px] font-semibold tracking-[0.06em] text-[var(--text-secondary)] uppercase font-sans">
                 SCOUT INBOX
               </h2>
             </div>
             
-            <div className="border border-[#1a1f2e] border-l-4 border-l-amber-500 bg-[#0d1117]/40 rounded-lg p-4 font-mono text-xs space-y-2">
-              <div className="flex items-center gap-2 text-white font-bold tracking-wider uppercase">
-                <Zap className="text-amber-500 w-4 h-4 fill-amber-500/20" />
+            <div className="border border-[var(--border-subtle)] border-l-[3px] border-l-[var(--amber)] bg-[var(--bg-elevated)] rounded-[12px] p-5 shadow-[0_1px_4px_rgba(0,0,0,0.25)] font-sans text-xs space-y-2">
+              <div className="flex items-center gap-2 text-[var(--text-primary)] font-bold tracking-wider uppercase text-[12px]">
+                <Zap className="text-[var(--amber)] w-4 h-4 fill-[var(--amber)]/10" />
                 SCOUT INBOX — TODAY
               </div>
-              <div className="space-y-1.5 text-gray-400">
+              <div className="space-y-1.5 text-[var(--text-secondary)]">
                 {!hasRedDeals ? (
-                  <p className="text-gray-500 italic">No urgent items today.</p>
+                  <p className="text-[var(--text-muted)] italic">No urgent items today.</p>
                 ) : (
                   displayInboxItems.map((item, idx) => (
                     <p key={idx} className="flex items-start gap-2">
-                      <span className="text-amber-500/80">•</span>
+                      <span className="text-[var(--amber)]">•</span>
                       <span>{item}</span>
                     </p>
                   ))
@@ -545,19 +545,19 @@ export default function ScoutDashboard() {
           </div>
 
           {/* SECTION 3 — DEAL ACCELERATION TRIGGERS (collapsible, default collapsed) */}
-          <div className="border border-[#1a1f2e] bg-[#0d1117]/10 rounded-lg overflow-hidden">
+          <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-[12px] overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.25)]">
             <button
               onClick={() => toggleSection('triggers')}
-              className="w-full flex justify-between items-center p-4 bg-[#161b22]/30 hover:bg-[#161b22]/55 border-b border-[#1a1f2e] transition-colors select-none text-left"
+              className="w-full flex justify-between items-center p-4 bg-transparent hover:bg-[var(--bg-elevated)] border-b border-[var(--border-subtle)] transition-colors select-none text-left"
             >
-              <span className="font-mono text-xs font-bold tracking-wider text-white uppercase flex items-center gap-2">
-                <Zap className="text-yellow-500 w-3.5 h-3.5" />
+              <span className="font-sans text-[13px] font-semibold tracking-[0.06em] text-[var(--text-secondary)] uppercase flex items-center gap-2">
+                <Zap className="text-[var(--amber)] w-3.5 h-3.5" />
                 DEAL ACCELERATION TRIGGERS
               </span>
               {collapsedSections.triggers ? (
-                <ChevronDown className="w-4 h-4 text-gray-400" />
+                <ChevronDown className="w-4 h-4 text-[var(--text-muted)]" />
               ) : (
-                <ChevronUp className="w-4 h-4 text-gray-400" />
+                <ChevronUp className="w-4 h-4 text-[var(--text-muted)]" />
               )}
             </button>
 
@@ -568,33 +568,33 @@ export default function ScoutDashboard() {
             >
               <div className="p-5 space-y-4">
                 {triggers.length === 0 ? (
-                  <div className="py-8 text-center border border-dashed border-[#1a1f2e] rounded bg-[#080B0F]/30">
-                    <p className="text-xs font-mono text-gray-500">No acceleration triggers in the last 24 hours.</p>
+                  <div className="py-8 text-center border border-dashed border-[var(--border-subtle)] rounded bg-[var(--bg-elevated)]">
+                    <p className="text-xs font-sans text-[var(--text-muted)]">No acceleration triggers in the last 24 hours.</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
                     {triggers.map((trigger, idx) => (
                       <div
                         key={idx}
-                        className="border border-[#1a1f2e] bg-[#080B0F]/60 p-4 rounded-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:border-yellow-900/50 transition-colors"
+                        className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 rounded-[12px] flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:border-[var(--border-default)] transition-colors shadow-[0_1px_4px_rgba(0,0,0,0.1)]"
                       >
                         <div className="space-y-1 md:space-y-0.5">
                           <div className="flex items-center gap-2">
-                            <span className="font-mono text-sm font-bold text-white">{trigger.prospect_name}</span>
-                            <span className="text-gray-600 font-mono text-xs">|</span>
-                            <span className="font-mono text-xs text-gray-400">{trigger.company_name}</span>
+                            <span className="font-sans text-sm font-bold text-[var(--text-primary)]">{trigger.prospect_name}</span>
+                            <span className="text-[var(--border-default)] font-sans text-xs">|</span>
+                            <span className="font-sans text-xs text-[var(--text-secondary)]">{trigger.company_name}</span>
                           </div>
-                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] font-mono text-gray-500">
-                            <span>Stage: <span className="text-gray-300">{trigger.deal_stage}</span></span>
-                            <span>Value: <span className="text-green-500">{formatCurrency(trigger.deal_value)}</span></span>
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] font-mono text-[var(--text-muted)]">
+                            <span>Stage: <span className="text-[var(--text-secondary)]">{trigger.deal_stage}</span></span>
+                            <span>Value: <span className="text-[var(--green)]">{formatCurrency(trigger.deal_value)}</span></span>
                             {trigger.last_visit_timestamp && (
-                              <span>Visited: <span className="text-yellow-500">{new Date(trigger.last_visit_timestamp).toLocaleTimeString()}</span></span>
+                              <span>Visited: <span className="text-[var(--amber)]">{new Date(trigger.last_visit_timestamp).toLocaleTimeString()}</span></span>
                             )}
                           </div>
                         </div>
                         <button
                           onClick={() => openNotifyModal(trigger)}
-                          className="w-full md:w-auto bg-[#6366f1] hover:bg-[#5053e1] text-white font-mono text-[10px] px-3.5 py-2 rounded transition-colors active:scale-[0.98] flex items-center justify-center gap-1.5"
+                          className="w-full md:w-auto bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-sans text-xs font-semibold px-3.5 py-2 rounded-[8px] transition-colors active:scale-[0.98] flex items-center justify-center gap-1.5"
                         >
                           <Mail className="w-3 h-3" />
                           NOTIFY REP
@@ -608,19 +608,19 @@ export default function ScoutDashboard() {
           </div>
 
           {/* SECTION 4 — PIPELINE HEALTH (collapsible, default expanded) */}
-          <div className="border border-[#1a1f2e] bg-[#0d1117]/10 rounded-lg overflow-hidden">
+          <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-[12px] overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.25)]">
             <button
               onClick={() => toggleSection('pipelineHealth')}
-              className="w-full flex justify-between items-center p-4 bg-[#161b22]/30 hover:bg-[#161b22]/55 border-b border-[#1a1f2e] transition-colors select-none text-left"
+              className="w-full flex justify-between items-center p-4 bg-transparent hover:bg-[var(--bg-elevated)] border-b border-[var(--border-subtle)] transition-colors select-none text-left"
             >
-              <span className="font-mono text-xs font-bold tracking-wider text-white uppercase flex items-center gap-2">
-                <AlertTriangle className="text-red-500 w-3.5 h-3.5" />
+              <span className="font-sans text-[13px] font-semibold tracking-[0.06em] text-[var(--text-secondary)] uppercase flex items-center gap-2">
+                <AlertTriangle className="text-[var(--red)] w-3.5 h-3.5" />
                 PIPELINE HEALTH
               </span>
               {collapsedSections.pipelineHealth ? (
-                <ChevronDown className="w-4 h-4 text-gray-400" />
+                <ChevronDown className="w-4 h-4 text-[var(--text-muted)]" />
               ) : (
-                <ChevronUp className="w-4 h-4 text-gray-400" />
+                <ChevronUp className="w-4 h-4 text-[var(--text-muted)]" />
               )}
             </button>
 
@@ -631,13 +631,13 @@ export default function ScoutDashboard() {
             >
               <div className="p-5 space-y-4">
                 {/* Tabs Header */}
-                <div className="flex border-b border-[#1a1f2e] font-mono text-xs mb-4">
+                <div className="flex border-b border-[var(--border-subtle)] font-sans text-xs mb-4">
                   <button
                     onClick={() => setActiveTab('red')}
                     className={`flex-1 py-3 text-center border-b-2 font-bold transition-all uppercase ${
                       activeTab === 'red'
-                        ? 'border-red-500 text-red-500 bg-red-950/10'
-                        : 'border-transparent text-gray-500 hover:text-gray-300 hover:bg-[#161b22]/20'
+                        ? 'border-[var(--red)] text-[var(--red)] bg-[var(--red)]/5'
+                        : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-elevated)]'
                     }`}
                   >
                     AT RISK ({redDeals.length})
@@ -646,8 +646,8 @@ export default function ScoutDashboard() {
                     onClick={() => setActiveTab('amber')}
                     className={`flex-1 py-3 text-center border-b-2 font-bold transition-all uppercase ${
                       activeTab === 'amber'
-                        ? 'border-yellow-500 text-yellow-500 bg-yellow-950/10'
-                        : 'border-transparent text-gray-500 hover:text-gray-300 hover:bg-[#161b22]/20'
+                        ? 'border-[var(--amber)] text-[var(--amber)] bg-[var(--amber)]/5'
+                        : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-elevated)]'
                     }`}
                   >
                     WARNING ({amberDeals.length})
@@ -656,8 +656,8 @@ export default function ScoutDashboard() {
                     onClick={() => setActiveTab('green')}
                     className={`flex-1 py-3 text-center border-b-2 font-bold transition-all uppercase ${
                       activeTab === 'green'
-                        ? 'border-green-500 text-green-500 bg-green-950/10'
-                        : 'border-transparent text-gray-500 hover:text-gray-300 hover:bg-[#161b22]/20'
+                        ? 'border-[var(--green)] text-[var(--green)] bg-[var(--green)]/5'
+                        : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-elevated)]'
                     }`}
                   >
                     HEALTHY ({greenDeals.length})
@@ -668,8 +668,8 @@ export default function ScoutDashboard() {
                 {activeTab === 'red' && (
                   <div className="space-y-4">
                     {redDeals.length === 0 ? (
-                      <div className="py-8 text-center border border-[#1a1f2e] rounded bg-[#080B0F]/20">
-                        <p className="text-xs font-mono text-gray-500">No red-scored deals in this snapshot.</p>
+                      <div className="py-8 text-center border border-[var(--border-subtle)] rounded-[12px] bg-[var(--bg-elevated)]">
+                        <p className="text-xs font-sans text-[var(--text-muted)]">No red-scored deals in this snapshot.</p>
                       </div>
                     ) : (
                       <div className="space-y-4">
@@ -679,67 +679,67 @@ export default function ScoutDashboard() {
                           return (
                             <div
                               key={deal.deal_id}
-                              className="border border-[#1a1f2e] bg-[#0d1117]/35 rounded-lg overflow-hidden border-l-4 border-l-red-600 transition-all"
+                              className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-[12px] overflow-hidden border-l-[3px] border-l-[var(--red)] shadow-[0_1px_4px_rgba(0,0,0,0.25)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.35)] transition-all duration-200"
                             >
                               <div
                                 onClick={() => toggleCard(deal.deal_id)}
-                                className="p-4 flex justify-between items-center cursor-pointer hover:bg-[#080B0F]/30 select-none"
+                                className="p-4 flex justify-between items-center cursor-pointer hover:bg-[var(--bg-elevated)] select-none"
                               >
                                 <div className="space-y-1">
-                                  <h3 className="font-mono text-sm font-bold text-white">{deal.deal_name}</h3>
-                                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] font-mono text-gray-500">
-                                    <span>Rep: <span className="text-gray-300">{deal.rep_name}</span></span>
-                                    <span>Value: <span className="text-green-500">{formatCurrency(deal.deal_value)}</span></span>
-                                    <span>Stage: <span className="text-gray-300">{deal.stage}</span></span>
+                                  <h3 className="font-sans text-sm font-bold text-[var(--text-primary)]">{deal.deal_name}</h3>
+                                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] font-mono text-[var(--text-muted)]">
+                                    <span>Rep: <span className="text-[var(--text-secondary)]">{deal.rep_name}</span></span>
+                                    <span>Value: <span className="text-[var(--green)]">{formatCurrency(deal.deal_value)}</span></span>
+                                    <span>Stage: <span className="text-[var(--text-secondary)]">{deal.stage}</span></span>
                                   </div>
                                 </div>
                                 <div>
                                   {isExpanded ? (
-                                    <ChevronUp className="w-4 h-4 text-gray-500" />
+                                    <ChevronUp className="w-4 h-4 text-[var(--text-muted)]" />
                                   ) : (
-                                    <ChevronDown className="w-4 h-4 text-gray-500" />
+                                    <ChevronDown className="w-4 h-4 text-[var(--text-muted)]" />
                                   )}
                                 </div>
                               </div>
 
                               {isExpanded && (
-                                <div className="p-4 pt-0 border-t border-[#1a1f2e] space-y-4 bg-[#080B0F]/10">
-                                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 border-b border-[#1a1f2e] py-3.5 text-[10px] font-mono">
+                                <div className="p-4 pt-0 border-t border-[var(--border-subtle)] space-y-4 bg-[var(--bg-surface)]">
+                                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 border-b border-[var(--border-subtle)] py-3.5 text-[10px] font-mono">
                                     <div>
-                                      <span className="text-gray-500 block uppercase">Days In Stage</span>
-                                      <span className="text-white text-xs font-bold block mt-0.5">{deal.days_in_stage}d</span>
+                                      <span className="text-[var(--text-muted)] block uppercase">Days In Stage</span>
+                                      <span className="text-[var(--text-primary)] text-xs font-bold block mt-0.5">{deal.days_in_stage}d</span>
                                     </div>
                                     <div>
-                                      <span className="text-gray-500 block uppercase">Last Activity</span>
-                                      <span className="text-white text-xs font-bold block mt-0.5">
+                                      <span className="text-[var(--text-muted)] block uppercase">Last Activity</span>
+                                      <span className="text-[var(--text-primary)] text-xs font-bold block mt-0.5">
                                         {deal.last_activity_days !== null ? `${deal.last_activity_days}d ago` : 'None logged'}
                                       </span>
                                     </div>
                                     <div>
-                                      <span className="text-gray-500 block uppercase">Contact Engagement</span>
-                                      <span className="text-white text-xs font-bold block mt-0.5">{deal.contact_count} contacts</span>
+                                      <span className="text-[var(--text-muted)] block uppercase">Contact Engagement</span>
+                                      <span className="text-[var(--text-primary)] text-xs font-bold block mt-0.5">{deal.contact_count} contacts</span>
                                     </div>
                                     <div>
-                                      <span className="text-gray-500 block uppercase">Recent Web Visits</span>
-                                      <span className="text-white text-xs font-bold block mt-0.5">{deal.website_visits_7d} visits (7d)</span>
+                                      <span className="text-[var(--text-muted)] block uppercase">Recent Web Visits</span>
+                                      <span className="text-[var(--text-primary)] text-xs font-bold block mt-0.5">{deal.website_visits_7d} visits (7d)</span>
                                     </div>
                                   </div>
 
-                                  <div className="space-y-1 text-xs">
-                                    <span className="font-mono text-[9px] font-bold text-red-500 uppercase tracking-wider block">Primary Risk Factor</span>
-                                    <p className="font-mono text-red-400/90 leading-relaxed">{deal.primary_risk}</p>
+                                  <div className="space-y-1 text-xs font-sans">
+                                    <span className="font-sans text-[11px] font-bold text-[var(--red)] uppercase tracking-wider block">Primary Risk Factor</span>
+                                    <p className="font-mono text-[var(--red)] leading-relaxed">{deal.primary_risk}</p>
                                   </div>
 
-                                  <div className="bg-red-950/10 border border-red-900/30 p-3 rounded-lg space-y-1 text-xs">
-                                    <span className="font-mono text-[9px] font-bold text-red-400 uppercase tracking-wider block">Recommended Rep Action (Today)</span>
-                                    <p className="font-mono text-gray-200">{deal.next_action}</p>
+                                  <div className="bg-[var(--red)]/5 border border-[var(--red)]/20 p-3 rounded-[8px] space-y-1 text-xs font-sans">
+                                    <span className="font-sans text-[11px] font-bold text-[var(--red)] uppercase tracking-wider block">Recommended Rep Action (Today)</span>
+                                    <p className="font-sans text-[var(--text-secondary)]">{deal.next_action}</p>
                                   </div>
 
                                   <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 pt-2">
                                     {deal.draft_email ? (
                                       <button
                                         onClick={() => toggleEmail(deal.deal_id)}
-                                        className="border border-[#1a1f2e] hover:border-gray-500 text-gray-400 hover:text-white font-mono text-[10px] py-2 px-3 rounded transition-all flex items-center justify-center gap-1.5"
+                                        className="border border-[var(--border-default)] hover:bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] font-sans text-[11px] py-2 px-3.5 rounded-[8px] transition-all flex items-center justify-center gap-1.5"
                                       >
                                         <Mail className="w-3.5 h-3.5" />
                                         {isEmailOpen ? 'HIDE DRAFT EMAIL' : 'VIEW DRAFT EMAIL'}
@@ -750,7 +750,7 @@ export default function ScoutDashboard() {
 
                                     <button
                                       onClick={() => openNudgeModal(deal)}
-                                      className="bg-[#6366f1] hover:bg-[#5053e1] text-white font-mono text-xs py-2 px-4 rounded transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
+                                      className="bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-sans text-xs font-semibold py-2 px-4.5 rounded-[8px] transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
                                     >
                                       <Send className="w-3.5 h-3.5" />
                                       NUDGE REP
@@ -758,15 +758,15 @@ export default function ScoutDashboard() {
                                   </div>
 
                                   {isEmailOpen && deal.draft_email && (
-                                    <div className="border border-[#1a1f2e] bg-[#080B0F]/80 p-4 rounded-lg space-y-3 relative">
-                                      <span className="font-mono text-[9px] font-bold text-indigo-400 uppercase tracking-widest block">AI DRAFT EMAIL</span>
-                                      <div className="font-mono text-xs text-gray-400 whitespace-pre-wrap bg-black/20 p-3 rounded select-text leading-relaxed border border-[#1a1f2e]">
+                                    <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-4 rounded-[8px] space-y-3 relative">
+                                      <span className="font-sans text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest block">AI DRAFT EMAIL</span>
+                                      <div className="font-mono text-xs text-[var(--text-secondary)] whitespace-pre-wrap bg-black/10 p-3 rounded border border-[var(--border-subtle)] leading-relaxed select-text">
                                         {deal.draft_email}
                                       </div>
                                       <div className="flex justify-end">
                                         <button
                                           onClick={() => copyToClipboard(deal.draft_email || '')}
-                                          className="border border-[#1a1f2e] hover:border-gray-500 hover:bg-[#080B0F] text-gray-400 hover:text-white font-mono text-[9px] py-1.5 px-2.5 rounded transition-all flex items-center gap-1"
+                                          className="border border-[var(--border-default)] hover:bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] font-sans text-[10px] py-1.5 px-2.5 rounded-[6px] transition-all flex items-center gap-1"
                                         >
                                           <Copy className="w-3 h-3" />
                                           COPY EMAIL
@@ -788,8 +788,8 @@ export default function ScoutDashboard() {
                 {activeTab === 'amber' && (
                   <div className="space-y-4">
                     {amberDeals.length === 0 ? (
-                      <div className="py-8 text-center border border-[#1a1f2e] rounded bg-[#080B0F]/10">
-                        <p className="text-xs font-mono text-gray-500">No amber-scored deals in this snapshot.</p>
+                      <div className="py-8 text-center border border-[var(--border-subtle)] rounded-[12px] bg-[var(--bg-elevated)]">
+                        <p className="text-xs font-sans text-[var(--text-muted)]">No amber-scored deals in this snapshot.</p>
                       </div>
                     ) : (
                       <div className="space-y-3">
@@ -798,66 +798,66 @@ export default function ScoutDashboard() {
                           return (
                             <div
                               key={deal.deal_id}
-                              className="border border-[#1a1f2e] bg-[#0d1117]/20 rounded-lg overflow-hidden border-l-4 border-l-yellow-500 transition-all"
+                              className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-[12px] overflow-hidden border-l-[3px] border-l-[var(--amber)] shadow-[0_1px_4px_rgba(0,0,0,0.25)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.35)] transition-all duration-200"
                             >
                               <div
                                 onClick={() => toggleCard(deal.deal_id)}
-                                className="p-4 flex justify-between items-center cursor-pointer hover:bg-[#080B0F]/20 select-none"
+                                className="p-4 flex justify-between items-center cursor-pointer hover:bg-[var(--bg-elevated)] select-none"
                               >
                                 <div className="space-y-1">
-                                  <h3 className="font-mono text-sm font-bold text-white">{deal.deal_name}</h3>
-                                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] font-mono text-gray-500">
-                                    <span>Rep: <span className="text-gray-300">{deal.rep_name}</span></span>
-                                    <span>Value: <span className="text-green-500">{formatCurrency(deal.deal_value)}</span></span>
-                                    <span>Stage: <span className="text-gray-300">{deal.stage}</span></span>
+                                  <h3 className="font-sans text-sm font-bold text-[var(--text-primary)]">{deal.deal_name}</h3>
+                                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] font-mono text-[var(--text-muted)]">
+                                    <span>Rep: <span className="text-[var(--text-secondary)]">{deal.rep_name}</span></span>
+                                    <span>Value: <span className="text-[var(--green)]">{formatCurrency(deal.deal_value)}</span></span>
+                                    <span>Stage: <span className="text-[var(--text-secondary)]">{deal.stage}</span></span>
                                   </div>
                                 </div>
                                 <div>
                                   {isExpanded ? (
-                                    <ChevronUp className="w-4 h-4 text-gray-500" />
+                                    <ChevronUp className="w-4 h-4 text-[var(--text-muted)]" />
                                   ) : (
-                                    <ChevronDown className="w-4 h-4 text-gray-500" />
+                                    <ChevronDown className="w-4 h-4 text-[var(--text-muted)]" />
                                   )}
                                 </div>
                               </div>
 
                               {isExpanded && (
-                                <div className="p-4 pt-0 border-t border-[#1a1f2e] space-y-4 bg-[#080B0F]/10">
-                                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 border-b border-[#1a1f2e] py-3.5 text-[10px] font-mono">
+                                <div className="p-4 pt-0 border-t border-[var(--border-subtle)] space-y-4 bg-[var(--bg-surface)]">
+                                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 border-b border-[var(--border-subtle)] py-3.5 text-[10px] font-mono">
                                     <div>
-                                      <span className="text-gray-500 block uppercase">Days In Stage</span>
-                                      <span className="text-white text-xs font-bold block mt-0.5">{deal.days_in_stage}d</span>
+                                      <span className="text-[var(--text-muted)] block uppercase">Days In Stage</span>
+                                      <span className="text-[var(--text-primary)] text-xs font-bold block mt-0.5">{deal.days_in_stage}d</span>
                                     </div>
                                     <div>
-                                      <span className="text-gray-500 block uppercase">Last Activity</span>
-                                      <span className="text-white text-xs font-bold block mt-0.5">
+                                      <span className="text-[var(--text-muted)] block uppercase">Last Activity</span>
+                                      <span className="text-[var(--text-primary)] text-xs font-bold block mt-0.5">
                                         {deal.last_activity_days !== null ? `${deal.last_activity_days}d ago` : 'None logged'}
                                       </span>
                                     </div>
                                     <div>
-                                      <span className="text-gray-500 block uppercase">Contact Engagement</span>
-                                      <span className="text-white text-xs font-bold block mt-0.5">{deal.contact_count} contacts</span>
+                                      <span className="text-[var(--text-muted)] block uppercase">Contact Engagement</span>
+                                      <span className="text-[var(--text-primary)] text-xs font-bold block mt-0.5">{deal.contact_count} contacts</span>
                                     </div>
                                     <div>
-                                      <span className="text-gray-500 block uppercase">Recent Web Visits</span>
-                                      <span className="text-white text-xs font-bold block mt-0.5">{deal.website_visits_7d} visits (7d)</span>
+                                      <span className="text-[var(--text-muted)] block uppercase">Recent Web Visits</span>
+                                      <span className="text-[var(--text-primary)] text-xs font-bold block mt-0.5">{deal.website_visits_7d} visits (7d)</span>
                                     </div>
                                   </div>
 
-                                  <div className="space-y-1 text-xs">
-                                    <span className="font-mono text-[9px] font-bold text-yellow-500 uppercase tracking-wider block">Primary Risk Factor</span>
-                                    <p className="font-mono text-yellow-400/90 leading-relaxed">{deal.primary_risk}</p>
+                                  <div className="space-y-1 text-xs font-sans">
+                                    <span className="font-sans text-[11px] font-bold text-[var(--amber)] uppercase tracking-wider block">Primary Risk Factor</span>
+                                    <p className="font-mono text-[var(--amber)] leading-relaxed">{deal.primary_risk}</p>
                                   </div>
 
-                                  <div className="bg-yellow-950/10 border border-yellow-900/30 p-3 rounded-lg space-y-1 text-xs">
-                                    <span className="font-mono text-[9px] font-bold text-yellow-400 uppercase tracking-wider block">Recommended Rep Action (Today)</span>
-                                    <p className="font-mono text-gray-200">{deal.next_action}</p>
+                                  <div className="bg-[var(--amber)]/5 border border-[var(--amber)]/20 p-3 rounded-[8px] space-y-1 text-xs font-sans">
+                                    <span className="font-sans text-[11px] font-bold text-[var(--amber)] uppercase tracking-wider block">Recommended Rep Action (Today)</span>
+                                    <p className="font-sans text-[var(--text-secondary)]">{deal.next_action}</p>
                                   </div>
 
                                   <div className="flex justify-end pt-2">
                                     <button
                                       onClick={() => openNudgeModal(deal)}
-                                      className="bg-[#6366f1] hover:bg-[#5053e1] text-white font-mono text-xs py-2 px-4 rounded transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
+                                      className="bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-sans text-xs font-semibold py-2 px-4.5 rounded-[8px] transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
                                     >
                                       <Send className="w-3.5 h-3.5" />
                                       NUDGE REP
@@ -877,25 +877,25 @@ export default function ScoutDashboard() {
                 {activeTab === 'green' && (
                   <div className="space-y-4">
                     {greenDeals.length === 0 ? (
-                      <div className="py-8 text-center border border-[#1a1f2e] rounded bg-[#080B0F]/10">
-                        <p className="text-xs font-mono text-gray-500">No green-scored deals in this snapshot.</p>
+                      <div className="py-8 text-center border border-[var(--border-subtle)] rounded-[12px] bg-[var(--bg-elevated)]">
+                        <p className="text-xs font-sans text-[var(--text-muted)]">No green-scored deals in this snapshot.</p>
                       </div>
                     ) : (
-                      <div className="border border-[#1a1f2e] bg-[#0d1117]/10 rounded-lg divide-y divide-[#1a1f2e] overflow-hidden">
+                      <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-[12px] divide-y divide-[var(--border-subtle)] overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.25)]">
                         {greenDeals.map((deal) => (
                           <div
                             key={deal.deal_id}
-                            className="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 hover:bg-[#080B0F]/20 transition-colors border-l-4 border-l-green-600"
+                            className="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 hover:bg-[var(--bg-elevated)] transition-colors border-l-[3px] border-l-[var(--green)]"
                           >
                             <div className="space-y-0.5">
-                              <span className="font-mono text-sm font-bold text-white">{deal.deal_name}</span>
-                              <div className="flex items-center gap-3 text-[10px] font-mono text-gray-500">
-                                <span>Rep: <span className="text-gray-300">{deal.rep_name}</span></span>
-                                <span>Stage: <span className="text-gray-300">{deal.stage}</span></span>
+                              <span className="font-sans text-sm font-bold text-[var(--text-primary)]">{deal.deal_name}</span>
+                              <div className="flex items-center gap-3 text-[10px] font-mono text-[var(--text-muted)]">
+                                <span>Rep: <span className="text-[var(--text-secondary)]">{deal.rep_name}</span></span>
+                                <span>Stage: <span className="text-[var(--text-secondary)]">{deal.stage}</span></span>
                               </div>
                             </div>
                             <div className="flex items-center gap-4 justify-between w-full sm:w-auto">
-                              <span className="font-mono text-xs font-bold text-green-400">{formatCurrency(deal.deal_value)}</span>
+                              <span className="font-sans text-sm font-bold text-[var(--green)]">{formatCurrency(deal.deal_value)}</span>
                             </div>
                           </div>
                         ))}
@@ -908,19 +908,19 @@ export default function ScoutDashboard() {
           </div>
 
           {/* SECTION 5 — REP INTELLIGENCE (collapsible, default expanded) */}
-          <div className="border border-[#1a1f2e] bg-[#0d1117]/10 rounded-lg overflow-hidden">
+          <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-[12px] overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.25)]">
             <button
               onClick={() => toggleSection('repIntelligence')}
-              className="w-full flex justify-between items-center p-4 bg-[#161b22]/30 hover:bg-[#161b22]/55 border-b border-[#1a1f2e] transition-colors select-none text-left"
+              className="w-full flex justify-between items-center p-4 bg-transparent hover:bg-[var(--bg-elevated)] border-b border-[var(--border-subtle)] transition-colors select-none text-left"
             >
-              <span className="font-mono text-xs font-bold tracking-wider text-white uppercase flex items-center gap-2">
-                <Brain className="text-indigo-400 w-3.5 h-3.5" />
+              <span className="font-sans text-[13px] font-semibold tracking-[0.06em] text-[var(--text-secondary)] uppercase flex items-center gap-2">
+                <Brain className="text-[var(--accent)] w-3.5 h-3.5" />
                 REP INTELLIGENCE
               </span>
               {collapsedSections.repIntelligence ? (
-                <ChevronDown className="w-4 h-4 text-gray-400" />
+                <ChevronDown className="w-4 h-4 text-[var(--text-muted)]" />
               ) : (
-                <ChevronUp className="w-4 h-4 text-gray-400" />
+                <ChevronUp className="w-4 h-4 text-[var(--text-muted)]" />
               )}
             </button>
 
@@ -931,8 +931,8 @@ export default function ScoutDashboard() {
             >
               <div className="p-5 space-y-4">
                 {blindSpots.length === 0 || blindSpots.reduce((acc, report) => acc + (report.blind_spots?.length || 0), 0) === 0 ? (
-                  <div className="py-8 text-center border border-dashed border-[#1a1f2e] rounded bg-[#080B0F]/30">
-                    <p className="text-xs font-mono text-gray-500">No blind spots detected across your team.</p>
+                  <div className="py-8 text-center border border-dashed border-[var(--border-subtle)] rounded bg-[var(--bg-elevated)]">
+                    <p className="text-xs font-sans text-[var(--text-muted)]">No blind spots detected across your team.</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -941,19 +941,19 @@ export default function ScoutDashboard() {
                       return (
                         <div
                           key={idx}
-                          className="border border-[#1a1f2e] bg-[#080B0F]/60 p-4 rounded-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:border-indigo-900/40 transition-colors"
+                          className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 rounded-[12px] flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:border-[var(--border-default)] transition-colors shadow-[0_1px_4px_rgba(0,0,0,0.1)]"
                         >
                           <div className="space-y-1.5 w-full">
                             <div className="flex items-center justify-between">
-                              <span className="font-mono text-sm font-bold text-white">{report.rep_name}</span>
-                              <span className="font-mono text-[10px] text-gray-500 uppercase">
+                              <span className="font-sans text-sm font-bold text-[var(--text-primary)]">{report.rep_name}</span>
+                              <span className="font-mono text-[10px] text-[var(--text-muted)] uppercase font-semibold">
                                 {report.deal_count} {report.deal_count === 1 ? 'DEAL' : 'DEALS'}
                               </span>
                             </div>
 
                             {!hasSpots ? (
-                              <div className="text-[10px] font-mono text-green-500 uppercase tracking-wider flex items-center gap-1.5">
-                                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                              <div className="text-[10px] font-sans text-[var(--green)] uppercase tracking-wider flex items-center gap-1.5 font-bold">
+                                <span className="w-1.5 h-1.5 rounded-full bg-[var(--green)] animate-pulse" />
                                 No blind spots detected
                               </div>
                             ) : (
@@ -961,18 +961,18 @@ export default function ScoutDashboard() {
                                 {report.blind_spots.map((spot, sIdx) => {
                                   const isCritical = spot.severity === 'critical';
                                   const badgeColorClass = isCritical
-                                    ? 'bg-red-950/40 text-red-400 border-red-900/50'
-                                    : 'bg-amber-950/40 text-amber-500 border-amber-900/50';
+                                    ? 'bg-[var(--red)]/5 text-[var(--red)] border-[var(--red)]/20'
+                                    : 'bg-[var(--amber)]/5 text-[var(--amber)] border-[var(--amber)]/20';
                                   return (
                                     <div
                                       key={sIdx}
-                                      className={`flex flex-col border p-2 rounded text-[11px] font-mono w-full sm:w-auto sm:max-w-xs ${badgeColorClass}`}
+                                      className={`flex flex-col border p-2 rounded-[6px] text-[11px] font-sans w-full sm:w-auto sm:max-w-xs ${badgeColorClass}`}
                                     >
                                       <div className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-[9px] mb-0.5">
-                                        <span className={`w-1.5 h-1.5 rounded-full ${isCritical ? 'bg-red-500' : 'bg-amber-500'}`} />
+                                        <span className={`w-1.5 h-1.5 rounded-full ${isCritical ? 'bg-[var(--red)]' : 'bg-[var(--amber)]'}`} />
                                         {spot.type}
                                       </div>
-                                      <div className="text-gray-400 text-[10px] leading-relaxed">
+                                      <div className="text-[var(--text-secondary)] text-[10px] leading-relaxed">
                                         {spot.description}
                                       </div>
                                     </div>
@@ -991,19 +991,19 @@ export default function ScoutDashboard() {
           </div>
 
           {/* SECTION 6 — DEAL OBITUARIES (collapsible, default collapsed) */}
-          <div className="border border-[#1a1f2e] bg-[#0d1117]/10 rounded-lg overflow-hidden">
+          <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-[12px] overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.25)]">
             <button
               onClick={() => toggleSection('obituaries')}
-              className="w-full flex justify-between items-center p-4 bg-[#161b22]/30 hover:bg-[#161b22]/55 border-b border-[#1a1f2e] transition-colors select-none text-left"
+              className="w-full flex justify-between items-center p-4 bg-transparent hover:bg-[var(--bg-elevated)] border-b border-[var(--border-subtle)] transition-colors select-none text-left"
             >
-              <span className="font-mono text-xs font-bold tracking-wider text-white uppercase flex items-center gap-2">
-                <Skull className="text-red-500 w-3.5 h-3.5" />
+              <span className="font-sans text-[13px] font-semibold tracking-[0.06em] text-[var(--text-secondary)] uppercase flex items-center gap-2">
+                <Skull className="text-[var(--red)] w-3.5 h-3.5" />
                 DEAL OBITUARIES
               </span>
               {collapsedSections.obituaries ? (
-                <ChevronDown className="w-4 h-4 text-gray-400" />
+                <ChevronDown className="w-4 h-4 text-[var(--text-muted)]" />
               ) : (
-                <ChevronUp className="w-4 h-4 text-gray-400" />
+                <ChevronUp className="w-4 h-4 text-[var(--text-muted)]" />
               )}
             </button>
 
@@ -1012,24 +1012,24 @@ export default function ScoutDashboard() {
                 collapsedSections.obituaries ? 'max-h-0 opacity-0' : 'max-h-[3000px] opacity-100'
               }`}
             >
-              <div className="p-5 space-y-4">
-                <div className="flex justify-between items-center">
-                  <div className="text-[10px] font-mono text-gray-500 uppercase tracking-widest">
+              <div className="p-5 space-y-4 font-sans">
+                <div className="flex justify-between items-center pb-2 border-b border-[var(--border-subtle)]">
+                  <div className="text-[12px] text-[var(--text-muted)] uppercase tracking-wider font-semibold">
                     Post-Mortem Deal Reviews
                   </div>
                   <button
                     onClick={handleGenerateObituaries}
                     disabled={generatingObits}
-                    className="border border-red-900/60 bg-red-950/20 hover:bg-red-900/30 text-red-400 hover:text-red-300 font-mono text-[10px] font-bold py-1.5 px-3 rounded uppercase tracking-wider flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                    className="border border-[var(--red)]/40 bg-[var(--red)]/5 hover:bg-[var(--red)]/10 text-[var(--red)] font-sans text-[11px] font-bold py-1.5 px-3 rounded-[8px] uppercase tracking-wider flex items-center gap-1.5 transition-colors disabled:opacity-50"
                   >
-                    <RefreshCw className={`w-3 h-3 ${generatingObits ? 'animate-spin' : ''}`} />
+                    <RefreshCw className={`w-3.5 h-3.5 ${generatingObits ? 'animate-spin' : ''}`} />
                     {generatingObits ? 'GENERATING...' : 'GENERATE OBITUARIES'}
                   </button>
                 </div>
 
                 {obituaries.length === 0 ? (
-                  <div className="py-8 text-center border border-dashed border-[#1a1f2e] rounded bg-[#080B0F]/30">
-                    <p className="text-xs font-mono text-gray-500 max-w-md mx-auto leading-relaxed">
+                  <div className="py-8 text-center border border-dashed border-[var(--border-subtle)] rounded bg-[var(--bg-elevated)]">
+                    <p className="text-xs font-sans text-[var(--text-muted)] max-w-md mx-auto leading-relaxed">
                       No closed-lost deals found. Obituaries are generated automatically when deals are marked lost in HubSpot.
                     </p>
                   </div>
@@ -1038,40 +1038,40 @@ export default function ScoutDashboard() {
                     {obituaries.map((obit, idx) => (
                       <div
                         key={idx}
-                        className="border border-[#1a1f2e] bg-[#080B0F]/60 p-4 rounded-lg flex flex-col justify-between gap-3 hover:border-red-900/40 transition-colors font-mono"
+                        className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 rounded-[12px] flex flex-col justify-between gap-3 hover:border-[var(--border-default)] transition-colors shadow-[0_1px_4px_rgba(0,0,0,0.15)] font-sans"
                       >
                         <div className="space-y-2">
                           <div className="flex justify-between items-start">
-                            <span className="text-sm font-bold text-white leading-snug">{obit.deal_name}</span>
-                            <span className="text-xs font-bold text-red-400">{formatCurrency(obit.deal_value)}</span>
+                            <span className="text-sm font-bold text-[var(--text-primary)] leading-snug font-sans">{obit.deal_name}</span>
+                            <span className="text-xs font-bold text-[var(--red)] font-mono">{formatCurrency(obit.deal_value)}</span>
                           </div>
-                          <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-gray-500 uppercase">
-                            <span>Died in: <strong className="text-gray-300">{obit.stage_died_in}</strong></span>
+                          <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-[var(--text-muted)] uppercase font-semibold">
+                            <span>Died in: <strong className="text-[var(--text-secondary)]">{obit.stage_died_in}</strong></span>
                             {obit.days_in_final_stage !== undefined && (
-                              <span>Days in stage: <strong className="text-gray-300">{obit.days_in_final_stage}</strong></span>
+                              <span>Days in stage: <strong className="text-[var(--text-secondary)]">{obit.days_in_final_stage}</strong></span>
                             )}
                             {obit.close_date && (
-                              <span>Lost Date: <strong className="text-gray-300">{obit.close_date.split('T')[0]}</strong></span>
+                              <span>Lost Date: <strong className="text-[var(--text-secondary)]">{obit.close_date.split('T')[0]}</strong></span>
                             )}
                           </div>
                           
-                          <p className="text-xs text-gray-300 leading-relaxed pt-1.5 border-t border-[#1a1f2e]/60">
+                          <p className="text-xs text-[var(--text-secondary)] leading-relaxed pt-1.5 border-t border-[var(--border-subtle)]">
                             {obit.full_obituary}
                           </p>
                         </div>
 
-                        <div className="space-y-1.5 text-[10px] pt-1.5 border-t border-[#1a1f2e]/30">
+                        <div className="space-y-1.5 text-[10px] pt-1.5 border-t border-[var(--border-subtle)]/60 font-sans">
                           <div>
-                            <span className="text-red-500/80 font-bold uppercase tracking-wider">Likely Cause: </span>
-                            <span className="text-gray-400">{obit.likely_cause}</span>
+                            <span className="text-[var(--red)] font-bold uppercase tracking-wider">Likely Cause: </span>
+                            <span className="text-[var(--text-secondary)]">{obit.likely_cause}</span>
                           </div>
                           <div>
-                            <span className="text-indigo-400 font-bold uppercase tracking-wider">Loss Pattern: </span>
-                            <span className="text-gray-400">{obit.pattern_match}</span>
+                            <span className="text-[var(--accent)] font-bold uppercase tracking-wider">Loss Pattern: </span>
+                            <span className="text-[var(--text-secondary)]">{obit.pattern_match}</span>
                           </div>
                           <div>
-                            <span className="text-green-400 font-bold uppercase tracking-wider">Advice: </span>
-                            <span className="text-gray-400">{obit.what_rep_could_do}</span>
+                            <span className="text-[var(--green)] font-bold uppercase tracking-wider">Advice: </span>
+                            <span className="text-[var(--text-secondary)]">{obit.what_rep_could_do}</span>
                           </div>
                         </div>
                       </div>
@@ -1090,49 +1090,49 @@ export default function ScoutDashboard() {
           {/* Overlay backdrop */}
           <div
             onClick={() => setShowModal(false)}
-            className="absolute inset-0 bg-[#080B0F]/90 backdrop-blur-sm cursor-pointer"
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm cursor-pointer"
           />
 
           {/* Modal Container */}
-          <div className="relative border border-[#1a1f2e] bg-[#0d1117] w-full max-w-lg rounded-xl overflow-hidden shadow-2xl p-6 space-y-4">
+          <div className="relative border border-[var(--border-subtle)] bg-[var(--bg-surface)] w-full max-w-lg rounded-[12px] overflow-hidden shadow-2xl p-6 space-y-4 font-sans">
             
             {/* Title header */}
-            <div className="border-b border-[#1a1f2e] pb-3">
-              <h3 className="text-sm font-bold font-mono text-white uppercase tracking-wider flex items-center gap-2">
-                <Mail className="text-[#6366f1] w-4.5 h-4.5" />
+            <div className="border-b border-[var(--border-subtle)] pb-3">
+              <h3 className="text-sm font-bold text-[var(--text-primary)] uppercase tracking-wider flex items-center gap-2">
+                <Mail className="text-[var(--accent)] w-4.5 h-4.5" />
                 {modalData.type === 'nudge' ? 'NUDGE DEAL REPRESENTATIVE' : 'SEND ALERTS NOTIFICATION'}
               </h3>
             </div>
 
             {/* Form Fields */}
-            <div className="space-y-4 text-xs font-mono">
+            <div className="space-y-4 text-xs">
               <div className="space-y-1">
-                <label className="text-gray-500 uppercase text-[9px] block">To Representative</label>
+                <label className="text-[var(--text-muted)] uppercase text-[9px] block font-semibold">To Representative</label>
                 <input
                   type="text"
                   readOnly
                   value={`${modalData.repName} <${modalData.repEmail}>`}
-                  className="w-full bg-[#080B0F] border border-[#1a1f2e] p-2.5 rounded text-gray-300 outline-none"
+                  className="w-full bg-[var(--bg-elevated)] border border-[var(--border-subtle)] p-2.5 rounded-[8px] text-[var(--text-secondary)] outline-none"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-gray-500 uppercase text-[9px] block">Subject</label>
+                <label className="text-[var(--text-muted)] uppercase text-[9px] block font-semibold">Subject</label>
                 <input
                   type="text"
                   value={modalData.subject}
                   onChange={(e) => setModalData({ ...modalData, subject: e.target.value })}
-                  className="w-full bg-[#080B0F] border border-[#1a1f2e] p-2.5 rounded text-gray-200 outline-none focus:border-indigo-500 transition-all"
+                  className="w-full bg-[var(--bg-elevated)] border border-[var(--border-subtle)] p-2.5 rounded-[8px] text-[var(--text-primary)] outline-none focus:border-[var(--accent)] transition-all font-sans"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-gray-500 uppercase text-[9px] block">Email Body Message</label>
+                <label className="text-[var(--text-muted)] uppercase text-[9px] block font-semibold">Email Body Message</label>
                 <textarea
                   rows={8}
                   value={modalData.message}
                   onChange={(e) => setModalData({ ...modalData, message: e.target.value })}
-                  className="w-full bg-[#080B0F] border border-[#1a1f2e] p-3 rounded text-gray-200 outline-none focus:border-indigo-500 transition-all resize-none leading-relaxed"
+                  className="w-full bg-[var(--bg-elevated)] border border-[var(--border-subtle)] p-3 rounded-[8px] text-[var(--text-primary)] outline-none focus:border-[var(--accent)] transition-all resize-none leading-relaxed font-sans"
                 />
               </div>
             </div>
@@ -1142,14 +1142,14 @@ export default function ScoutDashboard() {
               <button
                 onClick={() => setShowModal(false)}
                 disabled={sendingNudge}
-                className="border border-[#1a1f2e] hover:border-gray-500 text-gray-400 hover:text-white font-mono text-xs py-2 px-4 rounded transition-all"
+                className="border border-[var(--border-default)] hover:bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] font-sans text-xs py-2 px-4 rounded-[8px] transition-all"
               >
                 CANCEL
               </button>
               <button
                 onClick={handleSendNudge}
                 disabled={sendingNudge}
-                className="bg-[#6366f1] hover:bg-[#5053e1] text-white font-mono text-xs py-2 px-4.5 rounded transition-all active:scale-[0.98] flex items-center gap-1.5"
+                className="bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-sans text-xs font-semibold py-2 px-4.5 rounded-[8px] transition-all active:scale-[0.98] flex items-center gap-1.5"
               >
                 {sendingNudge ? 'SENDING...' : 'SEND NUDGE'}
               </button>

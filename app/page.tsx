@@ -10,7 +10,7 @@ export default function Home() {
           <a href="/login" className="text-gray-400 hover:text-white transition-colors">
             SIGN IN
           </a>
-          <a href="/signup" className="border border-[#1a1f2e] hover:border-[#6366f1] text-white px-4 py-2 rounded transition-all">
+          <a href="/signup" className="border border-[var(--border-subtle)] hover:border-[#6366f1] text-white px-4 py-2 rounded transition-all">
             GET STARTED
           </a>
         </div>
@@ -36,7 +36,7 @@ export default function Home() {
           </a>
           <a
             href="/login"
-            className="w-full sm:w-auto border border-[#1a1f2e] hover:border-gray-500 text-gray-300 hover:text-white font-mono text-sm py-3.5 px-8 rounded transition-all text-center"
+            className="w-full sm:w-auto border border-[var(--border-subtle)] hover:border-gray-500 text-gray-300 hover:text-white font-mono text-sm py-3.5 px-8 rounded transition-all text-center"
           >
             ACCESS DASHBOARD
           </a>
@@ -44,7 +44,7 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="max-w-6xl w-full mx-auto border-t border-[#1a1f2e] pt-6 flex flex-col sm:flex-row justify-between items-center text-xs text-gray-500 font-mono gap-4">
+      <footer className="max-w-6xl w-full mx-auto border-t border-[var(--border-subtle)] pt-6 flex flex-col sm:flex-row justify-between items-center text-xs text-gray-500 font-mono gap-4">
         <div>© 2026 Churnaut. All rights reserved.</div>
         <div className="flex space-x-6">
           <a href="#" className="hover:text-white transition-colors">PRIVACY</a>

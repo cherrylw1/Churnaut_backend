@@ -7,7 +7,7 @@ export default function SettingsPage() {
   return (
     <div className="space-y-8 max-w-4xl">
       {/* Page Header */}
-      <div className="border-b border-[#1a1f2e] pb-5">
+      <div className="border-b border-[var(--border-subtle)] pb-5">
         <h1 className="text-xl font-bold tracking-wider font-mono uppercase text-white">
           SETTINGS
         </h1>
@@ -20,10 +20,10 @@ export default function SettingsPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         
         {/* Card 1: Webhook Configuration */}
-        <div className="border border-[#1a1f2e] bg-[#0d1117]/30 rounded-lg p-6 flex flex-col justify-between hover:border-[#6366f1]/50 hover:bg-[#0d1117]/50 transition-all group">
+        <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-lg p-6 flex flex-col justify-between hover:border-[#6366f1]/50 hover:bg-[var(--bg-elevated)] transition-all group">
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-mono font-bold bg-[#1a1f2e] text-[#6366f1] border border-[#1a1f2e] px-2 py-0.5 rounded uppercase">
+              <span className="text-[10px] font-mono font-bold bg-[var(--border-subtle)] text-[#6366f1] border border-[var(--border-subtle)] px-2 py-0.5 rounded uppercase">
                 ACTIVE
               </span>
               <span className="text-xs font-mono text-gray-500">HTTP Webhook</span>
@@ -42,7 +42,7 @@ export default function SettingsPage() {
           <div className="pt-6">
             <Link
               href="/dashboard/settings/webhooks"
-              className="inline-block bg-[#1a1f2e] hover:bg-[#6366f1] text-white font-mono text-xs py-2 px-4 rounded text-center transition-all active:scale-[0.98] w-full md:w-auto"
+              className="inline-block bg-[var(--border-subtle)] hover:bg-[#6366f1] text-white font-mono text-xs py-2 px-4 rounded text-center transition-all active:scale-[0.98] w-full md:w-auto"
             >
               Configure Webhooks &rarr;
             </Link>
@@ -50,10 +50,10 @@ export default function SettingsPage() {
         </div>
 
         {/* Card 2: CRM Integrations */}
-        <div className="border border-[#1a1f2e] bg-[#0d1117]/30 rounded-lg p-6 flex flex-col justify-between hover:border-[#6366f1]/50 hover:bg-[#0d1117]/50 transition-all group">
+        <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-lg p-6 flex flex-col justify-between hover:border-[#6366f1]/50 hover:bg-[var(--bg-elevated)] transition-all group">
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-mono font-bold bg-[#1a1f2e] text-[#6366f1] border border-[#1a1f2e] px-2 py-0.5 rounded uppercase">
+              <span className="text-[10px] font-mono font-bold bg-[var(--border-subtle)] text-[#6366f1] border border-[var(--border-subtle)] px-2 py-0.5 rounded uppercase">
                 ACTIVE
               </span>
               <span className="text-xs font-mono text-gray-500">Native Integration</span>
@@ -70,13 +70,13 @@ export default function SettingsPage() {
 
             {/* Visual CRM Logo Placeholders */}
             <div className="flex items-center space-x-3 pt-2">
-              <div className="border border-[#1a1f2e] bg-[#080B0F] px-2.5 py-1 rounded font-mono text-[9px] text-[#6366f1] border-indigo-950 select-none">
+              <div className="border border-[var(--border-subtle)] bg-[#080B0F] px-2.5 py-1 rounded font-mono text-[9px] text-[#6366f1] border-indigo-950 select-none">
                 HUBSPOT
               </div>
-              <div className="border border-[#1a1f2e] bg-[#080B0F] px-2.5 py-1 rounded font-mono text-[9px] text-gray-600 select-none">
+              <div className="border border-[var(--border-subtle)] bg-[#080B0F] px-2.5 py-1 rounded font-mono text-[9px] text-gray-600 select-none">
                 SALESFORCE
               </div>
-              <div className="border border-[#1a1f2e] bg-[#080B0F] px-2.5 py-1 rounded font-mono text-[9px] text-gray-600 select-none">
+              <div className="border border-[var(--border-subtle)] bg-[#080B0F] px-2.5 py-1 rounded font-mono text-[9px] text-gray-600 select-none">
                 PIPEDRIVE
               </div>
             </div>
@@ -85,7 +85,7 @@ export default function SettingsPage() {
           <div className="pt-6">
             <Link
               href="/dashboard/settings/crm"
-              className="inline-block bg-[#1a1f2e] hover:bg-[#6366f1] text-white font-mono text-xs py-2 px-4 rounded text-center transition-all active:scale-[0.98] w-full md:w-auto"
+              className="inline-block bg-[var(--border-subtle)] hover:bg-[#6366f1] text-white font-mono text-xs py-2 px-4 rounded text-center transition-all active:scale-[0.98] w-full md:w-auto"
             >
               Configure CRM &rarr;
             </Link>

@@ -546,7 +546,7 @@ export default function RulesPage() {
   return (
     <div className="space-y-6">
       {/* Top Header */}
-      <div className="flex justify-between items-center border-b border-[#1a1f2e] pb-5">
+      <div className="flex justify-between items-center border-b border-[var(--border-subtle)] pb-5">
         <div>
           <h1 className="text-xl font-bold tracking-wider font-mono">ROUTING RULES</h1>
           <p className="text-xs font-mono text-gray-400 mt-1">Configure personalized web variants based on inbound context</p>
@@ -557,7 +557,7 @@ export default function RulesPage() {
         {/* Left Side: Rule Cards Drag Area */}
         <div className={`${selectedRule ? 'w-[calc(60%-12px)]' : 'w-full'} space-y-4 flex-shrink-0 min-w-0 transition-all duration-200`}>
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-mono text-[#6366f1] tracking-widest uppercase bg-[#1a1f2e]/40 py-1 px-2.5 rounded border border-[#1a1f2e]">
+            <span className="text-[10px] font-mono text-[#6366f1] tracking-widest uppercase bg-[var(--border-subtle)]/40 py-1 px-2.5 rounded border border-[var(--border-subtle)]">
               Priority List (Drag to Reorder)
             </span>
           </div>
@@ -565,7 +565,7 @@ export default function RulesPage() {
           {loading ? (
             <div className="text-center py-12 text-gray-500 font-mono text-sm">RETRIEVING RULES...</div>
           ) : rules.length === 0 ? (
-            <div className="text-center py-16 border border-[#1a1f2e] rounded-lg bg-[#0d1117]/30">
+            <div className="text-center py-16 border border-[var(--border-subtle)] rounded-lg bg-[var(--bg-surface)]">
               <p className="text-sm font-mono text-gray-400">No active rules configured.</p>
               <p className="text-xs font-mono text-gray-500 mt-1">Personalized swaps rely on rules to trigger.</p>
             </div>
@@ -584,8 +584,8 @@ export default function RulesPage() {
                     onDrop={(e) => handleDrop(e, index)}
                     onDragEnd={() => setDraggedIndex(null)}
                     onClick={() => setSelectedRule(rule)}
-                    className={`border rounded-lg p-4 bg-[#0d1117]/40 flex items-start gap-4 transition-all cursor-pointer hover:border-gray-500 relative select-none ${
-                      isSelected ? 'border-[#6366f1] bg-[#1a1f2e]/10' : 'border-[#1a1f2e]'
+                    className={`border rounded-lg p-4 bg-[var(--bg-elevated)] flex items-start gap-4 transition-all cursor-pointer hover:border-gray-500 relative select-none ${
+                      isSelected ? 'border-[#6366f1] bg-[var(--border-subtle)]/10' : 'border-[var(--border-subtle)]'
                     } ${!rule.active ? 'opacity-65' : ''}`}
                   >
                     {/* Drag Handle Indicator */}
@@ -599,7 +599,7 @@ export default function RulesPage() {
                         <span className="text-xs font-mono font-bold text-gray-400">
                           #{rule.priority}
                         </span>
-                        <span className="text-[10px] font-mono px-2 py-0.5 bg-[#1a1f2e] border border-[#1a1f2e] text-indigo-400 rounded">
+                        <span className="text-[10px] font-mono px-2 py-0.5 bg-[var(--border-subtle)] border border-[var(--border-subtle)] text-indigo-400 rounded">
                           {rule.signal_type || 'Any Signal'}
                         </span>
                         <span className="text-[10px] font-mono px-2 py-0.5 bg-green-950/20 border border-green-900/40 text-green-400 rounded">
@@ -614,7 +614,7 @@ export default function RulesPage() {
 
                       {/* Variant Preview */}
                       {rule.variant_content && (
-                        <div className="bg-[#080B0F] border border-[#1a1f2e] py-1.5 px-2.5 rounded text-xs font-mono text-gray-400 h-[30px] overflow-hidden flex items-center max-w-full min-w-0">
+                        <div className="bg-[#080B0F] border border-[var(--border-subtle)] py-1.5 px-2.5 rounded text-xs font-mono text-gray-400 h-[30px] overflow-hidden flex items-center max-w-full min-w-0">
                           <div className="truncate w-full min-w-0">
                             {rule.variant_content}
                           </div>
@@ -632,7 +632,7 @@ export default function RulesPage() {
                         className={`w-10 h-5 rounded-full p-0.5 transition-colors focus:outline-none border ${
                           rule.active
                             ? 'bg-[#6366f1] border-[#6366f1] text-right'
-                            : 'bg-[#1a1f2e] border-[#1a1f2e] text-left'
+                            : 'bg-[var(--border-subtle)] border-[var(--border-subtle)] text-left'
                         }`}
                       >
                         <span
@@ -662,8 +662,8 @@ export default function RulesPage() {
         {/* Right Side: Edit Panel */}
         {selectedRule && (
           <div className="w-[calc(40%-12px)] flex-shrink-0 min-w-0">
-            <div className="border border-[#1a1f2e] bg-[#0d1117]/20 rounded-lg p-6 space-y-6">
-              <div className="flex justify-between items-center border-b border-[#1a1f2e] pb-4">
+            <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/50 rounded-lg p-6 space-y-6">
+              <div className="flex justify-between items-center border-b border-[var(--border-subtle)] pb-4">
                 <h2 className="text-sm font-bold tracking-wider font-mono text-[#6366f1] uppercase">
                   Edit Rule #{selectedRule.priority}
                 </h2>
@@ -684,7 +684,7 @@ export default function RulesPage() {
                   <select
                     value={editSignalType}
                     onChange={(e) => setEditSignalType(e.target.value)}
-                    className="w-full bg-[#080B0F] border border-[#1a1f2e] focus:border-[#6366f1] outline-none text-xs px-3 py-2.5 rounded text-white font-mono"
+                    className="w-full bg-[#080B0F] border border-[var(--border-subtle)] focus:border-[#6366f1] outline-none text-xs px-3 py-2.5 rounded text-white font-mono"
                   >
                     {SIGNAL_OPTIONS.map((opt) => (
                       <option key={opt} value={opt} className="bg-[#080B0F]">
@@ -703,7 +703,7 @@ export default function RulesPage() {
                     <select
                       value={editConditionType}
                       onChange={(e) => setEditConditionType(e.target.value)}
-                      className="w-full bg-[#080B0F] border border-[#1a1f2e] focus:border-[#6366f1] outline-none text-xs px-3 py-2.5 rounded text-white font-mono"
+                      className="w-full bg-[#080B0F] border border-[var(--border-subtle)] focus:border-[#6366f1] outline-none text-xs px-3 py-2.5 rounded text-white font-mono"
                     >
                       {CONDITION_OPTIONS.map((opt) => (
                         <option key={opt} value={opt} className="bg-[#080B0F]">
@@ -722,7 +722,7 @@ export default function RulesPage() {
                       value={editConditionValue}
                       onChange={(e) => setEditConditionValue(e.target.value)}
                       placeholder="e.g. CEO, Enterprise"
-                      className="w-full bg-[#080B0F] border border-[#1a1f2e] focus:border-[#6366f1] outline-none text-xs px-3 py-2 rounded text-white font-mono disabled:opacity-40"
+                      className="w-full bg-[#080B0F] border border-[var(--border-subtle)] focus:border-[#6366f1] outline-none text-xs px-3 py-2 rounded text-white font-mono disabled:opacity-40"
                     />
                   </div>
                 </div>
@@ -736,7 +736,7 @@ export default function RulesPage() {
                     <select
                       value={editActionType}
                       onChange={(e) => setEditActionType(e.target.value)}
-                      className="w-full bg-[#080B0F] border border-[#1a1f2e] focus:border-[#6366f1] outline-none text-xs px-3 py-2.5 rounded text-white font-mono"
+                      className="w-full bg-[#080B0F] border border-[var(--border-subtle)] focus:border-[#6366f1] outline-none text-xs px-3 py-2.5 rounded text-white font-mono"
                     >
                       {ACTION_MAPPING.map((act) => (
                         <option key={act.value} value={act.value} className="bg-[#080B0F]">
@@ -754,21 +754,21 @@ export default function RulesPage() {
                       value={editActionContent}
                       onChange={(e) => setEditActionContent(e.target.value)}
                       placeholder="e.g. https://calendly.com/x"
-                      className="w-full bg-[#080B0F] border border-[#1a1f2e] focus:border-[#6366f1] outline-none text-xs px-3 py-2 rounded text-white font-mono"
+                      className="w-full bg-[#080B0F] border border-[var(--border-subtle)] focus:border-[#6366f1] outline-none text-xs px-3 py-2 rounded text-white font-mono"
                     />
                   </div>
                 </div>
 
                 {/* Dynamic Swaps List */}
                 <div className="space-y-4">
-                  <div className="flex flex-col gap-1 border-b border-[#1a1f2e] pb-2">
+                  <div className="flex flex-col gap-1 border-b border-[var(--border-subtle)] pb-2">
                     <div className="flex justify-between items-center">
                       <label className="block text-[10px] font-mono text-gray-400 uppercase tracking-wider font-bold">
                         Page Element Swaps
                       </label>
-                      <span className="text-[10px] text-[#6366f1] font-mono cursor-help bg-[#1a1f2e] px-1.5 rounded relative group">
+                      <span className="text-[10px] text-[#6366f1] font-mono cursor-help bg-[var(--border-subtle)] px-1.5 rounded relative group">
                         [?]
-                        <span className="pointer-events-none absolute right-0 bottom-full mb-2 w-64 bg-[#0d1117] border border-[#1a1f2e] p-3 text-[10px] leading-relaxed text-gray-300 font-mono rounded shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                        <span className="pointer-events-none absolute right-0 bottom-full mb-2 w-64 bg-[var(--bg-surface)] border border-[var(--border-subtle)] p-3 text-[10px] leading-relaxed text-gray-300 font-mono rounded shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity z-10">
                           {"Specify CSS selectors (e.g. '#headline' or '.cta-button') and the variant HTML/Text content to inject."}
                         </span>
                       </span>
@@ -780,7 +780,7 @@ export default function RulesPage() {
 
                   <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
                     {editSwaps.map((swap, index) => (
-                      <div key={index} className="space-y-2.5 p-3 border border-[#1a1f2e] bg-[#080B0F]/50 rounded-lg relative">
+                      <div key={index} className="space-y-2.5 p-3 border border-[var(--border-subtle)] bg-[#080B0F]/50 rounded-lg relative">
                         <div className="flex justify-between items-center">
                           <span className="text-[10px] font-mono text-indigo-400 uppercase font-bold">Swap #{index + 1}</span>
                           <div className="flex items-center gap-2">
@@ -792,7 +792,7 @@ export default function RulesPage() {
                                 setAiSuggestions([]);
                                 setShowAiPanel(true);
                               }}
-                              className="text-[9px] font-mono text-[#6366f1] hover:underline bg-[#1a1f2e]/60 px-2 py-0.5 rounded border border-[#1a1f2e] flex items-center gap-1 transition-colors"
+                              className="text-[9px] font-mono text-[#6366f1] hover:underline bg-[var(--border-subtle)]/60 px-2 py-0.5 rounded border border-[var(--border-subtle)] flex items-center gap-1 transition-colors"
                             >
                               ✨ AI Copy
                             </button>
@@ -817,7 +817,7 @@ export default function RulesPage() {
                               value={swap.selector}
                               onChange={(e) => handleEditSwapChange(index, 'selector', e.target.value)}
                               placeholder="e.g. #headline or .sr-target"
-                              className="w-full bg-[#080B0F] border border-[#1a1f2e] focus:border-[#6366f1] outline-none text-xs px-2.5 py-1.5 rounded text-white font-mono"
+                              className="w-full bg-[#080B0F] border border-[var(--border-subtle)] focus:border-[#6366f1] outline-none text-xs px-2.5 py-1.5 rounded text-white font-mono"
                             />
                           </div>
                           <div className="space-y-1">
@@ -827,7 +827,7 @@ export default function RulesPage() {
                               value={swap.content}
                               onChange={(e) => handleEditSwapChange(index, 'content', e.target.value)}
                               placeholder="Use {{prospect_name}}, {{company_name}}, {{rep_name}}, {{job_title}}, {{deal_stage}} as dynamic variables."
-                              className="w-full bg-[#080B0F] border border-[#1a1f2e] focus:border-[#6366f1] outline-none text-xs px-2.5 py-1.5 rounded text-white font-mono"
+                              className="w-full bg-[#080B0F] border border-[var(--border-subtle)] focus:border-[#6366f1] outline-none text-xs px-2.5 py-1.5 rounded text-white font-mono"
                             />
                           </div>
                         </div>
@@ -838,7 +838,7 @@ export default function RulesPage() {
                   <button
                     type="button"
                     onClick={handleAddEditSwap}
-                    className="w-full border border-dashed border-[#1a1f2e] hover:border-[#6366f1] text-[#6366f1] hover:text-[#5053e1] font-mono text-[10px] py-2 rounded transition-colors"
+                    className="w-full border border-dashed border-[var(--border-subtle)] hover:border-[#6366f1] text-[#6366f1] hover:text-[#5053e1] font-mono text-[10px] py-2 rounded transition-colors"
                   >
                     + ADD ELEMENT SWAP
                   </button>
@@ -849,8 +849,8 @@ export default function RulesPage() {
 
                   {/* Inline AI Copywriter Panel */}
                   {showAiPanel && (
-                    <div className="mt-3 p-4 bg-[#080B0F] border border-[#1a1f2e] rounded-lg space-y-3 font-mono text-xs">
-                      <div className="flex justify-between items-center border-b border-[#1a1f2e] pb-2">
+                    <div className="mt-3 p-4 bg-[#080B0F] border border-[var(--border-subtle)] rounded-lg space-y-3 font-mono text-xs">
+                      <div className="flex justify-between items-center border-b border-[var(--border-subtle)] pb-2">
                         <span className="text-[10px] text-[#6366f1] font-bold uppercase tracking-wider">
                           AI Copywriter (generating for Swap #{aiSwapIndex + 1})
                         </span>
@@ -870,7 +870,7 @@ export default function RulesPage() {
                             type="text"
                             value={aiSignalType}
                             onChange={(e) => setAiSignalType(e.target.value)}
-                            className="w-full bg-[#0d1117] border border-[#1a1f2e] focus:border-[#6366f1] outline-none px-2 py-1.5 rounded text-white text-[11px]"
+                            className="w-full bg-[var(--bg-surface)] border border-[var(--border-subtle)] focus:border-[#6366f1] outline-none px-2 py-1.5 rounded text-white text-[11px]"
                           />
                         </div>
                         <div className="space-y-1">
@@ -880,7 +880,7 @@ export default function RulesPage() {
                             value={aiJobTitle}
                             onChange={(e) => setAiJobTitle(e.target.value)}
                             placeholder="e.g. VP of Marketing"
-                            className="w-full bg-[#0d1117] border border-[#1a1f2e] focus:border-[#6366f1] outline-none px-2 py-1.5 rounded text-white text-[11px]"
+                            className="w-full bg-[var(--bg-surface)] border border-[var(--border-subtle)] focus:border-[#6366f1] outline-none px-2 py-1.5 rounded text-white text-[11px]"
                           />
                         </div>
                       </div>
@@ -893,7 +893,7 @@ export default function RulesPage() {
                             value={aiIndustry}
                             onChange={(e) => setAiIndustry(e.target.value)}
                             placeholder="e.g. SaaS"
-                            className="w-full bg-[#0d1117] border border-[#1a1f2e] focus:border-[#6366f1] outline-none px-2 py-1.5 rounded text-white text-[11px]"
+                            className="w-full bg-[var(--bg-surface)] border border-[var(--border-subtle)] focus:border-[#6366f1] outline-none px-2 py-1.5 rounded text-white text-[11px]"
                           />
                         </div>
                         <div className="space-y-1">
@@ -901,7 +901,7 @@ export default function RulesPage() {
                           <select
                             value={aiCompanySize}
                             onChange={(e) => setAiCompanySize(e.target.value)}
-                            className="w-full bg-[#0d1117] border border-[#1a1f2e] focus:border-[#6366f1] outline-none px-1.5 py-1.5 rounded text-white text-[11px]"
+                            className="w-full bg-[var(--bg-surface)] border border-[var(--border-subtle)] focus:border-[#6366f1] outline-none px-1.5 py-1.5 rounded text-white text-[11px]"
                           >
                             <option value="1-50">1-50</option>
                             <option value="50-200">50-200</option>
@@ -915,7 +915,7 @@ export default function RulesPage() {
                           <select
                             value={aiTone}
                             onChange={(e) => setAiTone(e.target.value)}
-                            className="w-full bg-[#0d1117] border border-[#1a1f2e] focus:border-[#6366f1] outline-none px-1.5 py-1.5 rounded text-white text-[11px]"
+                            className="w-full bg-[var(--bg-surface)] border border-[var(--border-subtle)] focus:border-[#6366f1] outline-none px-1.5 py-1.5 rounded text-white text-[11px]"
                           >
                             <option value="direct">direct</option>
                             <option value="warm">warm</option>
@@ -937,7 +937,7 @@ export default function RulesPage() {
                       </div>
 
                       {aiSuggestions.length > 0 && (
-                        <div className="space-y-2 pt-2 border-t border-[#1a1f2e]">
+                        <div className="space-y-2 pt-2 border-t border-[var(--border-subtle)]">
                           <label className="block text-[9px] text-gray-400 uppercase tracking-widest font-bold">Select a Variant (Click to use):</label>
                           <div className="space-y-1.5">
                             {aiSuggestions.map((suggestion, idx) => (
@@ -948,7 +948,7 @@ export default function RulesPage() {
                                   handleEditSwapChange(aiSwapIndex, 'content', suggestion);
                                   setShowAiPanel(false);
                                 }}
-                                className="w-full text-left bg-[#0d1117] hover:bg-[#1a1f2e]/40 border border-[#1a1f2e] hover:border-[#6366f1] p-2 rounded text-[11px] text-gray-300 hover:text-white transition-colors"
+                                className="w-full text-left bg-[var(--bg-surface)] hover:bg-[var(--border-subtle)]/40 border border-[var(--border-subtle)] hover:border-[#6366f1] p-2 rounded text-[11px] text-gray-300 hover:text-white transition-colors"
                               >
                                 {suggestion}
                               </button>
@@ -985,9 +985,9 @@ export default function RulesPage() {
       {/* CREATE RULE MODAL */}
       {createModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fadeIn">
-          <div className="w-full max-w-xl bg-[#080B0F] border border-[#1a1f2e] rounded-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+          <div className="w-full max-w-xl bg-[#080B0F] border border-[var(--border-subtle)] rounded-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
             {/* Modal Header */}
-            <div className="flex justify-between items-center px-6 py-4 border-b border-[#1a1f2e]">
+            <div className="flex justify-between items-center px-6 py-4 border-b border-[var(--border-subtle)]">
               <h2 className="text-sm font-bold tracking-widest font-mono text-[#6366f1] uppercase">
                 Add New Routing Rule
               </h2>
@@ -1009,7 +1009,7 @@ export default function RulesPage() {
                 <select
                   value={newSignalType}
                   onChange={(e) => setNewSignalType(e.target.value)}
-                  className="w-full bg-[#080B0F] border border-[#1a1f2e] focus:border-[#6366f1] outline-none text-xs px-3 py-2.5 rounded text-white font-mono"
+                  className="w-full bg-[#080B0F] border border-[var(--border-subtle)] focus:border-[#6366f1] outline-none text-xs px-3 py-2.5 rounded text-white font-mono"
                 >
                   {SIGNAL_OPTIONS.map((opt) => (
                     <option key={opt} value={opt} className="bg-[#080B0F]">
@@ -1028,7 +1028,7 @@ export default function RulesPage() {
                   <select
                     value={newConditionType}
                     onChange={(e) => setNewConditionType(e.target.value)}
-                    className="w-full bg-[#080B0F] border border-[#1a1f2e] focus:border-[#6366f1] outline-none text-xs px-3 py-2.5 rounded text-white font-mono"
+                    className="w-full bg-[#080B0F] border border-[var(--border-subtle)] focus:border-[#6366f1] outline-none text-xs px-3 py-2.5 rounded text-white font-mono"
                   >
                     {CONDITION_OPTIONS.map((opt) => (
                       <option key={opt} value={opt} className="bg-[#080B0F]">
@@ -1047,7 +1047,7 @@ export default function RulesPage() {
                     value={newConditionValue}
                     onChange={(e) => setNewConditionValue(e.target.value)}
                     placeholder="e.g. Executive, Tech"
-                    className="w-full bg-[#080B0F] border border-[#1a1f2e] focus:border-[#6366f1] outline-none text-xs px-3 py-2 rounded text-white font-mono disabled:opacity-40"
+                    className="w-full bg-[#080B0F] border border-[var(--border-subtle)] focus:border-[#6366f1] outline-none text-xs px-3 py-2 rounded text-white font-mono disabled:opacity-40"
                   />
                 </div>
               </div>
@@ -1061,7 +1061,7 @@ export default function RulesPage() {
                   <select
                     value={newActionType}
                     onChange={(e) => setNewActionType(e.target.value)}
-                    className="w-full bg-[#080B0F] border border-[#1a1f2e] focus:border-[#6366f1] outline-none text-xs px-3 py-2.5 rounded text-white font-mono"
+                    className="w-full bg-[#080B0F] border border-[var(--border-subtle)] focus:border-[#6366f1] outline-none text-xs px-3 py-2.5 rounded text-white font-mono"
                   >
                     {ACTION_MAPPING.map((act) => (
                       <option key={act.value} value={act.value} className="bg-[#080B0F]">
@@ -1079,21 +1079,21 @@ export default function RulesPage() {
                     value={newActionContent}
                     onChange={(e) => setNewActionContent(e.target.value)}
                     placeholder="e.g. https://calendly.com/x"
-                    className="w-full bg-[#080B0F] border border-[#1a1f2e] focus:border-[#6366f1] outline-none text-xs px-3 py-2 rounded text-white font-mono"
+                    className="w-full bg-[#080B0F] border border-[var(--border-subtle)] focus:border-[#6366f1] outline-none text-xs px-3 py-2 rounded text-white font-mono"
                   />
                 </div>
               </div>
 
               {/* Dynamic Swaps List */}
               <div className="space-y-4">
-                <div className="flex flex-col gap-1 border-b border-[#1a1f2e] pb-2">
+                <div className="flex flex-col gap-1 border-b border-[var(--border-subtle)] pb-2">
                   <div className="flex justify-between items-center">
                     <label className="block text-[10px] font-mono text-gray-400 uppercase tracking-wider font-bold">
                       Page Element Swaps
                     </label>
-                    <span className="text-[10px] text-[#6366f1] font-mono cursor-help bg-[#1a1f2e] px-1.5 rounded relative group">
+                    <span className="text-[10px] text-[#6366f1] font-mono cursor-help bg-[var(--border-subtle)] px-1.5 rounded relative group">
                       [?]
-                      <span className="pointer-events-none absolute right-0 bottom-full mb-2 w-64 bg-[#0d1117] border border-[#1a1f2e] p-3 text-[10px] leading-relaxed text-gray-300 font-mono rounded shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity z-10 font-normal">
+                      <span className="pointer-events-none absolute right-0 bottom-full mb-2 w-64 bg-[var(--bg-surface)] border border-[var(--border-subtle)] p-3 text-[10px] leading-relaxed text-gray-300 font-mono rounded shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity z-10 font-normal">
                         {"Specify CSS selectors (e.g. '#headline' or '.cta-button') and the variant HTML/Text content to inject."}
                       </span>
                     </span>
@@ -1105,7 +1105,7 @@ export default function RulesPage() {
 
                 <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
                   {newSwaps.map((swap, index) => (
-                    <div key={index} className="space-y-2.5 p-3 border border-[#1a1f2e] bg-[#080B0F]/50 rounded-lg relative">
+                    <div key={index} className="space-y-2.5 p-3 border border-[var(--border-subtle)] bg-[#080B0F]/50 rounded-lg relative">
                       <div className="flex justify-between items-center">
                         <span className="text-[10px] font-mono text-indigo-400 uppercase font-bold">Swap #{index + 1}</span>
                         {newSwaps.length > 1 && (
@@ -1128,7 +1128,7 @@ export default function RulesPage() {
                             value={swap.selector}
                             onChange={(e) => handleNewSwapChange(index, 'selector', e.target.value)}
                             placeholder="e.g. #headline or .sr-target"
-                            className="w-full bg-[#080B0F] border border-[#1a1f2e] focus:border-[#6366f1] outline-none text-xs px-2.5 py-1.5 rounded text-white font-mono"
+                            className="w-full bg-[#080B0F] border border-[var(--border-subtle)] focus:border-[#6366f1] outline-none text-xs px-2.5 py-1.5 rounded text-white font-mono"
                           />
                         </div>
                         <div className="space-y-1">
@@ -1138,7 +1138,7 @@ export default function RulesPage() {
                             value={swap.content}
                             onChange={(e) => handleNewSwapChange(index, 'content', e.target.value)}
                             placeholder="Use {{prospect_name}}, {{company_name}}, {{rep_name}}, {{job_title}}, {{deal_stage}} as dynamic variables."
-                            className="w-full bg-[#080B0F] border border-[#1a1f2e] focus:border-[#6366f1] outline-none text-xs px-2.5 py-1.5 rounded text-white font-mono"
+                            className="w-full bg-[#080B0F] border border-[var(--border-subtle)] focus:border-[#6366f1] outline-none text-xs px-2.5 py-1.5 rounded text-white font-mono"
                           />
                         </div>
                       </div>
@@ -1149,7 +1149,7 @@ export default function RulesPage() {
                 <button
                   type="button"
                   onClick={handleAddNewSwap}
-                  className="w-full border border-dashed border-[#1a1f2e] hover:border-[#6366f1] text-[#6366f1] hover:text-[#5053e1] font-mono text-[10px] py-2 rounded transition-colors"
+                  className="w-full border border-dashed border-[var(--border-subtle)] hover:border-[#6366f1] text-[#6366f1] hover:text-[#5053e1] font-mono text-[10px] py-2 rounded transition-colors"
                 >
                   + ADD ELEMENT SWAP
                 </button>
@@ -1163,7 +1163,7 @@ export default function RulesPage() {
                 <button
                   type="button"
                   onClick={() => setCreateModalOpen(false)}
-                  className="border border-[#1a1f2e] hover:border-gray-500 text-xs font-mono py-2 px-4 rounded text-gray-300 transition-all"
+                  className="border border-[var(--border-subtle)] hover:border-gray-500 text-xs font-mono py-2 px-4 rounded text-gray-300 transition-all"
                 >
                   CANCEL
                 </button>

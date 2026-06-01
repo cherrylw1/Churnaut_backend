@@ -192,7 +192,7 @@ CREATE TABLE IF NOT EXISTS playbook_templates (
   return (
     <div className="space-y-8 max-w-6xl">
       {/* Page Header */}
-      <div className="border-b border-[#1a1f2e] pb-5">
+      <div className="border-b border-[var(--border-subtle)] pb-5">
         <h1 className="text-xl font-bold tracking-wider font-mono uppercase text-white">
           PLAYBOOK LIBRARY
         </h1>
@@ -285,9 +285,9 @@ CREATE TABLE IF NOT EXISTS playbook_templates (
       {/* INSTALLATION MODAL */}
       {selectedPlaybook && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="border border-[#1a1f2e] bg-[#0d1117] rounded-lg max-w-lg w-full overflow-hidden shadow-2xl">
+          <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-lg max-w-lg w-full overflow-hidden shadow-2xl">
             {/* Modal Header */}
-            <div className="h-14 flex items-center justify-between px-6 border-b border-[#1a1f2e] bg-[#090d12]">
+            <div className="h-14 flex items-center justify-between px-6 border-b border-[var(--border-subtle)] bg-[#090d12]">
               <span className="font-mono text-xs font-bold text-white uppercase tracking-wider">
                 Install Playbook
               </span>
@@ -317,7 +317,7 @@ CREATE TABLE IF NOT EXISTS playbook_templates (
                   <div className="flex flex-col sm:flex-row gap-3 pt-2">
                     <button
                       onClick={closeInstallModal}
-                      className="flex-1 bg-[#1a1f2e] hover:bg-[#252b3e] text-white font-mono text-xs py-2.5 px-4 rounded transition-all active:scale-[0.98]"
+                      className="flex-1 bg-[var(--border-subtle)] hover:bg-[#252b3e] text-white font-mono text-xs py-2.5 px-4 rounded transition-all active:scale-[0.98]"
                     >
                       Close Window
                     </button>
@@ -359,18 +359,18 @@ CREATE TABLE IF NOT EXISTS playbook_templates (
                           value={formValues[input.field_name] || ''}
                           onChange={(e) => handleInputChange(input.field_name, e.target.value)}
                           placeholder={input.placeholder}
-                          className="w-full bg-[#080B0F] border border-[#1a1f2e] focus:border-[#6366f1] outline-none text-xs px-3 py-2.5 rounded text-white font-mono"
+                          className="w-full bg-[#080B0F] border border-[var(--border-subtle)] focus:border-[#6366f1] outline-none text-xs px-3 py-2.5 rounded text-white font-mono"
                         />
                       </div>
                     ))}
                   </div>
 
                   {/* Submit buttons */}
-                  <div className="flex justify-end gap-3 pt-3 border-t border-[#1a1f2e]">
+                  <div className="flex justify-end gap-3 pt-3 border-t border-[var(--border-subtle)]">
                     <button
                       type="button"
                       onClick={closeInstallModal}
-                      className="bg-[#1a1f2e] hover:bg-[#252b3e] text-white font-mono text-xs py-2.5 px-5 rounded transition-all active:scale-[0.98]"
+                      className="bg-[var(--border-subtle)] hover:bg-[#252b3e] text-white font-mono text-xs py-2.5 px-5 rounded transition-all active:scale-[0.98]"
                     >
                       Cancel
                     </button>
@@ -423,7 +423,7 @@ function PlaybookCard({ playbook, onInstall }: PlaybookCardProps) {
       case 'partner_referral':
         return `${base} bg-rose-950/20 text-rose-400 border-rose-900/40`;
       default:
-        return `${base} bg-[#1a1f2e] text-gray-400 border-[#1a1f2e]`;
+        return `${base} bg-[var(--border-subtle)] text-gray-400 border-[var(--border-subtle)]`;
     }
   };
 
@@ -432,7 +432,7 @@ function PlaybookCard({ playbook, onInstall }: PlaybookCardProps) {
   };
 
   return (
-    <div className="border border-[#1a1f2e] bg-[#0d1117]/30 rounded-lg p-5 flex flex-col justify-between hover:border-[#6366f1]/50 hover:bg-[#0d1117]/50 transition-all group">
+    <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-lg p-5 flex flex-col justify-between hover:border-[#6366f1]/50 hover:bg-[var(--bg-elevated)] transition-all group">
       <div className="space-y-3.5">
         <div className="flex items-center justify-between gap-2">
           <span className={getSignalBadgeClass(playbook.signal_type)}>
@@ -451,13 +451,13 @@ function PlaybookCard({ playbook, onInstall }: PlaybookCardProps) {
         </div>
       </div>
       
-      <div className="pt-4 border-t border-[#1a1f2e]/60 mt-4 flex items-center justify-between gap-2">
+      <div className="pt-4 border-t border-[var(--border-subtle)]/60 mt-4 flex items-center justify-between gap-2">
         <span className="text-[10px] font-mono text-gray-500">
           {playbook.required_inputs.length} input{playbook.required_inputs.length !== 1 ? 's' : ''} required
         </span>
         <button
           onClick={() => onInstall(playbook)}
-          className="bg-[#1a1f2e] hover:bg-[#6366f1] text-white font-mono text-[10px] py-1.5 px-4 rounded transition-all active:scale-[0.98]"
+          className="bg-[var(--border-subtle)] hover:bg-[#6366f1] text-white font-mono text-[10px] py-1.5 px-4 rounded transition-all active:scale-[0.98]"
         >
           Install
         </button>

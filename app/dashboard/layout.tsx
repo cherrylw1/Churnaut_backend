@@ -1,80 +1,166 @@
-import React from 'react';
+'use client';
+
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Home as HomeIcon, Target } from 'lucide-react';
+import { usePathname } from 'next/navigation';
+import { 
+  Home as HomeIcon, 
+  Target, 
+  Link2, 
+  Sliders, 
+  BookOpen, 
+  Radar, 
+  Sparkles, 
+  BarChart3, 
+  Code2, 
+  Settings,
+  Sun,
+  Moon
+} from 'lucide-react';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
-  // Navigation items structure
-  const navItems = [
+  const pathname = usePathname();
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'light') {
+      setTheme('light');
+      document.documentElement.classList.add('light');
+    } else {
+      setTheme('dark');
+      document.documentElement.classList.remove('light');
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    if (theme === 'light') {
+      setTheme('dark');
+      document.documentElement.classList.remove('light');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      setTheme('light');
+      document.documentElement.classList.add('light');
+      localStorage.setItem('theme', 'light');
+    }
+  };
+
+  const coreGroup = [
     { label: 'Home', href: '/dashboard', icon: HomeIcon },
-    { label: 'Tracked Links', href: '/dashboard/links' },
-    { label: 'Routing Rules', href: '/dashboard/rules' },
-    { label: 'Playbook Library', href: '/dashboard/playbooks' },
-    { label: 'ICP Builder', href: '/dashboard/icp', icon: Target },
-    { label: 'AI Insights', href: '/dashboard/ai-insights' },
-    { label: 'Scout', href: '/dashboard/scout' },
-    { label: 'Analytics', href: '/dashboard/analytics' },
-    { label: 'Snippet', href: '/dashboard/snippet' },
-    { label: 'Settings', href: '/dashboard/settings' },
+    { label: 'Tracked Links', href: '/dashboard/links', icon: Link2 },
+    { label: 'Routing Rules', href: '/dashboard/rules', icon: Sliders },
+    { label: 'Playbook Library', href: '/dashboard/playbooks', icon: BookOpen },
   ];
 
+  const intelligenceGroup = [
+    { label: 'Scout', href: '/dashboard/scout', icon: Radar },
+    { label: 'ICP Builder', href: '/dashboard/icp', icon: Target },
+    { label: 'AI Insights', href: '/dashboard/ai-insights', icon: Sparkles },
+  ];
+
+  const accountGroup = [
+    { label: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
+    { label: 'Snippet', href: '/dashboard/snippet', icon: Code2 },
+    { label: 'Settings', href: '/dashboard/settings', icon: Settings },
+  ];
+
+  // Combine to find the current active page label for breadcrumbs
+  const allItems = [...coreGroup, ...intelligenceGroup, ...accountGroup];
+  const activeItem = allItems.find(item => item.href === pathname) || allItems.find(item => pathname.startsWith(item.href) && item.href !== '/dashboard');
+  const pageLabel = activeItem ? activeItem.label : 'Dashboard';
+
+  const renderNavGroup = (title: string, items: typeof coreGroup) => (
+    <div className="space-y-1.5">
+      <div className="px-4 text-[10px] font-sans font-bold uppercase tracking-[0.08em] text-[var(--text-muted)]">
+        {title}
+      </div>
+      <div className="space-y-0.5">
+        {items.map((item) => {
+          const isActive = pathname === item.href || (pathname.startsWith(item.href) && item.href !== '/dashboard');
+          return (
+            <Link
+              key={item.label}
+              href={item.href}
+              className={`flex items-center gap-2.5 px-4 py-2 rounded-md text-[14px] font-sans font-medium transition-all ${
+                isActive
+                  ? 'bg-[var(--bg-elevated)] border-l-2 border-[var(--accent)] text-[var(--text-primary)]'
+                  : 'text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)] border-l-2 border-transparent'
+              }`}
+            >
+              {item.icon && <item.icon className="w-4 h-4" />}
+              <span>{item.label}</span>
+            </Link>
+          );
+        })}
+      </div>
+    </div>
+  );
+
   return (
-    <div className="min-h-screen bg-[#080B0F] text-white flex">
+    <div className="min-h-screen bg-[var(--bg-base)] text-[var(--text-primary)] flex">
       {/* Sidebar Panel */}
-      <aside className="w-64 bg-[#0d1117] border-r border-[#1a1f2e] flex flex-col justify-between select-none">
-        <div>
+      <aside className="w-64 bg-[var(--bg-surface)] border-r border-[var(--border-subtle)] flex flex-col justify-between select-none flex-shrink-0">
+        <div className="flex flex-col">
           {/* Header Brand */}
-          <div className="h-16 flex items-center px-6 border-b border-[#1a1f2e]">
-            <Link href="/dashboard" className="text-xl font-bold tracking-wider hover:opacity-80 transition-opacity">
+          <div className="h-16 flex items-center px-6 border-b border-[var(--border-subtle)] mb-4">
+            <Link href="/dashboard" className="flex items-center gap-2 font-sans font-bold text-[18px] text-[var(--text-primary)] hover:opacity-80 transition-opacity">
+              <span className="w-2.5 h-2.5 rounded-full bg-[var(--accent)]" />
               CHURNAUT
             </Link>
           </div>
 
           {/* Navigation Links */}
-          <nav className="p-4 space-y-1">
-            {navItems.map((item) => (
-              <Link
-                key={item.label}
-                href={item.href}
-                className="flex items-center gap-2.5 px-4 py-3 rounded text-sm font-mono text-gray-400 hover:text-white hover:bg-[#1a1f2e]/45 border-l-2 border-transparent hover:border-[#6366f1] transition-all"
-              >
-                {item.icon && <item.icon className="w-4 h-4" />}
-                <span>{item.label}</span>
-              </Link>
-            ))}
+          <nav className="p-4 space-y-6">
+            {renderNavGroup('CORE', coreGroup)}
+            {renderNavGroup('INTELLIGENCE', intelligenceGroup)}
+            {renderNavGroup('ACCOUNT', accountGroup)}
           </nav>
         </div>
 
-        {/* Sidebar Footer Status Indicator */}
-        <div className="p-4 border-t border-[#1a1f2e] bg-[#090d12]">
+        {/* Sidebar Footer Status Indicator & Theme Toggle */}
+        <div className="p-4 border-t border-[var(--border-subtle)] flex items-center justify-between bg-[var(--bg-surface)]">
           <div className="flex items-center space-x-3">
             <span className="relative flex h-2.5 w-2.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
             </span>
-            <span className="text-xs font-mono text-gray-400 tracking-tight">
-              Personalization Edge: <span className="text-green-400 font-semibold">Active</span>
+            <span className="text-[12px] font-sans font-medium text-[var(--text-secondary)]">
+              Edge: <span className="text-green-500 font-semibold">Active</span>
             </span>
           </div>
+          <button
+            onClick={toggleTheme}
+            title="Toggle light/dark mode"
+            className="p-2 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all active:scale-95 flex items-center justify-center"
+          >
+            {theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+          </button>
         </div>
       </aside>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-h-screen overflow-x-hidden">
+      <div className="flex-1 flex flex-col min-h-screen overflow-x-hidden bg-[var(--bg-base)]">
         {/* Top Header */}
-        <header className="h-16 border-b border-[#1a1f2e] bg-[#0d1117]/50 backdrop-blur flex items-center justify-between px-8">
+        <header className="h-16 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] flex items-center justify-between px-8">
           <div className="flex items-center space-x-2">
-            <span className="text-xs font-mono px-2 py-1 bg-[#1a1f2e] text-[#6366f1] rounded uppercase">
-              Dashboard
-            </span>
+            <div className="flex items-center space-x-2 text-[14px] font-sans text-[var(--text-secondary)] font-medium">
+              <Link href="/dashboard" className="hover:text-[var(--text-primary)] transition-colors">Dashboard</Link>
+              {pageLabel !== 'Home' && (
+                <>
+                  <span className="text-[var(--text-muted)] font-normal">/</span>
+                  <span className="text-[var(--text-primary)] font-semibold">{pageLabel}</span>
+                </>
+              )}
+            </div>
           </div>
           <div>
             <Link
               href="/login"
-              className="text-xs font-mono text-gray-400 hover:text-white hover:underline transition-all"
+              className="text-[14px] font-sans font-normal text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all"
             >
               Sign Out
             </Link>
@@ -82,7 +168,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         </header>
 
         {/* Dynamic Children Panel */}
-        <main className="flex-1 p-8">
+        <main className="flex-1 p-8 bg-[var(--bg-base)]">
           {children}
         </main>
       </div>

@@ -12,7 +12,6 @@ import {
 } from 'lucide-react';
 import { supabaseBrowser } from '@/lib/supabase';
 
-
 interface ScoutInboxData {
   top_red_deal: { deal_name: string; next_action: string } | null;
   top_rep: { rep_name: string; count: number } | null;
@@ -135,32 +134,32 @@ export default function DashboardPage() {
   };
 
   const getStatusColorClass = (status: string) => {
-    if (status === 'HEALTHY') return 'text-green-500';
-    if (status === 'NEEDS ATTENTION') return 'text-yellow-500';
-    return 'text-red-500';
+    if (status === 'HEALTHY') return 'text-[var(--green)]';
+    if (status === 'NEEDS ATTENTION') return 'text-[var(--amber)]';
+    return 'text-[var(--red)]';
   };
 
   return (
-    <div className="space-y-8 max-w-4xl mx-auto text-gray-300">
+    <div className="space-y-8 max-w-4xl mx-auto text-[var(--text-secondary)] font-sans">
       {/* SECTION 1: HEADER */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-wider font-mono text-white">
+          <h1 className="text-[28px] font-bold text-[var(--text-primary)] leading-tight">
             {getGreeting()}{firstName ? `, ${firstName}.` : '.'}
           </h1>
-          <p className="text-xs font-mono text-gray-400 mt-1">
+          <p className="text-[15px] text-[var(--text-secondary)] mt-1">
             {"Here's your pipeline and personalization summary."}
           </p>
         </div>
         {lastUpdated && (
-          <div className="text-[10px] font-mono text-gray-500 uppercase tracking-widest">
+          <div className="text-[10px] font-mono text-[var(--text-muted)] uppercase tracking-widest">
             Last Updated: {lastUpdated}
           </div>
         )}
       </div>
 
       {loading ? (
-        <div className="text-center py-20 text-gray-500 font-mono text-sm tracking-wider">
+        <div className="text-center py-20 text-[var(--text-muted)] font-mono text-sm tracking-wider">
           RETRIEVING DASHBOARD DATA SUMMARY...
         </div>
       ) : (
@@ -169,51 +168,51 @@ export default function DashboardPage() {
           {summary && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               {/* Stat 1: Pipeline Pressure */}
-              <div className="border border-[#1a1f2e] bg-[#0d1117]/30 p-5 rounded-lg flex flex-col justify-between h-28 font-mono relative overflow-hidden">
-                <div className="text-[10px] text-gray-500 uppercase tracking-wider">
+              <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-6 py-5 rounded-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.25)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.35)] hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between h-28">
+                <div className="text-[12px] text-[var(--text-muted)] uppercase font-semibold tracking-wider">
                   Pipeline Pressure
                 </div>
                 <div className="flex items-baseline justify-between mt-auto">
-                  <span className="text-4xl font-extrabold text-white">
+                  <span className="text-[32px] font-bold text-[var(--text-primary)] leading-none font-sans">
                     {summary.pressure_score}
                   </span>
-                  <span className={`text-xs font-bold uppercase ${getStatusColorClass(summary.pipeline_status)}`}>
+                  <span className={`text-[12px] font-bold uppercase ${getStatusColorClass(summary.pipeline_status)}`}>
                     {summary.pipeline_status}
                   </span>
                 </div>
               </div>
 
               {/* Stat 2: Active Rules */}
-              <div className="border border-[#1a1f2e] bg-[#0d1117]/30 p-5 rounded-lg flex flex-col justify-between h-28 font-mono">
-                <div className="text-[10px] text-gray-500 uppercase tracking-wider">
+              <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-6 py-5 rounded-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.25)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.35)] hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between h-28">
+                <div className="text-[12px] text-[var(--text-muted)] uppercase font-semibold tracking-wider">
                   Active Rules
                 </div>
                 <div className="mt-auto">
-                  <span className="text-4xl font-extrabold text-white">
+                  <span className="text-[32px] font-bold text-[var(--text-primary)] leading-none font-sans">
                     {summary.active_rules_count}
                   </span>
                 </div>
               </div>
 
               {/* Stat 3: Tracked Links */}
-              <div className="border border-[#1a1f2e] bg-[#0d1117]/30 p-5 rounded-lg flex flex-col justify-between h-28 font-mono">
-                <div className="text-[10px] text-gray-500 uppercase tracking-wider">
+              <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-6 py-5 rounded-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.25)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.35)] hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between h-28">
+                <div className="text-[12px] text-[var(--text-muted)] uppercase font-semibold tracking-wider">
                   Tracked Links
                 </div>
                 <div className="mt-auto">
-                  <span className="text-4xl font-extrabold text-white">
+                  <span className="text-[32px] font-bold text-[var(--text-primary)] leading-none font-sans">
                     {summary.tracked_links_count}
                   </span>
                 </div>
               </div>
 
               {/* Stat 4: Sessions This Week */}
-              <div className="border border-[#1a1f2e] bg-[#0d1117]/30 p-5 rounded-lg flex flex-col justify-between h-28 font-mono">
-                <div className="text-[10px] text-gray-500 uppercase tracking-wider">
+              <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-6 py-5 rounded-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.25)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.35)] hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between h-28">
+                <div className="text-[12px] text-[var(--text-muted)] uppercase font-semibold tracking-wider">
                   Sessions This Week
                 </div>
                 <div className="mt-auto">
-                  <span className="text-4xl font-extrabold text-white">
+                  <span className="text-[32px] font-bold text-[var(--text-primary)] leading-none font-sans">
                     {summary.sessions_this_week}
                   </span>
                 </div>
@@ -223,30 +222,30 @@ export default function DashboardPage() {
 
           {/* SECTION 3: SCOUT INBOX */}
           {summary && (
-            <div className="border border-[#1a1f2e] border-l-4 border-l-amber-500 bg-[#0d1117]/40 rounded-lg p-5 font-mono relative">
-              <div className="flex items-center gap-2 text-white font-bold tracking-wider uppercase text-xs">
-                <Zap className="text-amber-500 w-4 h-4 fill-amber-500/20" />
+            <div className="border border-[var(--border-subtle)] border-l-[3px] border-l-[var(--amber)] bg-[var(--bg-elevated)] rounded-[12px] p-5 shadow-[0_1px_4px_rgba(0,0,0,0.25)]">
+              <div className="flex items-center gap-2 text-[var(--text-primary)] font-bold tracking-wider uppercase text-[12px]">
+                <Zap className="text-[var(--amber)] w-4 h-4 fill-[var(--amber)]/20" />
                 SCOUT INBOX — TODAY
               </div>
 
-              <div className="mt-4 space-y-2 text-xs text-gray-400">
+              <div className="mt-4 space-y-2 text-[14px] text-[var(--text-secondary)]">
                 {!summary.scout_inbox.has_red_deals ? (
-                  <p className="text-gray-500 italic">No urgent items today.</p>
+                  <p className="text-[var(--text-muted)] italic">No urgent items today.</p>
                 ) : (
                   <>
                     {summary.scout_inbox.top_red_deal && (
                       <p className="flex items-start gap-2">
-                        <span className="text-amber-500/80">•</span>
+                        <span className="text-[var(--amber)]">•</span>
                         <span>
-                          <strong className="text-white">RED Deal Attention:</strong> {summary.scout_inbox.top_red_deal.deal_name} - {summary.scout_inbox.top_red_deal.next_action}
+                          <strong className="text-[var(--text-primary)]">RED Deal Attention:</strong> {summary.scout_inbox.top_red_deal.deal_name} - {summary.scout_inbox.top_red_deal.next_action}
                         </span>
                       </p>
                     )}
                     {summary.scout_inbox.top_rep && (
                       <p className="flex items-start gap-2">
-                        <span className="text-amber-500/80">•</span>
+                        <span className="text-[var(--amber)]">•</span>
                         <span>
-                          <strong className="text-white">Sales Representative Alert:</strong> {summary.scout_inbox.top_rep.rep_name} has {summary.scout_inbox.top_rep.count} RED deals.
+                          <strong className="text-[var(--text-primary)]">Sales Representative Alert:</strong> {summary.scout_inbox.top_rep.rep_name} has {summary.scout_inbox.top_rep.count} RED deals.
                         </span>
                       </p>
                     )}
@@ -257,9 +256,9 @@ export default function DashboardPage() {
               <div className="flex justify-end mt-4">
                 <Link
                   href="/dashboard/scout"
-                  className="text-[10px] text-[#6366f1] hover:text-[#5053e1] font-bold uppercase tracking-wider flex items-center gap-1 transition-colors"
+                  className="text-[12px] text-[var(--accent)] hover:text-[var(--accent-hover)] font-bold uppercase tracking-wider flex items-center gap-1 transition-colors"
                 >
-                  View full Scout analysis <ArrowRight className="w-3 h-3" />
+                  View full Scout analysis <ArrowRight className="w-3.5 h-3.5" />
                 </Link>
               </div>
             </div>
@@ -267,34 +266,34 @@ export default function DashboardPage() {
 
           {/* SECTION 4: RECENT ACTIVITY */}
           {summary && (
-            <div className="border border-[#1a1f2e] bg-[#0d1117]/15 rounded-lg p-5 font-mono">
-              <div className="flex items-center gap-2 text-white font-bold tracking-wider uppercase text-xs border-b border-[#1a1f2e] pb-3">
-                <Activity className="text-indigo-400 w-4 h-4" />
+            <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 rounded-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.25)]">
+              <div className="flex items-center gap-2 text-[var(--text-primary)] font-bold tracking-wider uppercase text-[12px] border-b border-[var(--border-subtle)] pb-3">
+                <Activity className="text-[var(--accent)] w-4 h-4" />
                 RECENT ACTIVITY
               </div>
 
               {summary.recent_activity.length === 0 ? (
-                <div className="py-8 text-center text-xs text-gray-500">
+                <div className="py-8 text-center text-xs text-[var(--text-muted)] font-mono">
                   No recent activities recorded.
                 </div>
               ) : (
                 <div className="mt-4 overflow-x-auto">
                   <table className="w-full text-left text-xs border-collapse">
                     <thead>
-                      <tr className="border-b border-[#1a1f2e] text-gray-500 uppercase text-[9px] tracking-widest">
+                      <tr className="border-b border-[var(--border-subtle)] text-[var(--text-muted)] uppercase text-[9px] tracking-widest">
                         <th className="pb-2 font-medium">Event Type</th>
                         <th className="pb-2 font-medium">Signal</th>
                         <th className="pb-2 font-medium text-right">Time</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[#1a1f2e]/40">
+                    <tbody className="divide-y divide-[var(--border-subtle)]/40">
                       {summary.recent_activity.map((event, idx) => (
-                        <tr key={idx} className="hover:bg-white/[0.02] transition-colors">
-                          <td className="py-2.5 font-medium text-white">{event.event_type}</td>
-                          <td className="py-2.5 text-gray-400">
+                        <tr key={idx} className="hover:bg-[var(--bg-elevated)] transition-colors">
+                          <td className="py-2.5 font-medium text-[var(--text-primary)] font-sans">{event.event_type}</td>
+                          <td className="py-2.5 text-[var(--text-secondary)] font-mono">
                             {event.signal_type || 'N/A'}
                           </td>
-                          <td className="py-2.5 text-right text-gray-500">
+                          <td className="py-2.5 text-right text-[var(--text-muted)] font-mono">
                             {formatRelativeTime(event.created_at)}
                           </td>
                         </tr>
@@ -307,9 +306,9 @@ export default function DashboardPage() {
               <div className="flex justify-end mt-4">
                 <Link
                   href="/dashboard/analytics"
-                  className="text-[10px] text-[#6366f1] hover:text-[#5053e1] font-bold uppercase tracking-wider flex items-center gap-1 transition-colors"
+                  className="text-[12px] text-[var(--accent)] hover:text-[var(--accent-hover)] font-bold uppercase tracking-wider flex items-center gap-1 transition-colors"
                 >
-                  View full analytics <ArrowRight className="w-3 h-3" />
+                  View full analytics <ArrowRight className="w-3.5 h-3.5" />
                 </Link>
               </div>
             </div>
@@ -319,27 +318,27 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Link
               href="/dashboard/links"
-              className="border border-[#1a1f2e] bg-[#0d1117]/35 hover:bg-[#161b22]/40 p-4 rounded-lg flex items-center justify-between font-mono text-xs font-bold text-white transition-all hover:-translate-y-0.5"
+              className="border border-[var(--border-default)] bg-transparent hover:bg-[var(--bg-elevated)] p-4.5 rounded-[8px] flex items-center justify-between font-sans text-[14px] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all shadow-[0_1px_4px_rgba(0,0,0,0.1)] hover:-translate-y-0.5"
             >
               <span>CREATE TRACKED LINK</span>
-              <Link2 className="w-4 h-4 text-indigo-400" />
+              <Link2 className="w-4 h-4 text-[var(--accent)]" />
             </Link>
 
             <Link
               href="/dashboard/rules"
-              className="border border-[#1a1f2e] bg-[#0d1117]/35 hover:bg-[#161b22]/40 p-4 rounded-lg flex items-center justify-between font-mono text-xs font-bold text-white transition-all hover:-translate-y-0.5"
+              className="border border-[var(--border-default)] bg-transparent hover:bg-[var(--bg-elevated)] p-4.5 rounded-[8px] flex items-center justify-between font-sans text-[14px] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all shadow-[0_1px_4px_rgba(0,0,0,0.1)] hover:-translate-y-0.5"
             >
               <span>ADD ROUTING RULE</span>
-              <PlusCircle className="w-4 h-4 text-indigo-400" />
+              <PlusCircle className="w-4 h-4 text-[var(--accent)]" />
             </Link>
 
             <button
               onClick={handleRunScout}
               disabled={runningScout}
-              className="border border-[#1a1f2e] bg-[#0d1117]/35 hover:bg-[#161b22]/40 p-4 rounded-lg flex items-center justify-between font-mono text-xs font-bold text-white transition-all hover:-translate-y-0.5 disabled:opacity-50 text-left"
+              className="border border-[var(--border-default)] bg-transparent hover:bg-[var(--bg-elevated)] p-4.5 rounded-[8px] flex items-center justify-between font-sans text-[14px] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all shadow-[0_1px_4px_rgba(0,0,0,0.1)] hover:-translate-y-0.5 disabled:opacity-50 text-left"
             >
               <span>{runningScout ? 'RUNNING...' : 'RUN SCOUT ANALYSIS'}</span>
-              <RefreshCw className={`w-4 h-4 text-indigo-400 ${runningScout ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-4 h-4 text-[var(--accent)] ${runningScout ? 'animate-spin' : ''}`} />
             </button>
           </div>
         </div>
