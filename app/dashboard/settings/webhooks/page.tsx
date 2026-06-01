@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { toast } from '@/hooks/useToast';
 
 interface ClientProfile {
   id: string;
@@ -162,13 +163,14 @@ export default function WebhooksSettingsPage() {
           const mappingsData = await mappingsRes.json();
           setMappings(mappingsData.mappings || []);
         }
+        toast.success('Webhook mapping saved successfully');
       } else {
         const errorData = await res.json();
-        alert(errorData.error || 'Failed to save webhook mapping');
+        toast.error(errorData.error || 'Failed to save webhook mapping');
       }
     } catch (err) {
       console.error(err);
-      alert('An error occurred while saving the mapping.');
+      toast.error('An error occurred while saving the mapping.');
     } finally {
       setDraggedField(null);
     }
@@ -182,13 +184,14 @@ export default function WebhooksSettingsPage() {
       });
       if (res.ok) {
         setMappings(prev => prev.filter(m => m.id !== mappingId));
+        toast.success('Webhook mapping deleted successfully');
       } else {
         const errorData = await res.json();
-        alert(errorData.error || 'Failed to delete mapping.');
+        toast.error(errorData.error || 'Failed to delete mapping.');
       }
     } catch (err) {
       console.error(err);
-      alert('An error occurred during mapping deletion.');
+      toast.error('An error occurred during mapping deletion.');
     }
   };
 

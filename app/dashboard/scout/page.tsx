@@ -13,10 +13,14 @@ import {
   Mail,
   Brain,
   Skull,
+  Target,
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import CountUp from '@/components/ui/CountUp';
 import Skeleton from '@/components/ui/Skeleton';
+import { toast } from '@/hooks/useToast';
+import EmptyState from '@/components/ui/EmptyState';
+import ErrorState from '@/components/ui/ErrorState';
 
 interface ScoutDealDetail {
   id: string;
@@ -101,6 +105,7 @@ export default function ScoutDashboard() {
   const [deals, setDeals] = useState<ScoutDealDetail[]>([]);
   const [triggers, setTriggers] = useState<AccelerationTrigger[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [runningScout, setRunningScout] = useState(false);
   const [expandedDeals, setExpandedDeals] = useState<Record<string, boolean>>({});
   const [expandedEmails, setExpandedEmails] = useState<Record<string, boolean>>({});
@@ -134,6 +139,7 @@ export default function ScoutDashboard() {
   const fetchData = async () => {
     try {
       setLoading(true);
+      setError(null);
       
       const res = await fetch('/api/scout/pipeline');
       if (res.ok) {
@@ -174,6 +180,9 @@ export default function ScoutDashboard() {
           initialExpanded[deal.deal_id] = deal.score === 'RED';
         }
         setExpandedDeals(initialExpanded);
+      } else {
+        const errData = await res.json();
+        setError(errData.error || 'Failed to retrieve HubSpot pipeline data.');
       }
 
       // Fetch Rep Blindspots
@@ -187,6 +196,7 @@ export default function ScoutDashboard() {
       await fetchObituaries();
     } catch (err) {
       console.error('Failed to load Scout pipeline details:', err);
+      setError('A network error occurred while syncing with HubSpot.');
     } finally {
       setLoading(false);
     }
@@ -213,14 +223,14 @@ export default function ScoutDashboard() {
       });
       if (res.ok) {
         const data = await res.json();
-        alert(`Successfully generated ${data.count} new deal obituaries.`);
+        toast.success(`Successfully generated ${data.count} new deal obituaries.`);
         await fetchObituaries();
       } else {
-        alert('Failed to generate deal obituaries.');
+        toast.error('Failed to generate deal obituaries.');
       }
     } catch (err) {
       console.error('Error generating obituaries:', err);
-      alert('An error occurred during obituary generation.');
+      toast.error('An error occurred during obituary generation.');
     } finally {
       setGeneratingObits(false);
     }
@@ -240,12 +250,13 @@ export default function ScoutDashboard() {
       });
       if (res.ok) {
         await fetchData();
+        toast.success('Scout analysis complete — pipeline updated');
       } else {
-        alert('Failed to execute Scout AI analysis.');
+        toast.error('Scout analysis failed — check your HubSpot connection');
       }
     } catch (err) {
       console.error('Error running Scout analysis:', err);
-      alert('An error occurred during Scout analysis.');
+      toast.error('An error occurred during Scout analysis.');
     } finally {
       setRunningScout(false);
     }
@@ -269,14 +280,14 @@ export default function ScoutDashboard() {
       });
 
       if (res.ok) {
-        alert(`${modalData.type === 'nudge' ? 'Nudge' : 'Notification'} logged and representative alerted!`);
+        toast.success(`${modalData.type === 'nudge' ? 'Nudge' : 'Notification'} logged and representative alerted!`);
         setShowModal(false);
       } else {
-        alert('Failed to log nudge in database.');
+        toast.error('Failed to log nudge in database.');
       }
     } catch (err) {
       console.error('Error sending nudge:', err);
-      alert('An error occurred while logging nudge.');
+      toast.error('An error occurred while logging nudge.');
     } finally {
       setSendingNudge(false);
     }
@@ -338,7 +349,7 @@ export default function ScoutDashboard() {
   // Copy Draft Email utility
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    alert('Draft email copied to clipboard!');
+    toast.success('Draft email copied to clipboard!');
   };
 
   // Get Pressure Score formatting classes
@@ -433,7 +444,7 @@ export default function ScoutDashboard() {
             className="bg-[var(--accent)] hover:bg-[var(--accent-hover)] disabled:opacity-50 text-white font-sans text-xs font-semibold py-2 px-4 rounded-[8px] transition-all active:scale-[0.98] flex items-center gap-2"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${runningScout ? 'animate-spin' : ''}`} />
-            {runningScout ? 'RUNNING SCOUT ANALYSIS...' : 'RUN SCOUT ANALYSIS'}
+            {runningScout ? 'Analyzing...' : 'RUN SCOUT ANALYSIS'}
           </button>
           {snapshot && (
             <span className="text-[9px] font-mono text-[var(--text-muted)] uppercase">
@@ -460,6 +471,20 @@ export default function ScoutDashboard() {
             <Skeleton variant="card" height={80} />
           </div>
         </div>
+      ) : error ? (
+        <div className="py-12">
+          <ErrorState message={error} onRetry={fetchData} />
+        </div>
+      ) : deals.length === 0 ? (
+        <div className="py-12">
+          <EmptyState
+            icon={Target}
+            title="No pipeline data"
+            description="Run Scout Analysis to score your HubSpot deals"
+            ctaLabel="Run Analysis"
+            onClick={handleRunAnalysis}
+          />
+        </div>
       ) : (
         <div className="space-y-6 max-w-5xl mx-auto">
           {/* SECTION 1 — PIPELINE OVERVIEW (always expanded, not collapsible) */}
@@ -472,7 +497,18 @@ export default function ScoutDashboard() {
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Card 1: Pressure Score Display */}
-              {snapshot && pressureStatus ? (
+              {runningScout ? (
+                <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 rounded-[12px] flex items-center justify-between gap-4 h-[108px]">
+                  <div className="space-y-2 flex-1 animate-pulse">
+                    <Skeleton variant="line" height={14} className="w-24" />
+                    <Skeleton variant="line" height={32} className="w-16 mt-2" />
+                  </div>
+                  <div className="border-l border-[var(--border-subtle)] pl-6 flex-1 space-y-2 animate-pulse">
+                    <Skeleton variant="line" height={14} className="w-16" />
+                    <Skeleton variant="line" height={16} className="w-28 mt-2" />
+                  </div>
+                </div>
+              ) : snapshot && pressureStatus ? (
                 <div className={`border rounded-[12px] p-5 flex items-center justify-between gap-4 bg-[var(--bg-surface)] ${pressureStatus.borderClass} shadow-[0_1px_4px_rgba(0,0,0,0.25)]`}>
                   <div>
                     <span className="text-[12px] font-sans font-medium text-[var(--text-muted)] block uppercase tracking-wider">Pressure Score</span>

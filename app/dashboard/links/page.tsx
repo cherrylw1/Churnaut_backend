@@ -2,6 +2,10 @@
 
 import React, { useState, useEffect, FormEvent } from 'react';
 import { Session } from '@/types';
+import { Link2 } from 'lucide-react';
+import { toast } from '@/hooks/useToast';
+import EmptyState from '@/components/ui/EmptyState';
+import ErrorState from '@/components/ui/ErrorState';
 
 // Signal type options as requested
 const SIGNAL_OPTIONS = [
@@ -21,6 +25,7 @@ const SIGNAL_OPTIONS = [
 export default function LinksPage() {
   const [links, setLinks] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'single' | 'bulk'>('single');
 
@@ -49,13 +54,18 @@ export default function LinksPage() {
   const fetchLinks = async () => {
     try {
       setLoading(true);
+      setError(null);
       const res = await fetch('/api/links');
       if (res.ok) {
         const data = await res.json();
         setLinks(data.sessions || []);
+      } else {
+        const errData = await res.json();
+        setError(errData.error || 'Failed to retrieve tracked links.');
       }
     } catch (err) {
       console.error('Failed to fetch tracked links:', err);
+      setError('A network error occurred while loading tracked links.');
     } finally {
       setLoading(false);
     }
@@ -68,6 +78,7 @@ export default function LinksPage() {
   const handleCopy = (url: string, id: string) => {
     navigator.clipboard.writeText(url);
     setCopiedId(id);
+    toast.success('Link copied to clipboard!');
     setTimeout(() => setCopiedId(null), 2000);
   };
 
@@ -99,6 +110,7 @@ export default function LinksPage() {
       if (res.ok) {
         const data = await res.json();
         setGeneratedUrl(data.trackedUrl);
+        toast.success('Tracked link generated successfully');
         fetchLinks(); // Refresh table
         // Reset form
         setProspectName('');
@@ -110,11 +122,11 @@ export default function LinksPage() {
         setDestinationUrl('');
       } else {
         const errData = await res.json();
-        alert(errData.error || 'Failed to generate tracked link');
+        toast.error(errData.error || 'Failed to generate tracked link');
       }
     } catch (err) {
       console.error(err);
-      alert('An error occurred during link generation.');
+      toast.error('An error occurred during link generation.');
     } finally {
       setGenerating(false);
     }
@@ -307,16 +319,21 @@ export default function LinksPage() {
       {/* Main Table */}
       {loading ? (
         <div className="text-center py-12 text-gray-500 font-mono text-sm">RETRIEVING LINKS...</div>
+      ) : error ? (
+        <ErrorState message={error} onRetry={fetchLinks} />
       ) : links.length === 0 ? (
-        <div className="text-center py-16 border border-[var(--border-subtle)] rounded-lg bg-[var(--bg-surface)]">
-          <p className="text-sm font-mono text-gray-400">No tracked links generated yet.</p>
-          <button
-            onClick={() => setModalOpen(true)}
-            className="mt-4 text-[#6366f1] hover:underline font-mono text-xs"
-          >
-            Create your first link
-          </button>
-        </div>
+        <EmptyState
+          icon={Link2}
+          title="No tracked links yet"
+          description="Create your first tracked link to start personalizing"
+          ctaLabel="Create Link"
+          onClick={() => {
+            setGeneratedUrl(null);
+            setBulkResults(null);
+            setBulkError(null);
+            setModalOpen(true);
+          }}
+        />
       ) : (
         <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/50 rounded-lg overflow-hidden">
           <div className="overflow-x-auto">

@@ -14,6 +14,8 @@ import { supabaseBrowser } from '@/lib/supabase';
 import CountUp from '@/components/ui/CountUp';
 import Skeleton from '@/components/ui/Skeleton';
 import { motion } from 'framer-motion';
+import { toast } from '@/hooks/useToast';
+import ErrorState from '@/components/ui/ErrorState';
 
 interface ScoutInboxData {
   top_red_deal: { deal_name: string; next_action: string } | null;
@@ -40,20 +42,27 @@ interface DashboardSummary {
 export default function DashboardPage() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [runningScout, setRunningScout] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string>('');
   const [firstName, setFirstName] = useState<string>('');
 
   const fetchSummary = async () => {
     try {
+      setLoading(true);
+      setError(null);
       const res = await fetch('/api/dashboard/summary');
       if (res.ok) {
         const data = await res.json();
         setSummary(data);
         setLastUpdated(new Date().toLocaleTimeString());
+      } else {
+        const errData = await res.json();
+        setError(errData.error || 'Failed to retrieve dashboard summary metrics.');
       }
     } catch (err) {
       console.error('Failed to fetch dashboard summary:', err);
+      setError('A network error occurred while loading your dashboard metrics.');
     } finally {
       setLoading(false);
     }
@@ -104,12 +113,13 @@ export default function DashboardPage() {
       });
       if (res.ok) {
         await fetchSummary();
+        toast.success('Scout analysis complete — pipeline updated');
       } else {
-        alert('Failed to execute Scout AI analysis.');
+        toast.error('Scout analysis failed — check your HubSpot connection');
       }
     } catch (err) {
       console.error('Error running Scout analysis:', err);
-      alert('An error occurred during Scout analysis.');
+      toast.error('An error occurred during Scout analysis.');
     } finally {
       setRunningScout(false);
     }
@@ -141,6 +151,14 @@ export default function DashboardPage() {
     if (status === 'NEEDS ATTENTION') return 'text-[var(--amber)]';
     return 'text-[var(--red)]';
   };
+
+  if (error) {
+    return (
+      <div className="py-12">
+        <ErrorState message={error} onRetry={fetchSummary} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto text-[var(--text-secondary)] font-sans">

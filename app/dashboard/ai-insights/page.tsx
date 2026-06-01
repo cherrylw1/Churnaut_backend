@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { toast } from '@/hooks/useToast';
 
 interface AnomalyAlert {
   id: string;
@@ -73,12 +74,13 @@ export default function AiInsightsPage() {
       if (res.ok) {
         const data = await res.json();
         setAlerts(data.alerts || []);
+        toast.success('Anomaly detection scan complete');
       } else {
-        alert('Failed to execute anomaly detection.');
+        toast.error('Failed to execute anomaly detection.');
       }
     } catch (err) {
       console.error('Error running detection:', err);
-      alert('An error occurred during anomaly detection.');
+      toast.error('An error occurred during anomaly detection.');
     } finally {
       setRunningDetection(false);
     }
@@ -112,12 +114,13 @@ export default function AiInsightsPage() {
       if (res.ok) {
         const data = await res.json();
         setDigest(data.digest || null);
+        toast.success('Weekly digest generated successfully');
       } else {
-        alert('Failed to generate weekly digest.');
+        toast.error('Failed to generate weekly digest.');
       }
     } catch (err) {
       console.error('Error generating digest:', err);
-      alert('An error occurred while compiling digest.');
+      toast.error('An error occurred while compiling digest.');
     } finally {
       setGeneratingDigest(false);
     }

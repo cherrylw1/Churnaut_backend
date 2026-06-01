@@ -14,6 +14,9 @@ import {
   Tooltip,
   Legend,
 } from 'recharts';
+import { BarChart3 } from 'lucide-react';
+import EmptyState from '@/components/ui/EmptyState';
+import ErrorState from '@/components/ui/ErrorState';
 
 interface SummaryStats {
   totalLinksCreatedThisMonth: number;
@@ -73,24 +76,31 @@ interface AnalyticsData {
 export default function AnalyticsPage() {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
+
+  const fetchAnalytics = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await fetch('/api/analytics');
+      if (res.ok) {
+        const resData = await res.json();
+        setData(resData);
+      } else {
+        const errData = await res.json();
+        setError(errData.error || 'Failed to retrieve analytics data.');
+      }
+    } catch (err) {
+      console.error('Failed to load analytics data:', err);
+      setError('A network error occurred while loading analytics metrics.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     setMounted(true);
-    const fetchAnalytics = async () => {
-      try {
-        setLoading(true);
-        const res = await fetch('/api/analytics');
-        if (res.ok) {
-          const resData = await res.json();
-          setData(resData);
-        }
-      } catch (err) {
-        console.error('Failed to load analytics data:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchAnalytics();
   }, []);
 
@@ -98,10 +108,18 @@ export default function AnalyticsPage() {
     return <div className="text-center py-12 text-gray-500 font-mono text-sm bg-[var(--bg-base)] text-[var(--text-primary)] min-h-screen">RETRIEVING ANALYTICS...</div>;
   }
 
+  if (error) {
+    return (
+      <div className="py-12 bg-[var(--bg-base)] min-h-screen">
+        <ErrorState message={error} onRetry={fetchAnalytics} />
+      </div>
+    );
+  }
+
   if (!data) {
     return (
-      <div className="text-center py-12 text-gray-500 font-mono text-sm border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-lg text-[var(--text-primary)]">
-        Failed to fetch analytics metrics. Please ensure webhooks or resolve calls have been logged.
+      <div className="py-12 bg-[var(--bg-base)] min-h-screen">
+        <ErrorState message="Failed to fetch analytics metrics. Please ensure webhooks or resolve calls have been logged." onRetry={fetchAnalytics} />
       </div>
     );
   }
@@ -125,7 +143,17 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      {/* Summary Cards Grid */}
+      {recentEvents.length === 0 ? (
+        <EmptyState
+          icon={BarChart3}
+          title="No activity yet"
+          description="Install your snippet to start tracking visitor signals"
+          ctaLabel="Go to Snippet"
+          ctaHref="/dashboard/snippet"
+        />
+      ) : (
+        <>
+          {/* Summary Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1 */}
         <div className="stat-card border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 rounded-lg flex flex-col justify-between space-y-2">
@@ -418,6 +446,7 @@ export default function AnalyticsPage() {
           </table>
         </div>
       </div>
+      </>)}
     </div>
   );
 }

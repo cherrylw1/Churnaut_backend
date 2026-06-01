@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
@@ -13,9 +13,13 @@ import {
   Sparkles, 
   BarChart3, 
   Code2, 
-  Settings
+  Settings,
+  Menu
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { ToastContainer } from '@/components/ui/Toast';
+import KeyboardShortcutsModal from '@/components/ui/KeyboardShortcutsModal';
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -23,6 +27,11 @@ interface DashboardLayoutProps {
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = usePathname();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+
+  // Bind keyboard shortcuts hook
+  useKeyboardShortcuts(() => setShortcutsOpen(true));
 
   const coreGroup = [
     { label: 'Home', href: '/dashboard', icon: HomeIcon },
@@ -60,6 +69,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             <Link
               key={item.label}
               href={item.href}
+              onClick={() => setSidebarOpen(false)}
               className={`flex items-center gap-2.5 px-4 py-2 rounded-md text-[14px] font-sans font-medium transition-all duration-150 relative overflow-hidden ${
                 isActive
                   ? 'bg-[var(--bg-elevated)] text-[var(--text-primary)] font-semibold'
@@ -79,42 +89,85 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     </div>
   );
 
+  const renderSidebarContent = () => (
+    <div className="flex flex-col h-full bg-[var(--bg-surface)]">
+      {/* Header Brand */}
+      <div className="h-16 flex items-center px-6 border-b border-[var(--border-subtle)] mb-4 flex-shrink-0">
+        <Link 
+          href="/dashboard" 
+          onClick={() => setSidebarOpen(false)}
+          className="flex items-center gap-2 font-sans font-bold text-[18px] text-[var(--text-primary)] hover:opacity-80 transition-opacity"
+        >
+          <span className="w-2.5 h-2.5 rounded-full bg-[var(--accent)]" />
+          CHURNAUT
+        </Link>
+      </div>
+
+      {/* Navigation Links */}
+      <nav className="p-4 space-y-6 flex-1 overflow-y-auto">
+        {renderNavGroup('CORE', coreGroup)}
+        {renderNavGroup('INTELLIGENCE', intelligenceGroup)}
+        {renderNavGroup('ACCOUNT', accountGroup)}
+
+        {/* Sidebar Status Indicator */}
+        <div className="pt-4 border-t border-[var(--border-subtle)] flex items-center space-x-3">
+          <span className="relative flex h-2.5 w-2.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+          </span>
+          <span className="text-[12px] font-sans font-medium text-[var(--text-secondary)]">
+            Edge: <span className="text-green-500 font-semibold">Active</span>
+          </span>
+        </div>
+      </nav>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-[var(--bg-base)] text-[var(--text-primary)] flex">
-      {/* Sidebar Panel */}
-      <aside className="w-64 bg-[var(--bg-surface)] border-r border-[var(--border-subtle)] flex flex-col select-none flex-shrink-0">
-        {/* Header Brand */}
-        <div className="h-16 flex items-center px-6 border-b border-[var(--border-subtle)] mb-4">
-          <Link href="/dashboard" className="flex items-center gap-2 font-sans font-bold text-[18px] text-[var(--text-primary)] hover:opacity-80 transition-opacity">
-            <span className="w-2.5 h-2.5 rounded-full bg-[var(--accent)]" />
-            CHURNAUT
-          </Link>
-        </div>
-
-        {/* Navigation Links */}
-        <nav className="p-4 space-y-6">
-          {renderNavGroup('CORE', coreGroup)}
-          {renderNavGroup('INTELLIGENCE', intelligenceGroup)}
-          {renderNavGroup('ACCOUNT', accountGroup)}
-
-          {/* Sidebar Status Indicator */}
-          <div className="pt-4 border-t border-[var(--border-subtle)] flex items-center space-x-3">
-            <span className="relative flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
-            </span>
-            <span className="text-[12px] font-sans font-medium text-[var(--text-secondary)]">
-              Edge: <span className="text-green-500 font-semibold">Active</span>
-            </span>
-          </div>
-        </nav>
+      {/* Sidebar Panel - Desktop */}
+      <aside className="hidden md:flex w-64 bg-[var(--bg-surface)] border-r border-[var(--border-subtle)] flex-col select-none flex-shrink-0">
+        {renderSidebarContent()}
       </aside>
+
+      {/* Sidebar Panel - Mobile Drawer Overlay */}
+      <AnimatePresence>
+        {sidebarOpen && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.5 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSidebarOpen(false)}
+              className="fixed inset-0 bg-black z-40 md:hidden"
+            />
+            {/* Slide-out Sidebar */}
+            <motion.aside
+              initial={{ x: -280 }}
+              animate={{ x: 0 }}
+              exit={{ x: -280 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="fixed top-0 bottom-0 left-0 w-64 bg-[var(--bg-surface)] border-r border-[var(--border-subtle)] z-50 md:hidden flex flex-col select-none shadow-2xl"
+            >
+              {renderSidebarContent()}
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-h-screen overflow-x-hidden bg-[var(--bg-base)]">
         {/* Top Header */}
-        <header className="h-16 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] flex items-center justify-between px-8">
-          <div className="flex items-center space-x-2">
+        <header className="h-16 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] flex items-center justify-between px-4 md:px-8 flex-shrink-0">
+          <div className="flex items-center space-x-3">
+            {/* Hamburger Button */}
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="md:hidden text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors focus:outline-none"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
             <div className="flex items-center space-x-2 text-[14px] font-sans text-[var(--text-secondary)] font-medium">
               <Link href="/dashboard" className="hover:text-[var(--text-primary)] transition-colors">Dashboard</Link>
               {pageLabel !== 'Home' && (
@@ -136,7 +189,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         </header>
 
         {/* Dynamic Children Panel */}
-        <main className="flex-1 p-8 bg-[var(--bg-base)]">
+        <main className="flex-1 p-4 md:p-8 bg-[var(--bg-base)]">
           <AnimatePresence mode="wait">
             <motion.div
               key={pathname}
@@ -150,6 +203,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           </AnimatePresence>
         </main>
       </div>
+
+      {/* Global Toast notifications */}
+      <ToastContainer />
+
+      {/* Keyboard Shortcuts Legend helper */}
+      <KeyboardShortcutsModal 
+        isOpen={shortcutsOpen} 
+        onClose={() => setShortcutsOpen(false)} 
+      />
     </div>
   );
 }
+

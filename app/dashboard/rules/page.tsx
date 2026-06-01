@@ -2,6 +2,10 @@
 
 import React, { useState, useEffect, FormEvent } from 'react';
 import { RoutingRule } from '@/types';
+import { Sliders } from 'lucide-react';
+import { toast } from '@/hooks/useToast';
+import EmptyState from '@/components/ui/EmptyState';
+import ErrorState from '@/components/ui/ErrorState';
 
 // Signal types list
 const SIGNAL_OPTIONS = [
@@ -47,6 +51,7 @@ const ACTION_MAPPING = [
 export default function RulesPage() {
   const [rules, setRules] = useState<RoutingRule[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedRule, setSelectedRule] = useState<RoutingRule | null>(null);
   
   // Create Modal State
@@ -262,13 +267,18 @@ export default function RulesPage() {
   const fetchRules = async () => {
     try {
       setLoading(true);
+      setError(null);
       const res = await fetch('/api/rules');
       if (res.ok) {
         const data = await res.json();
         setRules(data.rules || []);
+      } else {
+        const errData = await res.json();
+        setError(errData.error || 'Failed to retrieve routing rules.');
       }
     } catch (err) {
       console.error('Failed to load rules:', err);
+      setError('A network error occurred while loading routing rules.');
     } finally {
       setLoading(false);
     }
@@ -356,9 +366,10 @@ export default function RulesPage() {
       if (!res.ok) {
         throw new Error('Failed to update priorities');
       }
+      toast.success('Rules priority reordered successfully');
     } catch (err) {
       console.error(err);
-      alert('Failed to reorder rules.');
+      toast.error('Failed to reorder rules.');
       fetchRules();
     }
   };
@@ -385,9 +396,10 @@ export default function RulesPage() {
       if (!res.ok) {
         throw new Error('Failed to toggle status');
       }
+      toast.success(updatedStatus ? 'Rule activated successfully' : 'Rule deactivated successfully');
     } catch (err) {
       console.error(err);
-      alert('Failed to toggle rule active state.');
+      toast.error('Failed to toggle rule active state.');
       fetchRules();
     }
   };
@@ -422,6 +434,7 @@ export default function RulesPage() {
 
       if (res.ok) {
         setCreateModalOpen(false);
+        toast.success('Routing rule created successfully');
         fetchRules();
         // Reset states
         setNewSignalType('Cold Email');
@@ -432,11 +445,11 @@ export default function RulesPage() {
         setNewSwaps([{ selector: '.sr-target', content: '' }]);
       } else {
         const errorData = await res.json();
-        alert(errorData.error || 'Failed to save new routing rule.');
+        toast.error(errorData.error || 'Failed to save new routing rule.');
       }
     } catch (err) {
       console.error(err);
-      alert('An error occurred while creating rule.');
+      toast.error('An error occurred while creating rule.');
     } finally {
       setSavingNewRule(false);
     }
@@ -476,14 +489,15 @@ export default function RulesPage() {
       if (res.ok) {
         const updated = await res.json();
         setSelectedRule(updated.rule);
+        toast.success('Routing rule updated successfully');
         fetchRules();
       } else {
         const errorData = await res.json();
-        alert(errorData.error || 'Failed to update rule.');
+        toast.error(errorData.error || 'Failed to update rule.');
       }
     } catch (err) {
       console.error(err);
-      alert('An error occurred while updating rule.');
+      toast.error('An error occurred while updating rule.');
     } finally {
       setUpdatingRule(false);
     }
@@ -510,13 +524,14 @@ export default function RulesPage() {
       if (res.ok) {
         const data = await res.json();
         setAiSuggestions(data.variants || []);
+        toast.success('AI copywriting variants generated');
       } else {
         const errData = await res.json();
-        alert(errData.error || 'Failed to generate copy.');
+        toast.error(errData.error || 'Failed to generate copy.');
       }
     } catch (err) {
       console.error('Error generating AI variants:', err);
-      alert('An error occurred during AI copy generation.');
+      toast.error('An error occurred during AI copy generation.');
     } finally {
       setAiLoading(false);
     }
@@ -532,14 +547,15 @@ export default function RulesPage() {
       });
       if (res.ok) {
         setSelectedRule(null);
+        toast.success('Routing rule deleted successfully');
         fetchRules();
       } else {
         const errorData = await res.json();
-        alert(errorData.error || 'Failed to delete rule.');
+        toast.error(errorData.error || 'Failed to delete rule.');
       }
     } catch (err) {
       console.error(err);
-      alert('An error occurred during deletion.');
+      toast.error('An error occurred during deletion.');
     }
   };
 
@@ -564,11 +580,16 @@ export default function RulesPage() {
 
           {loading ? (
             <div className="text-center py-12 text-gray-500 font-mono text-sm">RETRIEVING RULES...</div>
+          ) : error ? (
+            <ErrorState message={error} onRetry={fetchRules} />
           ) : rules.length === 0 ? (
-            <div className="text-center py-16 border border-[var(--border-subtle)] rounded-lg bg-[var(--bg-surface)]">
-              <p className="text-sm font-mono text-gray-400">No active rules configured.</p>
-              <p className="text-xs font-mono text-gray-500 mt-1">Personalized swaps rely on rules to trigger.</p>
-            </div>
+            <EmptyState
+              icon={Sliders}
+              title="No routing rules yet"
+              description="Add your first rule to start personalizing visitor experiences"
+              ctaLabel="Add Rule"
+              onClick={() => setCreateModalOpen(true)}
+            />
           ) : (
             <div className="space-y-3">
               {rules.map((rule, index) => {

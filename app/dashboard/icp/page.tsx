@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Target, Lock, RefreshCw, ArrowRight, CheckCircle2 } from 'lucide-react';
 import Skeleton from '@/components/ui/Skeleton';
+import EmptyState from '@/components/ui/EmptyState';
+import ErrorState from '@/components/ui/ErrorState';
 
 interface JobTitleFreq {
   title: string;
@@ -31,19 +33,26 @@ interface IcpProfile {
 export default function IcpBuilderPage() {
   const [profile, setProfile] = useState<IcpProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [building, setBuilding] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [rulesCreated, setRulesCreated] = useState<number | null>(null);
 
   const fetchProfile = async () => {
     try {
+      setLoading(true);
+      setError(null);
       const res = await fetch('/api/icp');
       if (res.ok) {
         const data = await res.json();
         setProfile(data);
+      } else {
+        const errData = await res.json();
+        setError(errData.error || 'Failed to retrieve ICP profile.');
       }
     } catch (err) {
       console.error('Failed to load ICP profile:', err);
+      setError('A network error occurred while loading your ICP profile.');
     } finally {
       setLoading(false);
     }
@@ -86,7 +95,7 @@ export default function IcpBuilderPage() {
     }).format(val);
   };
 
-  const hasNotEnoughDeals = errorMsg?.includes('at least 3') || (profile === null && !loading);
+  const hasNotEnoughDeals = errorMsg?.includes('at least 3') || (profile === null && !loading) || (profile !== null && profile.win_count < 3);
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto text-gray-300">
@@ -127,7 +136,11 @@ export default function IcpBuilderPage() {
         </div>
       )}
 
-      {loading ? (
+      {error ? (
+        <div className="py-8">
+          <ErrorState message={error} onRetry={fetchProfile} />
+        </div>
+      ) : loading ? (
         <div className="space-y-8 animate-pulse">
           {/* Skeleton ICP Summary Card */}
           <Skeleton variant="card" height={140} />
@@ -145,6 +158,12 @@ export default function IcpBuilderPage() {
             <Skeleton variant="card" height={60} />
           </div>
         </div>
+      ) : hasNotEnoughDeals ? (
+        <EmptyState
+          icon={Lock}
+          title="Not enough data yet"
+          description="Close at least 3 deals in HubSpot to unlock your ICP"
+        />
       ) : profile ? (
         <div className="space-y-8">
           {/* YOUR ICP CARD */}
@@ -250,31 +269,7 @@ export default function IcpBuilderPage() {
             </Link>
           </div>
         </div>
-      ) : (
-        <div className="py-16 text-center border border-dashed border-[var(--border-subtle)] rounded-lg bg-[#080B0F]/30 flex flex-col items-center justify-center p-6 space-y-4">
-          <div className="w-10 h-10 rounded-full bg-indigo-950/40 border border-indigo-900/40 flex items-center justify-center text-indigo-400">
-            <Lock className="w-5 h-5" />
-          </div>
-          <div className="space-y-1">
-            <h3 className="text-sm font-bold font-mono text-white uppercase tracking-wider">
-              ICP BUILDER LOCKED
-            </h3>
-            <p className="text-xs font-mono text-gray-500 max-w-sm mx-auto leading-relaxed">
-              {hasNotEnoughDeals
-                ? "Connect HubSpot and close at least 3 deals to unlock your ICP."
-                : "Connect HubSpot and run your first win analysis to build your ICP."}
-            </p>
-          </div>
-          <button
-            onClick={handleBuildIcp}
-            disabled={building}
-            className="border border-indigo-900/60 bg-indigo-950/20 hover:bg-indigo-900/30 text-indigo-400 hover:text-indigo-300 font-mono text-xs font-bold py-2 px-4 rounded uppercase tracking-wider flex items-center gap-1.5 transition-colors disabled:opacity-50"
-          >
-            <RefreshCw className={`w-3 h-3 ${building ? 'animate-spin' : ''}`} />
-            {building ? 'GENERATING...' : 'GENERATE ICP PROFILE'}
-          </button>
-        </div>
-      )}
+      ) : null}
     </div>
   );
 }

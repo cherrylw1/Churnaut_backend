@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from '@/hooks/useToast';
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -45,15 +46,16 @@ export default function OnboardingPage() {
 
       if (res.ok) {
         setCompleted(true);
+        toast.success('Workspace initialized successfully!');
         // Explicit redirect to /dashboard/rules
         router.push('/dashboard/rules');
       } else {
         const errorData = await res.json();
-        alert(errorData.error || 'Failed to complete onboarding setups.');
+        toast.error(errorData.error || 'Failed to complete onboarding setups.');
       }
     } catch (err) {
       console.error(err);
-      alert('An error occurred during onboarding rules generation.');
+      toast.error('An error occurred during onboarding rules generation.');
     } finally {
       setLoading(false);
     }
