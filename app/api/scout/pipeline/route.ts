@@ -23,8 +23,11 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    console.log('[Scout Pipeline GET] Authenticated client ID:', clientId);
+
     // 2. Fetch the latest snapshot for this client
-    const { data: latestSnapshot, error: snapshotError } = await supabaseAdmin
+    console.log('[Scout Pipeline GET] Fetching latest snapshot...');
+    const snapshotRes = await supabaseAdmin
       .from('pipeline_snapshots')
       .select('*')
       .eq('client_id', clientId)
@@ -32,16 +35,23 @@ export async function GET(req: NextRequest) {
       .limit(1)
       .maybeSingle();
 
+    console.log('[Scout Pipeline GET] Raw snapshot query response:', JSON.stringify(snapshotRes, null, 2));
+    const { data: latestSnapshot, error: snapshotError } = snapshotRes;
+
     if (snapshotError) {
       console.error('[Scout Pipeline GET] Error fetching latest snapshot:', snapshotError);
       return NextResponse.json({ error: 'Database error fetching pipeline snapshot' }, { status: 500 });
     }
 
     // 3. Fetch deal scores for this client
-    const { data: dealScores, error: scoresError } = await supabaseAdmin
+    console.log('[Scout Pipeline GET] Fetching deal scores...');
+    const dealScoresRes = await supabaseAdmin
       .from('deal_scores')
       .select('*')
       .eq('client_id', clientId);
+
+    console.log('[Scout Pipeline GET] Raw deal scores query response:', JSON.stringify(dealScoresRes, null, 2));
+    const { data: dealScores, error: scoresError } = dealScoresRes;
 
     if (scoresError) {
       console.error('[Scout Pipeline GET] Error fetching deal scores:', scoresError);
