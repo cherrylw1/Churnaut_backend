@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { redis } from '@/lib/redis';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,6 +25,22 @@ export async function GET(req: NextRequest) {
     }
 
     console.log('[Scout Pipeline GET] Authenticated client ID:', clientId);
+
+    const { searchParams } = new URL(req.url);
+    const refresh = searchParams.get('refresh') === 'true';
+    const cacheKey = `scout:pipeline_api:${clientId}`;
+
+    if (!refresh) {
+      try {
+        const cached = await redis.get(cacheKey);
+        if (cached) {
+          console.log('[Scout Pipeline GET] Cache hit for client:', clientId);
+          return NextResponse.json(typeof cached === 'string' ? JSON.parse(cached) : cached);
+        }
+      } catch (cacheErr) {
+        console.error('[Scout Pipeline GET Cache Error] Failed to read from Redis:', cacheErr);
+      }
+    }
 
     // 2. Fetch the latest snapshot for this client
     console.log('[Scout Pipeline GET] Fetching latest snapshot...');
@@ -185,11 +202,19 @@ export async function GET(req: NextRequest) {
     }
 
     // 7. Return both deal scores, latest snapshot, and acceleration triggers
-    return NextResponse.json({
+    const responsePayload = {
       pipeline_snapshot: latestSnapshot || null,
       deal_scores: sortedScores,
       acceleration_triggers: accelerationTriggers,
-    });
+    };
+
+    try {
+      await redis.set(cacheKey, JSON.stringify(responsePayload), { ex: 60 });
+    } catch (cacheErr) {
+      console.error('[Scout Pipeline GET Cache Write Error] Failed to write to Redis:', cacheErr);
+    }
+
+    return NextResponse.json(responsePayload);
 
   } catch (error) {
     console.error('[Scout Pipeline GET Exception] Unhandled error:', error);

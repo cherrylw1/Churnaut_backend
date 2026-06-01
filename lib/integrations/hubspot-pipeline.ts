@@ -400,7 +400,7 @@ interface HubSpotDealResult {
 
   // 9. Cache in Redis
   try {
-    await redis.set(cacheKey, JSON.stringify(scoredDeals), { ex: 1800 });
+    await redis.set(cacheKey, JSON.stringify(scoredDeals), { ex: 60 });
   } catch (cacheErr) {
     console.error('[Scout Pipeline Cache Write Error] Failed to write to Redis:', cacheErr);
   }
