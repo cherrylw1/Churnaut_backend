@@ -79,6 +79,8 @@ Score each deal RED, AMBER, or GREEN using these rules:
 - **AMBER**: no activity 5-10 days, OR close date within 45 days with no recent activity, OR single contact regardless of deal size.
 - **GREEN**: activity within 5 days, multiple contacts engaged, moving through stages normally.
 
+If last_activity_days is null, treat it as 999 (no activity ever recorded). If contact_count is 0 or null, treat it as 0 contacts. Apply scoring rules normally with these substitutions — do not skip or omit deals because of missing data. Every deal in the input MUST appear in the output with a score.
+
 ### Layer 3: Deal Data and Output Schema
 Here is the current date and timezone context:
 - Current Date: ${currentDateStr} (ISO: ${currentIsoDate})
@@ -102,8 +104,9 @@ Your response must be a single, valid JSON object containing exactly two keys at
    - "next_action": string (one specific action the rep should take today, under 20 words)
    - "draft_email": string or null (only for RED deals — generate a 3-sentence re-engagement email the rep can send immediately, subject line included. Set to null or omit for AMBER and GREEN deals).
 
+Return ALL deals passed in. Never return an empty deals array if deals were provided. Every deal in the input MUST appear in the output with a score.
 Return ONLY the JSON. No markdown wrappers, no conversational text, no explanations, no preamble. Just raw JSON.
-`.trim();
+`;
 
   // 3. Invoke Gemini 2.5 Flash-Lite API
   const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`;
