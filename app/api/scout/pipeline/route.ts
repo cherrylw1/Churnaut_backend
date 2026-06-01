@@ -48,10 +48,10 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Database error fetching deal scores' }, { status: 500 });
     }
 
-    // 4. Fetch sessions to map crm_deal_id to assigned_rep and rep_email
+    // 4. Fetch sessions to map crm_deal_id to assigned_rep and other details
     const { data: sessionsData, error: sessionsError } = await supabaseAdmin
       .from('sessions')
-      .select('crm_deal_id, assigned_rep, metadata')
+      .select('crm_deal_id, assigned_rep, prospect_name, prospect_email, signal_type, visitor_type, deal_stage')
       .eq('client_id', clientId)
       .not('crm_deal_id', 'is', null);
 
@@ -64,8 +64,8 @@ export async function GET(req: NextRequest) {
       for (const s of sessionsData) {
         if (s.crm_deal_id) {
           const rep_name = s.assigned_rep || 'Unknown Rep';
-          const metaObj = typeof s.metadata === 'string' ? JSON.parse(s.metadata) : s.metadata;
-          const rep_email = (metaObj as Record<string, unknown>)?.rep_email as string || '';
+          const cleanRepName = rep_name.toLowerCase().replace(/\s+/g, '.');
+          const rep_email = cleanRepName !== 'unknown.rep' ? `${cleanRepName}@company.com` : 'sales@company.com';
           dealRepMap.set(s.crm_deal_id, { rep_name, rep_email });
         }
       }
@@ -126,7 +126,7 @@ export async function GET(req: NextRequest) {
     if (sessionIds.length > 0) {
       const { data: matchingSessions, error: matchSessionsError } = await supabaseAdmin
         .from('sessions')
-        .select('id, prospect_name, company_name, crm_deal_id, assigned_rep, metadata')
+        .select('id, prospect_name, company_name, crm_deal_id, assigned_rep, prospect_email, signal_type, visitor_type, deal_stage')
         .eq('client_id', clientId)
         .in('id', sessionIds)
         .not('crm_deal_id', 'is', null);
@@ -155,7 +155,10 @@ export async function GET(req: NextRequest) {
             const deal = dealMap.get(s.crm_deal_id || '');
             if (!deal) return null;
 
-            const meta = typeof s.metadata === 'string' ? JSON.parse(s.metadata) : s.metadata;
+            const rep_name = s.assigned_rep || 'Unknown Rep';
+            const cleanRepName = rep_name.toLowerCase().replace(/\s+/g, '.');
+            const rep_email = cleanRepName !== 'unknown.rep' ? `${cleanRepName}@company.com` : 'sales@company.com';
+
             return {
               prospect_name: s.prospect_name || 'Unknown Prospect',
               company_name: s.company_name || 'Unknown Company',
@@ -163,8 +166,8 @@ export async function GET(req: NextRequest) {
               last_visit_timestamp: eventTimestampMap.get(s.id) || null,
               deal_value: deal.deal_value || 0,
               deal_id: s.crm_deal_id || '',
-              rep_name: s.assigned_rep || 'Unknown Rep',
-              rep_email: (meta as Record<string, unknown>)?.rep_email as string || '',
+              rep_name,
+              rep_email,
             };
           })
           .filter((t): t is Trigger => t !== null);
