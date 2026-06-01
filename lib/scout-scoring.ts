@@ -135,6 +135,7 @@ Return ONLY the JSON. No markdown wrappers, no conversational text, no explanati
   }
 
   const resData = await geminiRes.json();
+  console.log('GEMINI RAW RESPONSE:', JSON.stringify(resData, null, 2));
   const rawText = resData.candidates?.[0]?.content?.parts?.[0]?.text;
 
   if (!rawText) {
