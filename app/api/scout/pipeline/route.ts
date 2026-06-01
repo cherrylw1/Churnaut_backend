@@ -48,23 +48,134 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Database error fetching deal scores' }, { status: 500 });
     }
 
-    // 4. Sort in memory: RED first, then AMBER, then GREEN
+    // 4. Fetch sessions to map crm_deal_id to assigned_rep and rep_email
+    const { data: sessionsData, error: sessionsError } = await supabaseAdmin
+      .from('sessions')
+      .select('crm_deal_id, assigned_rep, metadata')
+      .eq('client_id', clientId)
+      .not('crm_deal_id', 'is', null);
+
+    if (sessionsError) {
+      console.error('[Scout Pipeline GET] Error fetching sessions for rep mapping:', sessionsError);
+    }
+
+    const dealRepMap = new Map<string, { rep_name: string; rep_email: string }>();
+    if (sessionsData) {
+      for (const s of sessionsData) {
+        if (s.crm_deal_id) {
+          const rep_name = s.assigned_rep || 'Unknown Rep';
+          const metaObj = typeof s.metadata === 'string' ? JSON.parse(s.metadata) : s.metadata;
+          const rep_email = (metaObj as Record<string, unknown>)?.rep_email as string || '';
+          dealRepMap.set(s.crm_deal_id, { rep_name, rep_email });
+        }
+      }
+    }
+
+    // Decorate each deal score with rep details
+    const decoratedScores = (dealScores || []).map((ds) => {
+      const repInfo = dealRepMap.get(ds.deal_id) || { rep_name: 'Unknown Rep', rep_email: '' };
+      return {
+        ...ds,
+        rep_name: repInfo.rep_name,
+        rep_email: repInfo.rep_email,
+      };
+    });
+
+    // 5. Sort in memory: RED first, then AMBER, then GREEN
     const scorePriority: Record<string, number> = {
       'RED': 1,
       'AMBER': 2,
       'GREEN': 3,
     };
 
-    const sortedScores = (dealScores || []).sort((a, b) => {
+    const sortedScores = decoratedScores.sort((a, b) => {
       const priorityA = scorePriority[a.score as string] || 99;
       const priorityB = scorePriority[b.score as string] || 99;
       return priorityA - priorityB;
     });
 
-    // 5. Return both deal scores and latest snapshot
+    // 6. Query analytics_events for the last 24 hours for rule_triggered events
+    const twentyFourHoursAgo = new Date();
+    twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
+
+    const { data: recentEvents, error: eventsError } = await supabaseAdmin
+      .from('analytics_events')
+      .select('session_id, created_at')
+      .eq('client_id', clientId)
+      .eq('event_type', 'rule_triggered')
+      .gte('created_at', twentyFourHoursAgo.toISOString());
+
+    if (eventsError) {
+      console.error('[Scout Pipeline GET] Error fetching recent events:', eventsError);
+    }
+
+    // Cross-reference recent visits with open deals
+    const sessionIds = Array.from(new Set((recentEvents || []).map((e) => e.session_id).filter(Boolean)));
+    interface Trigger {
+      prospect_name: string;
+      company_name: string;
+      deal_stage: string;
+      last_visit_timestamp: string | null;
+      deal_value: number;
+      deal_id: string;
+      rep_name: string;
+      rep_email: string;
+    }
+    let accelerationTriggers: Trigger[] = [];
+
+    if (sessionIds.length > 0) {
+      const { data: matchingSessions, error: matchSessionsError } = await supabaseAdmin
+        .from('sessions')
+        .select('id, prospect_name, company_name, crm_deal_id, assigned_rep, metadata')
+        .eq('client_id', clientId)
+        .in('id', sessionIds)
+        .not('crm_deal_id', 'is', null);
+
+      if (matchSessionsError) {
+        console.error('[Scout Pipeline GET] Error fetching matching sessions:', matchSessionsError);
+      }
+
+      if (matchingSessions && matchingSessions.length > 0) {
+        const dealMap = new Map((dealScores || []).map((d) => [d.deal_id, d]));
+        const eventTimestampMap = new Map<string, string>();
+
+        if (recentEvents) {
+          for (const ev of recentEvents) {
+            if (ev.session_id) {
+              const currentLatest = eventTimestampMap.get(ev.session_id);
+              if (!currentLatest || new Date(ev.created_at) > new Date(currentLatest)) {
+                eventTimestampMap.set(ev.session_id, ev.created_at);
+              }
+            }
+          }
+        }
+
+        accelerationTriggers = matchingSessions
+          .map((s) => {
+            const deal = dealMap.get(s.crm_deal_id || '');
+            if (!deal) return null;
+
+            const meta = typeof s.metadata === 'string' ? JSON.parse(s.metadata) : s.metadata;
+            return {
+              prospect_name: s.prospect_name || 'Unknown Prospect',
+              company_name: s.company_name || 'Unknown Company',
+              deal_stage: deal.stage || 'Unknown Stage',
+              last_visit_timestamp: eventTimestampMap.get(s.id) || null,
+              deal_value: deal.deal_value || 0,
+              deal_id: s.crm_deal_id || '',
+              rep_name: s.assigned_rep || 'Unknown Rep',
+              rep_email: (meta as Record<string, unknown>)?.rep_email as string || '',
+            };
+          })
+          .filter((t): t is Trigger => t !== null);
+      }
+    }
+
+    // 7. Return both deal scores, latest snapshot, and acceleration triggers
     return NextResponse.json({
       pipeline_snapshot: latestSnapshot || null,
       deal_scores: sortedScores,
+      acceleration_triggers: accelerationTriggers,
     });
 
   } catch (error) {

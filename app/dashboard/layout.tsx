@@ -12,6 +12,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { label: 'Routing Rules', href: '/dashboard/rules' },
     { label: 'Playbook Library', href: '/dashboard/playbooks' },
     { label: 'AI Insights', href: '/dashboard/ai-insights' },
+    { label: 'Scout', href: '/dashboard/scout' },
     { label: 'Analytics', href: '/dashboard/analytics' },
     { label: 'Snippet', href: '/dashboard/snippet' },
     { label: 'Settings', href: '/dashboard/settings' },
