@@ -10,6 +10,8 @@ import {
   PlusCircle,
   Link2,
 } from 'lucide-react';
+import { supabaseBrowser } from '@/lib/supabase';
+
 
 interface ScoutInboxData {
   top_red_deal: { deal_name: string; next_action: string } | null;
@@ -38,6 +40,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [runningScout, setRunningScout] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string>('');
+  const [firstName, setFirstName] = useState<string>('');
 
   const fetchSummary = async () => {
     try {
@@ -56,6 +59,25 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetchSummary();
+
+    const fetchUser = async () => {
+      try {
+        const { data: { user } } = await supabaseBrowser.auth.getUser();
+        if (user) {
+          const fullName = user.user_metadata?.full_name;
+          if (fullName && typeof fullName === 'string' && fullName.trim()) {
+            const first = fullName.trim().split(/\s+/)[0];
+            setFirstName(first);
+          } else {
+            setFirstName('');
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching user info:', err);
+      }
+    };
+
+    fetchUser();
   }, []);
 
   const handleRunScout = async () => {
@@ -111,7 +133,7 @@ export default function DashboardPage() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-wider font-mono text-white">
-            {getGreeting()}, Churnaut.
+            {getGreeting()}{firstName ? `, ${firstName}.` : '.'}
           </h1>
           <p className="text-xs font-mono text-gray-400 mt-1">
             {"Here's your pipeline and personalization summary."}
