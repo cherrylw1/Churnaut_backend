@@ -96,7 +96,7 @@
     },
   };
 
-  fetch("https://churnaut-backend.vercel.app/api/resolve", {
+  fetch("https://app.churnaut.com/api/resolve", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

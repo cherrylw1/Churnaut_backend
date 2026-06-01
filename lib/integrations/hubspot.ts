@@ -78,7 +78,7 @@ export async function enrichSessionFromHubSpot(
         params.append('grant_type', 'refresh_token');
         params.append('client_id', process.env.HUBSPOT_CLIENT_ID || '');
         params.append('client_secret', process.env.HUBSPOT_CLIENT_SECRET || '');
-        params.append('redirect_uri', 'https://churnaut-backend.vercel.app/api/oauth/hubspot/callback');
+        params.append('redirect_uri', 'https://app.churnaut.com/api/oauth/hubspot/callback');
         params.append('refresh_token', decryptedRefreshToken);
 
         const refreshRes = await fetch('https://api.hubapi.com/oauth/v1/token', {

@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
 
     // 1. Exchange OAuth code for access and refresh tokens
     const tokenUrl = 'https://api.hubapi.com/oauth/v1/token';
-    const redirectUri = 'https://churnaut-backend.vercel.app/api/oauth/hubspot/callback';
+    const redirectUri = 'https://app.churnaut.com/api/oauth/hubspot/callback';
 
     const tokenResponse = await fetch(tokenUrl, {
       method: 'POST',

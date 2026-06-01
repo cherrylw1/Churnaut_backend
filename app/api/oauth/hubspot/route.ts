@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
     }
 
     // 3. Construct HubSpot Authorization URL
-    const redirectUri = 'https://churnaut-backend.vercel.app/api/oauth/hubspot/callback';
+    const redirectUri = 'https://app.churnaut.com/api/oauth/hubspot/callback';
     const scope = 'crm.objects.contacts.read crm.objects.deals.read crm.objects.companies.read crm.objects.owners.read';
     
     const hubspotAuthUrl = `https://app.hubspot.com/oauth/authorize` +
