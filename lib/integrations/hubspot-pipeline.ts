@@ -125,7 +125,7 @@ export async function fetchHubSpotPipeline(clientId: string): Promise<ScoutDeal[
   console.log('[HubSpot Pipeline debug] Decrypted access token:', accessToken.substring(0, 20) + '...');
 
   // 4. Fetch open deals from HubSpot CRM
-  const dealsUrl = 'https://api.hubapi.com/crm/v3/objects/deals?properties=dealname,dealstage,amount,closedate,createdate,hs_lastmodifieddate,hubspot_owner_id&limit=100&archived=false';
+  const dealsUrl = 'https://api.hubapi.com/crm/v3/objects/deals?properties=dealname,dealstage,amount,closedate,createdate,hs_lastmodifieddate,hubspot_owner_id,hs_last_activity_date&limit=100&archived=false';
   console.log('[HubSpot Pipeline debug] Fetching open deals from URL:', dealsUrl);
   const dealsRes = await fetch(dealsUrl, {
     method: 'GET',
@@ -154,6 +154,7 @@ interface HubSpotDealResult {
     createdate?: string;
     hs_lastmodifieddate?: string;
     hubspot_owner_id?: string;
+    hs_last_activity_date?: string;
   };
 }
 
@@ -161,6 +162,7 @@ interface ActivityProperties {
   notes_last_contacted?: string;
   hs_last_booked_meeting_date?: string;
   hs_last_sales_activity_timestamp?: string;
+  hs_last_activity_date?: string;
 }
 
   // 5. Fetch associated contacts and last activity details for each deal
@@ -180,6 +182,8 @@ interface ActivityProperties {
         if (assocRes.ok) {
           const assocData = await assocRes.json();
           contactIds = (assocData.results || []).map((r: { id: string }) => r.id);
+        } else {
+          console.warn(`[Scout Pipeline Warning] Failed to fetch contacts for deal ${dealId}. Status: ${assocRes.status}`);
         }
       } catch (err) {
         console.error(`[Scout Pipeline Error] Failed to fetch contacts for deal ${dealId}:`, err);
@@ -189,7 +193,7 @@ interface ActivityProperties {
       let activityProperties: ActivityProperties = {};
       try {
         const activityRes = await fetch(
-          `https://api.hubapi.com/crm/v3/objects/deals/${dealId}?properties=notes_last_contacted,hs_last_booked_meeting_date,hs_last_sales_activity_timestamp`,
+          `https://api.hubapi.com/crm/v3/objects/deals/${dealId}?properties=notes_last_contacted,hs_last_booked_meeting_date,hs_last_sales_activity_timestamp,hs_last_activity_date`,
           {
             method: 'GET',
             headers: {
@@ -200,6 +204,8 @@ interface ActivityProperties {
         if (activityRes.ok) {
           const activityData = await activityRes.json() as { properties?: ActivityProperties };
           activityProperties = activityData.properties || {};
+        } else {
+          console.warn(`[Scout Pipeline Warning] Failed to fetch activities for deal ${dealId}. Status: ${activityRes.status}`);
         }
       } catch (err) {
         console.error(`[Scout Pipeline Error] Failed to fetch last activity for deal ${dealId}:`, err);
@@ -339,7 +345,7 @@ interface ActivityProperties {
 
     // Calculate last_activity_days
     let last_activity_days: number | null = null;
-    let lastActivityTimestamp = hs_last_sales_activity_timestamp;
+    let lastActivityTimestamp = item.activityProperties.hs_last_activity_date || dealProps.hs_last_activity_date || hs_last_sales_activity_timestamp;
 
     // Fallbacks
     if (!lastActivityTimestamp && item.activityProperties.notes_last_contacted) {
