@@ -20,6 +20,38 @@ export async function OPTIONS() {
   });
 }
 
+// Helper to replace dynamic variables in content template with session context
+function replaceVariables(content: string, session: Session | null): string {
+  if (!content) return '';
+  if (!session) {
+    return content.replace(/{{\s*\w+\s*}}/g, '');
+  }
+
+  const sessionRecord = session as unknown as Record<string, unknown>;
+  const vars: Record<string, string | undefined> = {
+    prospect_name: session.prospect_name || undefined,
+    company_name: session.company_name || undefined,
+    rep_name: session.assigned_rep || (sessionRecord.rep_name as string) || undefined,
+    industry: (session.metadata?.industry as string) || (sessionRecord.industry as string) || undefined,
+    deal_stage: session.deal_stage || undefined,
+    job_title: session.job_title || undefined,
+    rep_email: (session.metadata?.rep_email as string) || (sessionRecord.rep_email as string) || undefined,
+    deal_name: (session.metadata?.deal_name as string) || (sessionRecord.deal_name as string) || undefined,
+    event_name: (session.metadata?.event_name as string) || (sessionRecord.event_name as string) || undefined,
+  };
+
+  let result = content;
+  Object.entries(vars).forEach(([key, val]) => {
+    const regex = new RegExp(`{{\\s*${key}\\s*}}`, 'g');
+    result = result.replace(regex, val || '');
+  });
+
+  // Replace any unmatched variable tokens with an empty string
+  result = result.replace(/{{\s*\w+\s*}}/g, '');
+
+  return result;
+}
+
 export async function POST(req: NextRequest) {
   try {
     // 1. Parse request body and get client_id, signals, cookie fields
@@ -237,6 +269,8 @@ export async function POST(req: NextRequest) {
       const calendarUrl = matchedRule.action_payload?.calendar_url || session?.calendar_url || '';
       content = `<iframe src="${calendarUrl}" width="100%" height="100%" frameborder="0"></iframe>`;
     }
+
+    content = replaceVariables(content, session);
 
     const swap = {
       selector: matchedRule.target_selector,

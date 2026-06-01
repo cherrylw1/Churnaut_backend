@@ -728,9 +728,12 @@ export default function RulesPage() {
                     rows={4}
                     value={editVariantContent}
                     onChange={(e) => setEditVariantContent(e.target.value)}
-                    placeholder="Wrote personalized markup or templates. Supports {{ prospect_name }}, {{ company_name }} tokens."
+                    placeholder="Use {{prospect_name}}, {{company_name}}, {{rep_name}}, {{job_title}}, {{deal_stage}} as dynamic variables — they will be replaced with real prospect data automatically."
                     className="w-full bg-[#080B0F] border border-[#1a1f2e] focus:border-[#6366f1] outline-none text-xs px-3 py-2 rounded text-white font-mono"
                   />
+                  <p className="text-[10px] font-mono text-gray-500 mt-1">
+                    Use {"{{prospect_name}}"}, {"{{company_name}}"}, {"{{rep_name}}"}, {"{{job_title}}"}, {"{{deal_stage}}"} as dynamic variables — they will be replaced with real prospect data automatically.
+                  </p>
 
                   {/* Inline AI Copywriter Panel */}
                   {showAiPanel && (
@@ -999,9 +1002,12 @@ export default function RulesPage() {
                   rows={4}
                   value={newVariantContent}
                   onChange={(e) => setNewVariantContent(e.target.value)}
-                  placeholder="Personalized copy swap template. Supports {{ prospect_name }}, {{ company_name }} tokens."
+                  placeholder="Use {{prospect_name}}, {{company_name}}, {{rep_name}}, {{job_title}}, {{deal_stage}} as dynamic variables — they will be replaced with real prospect data automatically."
                   className="w-full bg-[#080B0F] border border-[#1a1f2e] focus:border-[#6366f1] outline-none text-xs px-3 py-2 rounded text-white font-mono"
                 />
+                <p className="text-[10px] font-mono text-gray-500 mt-1">
+                  Use {"{{prospect_name}}"}, {"{{company_name}}"}, {"{{rep_name}}"}, {"{{job_title}}"}, {"{{deal_stage}}"} as dynamic variables — they will be replaced with real prospect data automatically.
+                </p>
               </div>
 
               <div className="pt-4 flex justify-end gap-3">
