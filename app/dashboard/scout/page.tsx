@@ -450,7 +450,7 @@ export default function ScoutDashboard() {
           <div className="space-y-3">
             <div className="border-b border-[#1a1f2e] pb-1.5">
               <h2 className="text-xs font-bold font-mono tracking-wider text-indigo-400 uppercase">
-                SECTION 1 — PIPELINE OVERVIEW
+                PIPELINE OVERVIEW
               </h2>
             </div>
             
@@ -520,7 +520,7 @@ export default function ScoutDashboard() {
           <div className="space-y-3">
             <div className="border-b border-[#1a1f2e] pb-1.5">
               <h2 className="text-xs font-bold font-mono tracking-wider text-indigo-400 uppercase">
-                SECTION 2 — SCOUT INBOX
+                SCOUT INBOX
               </h2>
             </div>
             
@@ -552,7 +552,7 @@ export default function ScoutDashboard() {
             >
               <span className="font-mono text-xs font-bold tracking-wider text-white uppercase flex items-center gap-2">
                 <Zap className="text-yellow-500 w-3.5 h-3.5" />
-                SECTION 3 — DEAL ACCELERATION TRIGGERS
+                DEAL ACCELERATION TRIGGERS
               </span>
               {collapsedSections.triggers ? (
                 <ChevronDown className="w-4 h-4 text-gray-400" />
@@ -615,7 +615,7 @@ export default function ScoutDashboard() {
             >
               <span className="font-mono text-xs font-bold tracking-wider text-white uppercase flex items-center gap-2">
                 <AlertTriangle className="text-red-500 w-3.5 h-3.5" />
-                SECTION 4 — PIPELINE HEALTH
+                PIPELINE HEALTH
               </span>
               {collapsedSections.pipelineHealth ? (
                 <ChevronDown className="w-4 h-4 text-gray-400" />
@@ -915,7 +915,7 @@ export default function ScoutDashboard() {
             >
               <span className="font-mono text-xs font-bold tracking-wider text-white uppercase flex items-center gap-2">
                 <Brain className="text-indigo-400 w-3.5 h-3.5" />
-                SECTION 5 — REP INTELLIGENCE
+                REP INTELLIGENCE
               </span>
               {collapsedSections.repIntelligence ? (
                 <ChevronDown className="w-4 h-4 text-gray-400" />
@@ -998,7 +998,7 @@ export default function ScoutDashboard() {
             >
               <span className="font-mono text-xs font-bold tracking-wider text-white uppercase flex items-center gap-2">
                 <Skull className="text-red-500 w-3.5 h-3.5" />
-                SECTION 6 — DEAL OBITUARIES
+                DEAL OBITUARIES
               </span>
               {collapsedSections.obituaries ? (
                 <ChevronDown className="w-4 h-4 text-gray-400" />
