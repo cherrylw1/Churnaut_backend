@@ -25,6 +25,8 @@ export interface Session {
   assigned_rep?: string;
   calendar_url?: string;
   crm_deal_id?: string;
+  deal_stage?: string | null;
+  visitor_type?: string | null;
   clicked_at?: string;
   click_count: number;
   converted: boolean;

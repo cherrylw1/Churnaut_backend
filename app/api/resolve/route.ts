@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { ratelimit, redis } from '@/lib/redis';
 import { evaluateRules } from '@/lib/rules-engine';
 import { Session } from '@/types/index';
+import { enrichSessionFromHubSpot } from '@/lib/integrations/hubspot';
 
 // CORS headers configuration helper
 const corsHeaders = {
@@ -44,7 +45,7 @@ export async function POST(req: NextRequest) {
     // 2. Look up the client in the clients table by snippet_key matching client_id
     const { data: clientData, error: clientError } = await supabaseAdmin
       .from('clients')
-      .select('id')
+      .select('id, crm_type')
       .eq('snippet_key', clientIdParam)
       .maybeSingle();
 
@@ -146,6 +147,29 @@ export async function POST(req: NextRequest) {
         ...(session.metadata || {}),
         utms: utms || {},
       };
+    }
+
+    // 3.5 Live HubSpot CRM Session Enrichment
+    if (clientData.crm_type === 'hubspot' && session?.prospect_email) {
+      try {
+        const enrichment = await enrichSessionFromHubSpot(client_id, session.prospect_email);
+        if (enrichment) {
+          session.prospect_name = enrichment.contact_name || session.prospect_name;
+          session.job_title = enrichment.job_title || session.job_title;
+          session.company_name = enrichment.company_name || session.company_name;
+          session.deal_stage = enrichment.deal_stage || session.deal_stage;
+          session.assigned_rep = enrichment.rep_name || session.assigned_rep;
+
+          // Merge extra properties onto the session object for rules evaluation
+          const sessionRecord = session as unknown as Record<string, unknown>;
+          sessionRecord.deal_name = enrichment.deal_name;
+          sessionRecord.deal_amount = enrichment.deal_amount;
+          sessionRecord.rep_email = enrichment.rep_email;
+          sessionRecord.contact_name = enrichment.contact_name;
+        }
+      } catch (enrichError) {
+        console.error('[Enrichment Error] HubSpot live enrichment failed:', enrichError);
+      }
     }
 
     // Helper to log analytics events asynchronously
