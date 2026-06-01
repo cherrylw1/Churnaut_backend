@@ -149,6 +149,8 @@ Return ONLY the JSON. No markdown wrappers, no conversational text, no explanati
     cleanedText = cleanedText.replace(/^```[a-zA-Z]*\n/, '').replace(/\n```$/, '').trim();
   }
 
+  console.log('[Scout Scoring] String to be parsed with JSON.parse:', cleanedText);
+
   let parsed: { pipeline_pressure_score: number; deals: Record<string, unknown>[] };
   try {
     parsed = JSON.parse(cleanedText);
@@ -156,6 +158,9 @@ Return ONLY the JSON. No markdown wrappers, no conversational text, no explanati
       throw new Error('Parsed object is missing required root fields');
     }
   } catch (parseErr) {
+    const parseErrMsg = parseErr instanceof Error ? parseErr.message : String(parseErr);
+    const parseErrStack = parseErr instanceof Error ? parseErr.stack : '';
+    console.error(`[Scout Scoring Parse Error Details] Error: ${parseErrMsg}\nStack: ${parseErrStack}`);
     console.error('[Scout Scoring Parse Error] Failed to parse JSON content:', cleanedText, parseErr);
     throw new Error('Failed to parse Scout AI scoring response as valid JSON object');
   }
