@@ -13,6 +13,7 @@ import {
   ChevronUp,
   Zap,
   Mail,
+  Users,
 } from 'lucide-react';
 
 interface ScoutDealDetail {
@@ -66,6 +67,18 @@ interface ModalData {
   type: 'nudge' | 'notify';
 }
 
+interface BlindSpot {
+  type: string;
+  severity: 'critical' | 'warning';
+  description: string;
+}
+
+interface RepBlindSpotReport {
+  rep_name: string;
+  deal_count: number;
+  blind_spots: BlindSpot[];
+}
+
 export default function ScoutDashboard() {
   const [snapshot, setSnapshot] = useState<PipelineSnapshot | null>(null);
   const [deals, setDeals] = useState<ScoutDealDetail[]>([]);
@@ -75,6 +88,7 @@ export default function ScoutDashboard() {
   const [expandedDeals, setExpandedDeals] = useState<Record<string, boolean>>({});
   const [expandedEmails, setExpandedEmails] = useState<Record<string, boolean>>({});
   const [scoreChanges, setScoreChanges] = useState<string[]>([]);
+  const [blindSpots, setBlindSpots] = useState<RepBlindSpotReport[]>([]);
 
   // Nudge/Notify Modal State
   const [showModal, setShowModal] = useState(false);
@@ -85,6 +99,7 @@ export default function ScoutDashboard() {
   const fetchData = async () => {
     try {
       setLoading(true);
+      
       const res = await fetch('/api/scout/pipeline');
       if (res.ok) {
         const data = await res.json();
@@ -124,6 +139,13 @@ export default function ScoutDashboard() {
           initialExpanded[deal.deal_id] = deal.score === 'RED';
         }
         setExpandedDeals(initialExpanded);
+      }
+
+      // Fetch Rep Blindspots
+      const bsRes = await fetch('/api/scout/blindspots');
+      if (bsRes.ok) {
+        const bsData = await bsRes.json();
+        setBlindSpots(bsData || []);
       }
     } catch (err) {
       console.error('Failed to load Scout pipeline details:', err);
@@ -710,6 +732,74 @@ export default function ScoutDashboard() {
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+            </div>
+
+            {/* 6. REP BLIND SPOT DETECTION */}
+            <div className="border border-[#1a1f2e] bg-[#0d1117]/20 rounded-lg p-5 space-y-4">
+              <div className="flex items-center gap-2 border-b border-[#1a1f2e] pb-3">
+                <Users className="text-indigo-400 w-4 h-4" />
+                <AlertTriangle className="text-yellow-500 w-3.5 h-3.5" />
+                <h2 className="text-xs font-bold tracking-wider font-mono uppercase text-white">
+                  REP BLIND SPOTS
+                </h2>
+              </div>
+
+              {blindSpots.length === 0 || blindSpots.reduce((acc, report) => acc + (report.blind_spots?.length || 0), 0) === 0 ? (
+                <div className="py-8 text-center border border-dashed border-[#1a1f2e] rounded bg-[#080B0F]/30">
+                  <p className="text-xs font-mono text-gray-500">No blind spots detected across your team.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {blindSpots.map((report, idx) => {
+                    const hasSpots = report.blind_spots && report.blind_spots.length > 0;
+                    return (
+                      <div
+                        key={idx}
+                        className="border border-[#1a1f2e] bg-[#080B0F]/60 p-4 rounded-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:border-indigo-900/40 transition-colors"
+                      >
+                        <div className="space-y-1.5 w-full">
+                          <div className="flex items-center justify-between">
+                            <span className="font-mono text-sm font-bold text-white">{report.rep_name}</span>
+                            <span className="font-mono text-[10px] text-gray-500 uppercase">
+                              {report.deal_count} {report.deal_count === 1 ? 'DEAL' : 'DEALS'}
+                            </span>
+                          </div>
+
+                          {!hasSpots ? (
+                            <div className="text-[10px] font-mono text-green-500 uppercase tracking-wider flex items-center gap-1.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                              No blind spots detected
+                            </div>
+                          ) : (
+                            <div className="flex flex-wrap gap-2 pt-1">
+                              {report.blind_spots.map((spot, sIdx) => {
+                                const isCritical = spot.severity === 'critical';
+                                const badgeColorClass = isCritical
+                                  ? 'bg-red-950/40 text-red-400 border-red-900/50'
+                                  : 'bg-amber-950/40 text-amber-500 border-amber-900/50';
+                                return (
+                                  <div
+                                    key={sIdx}
+                                    className={`flex flex-col border p-2 rounded text-[11px] font-mono w-full sm:w-auto sm:max-w-xs ${badgeColorClass}`}
+                                  >
+                                    <div className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-[9px] mb-0.5">
+                                      <span className={`w-1.5 h-1.5 rounded-full ${isCritical ? 'bg-red-500' : 'bg-amber-500'}`} />
+                                      {spot.type}
+                                    </div>
+                                    <div className="text-gray-400 text-[10px] leading-relaxed">
+                                      {spot.description}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
