@@ -44,17 +44,26 @@ export async function POST(req: NextRequest) {
     try {
       let deleteQuery = supabaseAdmin
         .from('deal_scores')
-        .delete()
+        .delete({ count: 'exact' })
         .eq('client_id', clientId);
 
       if (currentDealIds.length > 0) {
         deleteQuery = deleteQuery.not('deal_id', 'in', `(${currentDealIds.join(',')})`);
       }
 
-      const { error: deleteError } = await deleteQuery;
-      if (deleteError) {
-        console.error('[Scout Score POST] Error cleaning up stale deal_scores:', deleteError);
-        throw deleteError;
+      const deleteRes = await deleteQuery;
+
+      console.log(`[Scout Score POST] Cleanup details:`, {
+        currentDealsCount: currentDealIds.length,
+        status: deleteRes.status,
+        statusText: deleteRes.statusText,
+        count: deleteRes.count,
+        error: deleteRes.error,
+      });
+
+      if (deleteRes.error) {
+        console.error('[Scout Score POST] Error cleaning up stale deal_scores:', deleteRes.error);
+        throw deleteRes.error;
       }
       console.log('[Scout Score POST] Stale deal_scores cleanup completed successfully');
     } catch (err) {
