@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
     // 3. Score deals using Gemini AI
     let scores;
     try {
-      scores = await scoreDealsWithScout(clientId, deals);
+      scores = await scoreDealsWithScout(clientId, deals, true);
       console.log('[Scout Score POST] scoreDealsWithScout output response:', JSON.stringify(scores));
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);

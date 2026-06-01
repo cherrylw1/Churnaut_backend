@@ -22,7 +22,8 @@ export interface ScoutScoreResult {
  */
 export async function scoreDealsWithScout(
   clientId: string,
-  deals: ScoutDeal[]
+  deals: ScoutDeal[],
+  bypassCache: boolean = false
 ): Promise<ScoutScoreResult> {
   if (!clientId) {
     throw new Error('Missing client ID');
@@ -30,14 +31,16 @@ export async function scoreDealsWithScout(
 
   const cacheKey = `scout:scores:${clientId}`;
 
-  // 1. Try Cache Read
-  try {
-    const cached = await redis.get(cacheKey);
-    if (cached) {
-      return typeof cached === 'string' ? JSON.parse(cached) : (cached as ScoutScoreResult);
+  // 1. Try Cache Read (skip if bypassCache is true)
+  if (!bypassCache) {
+    try {
+      const cached = await redis.get(cacheKey);
+      if (cached) {
+        return typeof cached === 'string' ? JSON.parse(cached) : (cached as ScoutScoreResult);
+      }
+    } catch (cacheErr) {
+      console.error('[Scout Scoring Cache Read Error] Failed to read from Redis:', cacheErr);
     }
-  } catch (cacheErr) {
-    console.error('[Scout Scoring Cache Read Error] Failed to read from Redis:', cacheErr);
   }
 
   // If there are no deals, return a default empty score result
