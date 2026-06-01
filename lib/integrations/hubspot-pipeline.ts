@@ -1,5 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabase';
-import { decrypt } from '@/lib/crypto';
+import { decrypt, encrypt } from '@/lib/crypto';
 import { redis } from '@/lib/redis';
 
 export interface ScoutDeal {
@@ -39,7 +39,7 @@ export async function fetchHubSpotPipeline(clientId: string): Promise<ScoutDeal[
   // 2. Look up the HubSpot access token in the crm_tokens table
   const { data: tokenData, error: tokenError } = await supabaseAdmin
     .from('crm_tokens')
-    .select('access_token')
+    .select('access_token, refresh_token, expires_at')
     .eq('client_id', clientId)
     .eq('crm_type', 'hubspot')
     .maybeSingle();
@@ -50,10 +50,72 @@ export async function fetchHubSpotPipeline(clientId: string): Promise<ScoutDeal[
   }
 
   // 3. Decrypt the access token
-  const accessToken = decrypt(tokenData.access_token);
+  let accessToken = decrypt(tokenData.access_token);
   if (!accessToken) {
     throw new Error('Failed to decrypt HubSpot access token');
   }
+
+  // Check token expiration (refresh if expired or expiring within 5 minutes)
+  const expiresAt = tokenData.expires_at ? new Date(tokenData.expires_at).getTime() : 0;
+  const isExpired = expiresAt === 0 || expiresAt - Date.now() < 5 * 60 * 1000;
+
+  if (isExpired && tokenData.refresh_token) {
+    console.log('[HubSpot Pipeline] Access token is expired or expiring soon. Refreshing...');
+    try {
+      const decryptedRefreshToken = decrypt(tokenData.refresh_token);
+      
+      const params = new URLSearchParams();
+      params.append('grant_type', 'refresh_token');
+      params.append('client_id', process.env.HUBSPOT_CLIENT_ID || '');
+      params.append('client_secret', process.env.HUBSPOT_CLIENT_SECRET || '');
+      params.append('redirect_uri', 'https://churnaut-backend.vercel.app/api/oauth/hubspot/callback');
+      params.append('refresh_token', decryptedRefreshToken);
+
+      const refreshRes = await fetch('https://api.hubapi.com/oauth/v1/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: params.toString(),
+      });
+
+      if (!refreshRes.ok) {
+        const errBody = await refreshRes.text();
+        console.error('[HubSpot Pipeline] Token refresh failed status:', refreshRes.status, errBody);
+      } else {
+        const refreshData = await refreshRes.json();
+        const newAccessToken = refreshData.access_token;
+        const newRefreshToken = refreshData.refresh_token;
+        const newExpiresAt = new Date(Date.now() + 1800 * 1000).toISOString();
+
+        // Encrypt new tokens
+        const encryptedAccess = encrypt(newAccessToken);
+        const encryptedRefresh = encrypt(newRefreshToken);
+
+        // Update crm_tokens table
+        const { error: updateError } = await supabaseAdmin
+          .from('crm_tokens')
+          .update({
+            access_token: encryptedAccess,
+            refresh_token: encryptedRefresh,
+            expires_at: newExpiresAt,
+            updated_at: new Date().toISOString()
+          })
+          .eq('client_id', clientId)
+          .eq('crm_type', 'hubspot');
+
+        if (updateError) {
+          console.error('[HubSpot Pipeline] Failed to update refreshed tokens in DB:', updateError.message);
+        } else {
+          console.log('[HubSpot Pipeline] Token refreshed and updated successfully.');
+          accessToken = newAccessToken;
+        }
+      }
+    } catch (refreshErr) {
+      console.error('[HubSpot Pipeline] Exception during token refresh:', refreshErr);
+    }
+  }
+
   console.log('[HubSpot Pipeline debug] Decrypted access token:', accessToken.substring(0, 20) + '...');
 
   // 4. Fetch open deals from HubSpot CRM
