@@ -41,35 +41,28 @@ export async function POST(req: NextRequest) {
     // Cleanup step: delete stale deals from deal_scores
     const currentDealIds = deals.map((d) => d.deal_id);
     console.log(`[Scout Score POST] Cleaning up stale deal_scores. Current active deal IDs:`, currentDealIds);
-    try {
-      let deleteQuery = supabaseAdmin
-        .from('deal_scores')
-        .delete({ count: 'exact' })
-        .eq('client_id', clientId);
+    if (currentDealIds.length > 0) {
+      try {
+        const { error: deleteError, count: deleteCount } = await supabaseAdmin
+          .from('deal_scores')
+          .delete({ count: 'exact' })
+          .eq('client_id', clientId)
+          .not('deal_id', 'in', `(${currentDealIds.map(id => `"${id}"`).join(',')})`);
 
-      if (currentDealIds.length > 0) {
-        deleteQuery = deleteQuery.not('deal_id', 'in', `(${currentDealIds.join(',')})`);
+        console.log('[Scout Score POST] Cleanup result:', { deleteCount, deleteError, currentDealIds });
+
+        if (deleteError) {
+          console.error('[Scout Score POST] Error cleaning up stale deal_scores:', deleteError);
+          throw deleteError;
+        }
+        console.log('[Scout Score POST] Stale deal_scores cleanup completed successfully');
+      } catch (err) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        console.error('[Scout Score POST] Failed during deal_scores cleanup:', errMsg);
+        throw err;
       }
-
-      const deleteRes = await deleteQuery;
-
-      console.log(`[Scout Score POST] Cleanup details:`, {
-        currentDealsCount: currentDealIds.length,
-        status: deleteRes.status,
-        statusText: deleteRes.statusText,
-        count: deleteRes.count,
-        error: deleteRes.error,
-      });
-
-      if (deleteRes.error) {
-        console.error('[Scout Score POST] Error cleaning up stale deal_scores:', deleteRes.error);
-        throw deleteRes.error;
-      }
-      console.log('[Scout Score POST] Stale deal_scores cleanup completed successfully');
-    } catch (err) {
-      const errMsg = err instanceof Error ? err.message : String(err);
-      console.error('[Scout Score POST] Failed during deal_scores cleanup:', errMsg);
-      throw err;
+    } else {
+      console.log('[Scout Score POST] Skipping cleanup delete because currentDealIds is empty');
     }
 
     // 3. Score deals using Gemini AI
