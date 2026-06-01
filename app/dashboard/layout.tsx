@@ -1,5 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
+import { Home as HomeIcon } from 'lucide-react';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -8,6 +9,7 @@ interface DashboardLayoutProps {
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   // Navigation items structure
   const navItems = [
+    { label: 'Home', href: '/dashboard', icon: HomeIcon },
     { label: 'Tracked Links', href: '/dashboard/links' },
     { label: 'Routing Rules', href: '/dashboard/rules' },
     { label: 'Playbook Library', href: '/dashboard/playbooks' },
@@ -36,9 +38,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               <Link
                 key={item.label}
                 href={item.href}
-                className="flex items-center px-4 py-3 rounded text-sm font-mono text-gray-400 hover:text-white hover:bg-[#1a1f2e]/45 border-l-2 border-transparent hover:border-[#6366f1] transition-all"
+                className="flex items-center gap-2.5 px-4 py-3 rounded text-sm font-mono text-gray-400 hover:text-white hover:bg-[#1a1f2e]/45 border-l-2 border-transparent hover:border-[#6366f1] transition-all"
               >
-                {item.label}
+                {item.icon && <item.icon className="w-4 h-4" />}
+                <span>{item.label}</span>
               </Link>
             ))}
           </nav>
