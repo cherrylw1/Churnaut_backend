@@ -74,6 +74,7 @@ export default function ScoutDashboard() {
   const [runningScout, setRunningScout] = useState(false);
   const [expandedDeals, setExpandedDeals] = useState<Record<string, boolean>>({});
   const [expandedEmails, setExpandedEmails] = useState<Record<string, boolean>>({});
+  const [scoreChanges, setScoreChanges] = useState<string[]>([]);
 
   // Nudge/Notify Modal State
   const [showModal, setShowModal] = useState(false);
@@ -91,6 +92,31 @@ export default function ScoutDashboard() {
         const fetchedDeals = (data.deal_scores || []) as ScoutDealDetail[];
         setDeals(fetchedDeals);
         setTriggers(data.acceleration_triggers || []);
+
+        // Detect score changes since last stored scores
+        if (typeof window !== 'undefined') {
+          try {
+            const localScoresStr = localStorage.getItem('scout_previous_scores');
+            const prevScores = localScoresStr ? JSON.parse(localScoresStr) : {};
+            const changed: string[] = [];
+            fetchedDeals.forEach((deal) => {
+              const prev = prevScores[deal.deal_id];
+              if (prev && prev !== deal.score) {
+                changed.push(`${deal.deal_name} moved to ${deal.score}`);
+              }
+            });
+            setScoreChanges(changed);
+
+            // Update localStorage
+            const currentScores: Record<string, string> = {};
+            fetchedDeals.forEach((deal) => {
+              currentScores[deal.deal_id] = deal.score;
+            });
+            localStorage.setItem('scout_previous_scores', JSON.stringify(currentScores));
+          } catch (err) {
+            console.error('Failed to parse or save previous scores:', err);
+          }
+        }
 
         // Initialize expanded states: RED expanded, AMBER/GREEN collapsed
         const initialExpanded: Record<string, boolean> = {};
@@ -249,6 +275,42 @@ export default function ScoutDashboard() {
   const amberDeals = deals.filter((d) => d.score === 'AMBER');
   const greenDeals = deals.filter((d) => d.score === 'GREEN');
 
+  const hasRedDeals = redDeals.length > 0;
+  const inboxItems: string[] = [];
+
+  if (hasRedDeals) {
+    // 1. Any deals that changed score
+    scoreChanges.forEach((change) => {
+      inboxItems.push(change);
+    });
+
+    // 2. The top RED deal needing action today
+    const topRed = redDeals[0];
+    if (topRed) {
+      inboxItems.push(`${topRed.deal_name}: ${topRed.next_action}`);
+    }
+
+    // 3. The rep with the most RED deals
+    const repCounts: Record<string, number> = {};
+    redDeals.forEach((deal) => {
+      const rep = deal.rep_name || 'Unknown Rep';
+      repCounts[rep] = (repCounts[rep] || 0) + 1;
+    });
+    let topRep = '';
+    let maxCount = 0;
+    for (const [rep, count] of Object.entries(repCounts)) {
+      if (count > maxCount) {
+        maxCount = count;
+        topRep = rep;
+      }
+    }
+    if (topRep) {
+      inboxItems.push(`${topRep} has ${maxCount} RED deals`);
+    }
+  }
+
+  const displayInboxItems = inboxItems.slice(0, 3);
+
   // Format currency values
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -317,6 +379,26 @@ export default function ScoutDashboard() {
           {/* LEFT: Acceleration triggers and Deal Lists */}
           <div className="lg:col-span-2 space-y-6">
             
+            {/* SCOUT INBOX SECTION */}
+            <div className="border border-[#1a1f2e] border-l-4 border-l-amber-500 bg-[#0d1117]/40 rounded-lg p-4 font-mono text-xs space-y-2">
+              <div className="flex items-center gap-2 text-white font-bold tracking-wider uppercase">
+                <Zap className="text-amber-500 w-4 h-4 fill-amber-500/20" />
+                SCOUT INBOX — TODAY
+              </div>
+              <div className="space-y-1.5 text-gray-400">
+                {!hasRedDeals ? (
+                  <p className="text-gray-500 italic">No urgent items today.</p>
+                ) : (
+                  displayInboxItems.map((item, idx) => (
+                    <p key={idx} className="flex items-start gap-2">
+                      <span className="text-amber-500/80">•</span>
+                      <span>{item}</span>
+                    </p>
+                  ))
+                )}
+              </div>
+            </div>
+
             {/* 2. DEAL ACCELERATION TRIGGERS PANEL */}
             <div className="border border-[#1a1f2e] bg-[#0d1117]/20 rounded-lg p-5 space-y-4">
               <div className="flex items-center gap-2 border-b border-[#1a1f2e] pb-3">
