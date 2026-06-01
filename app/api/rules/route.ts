@@ -48,6 +48,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // action_payload can contain a swaps array: { swaps: Array<{selector: string, content: string}> }
     const body = await req.json();
     const {
       signal_type,

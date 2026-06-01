@@ -254,8 +254,8 @@ export async function POST(req: NextRequest) {
     // 5. Call evaluateRules with the session and rules
     const matchedRule = evaluateRules(session, rules);
 
-    // 6. If matchedRule is null or matchedRule.target_selector is null, return JSON: {visitor_token: null, swaps: []}
-    if (!matchedRule || matchedRule.target_selector === null || matchedRule.target_selector === undefined) {
+    // 6. If matchedRule is null, return JSON: {visitor_token: null, swaps: []}
+    if (!matchedRule) {
       logAnalyticsEvent('no_match', null);
       return NextResponse.json(
         { visitor_token: null, swaps: [] },
@@ -263,29 +263,56 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 7. Build one swap: {selector: matchedRule.target_selector, content: matchedRule.variant_content}
-    let content = matchedRule.variant_content || '';
-    if (matchedRule.action_type === 'show_calendar') {
-      const calendarUrl = matchedRule.action_payload?.calendar_url || session?.calendar_url || '';
-      content = `<iframe src="${calendarUrl}" width="100%" height="100%" frameborder="0"></iframe>`;
+    const swapsList: Array<{ selector: string; content: string }> = [];
+    const actionSwaps = matchedRule.action_payload?.swaps;
+
+    if (Array.isArray(actionSwaps) && actionSwaps.length > 0) {
+      for (const s of actionSwaps) {
+        if (s && typeof s === 'object' && 'selector' in s) {
+          const swapRecord = s as Record<string, unknown>;
+          const sel = (swapRecord.selector as string) || '';
+          const rawContent = (swapRecord.content as string) || '';
+          const interpolated = replaceVariables(rawContent, session);
+          swapsList.push({
+            selector: sel,
+            content: interpolated,
+          });
+        }
+      }
+    } else {
+      // Fallback to the existing single selector/variant_content logic for backwards compatibility
+      if (matchedRule.target_selector !== null && matchedRule.target_selector !== undefined) {
+        let content = matchedRule.variant_content || '';
+        if (matchedRule.action_type === 'show_calendar') {
+          const calendarUrl = matchedRule.action_payload?.calendar_url || session?.calendar_url || '';
+          content = `<iframe src="${calendarUrl}" width="100%" height="100%" frameborder="0"></iframe>`;
+        }
+        content = replaceVariables(content, session);
+        swapsList.push({
+          selector: matchedRule.target_selector,
+          content: content,
+        });
+      }
     }
 
-    content = replaceVariables(content, session);
+    if (swapsList.length === 0) {
+      logAnalyticsEvent('no_match', null);
+      return NextResponse.json(
+        { visitor_token: null, swaps: [] },
+        { headers: corsHeaders }
+      );
+    }
 
-    const swap = {
-      selector: matchedRule.target_selector,
-      content: content,
-    };
-
-    // Log rule triggered event
-    const contentPreview = content.length > 100 ? content.slice(0, 100) + '...' : content;
-    logAnalyticsEvent('rule_triggered', matchedRule.id, matchedRule.target_selector, contentPreview);
+    // Log rule triggered event using the first swap
+    const firstSwap = swapsList[0];
+    const contentPreview = firstSwap.content.length > 100 ? firstSwap.content.slice(0, 100) + '...' : firstSwap.content;
+    logAnalyticsEvent('rule_triggered', matchedRule.id, firstSwap.selector, contentPreview);
 
     // 8. Cache instructions in Redis with a 300 second TTL
     const visitor_token = session?.visitor_token || null;
     const instructions = {
       visitor_token,
-      swaps: [swap],
+      swaps: swapsList,
     };
 
     if (primarySignal && cacheKey) {

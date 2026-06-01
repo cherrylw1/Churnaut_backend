@@ -60,6 +60,7 @@ export interface RoutingRule {
   action_type: 'show_calendar' | 'inject_copy' | string;
   action_payload: {
     selector?: string;
+    swaps?: { selector: string; content: string }[];
     [key: string]: any;
   };
   target_selector?: string;

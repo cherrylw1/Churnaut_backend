@@ -59,8 +59,6 @@ export default function RulesPage() {
   const [newConditionValue, setNewConditionValue] = useState('');
   const [newActionType, setNewActionType] = useState('show_calendar');
   const [newActionContent, setNewActionContent] = useState('');
-  const [newTargetSelector, setNewTargetSelector] = useState('.sr-target');
-  const [newVariantContent, setNewVariantContent] = useState('');
 
   // Edit Panel Form States (loaded when selecting a rule)
   const [editSignalType, setEditSignalType] = useState('Cold Email');
@@ -68,9 +66,56 @@ export default function RulesPage() {
   const [editConditionValue, setEditConditionValue] = useState('');
   const [editActionType, setEditActionType] = useState('show_calendar');
   const [editActionContent, setEditActionContent] = useState('');
-  const [editTargetSelector, setEditTargetSelector] = useState('.sr-target');
-  const [editVariantContent, setEditVariantContent] = useState('');
   const [updatingRule, setUpdatingRule] = useState(false);
+
+  // Multiple Swaps state
+  const [editSwaps, setEditSwaps] = useState<{ selector: string; content: string }[]>([
+    { selector: '.sr-target', content: '' }
+  ]);
+  const [newSwaps, setNewSwaps] = useState<{ selector: string; content: string }[]>([
+    { selector: '.sr-target', content: '' }
+  ]);
+  const [aiSwapIndex, setAiSwapIndex] = useState<number>(0);
+
+  const handleAddEditSwap = () => {
+    setEditSwaps([...editSwaps, { selector: '.sr-target', content: '' }]);
+  };
+
+  const handleRemoveEditSwap = (index: number) => {
+    if (editSwaps.length <= 1) return;
+    const updated = [...editSwaps];
+    updated.splice(index, 1);
+    setEditSwaps(updated);
+  };
+
+  const handleEditSwapChange = (index: number, field: 'selector' | 'content', value: string) => {
+    const updated = [...editSwaps];
+    updated[index] = {
+      ...updated[index],
+      [field]: value,
+    };
+    setEditSwaps(updated);
+  };
+
+  const handleAddNewSwap = () => {
+    setNewSwaps([...newSwaps, { selector: '.sr-target', content: '' }]);
+  };
+
+  const handleRemoveNewSwap = (index: number) => {
+    if (newSwaps.length <= 1) return;
+    const updated = [...newSwaps];
+    updated.splice(index, 1);
+    setNewSwaps(updated);
+  };
+
+  const handleNewSwapChange = (index: number, field: 'selector' | 'content', value: string) => {
+    const updated = [...newSwaps];
+    updated[index] = {
+      ...updated[index],
+      [field]: value,
+    };
+    setNewSwaps(updated);
+  };
 
   // AI Copywriter states
   const [showAiPanel, setShowAiPanel] = useState(false);
@@ -242,13 +287,30 @@ export default function RulesPage() {
       setEditConditionValue(value);
       setEditActionType(selectedRule.action_type || 'show_calendar');
       setEditActionContent(extractActionContent(selectedRule));
-      setEditTargetSelector(selectedRule.target_selector || '.sr-target');
-      setEditVariantContent(selectedRule.variant_content || '');
+
+      const existingSwaps = selectedRule.action_payload?.swaps;
+      if (Array.isArray(existingSwaps) && existingSwaps.length > 0) {
+        setEditSwaps(existingSwaps.map((s) => {
+          const swapRecord = s as Record<string, unknown>;
+          return {
+            selector: (swapRecord.selector as string) || '',
+            content: (swapRecord.content as string) || '',
+          };
+        }));
+      } else {
+        setEditSwaps([
+          {
+            selector: selectedRule.target_selector || '.sr-target',
+            content: selectedRule.variant_content || '',
+          }
+        ]);
+      }
 
       // Pre-fill AI copywriter states
       setAiSignalType(selectedRule.signal_type || 'Any');
       setAiSuggestions([]);
       setShowAiPanel(false);
+      setAiSwapIndex(0);
     }
   }, [selectedRule]);
 
@@ -337,7 +399,13 @@ export default function RulesPage() {
 
     try {
       const conditionsPayload = buildConditionsPayload(newConditionType, newConditionValue);
-      const payload = buildActionPayload(newActionType, newActionContent);
+      const basePayload = buildActionPayload(newActionType, newActionContent);
+      const actionPayload = {
+        ...basePayload,
+        swaps: newSwaps,
+      };
+
+      const firstSwap = newSwaps[0] || { selector: '.sr-target', content: '' };
 
       const res = await fetch('/api/rules', {
         method: 'POST',
@@ -346,9 +414,9 @@ export default function RulesPage() {
           signal_type: newSignalType === 'Any' ? null : newSignalType,
           conditions: conditionsPayload,
           action_type: newActionType,
-          action_payload: payload,
-          target_selector: newTargetSelector,
-          variant_content: newVariantContent,
+          action_payload: actionPayload,
+          target_selector: firstSwap.selector,
+          variant_content: firstSwap.content,
         }),
       });
 
@@ -361,8 +429,7 @@ export default function RulesPage() {
         setNewConditionValue('');
         setNewActionType('show_calendar');
         setNewActionContent('');
-        setNewTargetSelector('.sr-target');
-        setNewVariantContent('');
+        setNewSwaps([{ selector: '.sr-target', content: '' }]);
       } else {
         const errorData = await res.json();
         alert(errorData.error || 'Failed to save new routing rule.');
@@ -384,7 +451,13 @@ export default function RulesPage() {
 
     try {
       const conditionsPayload = buildConditionsPayload(editConditionType, editConditionValue);
-      const payload = buildActionPayload(editActionType, editActionContent);
+      const basePayload = buildActionPayload(editActionType, editActionContent);
+      const actionPayload = {
+        ...basePayload,
+        swaps: editSwaps,
+      };
+
+      const firstSwap = editSwaps[0] || { selector: '.sr-target', content: '' };
 
       const res = await fetch('/api/rules', {
         method: 'PATCH',
@@ -394,9 +467,9 @@ export default function RulesPage() {
           signal_type: editSignalType === 'Any' ? null : editSignalType,
           conditions: conditionsPayload,
           action_type: editActionType,
-          action_payload: payload,
-          target_selector: editTargetSelector,
-          variant_content: editVariantContent,
+          action_payload: actionPayload,
+          target_selector: firstSwap.selector,
+          variant_content: firstSwap.content,
         }),
       });
 
@@ -686,52 +759,91 @@ export default function RulesPage() {
                   </div>
                 </div>
 
-                {/* Target Selector with Tooltip Info */}
-                <div className="space-y-1.5 relative group">
-                  <div className="flex justify-between items-center">
-                    <label className="block text-[10px] font-mono text-gray-400 uppercase tracking-wider">
-                      Target CSS Selector
-                    </label>
-                    <span className="text-[10px] text-[#6366f1] font-mono cursor-help bg-[#1a1f2e] px-1.5 rounded">
-                      [?]
-                      {/* Tooltip Overlay */}
-                      <span className="pointer-events-none absolute right-0 bottom-full mb-2 w-64 bg-[#0d1117] border border-[#1a1f2e] p-3 text-[10px] leading-relaxed text-gray-300 font-mono rounded shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                        {"The CSS selector of the DOM element on your page where the swap should occur (e.g. '.sr-target' or '#headline')."}
+                {/* Dynamic Swaps List */}
+                <div className="space-y-4">
+                  <div className="flex flex-col gap-1 border-b border-[#1a1f2e] pb-2">
+                    <div className="flex justify-between items-center">
+                      <label className="block text-[10px] font-mono text-gray-400 uppercase tracking-wider font-bold">
+                        Page Element Swaps
+                      </label>
+                      <span className="text-[10px] text-[#6366f1] font-mono cursor-help bg-[#1a1f2e] px-1.5 rounded relative group">
+                        [?]
+                        <span className="pointer-events-none absolute right-0 bottom-full mb-2 w-64 bg-[#0d1117] border border-[#1a1f2e] p-3 text-[10px] leading-relaxed text-gray-300 font-mono rounded shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                          {"Specify CSS selectors (e.g. '#headline' or '.cta-button') and the variant HTML/Text content to inject."}
+                        </span>
                       </span>
-                    </span>
+                    </div>
+                    <p className="text-[10px] font-mono text-gray-500">
+                      Add multiple page elements to swap. Each rule can personalize multiple parts of the page simultaneously.
+                    </p>
                   </div>
-                  <input
-                    type="text"
-                    required
-                    value={editTargetSelector}
-                    onChange={(e) => setEditTargetSelector(e.target.value)}
-                    placeholder=".sr-target"
-                    className="w-full bg-[#080B0F] border border-[#1a1f2e] focus:border-[#6366f1] outline-none text-xs px-3 py-2 rounded text-white font-mono"
-                  />
-                </div>
 
-                {/* Variant Content Copy Swaps */}
-                <div className="space-y-1.5">
-                  <div className="flex justify-between items-center">
-                    <label className="block text-[10px] font-mono text-gray-400 uppercase tracking-wider">
-                      Variant Content (HTML / Text Swap)
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => setShowAiPanel(!showAiPanel)}
-                      className="text-[10px] font-mono text-[#6366f1] hover:underline bg-[#1a1f2e]/60 px-2 py-0.5 rounded border border-[#1a1f2e] flex items-center gap-1 transition-colors"
-                    >
-                      ✨ AI Copywriter
-                    </button>
+                  <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
+                    {editSwaps.map((swap, index) => (
+                      <div key={index} className="space-y-2.5 p-3 border border-[#1a1f2e] bg-[#080B0F]/50 rounded-lg relative">
+                        <div className="flex justify-between items-center">
+                          <span className="text-[10px] font-mono text-indigo-400 uppercase font-bold">Swap #{index + 1}</span>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAiSwapIndex(index);
+                                setAiSignalType(editSignalType);
+                                setAiSuggestions([]);
+                                setShowAiPanel(true);
+                              }}
+                              className="text-[9px] font-mono text-[#6366f1] hover:underline bg-[#1a1f2e]/60 px-2 py-0.5 rounded border border-[#1a1f2e] flex items-center gap-1 transition-colors"
+                            >
+                              ✨ AI Copy
+                            </button>
+                            {editSwaps.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveEditSwap(index)}
+                                className="text-[9px] font-mono text-red-400 hover:text-red-300 hover:underline bg-red-950/20 px-2 py-0.5 rounded border border-red-900 transition-colors"
+                              >
+                                Delete
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="space-y-1">
+                            <label className="block text-[9px] font-mono text-gray-500 uppercase tracking-wider">Target CSS Selector</label>
+                            <input
+                              type="text"
+                              required
+                              value={swap.selector}
+                              onChange={(e) => handleEditSwapChange(index, 'selector', e.target.value)}
+                              placeholder="e.g. #headline or .sr-target"
+                              className="w-full bg-[#080B0F] border border-[#1a1f2e] focus:border-[#6366f1] outline-none text-xs px-2.5 py-1.5 rounded text-white font-mono"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="block text-[9px] font-mono text-gray-500 uppercase tracking-wider">Variant Content</label>
+                            <textarea
+                              rows={3}
+                              value={swap.content}
+                              onChange={(e) => handleEditSwapChange(index, 'content', e.target.value)}
+                              placeholder="Use {{prospect_name}}, {{company_name}}, {{rep_name}}, {{job_title}}, {{deal_stage}} as dynamic variables."
+                              className="w-full bg-[#080B0F] border border-[#1a1f2e] focus:border-[#6366f1] outline-none text-xs px-2.5 py-1.5 rounded text-white font-mono"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <textarea
-                    rows={4}
-                    value={editVariantContent}
-                    onChange={(e) => setEditVariantContent(e.target.value)}
-                    placeholder="Use {{prospect_name}}, {{company_name}}, {{rep_name}}, {{job_title}}, {{deal_stage}} as dynamic variables — they will be replaced with real prospect data automatically."
-                    className="w-full bg-[#080B0F] border border-[#1a1f2e] focus:border-[#6366f1] outline-none text-xs px-3 py-2 rounded text-white font-mono"
-                  />
-                  <p className="text-[10px] font-mono text-gray-500 mt-1">
+
+                  <button
+                    type="button"
+                    onClick={handleAddEditSwap}
+                    className="w-full border border-dashed border-[#1a1f2e] hover:border-[#6366f1] text-[#6366f1] hover:text-[#5053e1] font-mono text-[10px] py-2 rounded transition-colors"
+                  >
+                    + ADD ELEMENT SWAP
+                  </button>
+
+                  <p className="text-[9px] font-mono text-gray-500 mt-1">
                     Use {"{{prospect_name}}"}, {"{{company_name}}"}, {"{{rep_name}}"}, {"{{job_title}}"}, {"{{deal_stage}}"} as dynamic variables — they will be replaced with real prospect data automatically.
                   </p>
 
@@ -739,7 +851,9 @@ export default function RulesPage() {
                   {showAiPanel && (
                     <div className="mt-3 p-4 bg-[#080B0F] border border-[#1a1f2e] rounded-lg space-y-3 font-mono text-xs">
                       <div className="flex justify-between items-center border-b border-[#1a1f2e] pb-2">
-                        <span className="text-[10px] text-[#6366f1] font-bold uppercase tracking-wider">AI Copywriter</span>
+                        <span className="text-[10px] text-[#6366f1] font-bold uppercase tracking-wider">
+                          AI Copywriter (generating for Swap #{aiSwapIndex + 1})
+                        </span>
                         <button
                           type="button"
                           onClick={() => setShowAiPanel(false)}
@@ -831,7 +945,7 @@ export default function RulesPage() {
                                 key={idx}
                                 type="button"
                                 onClick={() => {
-                                  setEditVariantContent(suggestion);
+                                  handleEditSwapChange(aiSwapIndex, 'content', suggestion);
                                   setShowAiPanel(false);
                                 }}
                                 className="w-full text-left bg-[#0d1117] hover:bg-[#1a1f2e]/40 border border-[#1a1f2e] hover:border-[#6366f1] p-2 rounded text-[11px] text-gray-300 hover:text-white transition-colors"
@@ -970,42 +1084,77 @@ export default function RulesPage() {
                 </div>
               </div>
 
-              {/* Target Selector with Tooltip info */}
-              <div className="space-y-1.5 relative group">
-                <div className="flex justify-between items-center">
-                  <label className="block text-[10px] font-mono text-gray-400 uppercase tracking-wider">
-                    Target CSS Selector
-                  </label>
-                  <span className="text-[10px] text-[#6366f1] font-mono cursor-help bg-[#1a1f2e] px-1.5 rounded">
-                    [?]
-                    <span className="pointer-events-none absolute right-0 bottom-full mb-2 w-64 bg-[#0d1117] border border-[#1a1f2e] p-3 text-[10px] leading-relaxed text-gray-300 font-mono rounded shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                      {"The CSS selector of the DOM element on your page where the swap should occur (e.g. '.sr-target' or '#headline')."}
+              {/* Dynamic Swaps List */}
+              <div className="space-y-4">
+                <div className="flex flex-col gap-1 border-b border-[#1a1f2e] pb-2">
+                  <div className="flex justify-between items-center">
+                    <label className="block text-[10px] font-mono text-gray-400 uppercase tracking-wider font-bold">
+                      Page Element Swaps
+                    </label>
+                    <span className="text-[10px] text-[#6366f1] font-mono cursor-help bg-[#1a1f2e] px-1.5 rounded relative group">
+                      [?]
+                      <span className="pointer-events-none absolute right-0 bottom-full mb-2 w-64 bg-[#0d1117] border border-[#1a1f2e] p-3 text-[10px] leading-relaxed text-gray-300 font-mono rounded shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity z-10 font-normal">
+                        {"Specify CSS selectors (e.g. '#headline' or '.cta-button') and the variant HTML/Text content to inject."}
+                      </span>
                     </span>
-                  </span>
+                  </div>
+                  <p className="text-[10px] font-mono text-gray-500">
+                    Add multiple page elements to swap. Each rule can personalize multiple parts of the page simultaneously.
+                  </p>
                 </div>
-                <input
-                  type="text"
-                  required
-                  value={newTargetSelector}
-                  onChange={(e) => setNewTargetSelector(e.target.value)}
-                  placeholder=".sr-target"
-                  className="w-full bg-[#080B0F] border border-[#1a1f2e] focus:border-[#6366f1] outline-none text-xs px-3 py-2 rounded text-white font-mono"
-                />
-              </div>
 
-              {/* Variant Content Copy Swaps */}
-              <div className="space-y-1.5">
-                <label className="block text-[10px] font-mono text-gray-400 uppercase tracking-wider">
-                  Variant Content (HTML / Text Swap)
-                </label>
-                <textarea
-                  rows={4}
-                  value={newVariantContent}
-                  onChange={(e) => setNewVariantContent(e.target.value)}
-                  placeholder="Use {{prospect_name}}, {{company_name}}, {{rep_name}}, {{job_title}}, {{deal_stage}} as dynamic variables — they will be replaced with real prospect data automatically."
-                  className="w-full bg-[#080B0F] border border-[#1a1f2e] focus:border-[#6366f1] outline-none text-xs px-3 py-2 rounded text-white font-mono"
-                />
-                <p className="text-[10px] font-mono text-gray-500 mt-1">
+                <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+                  {newSwaps.map((swap, index) => (
+                    <div key={index} className="space-y-2.5 p-3 border border-[#1a1f2e] bg-[#080B0F]/50 rounded-lg relative">
+                      <div className="flex justify-between items-center">
+                        <span className="text-[10px] font-mono text-indigo-400 uppercase font-bold">Swap #{index + 1}</span>
+                        {newSwaps.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveNewSwap(index)}
+                            className="text-[9px] font-mono text-red-400 hover:text-red-300 hover:underline bg-red-950/20 px-2 py-0.5 rounded border border-red-900 transition-colors"
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="space-y-1">
+                          <label className="block text-[9px] font-mono text-gray-500 uppercase tracking-wider">Target CSS Selector</label>
+                          <input
+                            type="text"
+                            required
+                            value={swap.selector}
+                            onChange={(e) => handleNewSwapChange(index, 'selector', e.target.value)}
+                            placeholder="e.g. #headline or .sr-target"
+                            className="w-full bg-[#080B0F] border border-[#1a1f2e] focus:border-[#6366f1] outline-none text-xs px-2.5 py-1.5 rounded text-white font-mono"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="block text-[9px] font-mono text-gray-500 uppercase tracking-wider">Variant Content</label>
+                          <textarea
+                            rows={3}
+                            value={swap.content}
+                            onChange={(e) => handleNewSwapChange(index, 'content', e.target.value)}
+                            placeholder="Use {{prospect_name}}, {{company_name}}, {{rep_name}}, {{job_title}}, {{deal_stage}} as dynamic variables."
+                            className="w-full bg-[#080B0F] border border-[#1a1f2e] focus:border-[#6366f1] outline-none text-xs px-2.5 py-1.5 rounded text-white font-mono"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleAddNewSwap}
+                  className="w-full border border-dashed border-[#1a1f2e] hover:border-[#6366f1] text-[#6366f1] hover:text-[#5053e1] font-mono text-[10px] py-2 rounded transition-colors"
+                >
+                  + ADD ELEMENT SWAP
+                </button>
+
+                <p className="text-[9px] font-mono text-gray-500 mt-1">
                   Use {"{{prospect_name}}"}, {"{{company_name}}"}, {"{{rep_name}}"}, {"{{job_title}}"}, {"{{deal_stage}}"} as dynamic variables — they will be replaced with real prospect data automatically.
                 </p>
               </div>
