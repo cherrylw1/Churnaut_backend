@@ -121,23 +121,30 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    console.log('[Scout Score POST] Starting database writes. toInsert:', JSON.stringify(toInsert, null, 2));
+    console.log('[Scout Score POST] toUpdate:', JSON.stringify(toUpdate, null, 2));
+
     // Perform inserts
     if (toInsert.length > 0) {
-      const { error: insErr } = await supabaseAdmin.from('deal_scores').insert(toInsert);
-      if (insErr) {
-        console.error('[Scout Score POST] Error inserting deal_scores:', insErr);
+      console.log('[Scout Score POST] Executing Supabase insert for toInsert...');
+      const insRes = await supabaseAdmin.from('deal_scores').insert(toInsert);
+      console.log('[Scout Score POST] Supabase insert response:', JSON.stringify(insRes, null, 2));
+      if (insRes.error) {
+        console.error('[Scout Score POST] Error inserting deal_scores:', insRes.error);
         return NextResponse.json({ error: 'Database error saving deal scores' }, { status: 500 });
       }
     }
 
     // Perform updates
     for (const updateRec of toUpdate) {
-      const { error: updErr } = await supabaseAdmin
+      console.log(`[Scout Score POST] Executing Supabase update for deal_id ${updateRec.deal_id}...`);
+      const updRes = await supabaseAdmin
         .from('deal_scores')
         .update(updateRec)
         .eq('id', updateRec.id as string);
-      if (updErr) {
-        console.error('[Scout Score POST] Error updating deal_scores:', updErr);
+      console.log(`[Scout Score POST] Supabase update response for deal_id ${updateRec.deal_id}:`, JSON.stringify(updRes, null, 2));
+      if (updRes.error) {
+        console.error('[Scout Score POST] Error updating deal_scores:', updRes.error);
         return NextResponse.json({ error: 'Database error updating deal scores' }, { status: 500 });
       }
     }
