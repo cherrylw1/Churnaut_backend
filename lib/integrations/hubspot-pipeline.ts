@@ -37,14 +37,20 @@ export async function fetchHubSpotPipeline(clientId: string): Promise<ScoutDeal[
   }
 
   // 2. Look up the HubSpot access token in the crm_tokens table
-  const { data: tokenData, error: tokenError } = await supabaseAdmin
+  const { data: tokens, error: tokenError } = await supabaseAdmin
     .from('crm_tokens')
     .select('access_token, refresh_token, expires_at')
     .eq('client_id', clientId)
     .eq('crm_type', 'hubspot')
-    .maybeSingle();
+    .order('updated_at', { ascending: false });
 
-  if (tokenError || !tokenData) {
+  if (tokenError) {
+    console.error('[Scout Pipeline] Error fetching HubSpot token from crm_tokens:', tokenError);
+  }
+
+  const tokenData = tokens && tokens.length > 0 ? tokens[0] : null;
+
+  if (!tokenData) {
     console.warn(`[Scout Pipeline] No HubSpot OAuth connection found for client ${clientId}`);
     return [];
   }
