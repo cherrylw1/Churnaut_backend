@@ -175,7 +175,7 @@ CREATE TABLE IF NOT EXISTS playbook_templates (
 
   if (loading) {
     return (
-      <div className="text-center py-12 text-gray-500 font-mono text-sm uppercase tracking-widest">
+      <div className="text-center py-12 text-gray-500 font-mono text-sm uppercase tracking-widest bg-[var(--bg-base)] text-[var(--text-primary)] min-h-screen">
         RETRIEVING PLAYBOOK TEMPLATES...
       </div>
     );
@@ -190,7 +190,7 @@ CREATE TABLE IF NOT EXISTS playbook_templates (
   const showSeedingWarning = warning || playbooks.length === 0;
 
   return (
-    <div className="space-y-8 max-w-6xl">
+    <div className="space-y-8 max-w-6xl bg-[var(--bg-base)] text-[var(--text-primary)] min-h-screen">
       {/* Page Header */}
       <div className="border-b border-[var(--border-subtle)] pb-5">
         <h1 className="text-xl font-bold tracking-wider font-mono uppercase text-white">

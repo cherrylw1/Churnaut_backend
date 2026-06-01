@@ -174,27 +174,27 @@ export default function AiInsightsPage() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* 1. Summary Card (Full span) */}
-                <div className="md:col-span-2 border border-[var(--border-subtle)] bg-[#080B0F]/40 p-5 rounded-lg space-y-2">
+                <div className="md:col-span-2 border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-5 rounded-lg space-y-2">
                   <span className="text-[9px] font-mono text-[#6366f1] uppercase tracking-widest font-bold">THIS WEEK SUMMARY</span>
-                  <p className="text-xs font-mono leading-relaxed text-gray-300">{digest.summary}</p>
+                  <p className="text-xs font-mono leading-relaxed text-[var(--text-primary)]">{digest.summary}</p>
                 </div>
 
                 {/* 2. Top Signal Card */}
-                <div className="border border-[var(--border-subtle)] bg-[#080B0F]/40 p-5 rounded-lg space-y-2">
+                <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-5 rounded-lg space-y-2">
                   <span className="text-[9px] font-mono text-indigo-400 uppercase tracking-widest font-bold">TOP SIGNAL</span>
-                  <p className="text-xs font-mono leading-relaxed text-gray-300">{digest.top_signal}</p>
+                  <p className="text-xs font-mono leading-relaxed text-[var(--text-primary)]">{digest.top_signal}</p>
                 </div>
 
                 {/* 3. Rep Spotlight Card */}
-                <div className="border border-[var(--border-subtle)] bg-[#080B0F]/40 p-5 rounded-lg space-y-2">
+                <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-5 rounded-lg space-y-2">
                   <span className="text-[9px] font-mono text-green-400 uppercase tracking-widest font-bold">REP SPOTLIGHT</span>
-                  <p className="text-xs font-mono leading-relaxed text-gray-300">{digest.rep_spotlight}</p>
+                  <p className="text-xs font-mono leading-relaxed text-[var(--text-primary)]">{digest.rep_spotlight}</p>
                 </div>
 
                 {/* 4. Recommendation Card (Full span) */}
-                <div className="md:col-span-2 border border-[var(--border-subtle)] bg-indigo-950/10 border-indigo-900/40 p-5 rounded-lg space-y-2">
+                <div className="md:col-span-2 border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-5 rounded-lg space-y-2">
                   <span className="text-[9px] font-mono text-indigo-400 uppercase tracking-widest font-bold">ACTIONABLE RECOMMENDATION</span>
-                  <p className="text-xs font-mono leading-relaxed text-indigo-300">{digest.recommendation}</p>
+                  <p className="text-xs font-mono leading-relaxed text-[var(--text-primary)]">{digest.recommendation}</p>
                 </div>
               </div>
             )}

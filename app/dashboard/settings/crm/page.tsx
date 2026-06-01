@@ -113,14 +113,14 @@ export default function CrmSettingsPage() {
 
   if (loading) {
     return (
-      <div className="text-center py-12 text-gray-500 font-mono text-sm uppercase tracking-widest">
+      <div className="text-center py-12 text-gray-500 font-mono text-sm uppercase tracking-widest bg-[var(--bg-base)] text-[var(--text-primary)] min-h-screen">
         RETRIEVING CRM INTEGRATION STATUS...
       </div>
     );
   }
 
   return (
-    <div className="space-y-8 max-w-4xl">
+    <div className="space-y-8 max-w-4xl bg-[var(--bg-base)] text-[var(--text-primary)] min-h-screen">
       {/* Page Header */}
       <div className="border-b border-[var(--border-subtle)] pb-5 flex justify-between items-end">
         <div>

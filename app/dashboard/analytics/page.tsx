@@ -94,12 +94,12 @@ export default function AnalyticsPage() {
   }, []);
 
   if (loading) {
-    return <div className="text-center py-12 text-gray-500 font-mono text-sm">RETRIEVING ANALYTICS...</div>;
+    return <div className="text-center py-12 text-gray-500 font-mono text-sm bg-[var(--bg-base)] text-[var(--text-primary)] min-h-screen">RETRIEVING ANALYTICS...</div>;
   }
 
   if (!data) {
     return (
-      <div className="text-center py-12 text-gray-500 font-mono text-sm border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-lg">
+      <div className="text-center py-12 text-gray-500 font-mono text-sm border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-lg text-[var(--text-primary)]">
         Failed to fetch analytics metrics. Please ensure webhooks or resolve calls have been logged.
       </div>
     );
@@ -115,7 +115,7 @@ export default function AnalyticsPage() {
   } = data;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 bg-[var(--bg-base)] text-[var(--text-primary)] min-h-screen">
       {/* Top Header */}
       <div className="flex justify-between items-center border-b border-[var(--border-subtle)] pb-5">
         <div>

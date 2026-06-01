@@ -99,7 +99,7 @@ export default function SnippetPage() {
         </p>
 
         {/* Monospace Code block */}
-        <div className="relative group border border-[var(--border-subtle)] bg-[#080B0F] rounded-lg p-4 font-mono text-xs overflow-x-auto text-gray-300">
+        <div className="relative group border border-[var(--border-subtle)] bg-[#1e1e2e] rounded-lg p-4 font-mono text-xs overflow-x-auto text-[#e2e8f0]" style={{ backgroundColor: '#1e1e2e', color: '#e2e8f0' }}>
           <pre className="leading-relaxed select-all">
             {getSnippetCode()}
           </pre>
@@ -129,8 +129,8 @@ export default function SnippetPage() {
         </p>
 
         {/* Monospace Example */}
-        <div className="border border-[var(--border-subtle)] bg-[#080B0F] rounded-lg p-4 font-mono text-xs text-gray-300">
-          <span className="text-gray-600 block mb-2">&lt;!-- Example element swaps --&gt;</span>
+        <div className="border border-[var(--border-subtle)] bg-[#1e1e2e] rounded-lg p-4 font-mono text-xs text-[#e2e8f0]" style={{ backgroundColor: '#1e1e2e', color: '#e2e8f0' }}>
+          <span className="text-gray-500 block mb-2">&lt;!-- Example element swaps --&gt;</span>
           <pre className="leading-relaxed">
             {`<!-- Swap a headline copy -->\n<h1 class="sr-target font-bold">Welcome to Churnaut</h1>\n\n<!-- Swap a direct scheduling button -->\n<div class="sr-target">\n  <a href="/pricing">View Plans</a>\n</div>`}
           </pre>
@@ -216,7 +216,7 @@ export default function SnippetPage() {
                 <p>
                   {"To install the snippet on a custom server-side or static website, paste the script tags directly inside the head block, after other third-party dependencies:"}
                 </p>
-                <div className="p-3 bg-[#080B0F] border border-[var(--border-subtle)] text-gray-300 rounded overflow-x-auto text-[11px]">
+                <div className="p-3 bg-[#1e1e2e] border border-[var(--border-subtle)] text-[#e2e8f0] rounded overflow-x-auto text-[11px]" style={{ backgroundColor: '#1e1e2e', color: '#e2e8f0' }}>
                   {`<!DOCTYPE html>\n<html>\n<head>\n  <meta charset="utf-8">\n  <title>Your Site</title>\n  <!-- Paste Churnaut tag below -->\n  ${getSnippetCode()}\n</head>\n<body>...</body>\n</html>`}
                 </div>
               </div>

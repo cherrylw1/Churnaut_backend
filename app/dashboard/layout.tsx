@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
@@ -13,9 +13,7 @@ import {
   Sparkles, 
   BarChart3, 
   Code2, 
-  Settings,
-  Sun,
-  Moon
+  Settings
 } from 'lucide-react';
 
 interface DashboardLayoutProps {
@@ -24,30 +22,6 @@ interface DashboardLayoutProps {
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = usePathname();
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
-
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'light') {
-      setTheme('light');
-      document.documentElement.classList.add('light');
-    } else {
-      setTheme('dark');
-      document.documentElement.classList.remove('light');
-    }
-  }, []);
-
-  const toggleTheme = () => {
-    if (theme === 'light') {
-      setTheme('dark');
-      document.documentElement.classList.remove('light');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      setTheme('light');
-      document.documentElement.classList.add('light');
-      localStorage.setItem('theme', 'light');
-    }
-  };
 
   const coreGroup = [
     { label: 'Home', href: '/dashboard', icon: HomeIcon },
@@ -103,27 +77,23 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <div className="min-h-screen bg-[var(--bg-base)] text-[var(--text-primary)] flex">
       {/* Sidebar Panel */}
-      <aside className="w-64 bg-[var(--bg-surface)] border-r border-[var(--border-subtle)] flex flex-col justify-between select-none flex-shrink-0">
-        <div className="flex flex-col">
-          {/* Header Brand */}
-          <div className="h-16 flex items-center px-6 border-b border-[var(--border-subtle)] mb-4">
-            <Link href="/dashboard" className="flex items-center gap-2 font-sans font-bold text-[18px] text-[var(--text-primary)] hover:opacity-80 transition-opacity">
-              <span className="w-2.5 h-2.5 rounded-full bg-[var(--accent)]" />
-              CHURNAUT
-            </Link>
-          </div>
-
-          {/* Navigation Links */}
-          <nav className="p-4 space-y-6">
-            {renderNavGroup('CORE', coreGroup)}
-            {renderNavGroup('INTELLIGENCE', intelligenceGroup)}
-            {renderNavGroup('ACCOUNT', accountGroup)}
-          </nav>
+      <aside className="w-64 bg-[var(--bg-surface)] border-r border-[var(--border-subtle)] flex flex-col select-none flex-shrink-0">
+        {/* Header Brand */}
+        <div className="h-16 flex items-center px-6 border-b border-[var(--border-subtle)] mb-4">
+          <Link href="/dashboard" className="flex items-center gap-2 font-sans font-bold text-[18px] text-[var(--text-primary)] hover:opacity-80 transition-opacity">
+            <span className="w-2.5 h-2.5 rounded-full bg-[var(--accent)]" />
+            CHURNAUT
+          </Link>
         </div>
 
-        {/* Sidebar Footer Status Indicator & Theme Toggle */}
-        <div className="p-4 border-t border-[var(--border-subtle)] flex items-center justify-between bg-[var(--bg-surface)]">
-          <div className="flex items-center space-x-3">
+        {/* Navigation Links */}
+        <nav className="p-4 space-y-6">
+          {renderNavGroup('CORE', coreGroup)}
+          {renderNavGroup('INTELLIGENCE', intelligenceGroup)}
+          {renderNavGroup('ACCOUNT', accountGroup)}
+
+          {/* Sidebar Status Indicator */}
+          <div className="pt-4 border-t border-[var(--border-subtle)] flex items-center space-x-3">
             <span className="relative flex h-2.5 w-2.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
@@ -132,14 +102,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               Edge: <span className="text-green-500 font-semibold">Active</span>
             </span>
           </div>
-          <button
-            onClick={toggleTheme}
-            title="Toggle light/dark mode"
-            className="p-2 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all active:scale-95 flex items-center justify-center"
-          >
-            {theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
-          </button>
-        </div>
+        </nav>
       </aside>
 
       {/* Main Content Area */}

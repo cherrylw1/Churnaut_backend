@@ -5,7 +5,7 @@ import Link from 'next/link';
 
 export default function SettingsPage() {
   return (
-    <div className="space-y-8 max-w-4xl">
+    <div className="space-y-8 max-w-4xl bg-[var(--bg-base)] text-[var(--text-primary)] min-h-screen">
       {/* Page Header */}
       <div className="border-b border-[var(--border-subtle)] pb-5">
         <h1 className="text-xl font-bold tracking-wider font-mono uppercase text-white">

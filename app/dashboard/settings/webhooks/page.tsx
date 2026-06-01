@@ -205,7 +205,7 @@ export default function WebhooksSettingsPage() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 bg-[var(--bg-base)] text-[var(--text-primary)] min-h-screen">
       {/* Header */}
       <div className="border-b border-[var(--border-subtle)] pb-5">
         <h1 className="text-xl font-bold tracking-wider font-mono">WEBHOOK SETTINGS</h1>
@@ -213,7 +213,7 @@ export default function WebhooksSettingsPage() {
       </div>
 
       {loading ? (
-        <div className="text-center py-12 text-gray-500 font-mono text-sm">RETRIEVING WEBHOOK SYSTEM STATUS...</div>
+        <div className="text-center py-12 text-gray-500 font-mono text-sm bg-[var(--bg-base)] text-[var(--text-primary)] min-h-screen">RETRIEVING WEBHOOK SYSTEM STATUS...</div>
       ) : (
         <>
           {/* Endpoint Details Card */}
