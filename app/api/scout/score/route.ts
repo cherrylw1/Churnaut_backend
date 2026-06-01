@@ -31,6 +31,7 @@ export async function POST(req: NextRequest) {
     try {
       deals = await fetchHubSpotPipeline(clientId);
       console.log(`[Scout Score POST] fetchHubSpotPipeline returned ${deals.length} deals`);
+      console.log('SCOUT PIPELINE DATA:', JSON.stringify(deals, null, 2));
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);
       console.error('[Scout Score POST] Error in fetchHubSpotPipeline:', errMsg);
