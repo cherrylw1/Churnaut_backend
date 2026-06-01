@@ -24,12 +24,29 @@ export async function POST(req: NextRequest) {
     if (!clientId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    console.log('[Scout Score POST] Client lookup successful. client_id:', clientId, 'crm_type: hubspot');
 
     // 2. Fetch HubSpot pipeline deals
-    const deals = await fetchHubSpotPipeline(clientId);
+    let deals;
+    try {
+      deals = await fetchHubSpotPipeline(clientId);
+      console.log(`[Scout Score POST] fetchHubSpotPipeline returned ${deals.length} deals`);
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      console.error('[Scout Score POST] Error in fetchHubSpotPipeline:', errMsg);
+      throw err;
+    }
 
     // 3. Score deals using Gemini AI
-    const scores = await scoreDealsWithScout(clientId, deals);
+    let scores;
+    try {
+      scores = await scoreDealsWithScout(clientId, deals);
+      console.log('[Scout Score POST] scoreDealsWithScout output response:', JSON.stringify(scores));
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      console.error('[Scout Score POST] Error in scoreDealsWithScout:', errMsg);
+      throw err;
+    }
 
     // If no deals exist, return early
     if (scoredDealsCount(scores.deals) === 0) {
@@ -155,7 +172,9 @@ export async function POST(req: NextRequest) {
     });
 
   } catch (error) {
-    console.error('[Scout Score POST Exception] Unhandled error:', error);
+    const errMessage = error instanceof Error ? error.message : String(error);
+    const errStack = error instanceof Error ? error.stack : 'No stack trace';
+    console.error(`[Scout Score POST Exception] Unhandled error: ${errMessage}\nStack trace:\n${errStack}`);
     const errMsg = error instanceof Error ? error.message : 'Internal server error';
     return NextResponse.json({ error: errMsg }, { status: 500 });
   }
