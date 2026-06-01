@@ -1,5 +1,6 @@
 import { redis } from '@/lib/redis';
 import { ScoutDeal } from './integrations/hubspot-pipeline';
+import { supabaseAdmin } from '@/lib/supabase';
 
 export interface ScoredDeal {
   deal_id: string;
@@ -23,7 +24,13 @@ export interface ScoutScoreResult {
 export async function scoreDealsWithScout(
   clientId: string,
   deals: ScoutDeal[],
-  bypassCache: boolean = false
+  bypassCache: boolean = false,
+  patterns?: {
+    avg_deal_cycle_days: number | null;
+    avg_stage_duration: Record<string, number>;
+    single_contact_close_rate: number;
+    top_close_signals: string[] | string;
+  } | null
 ): Promise<ScoutScoreResult> {
   if (!clientId) {
     throw new Error('Missing client ID');
@@ -72,6 +79,19 @@ export async function scoreDealsWithScout(
   });
   const currentIsoDate = new Date().toISOString().split('T')[0];
 
+  let patternsLayer = '';
+  if (patterns) {
+    const cycleDays = patterns.avg_deal_cycle_days ?? 'unknown';
+    const closeRate = patterns.single_contact_close_rate ?? 'unknown';
+    const signals = Array.isArray(patterns.top_close_signals) 
+      ? patterns.top_close_signals.join(', ') 
+      : (patterns.top_close_signals || 'none');
+    patternsLayer = `
+### Layer 2.5: Company-specific Patterns
+Company-specific patterns: Average deal cycle is ${cycleDays} days. Single-contact deals close at ${closeRate}% rate. Top close signals: ${signals}.
+`;
+  }
+
   const prompt = `
 ### Layer 1: System Context
 You are Scout, an experienced B2B sales manager AI reviewing a sales pipeline. You are direct, specific, and actionable. You understand deal velocity, buying signals, and when deals are at risk.
@@ -83,7 +103,7 @@ Score each deal RED, AMBER, or GREEN using these rules:
 - **GREEN**: activity within 5 days, multiple contacts engaged, moving through stages normally.
 
 If last_activity_days is null, treat it as 999 (no activity ever recorded). If contact_count is 0 or null, treat it as 0 contacts. Apply scoring rules normally with these substitutions — do not skip or omit deals because of missing data. Every deal in the input MUST appear in the output with a score.
-
+${patternsLayer}
 ### Layer 3: Deal Data and Output Schema
 Here is the current date and timezone context:
 - Current Date: ${currentDateStr} (ISO: ${currentIsoDate})
@@ -191,4 +211,108 @@ Return ONLY the JSON. No markdown wrappers, no conversational text, no explanati
   }
 
   return result;
+}
+
+/**
+ * Calculates historical deal patterns for a client and saves them.
+ * If fewer than 5 deals exist, returns null.
+ */
+export async function calculateDealPatterns(clientId: string) {
+  if (!clientId) return null;
+
+  try {
+    console.log(`[calculateDealPatterns] Starting pattern calculation for client: ${clientId}`);
+    const { data: dealScores, error } = await supabaseAdmin
+      .from('deal_scores')
+      .select('*')
+      .eq('client_id', clientId);
+
+    if (error) {
+      console.error('[calculateDealPatterns] Error fetching deal scores:', error);
+      return null;
+    }
+
+    if (!dealScores || dealScores.length < 5) {
+      console.log(`[calculateDealPatterns] Not enough data for client ${clientId} (${dealScores?.length || 0} deals)`);
+      return null;
+    }
+
+    // 1. Calculate avg_deal_cycle_days: average days from first scored_at to close_date
+    let totalCycleDays = 0;
+    let cycleDealsCount = 0;
+    dealScores.forEach((d) => {
+      if (d.close_date && d.scored_at) {
+        const diffTime = new Date(d.close_date).getTime() - new Date(d.scored_at).getTime();
+        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+        totalCycleDays += diffDays;
+        cycleDealsCount++;
+      }
+    });
+    const avg_deal_cycle_days = cycleDealsCount > 0 ? Math.round(totalCycleDays / cycleDealsCount) : null;
+
+    // 2. Calculate avg_stage_duration: average days_in_stage grouped by stage
+    const stageDurations: Record<string, { total: number; count: number }> = {};
+    dealScores.forEach((d) => {
+      if (d.stage && d.days_in_stage !== undefined && d.days_in_stage !== null) {
+        if (!stageDurations[d.stage]) {
+          stageDurations[d.stage] = { total: 0, count: 0 };
+        }
+        stageDurations[d.stage].total += d.days_in_stage;
+        stageDurations[d.stage].count += 1;
+      }
+    });
+    const avg_stage_duration: Record<string, number> = {};
+    for (const [stage, data] of Object.entries(stageDurations)) {
+      avg_stage_duration[stage] = Math.round(data.total / data.count);
+    }
+
+    // 3. Calculate close rate for single-contact deals
+    const isClosed = (stage: string) => {
+      const s = (stage || '').toLowerCase();
+      return s.includes('won') || s.includes('closedwon');
+    };
+
+    const singleContactDeals = dealScores.filter((d) => (d.contact_count || 0) <= 1);
+    const singleContactClosed = singleContactDeals.filter((d) => isClosed(d.stage));
+    const single_contact_close_rate = singleContactDeals.length > 0
+      ? Number(((singleContactClosed.length / singleContactDeals.length) * 100).toFixed(2))
+      : 0;
+
+    // 4. Calculate top_close_signals: stages that appear most on GREEN deals
+    const greenDeals = dealScores.filter((d) => d.score === 'GREEN');
+    const stageCounts: Record<string, number> = {};
+    greenDeals.forEach((d) => {
+      if (d.stage) {
+        stageCounts[d.stage] = (stageCounts[d.stage] || 0) + 1;
+      }
+    });
+    const top_close_signals = Object.entries(stageCounts)
+      .sort((a, b) => b[1] - a[1])
+      .map(([stage]) => stage);
+
+    const patternData = {
+      client_id: clientId,
+      avg_deal_cycle_days,
+      avg_stage_duration,
+      single_contact_close_rate,
+      top_close_signals,
+      calculated_at: new Date().toISOString(),
+    };
+
+    console.log(`[calculateDealPatterns] Upserting patterns for client ${clientId}:`, JSON.stringify(patternData));
+    const { data: upsertData, error: upsertError } = await supabaseAdmin
+      .from('company_deal_patterns')
+      .upsert(patternData, { onConflict: 'client_id' })
+      .select()
+      .maybeSingle();
+
+    if (upsertError) {
+      console.error('[calculateDealPatterns] Error upserting pattern:', upsertError);
+    }
+
+    return upsertData || patternData;
+  } catch (err) {
+    console.error('[calculateDealPatterns] Exception in calculation:', err);
+    return null;
+  }
 }

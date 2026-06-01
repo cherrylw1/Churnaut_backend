@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { fetchHubSpotPipeline } from '@/lib/integrations/hubspot-pipeline';
-import { scoreDealsWithScout } from '@/lib/scout-scoring';
+import { scoreDealsWithScout, calculateDealPatterns, ScoutScoreResult } from '@/lib/scout-scoring';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 3. Score deals using Gemini AI
-    let scores;
+    let scores: ScoutScoreResult;
     try {
       scores = await scoreDealsWithScout(clientId, deals, true);
       console.log('[Scout Score POST] scoreDealsWithScout output response:', JSON.stringify(scores));
@@ -49,134 +49,161 @@ export async function POST(req: NextRequest) {
       throw err;
     }
 
-    // If no deals exist, return early
-    if (scoredDealsCount(scores.deals) === 0) {
-      // Create a snapshot for empty pipeline
+    const dealsMap = new Map(deals.map((d) => [d.deal_id, d]));
+
+    // Helper to map and save scores/snapshots to database
+    const saveScoresToDb = async (currentScores: typeof scores) => {
+      if (scoredDealsCount(currentScores.deals) === 0) {
+        const { error: snapshotErr } = await supabaseAdmin
+          .from('pipeline_snapshots')
+          .insert({
+            client_id: clientId,
+            total_deals: 0,
+            red_count: 0,
+            amber_count: 0,
+            green_count: 0,
+            total_pipeline_value: 0,
+            pressure_score: 0,
+          });
+
+        if (snapshotErr) {
+          console.error('[Scout Score POST] Failed to insert empty snapshot:', snapshotErr);
+        }
+        return { scoredDeals: [] };
+      }
+
+      const scoredDeals = currentScores.deals.map((sd) => {
+        const rawDeal = dealsMap.get(sd.deal_id);
+        return {
+          client_id: clientId,
+          deal_id: sd.deal_id,
+          deal_name: sd.deal_name,
+          score: sd.score,
+          primary_risk: sd.primary_risk,
+          next_action: sd.next_action,
+          draft_email: sd.draft_email || null,
+          stage: rawDeal?.stage || 'Unknown Stage',
+          deal_value: rawDeal?.deal_value || 0,
+          close_date: rawDeal?.close_date || null,
+          days_in_stage: rawDeal?.days_in_stage || 0,
+          last_activity_days: rawDeal?.last_activity_days ?? null,
+          contact_count: rawDeal?.contact_count || 0,
+          website_visits_7d: rawDeal?.website_visits_7d || 0,
+          scored_at: new Date().toISOString(),
+        };
+      });
+
+      // Save all scored deals to deal_scores table in database (split upsert in JS)
+      const { data: existing, error: existingErr } = await supabaseAdmin
+        .from('deal_scores')
+        .select('id, deal_id')
+        .eq('client_id', clientId);
+
+      if (existingErr) {
+        console.error('[Scout Score POST] Error reading existing deal_scores:', existingErr);
+        throw existingErr;
+      }
+
+      const existingMap = new Map(existing?.map((e) => [e.deal_id, e.id]) || []);
+      const toInsert: Record<string, unknown>[] = [];
+      const toUpdate: Record<string, unknown>[] = [];
+
+      for (const record of scoredDeals) {
+        const existingId = existingMap.get(record.deal_id);
+        if (existingId) {
+          toUpdate.push({ id: existingId, ...record });
+        } else {
+          toInsert.push(record);
+        }
+      }
+
+      console.log('[Scout Score POST] Starting database writes. toInsert:', JSON.stringify(toInsert, null, 2));
+      console.log('[Scout Score POST] toUpdate:', JSON.stringify(toUpdate, null, 2));
+
+      // Perform inserts
+      if (toInsert.length > 0) {
+        console.log('[Scout Score POST] Executing Supabase insert for toInsert...');
+        const insRes = await supabaseAdmin.from('deal_scores').insert(toInsert);
+        console.log('[Scout Score POST] Supabase insert response:', JSON.stringify(insRes, null, 2));
+        if (insRes.error) {
+          console.error('[Scout Score POST] Error inserting deal_scores:', insRes.error);
+          throw insRes.error;
+        }
+      }
+
+      // Perform updates
+      for (const updateRec of toUpdate) {
+        console.log(`[Scout Score POST] Executing Supabase update for deal_id ${updateRec.deal_id}...`);
+        const updRes = await supabaseAdmin
+          .from('deal_scores')
+          .update(updateRec)
+          .eq('id', updateRec.id as string);
+        console.log(`[Scout Score POST] Supabase update response for deal_id ${updateRec.deal_id}:`, JSON.stringify(updRes, null, 2));
+        if (updRes.error) {
+          console.error('[Scout Score POST] Error updating deal_scores:', updRes.error);
+          throw updRes.error;
+        }
+      }
+
+      // Save snapshot to pipeline_snapshots table
+      const totalDeals = scoredDeals.length;
+      const redCount = scoredDeals.filter((d) => d.score === 'RED').length;
+      const amberCount = scoredDeals.filter((d) => d.score === 'AMBER').length;
+      const greenCount = scoredDeals.filter((d) => d.score === 'GREEN').length;
+      const totalPipelineValue = scoredDeals.reduce((sum, d) => sum + (d.deal_value || 0), 0);
+
       const { error: snapshotErr } = await supabaseAdmin
         .from('pipeline_snapshots')
         .insert({
           client_id: clientId,
-          total_deals: 0,
-          red_count: 0,
-          amber_count: 0,
-          green_count: 0,
-          total_pipeline_value: 0,
-          pressure_score: 0,
+          total_deals: totalDeals,
+          red_count: redCount,
+          amber_count: amberCount,
+          green_count: greenCount,
+          total_pipeline_value: totalPipelineValue,
+          pressure_score: currentScores.pipeline_pressure_score,
         });
 
       if (snapshotErr) {
-        console.error('[Scout Score POST] Failed to insert empty snapshot:', snapshotErr);
+        console.error('[Scout Score POST] Error saving pipeline snapshot:', snapshotErr);
+        throw snapshotErr;
       }
 
+      return { scoredDeals };
+    };
+
+    // First DB save (to ensure historical data has current run results)
+    let saveResult = await saveScoresToDb(scores);
+
+    // If no deals exist, return early
+    if (scoredDealsCount(scores.deals) === 0) {
       return NextResponse.json({
         pipeline_pressure_score: 0,
         deals: [],
       });
     }
 
-    // 4. Map deals and score metrics to combine HubSpot fields and Gemini scores
-    const dealsMap = new Map(deals.map((d) => [d.deal_id, d]));
-    const scoredDeals = scores.deals.map((sd) => {
-      const rawDeal = dealsMap.get(sd.deal_id);
-      return {
-        client_id: clientId,
-        deal_id: sd.deal_id,
-        deal_name: sd.deal_name,
-        score: sd.score,
-        primary_risk: sd.primary_risk,
-        next_action: sd.next_action,
-        draft_email: sd.draft_email || null,
-        stage: rawDeal?.stage || 'Unknown Stage',
-        deal_value: rawDeal?.deal_value || 0,
-        close_date: rawDeal?.close_date || null,
-        days_in_stage: rawDeal?.days_in_stage || 0,
-        last_activity_days: rawDeal?.last_activity_days ?? null,
-        contact_count: rawDeal?.contact_count || 0,
-        website_visits_7d: rawDeal?.website_visits_7d || 0,
-        scored_at: new Date().toISOString(),
-      };
-    });
+    // Call calculateDealPatterns
+    const patterns = await calculateDealPatterns(clientId);
 
-    // 5. Save all scored deals to deal_scores table in database (split upsert in JS)
-    const { data: existing, error: existingErr } = await supabaseAdmin
-      .from('deal_scores')
-      .select('id, deal_id')
-      .eq('client_id', clientId);
-
-    if (existingErr) {
-      console.error('[Scout Score POST] Error reading existing deal_scores:', existingErr);
-      return NextResponse.json({ error: 'Database error reading deal scores' }, { status: 500 });
-    }
-
-    const existingMap = new Map(existing?.map((e) => [e.deal_id, e.id]) || []);
-    const toInsert: Record<string, unknown>[] = [];
-    const toUpdate: Record<string, unknown>[] = [];
-
-    for (const record of scoredDeals) {
-      const existingId = existingMap.get(record.deal_id);
-      if (existingId) {
-        toUpdate.push({ id: existingId, ...record });
-      } else {
-        toInsert.push(record);
+    // If patterns exist, re-run scoring with enriched prompt
+    if (patterns) {
+      console.log('[Scout Score POST] Re-running scoring with enriched patterns:', JSON.stringify(patterns));
+      try {
+        scores = await scoreDealsWithScout(clientId, deals, true, patterns);
+        console.log('[Scout Score POST] Enriched scoreDealsWithScout response:', JSON.stringify(scores));
+        // Overwrite DB saves with the enriched scores
+        saveResult = await saveScoresToDb(scores);
+      } catch (err) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        console.error('[Scout Score POST] Error in enriched scoreDealsWithScout, falling back to initial scores:', errMsg);
       }
     }
 
-    console.log('[Scout Score POST] Starting database writes. toInsert:', JSON.stringify(toInsert, null, 2));
-    console.log('[Scout Score POST] toUpdate:', JSON.stringify(toUpdate, null, 2));
-
-    // Perform inserts
-    if (toInsert.length > 0) {
-      console.log('[Scout Score POST] Executing Supabase insert for toInsert...');
-      const insRes = await supabaseAdmin.from('deal_scores').insert(toInsert);
-      console.log('[Scout Score POST] Supabase insert response:', JSON.stringify(insRes, null, 2));
-      if (insRes.error) {
-        console.error('[Scout Score POST] Error inserting deal_scores:', insRes.error);
-        return NextResponse.json({ error: 'Database error saving deal scores' }, { status: 500 });
-      }
-    }
-
-    // Perform updates
-    for (const updateRec of toUpdate) {
-      console.log(`[Scout Score POST] Executing Supabase update for deal_id ${updateRec.deal_id}...`);
-      const updRes = await supabaseAdmin
-        .from('deal_scores')
-        .update(updateRec)
-        .eq('id', updateRec.id as string);
-      console.log(`[Scout Score POST] Supabase update response for deal_id ${updateRec.deal_id}:`, JSON.stringify(updRes, null, 2));
-      if (updRes.error) {
-        console.error('[Scout Score POST] Error updating deal_scores:', updRes.error);
-        return NextResponse.json({ error: 'Database error updating deal scores' }, { status: 500 });
-      }
-    }
-
-    // 6. Save snapshot to pipeline_snapshots table
-    const totalDeals = scoredDeals.length;
-    const redCount = scoredDeals.filter((d) => d.score === 'RED').length;
-    const amberCount = scoredDeals.filter((d) => d.score === 'AMBER').length;
-    const greenCount = scoredDeals.filter((d) => d.score === 'GREEN').length;
-    const totalPipelineValue = scoredDeals.reduce((sum, d) => sum + (d.deal_value || 0), 0);
-
-    const { error: snapshotErr } = await supabaseAdmin
-      .from('pipeline_snapshots')
-      .insert({
-        client_id: clientId,
-        total_deals: totalDeals,
-        red_count: redCount,
-        amber_count: amberCount,
-        green_count: greenCount,
-        total_pipeline_value: totalPipelineValue,
-        pressure_score: scores.pipeline_pressure_score,
-      });
-
-    if (snapshotErr) {
-      console.error('[Scout Score POST] Error saving pipeline snapshot:', snapshotErr);
-      return NextResponse.json({ error: 'Database error saving pipeline snapshot' }, { status: 500 });
-    }
-
-    // 7. Return the full scored pipeline with pressure score
+    // Return the full scored pipeline with pressure score
     return NextResponse.json({
       pipeline_pressure_score: scores.pipeline_pressure_score,
-      deals: scoredDeals,
+      deals: saveResult?.scoredDeals || [],
     });
 
   } catch (error) {
