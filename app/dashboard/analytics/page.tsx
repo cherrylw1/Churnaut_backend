@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import CountUp from '@/components/ui/CountUp';
 import {
   ResponsiveContainer,
   LineChart,
@@ -127,13 +128,13 @@ export default function AnalyticsPage() {
       {/* Summary Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1 */}
-        <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 rounded-lg flex flex-col justify-between space-y-2">
+        <div className="stat-card border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 rounded-lg flex flex-col justify-between space-y-2">
           <span className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">
             Links Created (MTD)
           </span>
           <div className="flex justify-between items-end">
             <span className="text-2xl font-bold font-mono text-white">
-              {summaryStats.totalLinksCreatedThisMonth}
+              <CountUp value={summaryStats.totalLinksCreatedThisMonth} />
             </span>
             <span className="text-[10px] font-mono text-indigo-400 bg-indigo-950/20 px-2 py-0.5 rounded border border-indigo-900/40">
               Active
@@ -142,13 +143,13 @@ export default function AnalyticsPage() {
         </div>
 
         {/* Card 2 */}
-        <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 rounded-lg flex flex-col justify-between space-y-2">
+        <div className="stat-card border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 rounded-lg flex flex-col justify-between space-y-2">
           <span className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">
             Click Events (MTD)
           </span>
           <div className="flex justify-between items-end">
             <span className="text-2xl font-bold font-mono text-white">
-              {summaryStats.totalClicksThisMonth}
+              <CountUp value={summaryStats.totalClicksThisMonth} />
             </span>
             <span className="text-[10px] font-mono text-green-400 bg-green-950/20 px-2 py-0.5 rounded border border-green-900/40">
               Engaged
@@ -157,13 +158,13 @@ export default function AnalyticsPage() {
         </div>
 
         {/* Card 3 */}
-        <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 rounded-lg flex flex-col justify-between space-y-2">
+        <div className="stat-card border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 rounded-lg flex flex-col justify-between space-y-2">
           <span className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">
             Trigger Rate
           </span>
           <div className="flex justify-between items-end">
             <span className="text-2xl font-bold font-mono text-[#6366f1]">
-              {summaryStats.personalizationTriggerRate}%
+              <CountUp value={summaryStats.personalizationTriggerRate} suffix="%" />
             </span>
             <span className="text-[9px] font-mono text-gray-500">
               Personalized
@@ -172,13 +173,13 @@ export default function AnalyticsPage() {
         </div>
 
         {/* Card 4 */}
-        <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 rounded-lg flex flex-col justify-between space-y-2">
+        <div className="stat-card border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 rounded-lg flex flex-col justify-between space-y-2">
           <span className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">
             Overall Conversion
           </span>
           <div className="flex justify-between items-end">
             <span className="text-2xl font-bold font-mono text-[#10b981]">
-              {summaryStats.overallConversionRate}%
+              <CountUp value={summaryStats.overallConversionRate} suffix="%" />
             </span>
             <span className="text-[9px] font-mono text-gray-500">
               CRMs Synced

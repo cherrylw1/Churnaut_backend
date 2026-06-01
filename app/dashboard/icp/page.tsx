@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Target, Lock, RefreshCw, ArrowRight, CheckCircle2 } from 'lucide-react';
+import Skeleton from '@/components/ui/Skeleton';
 
 interface JobTitleFreq {
   title: string;
@@ -127,8 +128,22 @@ export default function IcpBuilderPage() {
       )}
 
       {loading ? (
-        <div className="text-center py-20 text-gray-500 font-mono text-sm tracking-wider">
-          RETRIEVING ICP DATA PROFILE...
+        <div className="space-y-8 animate-pulse">
+          {/* Skeleton ICP Summary Card */}
+          <Skeleton variant="card" height={140} />
+          {/* Skeleton Win Patterns stats grid */}
+          <Skeleton variant="line" height={20} width={120} />
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            <Skeleton variant="card" height={96} />
+            <Skeleton variant="card" height={96} />
+            <Skeleton variant="card" height={96} />
+          </div>
+          {/* Skeleton job titles */}
+          <Skeleton variant="line" height={20} width={120} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Skeleton variant="card" height={60} />
+            <Skeleton variant="card" height={60} />
+          </div>
         </div>
       ) : profile ? (
         <div className="space-y-8">

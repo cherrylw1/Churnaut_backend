@@ -15,6 +15,7 @@ import {
   Code2, 
   Settings
 } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -59,12 +60,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             <Link
               key={item.label}
               href={item.href}
-              className={`flex items-center gap-2.5 px-4 py-2 rounded-md text-[14px] font-sans font-medium transition-all ${
+              className={`flex items-center gap-2.5 px-4 py-2 rounded-md text-[14px] font-sans font-medium transition-all duration-150 relative overflow-hidden ${
                 isActive
-                  ? 'bg-[var(--bg-elevated)] border-l-2 border-[var(--accent)] text-[var(--text-primary)]'
-                  : 'text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)] border-l-2 border-transparent'
+                  ? 'bg-[var(--bg-elevated)] text-[var(--text-primary)] font-semibold'
+                  : 'text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)]'
               }`}
             >
+              <div 
+                className="absolute left-0 top-0 bottom-0 bg-[var(--accent)] transition-[width] duration-150 ease-out"
+                style={{ width: isActive ? '2px' : '0px' }}
+              />
               {item.icon && <item.icon className="w-4 h-4" />}
               <span>{item.label}</span>
             </Link>
@@ -132,7 +137,17 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
         {/* Dynamic Children Panel */}
         <main className="flex-1 p-8 bg-[var(--bg-base)]">
-          {children}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={pathname}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+            >
+              {children}
+            </motion.div>
+          </AnimatePresence>
         </main>
       </div>
     </div>

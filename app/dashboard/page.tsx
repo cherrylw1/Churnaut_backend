@@ -11,6 +11,9 @@ import {
   Link2,
 } from 'lucide-react';
 import { supabaseBrowser } from '@/lib/supabase';
+import CountUp from '@/components/ui/CountUp';
+import Skeleton from '@/components/ui/Skeleton';
+import { motion } from 'framer-motion';
 
 interface ScoutInboxData {
   top_red_deal: { deal_name: string; next_action: string } | null;
@@ -159,8 +162,18 @@ export default function DashboardPage() {
       </div>
 
       {loading ? (
-        <div className="text-center py-20 text-[var(--text-muted)] font-mono text-sm tracking-wider">
-          RETRIEVING DASHBOARD DATA SUMMARY...
+        <div className="space-y-8 animate-pulse">
+          {/* Skeleton stats grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <Skeleton variant="card" height={112} />
+            <Skeleton variant="card" height={112} />
+            <Skeleton variant="card" height={112} />
+            <Skeleton variant="card" height={112} />
+          </div>
+          {/* Skeleton inbox */}
+          <Skeleton variant="card" height={150} />
+          {/* Skeleton activity */}
+          <Skeleton variant="card" height={220} />
         </div>
       ) : (
         <div className="space-y-8">
@@ -168,13 +181,13 @@ export default function DashboardPage() {
           {summary && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               {/* Stat 1: Pipeline Pressure */}
-              <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-6 py-5 rounded-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.25)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.35)] hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between h-28">
+              <div className="stat-card border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-6 py-5 rounded-[12px] flex flex-col justify-between h-28">
                 <div className="text-[12px] text-[var(--text-muted)] uppercase font-semibold tracking-wider">
                   Pipeline Pressure
                 </div>
                 <div className="flex items-baseline justify-between mt-auto">
                   <span className="text-[32px] font-bold text-[var(--text-primary)] leading-none font-sans">
-                    {summary.pressure_score}
+                    <CountUp value={summary.pressure_score} />
                   </span>
                   <span className={`text-[12px] font-bold uppercase ${getStatusColorClass(summary.pipeline_status)}`}>
                     {summary.pipeline_status}
@@ -183,37 +196,37 @@ export default function DashboardPage() {
               </div>
 
               {/* Stat 2: Active Rules */}
-              <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-6 py-5 rounded-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.25)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.35)] hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between h-28">
+              <div className="stat-card border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-6 py-5 rounded-[12px] flex flex-col justify-between h-28">
                 <div className="text-[12px] text-[var(--text-muted)] uppercase font-semibold tracking-wider">
                   Active Rules
                 </div>
                 <div className="mt-auto">
                   <span className="text-[32px] font-bold text-[var(--text-primary)] leading-none font-sans">
-                    {summary.active_rules_count}
+                    <CountUp value={summary.active_rules_count} />
                   </span>
                 </div>
               </div>
 
               {/* Stat 3: Tracked Links */}
-              <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-6 py-5 rounded-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.25)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.35)] hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between h-28">
+              <div className="stat-card border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-6 py-5 rounded-[12px] flex flex-col justify-between h-28">
                 <div className="text-[12px] text-[var(--text-muted)] uppercase font-semibold tracking-wider">
                   Tracked Links
                 </div>
                 <div className="mt-auto">
                   <span className="text-[32px] font-bold text-[var(--text-primary)] leading-none font-sans">
-                    {summary.tracked_links_count}
+                    <CountUp value={summary.tracked_links_count} />
                   </span>
                 </div>
               </div>
 
               {/* Stat 4: Sessions This Week */}
-              <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-6 py-5 rounded-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.25)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.35)] hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between h-28">
+              <div className="stat-card border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-6 py-5 rounded-[12px] flex flex-col justify-between h-28">
                 <div className="text-[12px] text-[var(--text-muted)] uppercase font-semibold tracking-wider">
                   Sessions This Week
                 </div>
                 <div className="mt-auto">
                   <span className="text-[32px] font-bold text-[var(--text-primary)] leading-none font-sans">
-                    {summary.sessions_this_week}
+                    <CountUp value={summary.sessions_this_week} />
                   </span>
                 </div>
               </div>
@@ -222,7 +235,7 @@ export default function DashboardPage() {
 
           {/* SECTION 3: SCOUT INBOX */}
           {summary && (
-            <div className="border border-[var(--border-subtle)] border-l-[3px] border-l-[var(--amber)] bg-[var(--bg-elevated)] rounded-[12px] p-5 shadow-[0_1px_4px_rgba(0,0,0,0.25)]">
+            <div className="card border border-[var(--border-subtle)] border-l-[3px] border-l-[var(--amber)] bg-[var(--bg-elevated)] rounded-[12px] p-5">
               <div className="flex items-center gap-2 text-[var(--text-primary)] font-bold tracking-wider uppercase text-[12px]">
                 <Zap className="text-[var(--amber)] w-4 h-4 fill-[var(--amber)]/20" />
                 SCOUT INBOX — TODAY
@@ -256,7 +269,7 @@ export default function DashboardPage() {
               <div className="flex justify-end mt-4">
                 <Link
                   href="/dashboard/scout"
-                  className="text-[12px] text-[var(--accent)] hover:text-[var(--accent-hover)] font-bold uppercase tracking-wider flex items-center gap-1 transition-colors"
+                  className="text-[12px] text-[var(--accent)] hover:text-[var(--accent-hover)] font-bold uppercase tracking-wider flex items-center gap-1 transition-colors font-mono"
                 >
                   View full Scout analysis <ArrowRight className="w-3.5 h-3.5" />
                 </Link>
@@ -266,7 +279,7 @@ export default function DashboardPage() {
 
           {/* SECTION 4: RECENT ACTIVITY */}
           {summary && (
-            <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 rounded-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.25)]">
+            <div className="card border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 rounded-[12px]">
               <div className="flex items-center gap-2 text-[var(--text-primary)] font-bold tracking-wider uppercase text-[12px] border-b border-[var(--border-subtle)] pb-3">
                 <Activity className="text-[var(--accent)] w-4 h-4" />
                 RECENT ACTIVITY
@@ -306,7 +319,7 @@ export default function DashboardPage() {
               <div className="flex justify-end mt-4">
                 <Link
                   href="/dashboard/analytics"
-                  className="text-[12px] text-[var(--accent)] hover:text-[var(--accent-hover)] font-bold uppercase tracking-wider flex items-center gap-1 transition-colors"
+                  className="text-[12px] text-[var(--accent)] hover:text-[var(--accent-hover)] font-bold uppercase tracking-wider flex items-center gap-1 transition-colors font-mono"
                 >
                   View full analytics <ArrowRight className="w-3.5 h-3.5" />
                 </Link>
@@ -315,32 +328,66 @@ export default function DashboardPage() {
           )}
 
           {/* SECTION 5: QUICK ACTIONS */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Link
-              href="/dashboard/links"
-              className="border border-[var(--border-default)] bg-transparent hover:bg-[var(--bg-elevated)] p-4.5 rounded-[8px] flex items-center justify-between font-sans text-[14px] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all shadow-[0_1px_4px_rgba(0,0,0,0.1)] hover:-translate-y-0.5"
+          <motion.div 
+            className="grid grid-cols-1 sm:grid-cols-3 gap-4"
+            initial="hidden"
+            animate="visible"
+            variants={{
+              hidden: { opacity: 0 },
+              visible: {
+                opacity: 1,
+                transition: {
+                  staggerChildren: 0.1
+                }
+              }
+            }}
+          >
+            <motion.div
+              variants={{
+                hidden: { opacity: 0, y: 12 },
+                visible: { opacity: 1, y: 0, transition: { duration: 0.3, ease: 'easeOut' } }
+              }}
             >
-              <span>CREATE TRACKED LINK</span>
-              <Link2 className="w-4 h-4 text-[var(--accent)]" />
-            </Link>
+              <Link
+                href="/dashboard/links"
+                className="card border border-[var(--border-default)] bg-transparent hover:bg-[var(--bg-elevated)] p-4.5 rounded-[8px] flex items-center justify-between font-sans text-[14px] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all w-full h-full"
+              >
+                <span>CREATE TRACKED LINK</span>
+                <Link2 className="w-4 h-4 text-[var(--accent)]" />
+              </Link>
+            </motion.div>
 
-            <Link
-              href="/dashboard/rules"
-              className="border border-[var(--border-default)] bg-transparent hover:bg-[var(--bg-elevated)] p-4.5 rounded-[8px] flex items-center justify-between font-sans text-[14px] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all shadow-[0_1px_4px_rgba(0,0,0,0.1)] hover:-translate-y-0.5"
+            <motion.div
+              variants={{
+                hidden: { opacity: 0, y: 12 },
+                visible: { opacity: 1, y: 0, transition: { duration: 0.3, ease: 'easeOut' } }
+              }}
             >
-              <span>ADD ROUTING RULE</span>
-              <PlusCircle className="w-4 h-4 text-[var(--accent)]" />
-            </Link>
+              <Link
+                href="/dashboard/rules"
+                className="card border border-[var(--border-default)] bg-transparent hover:bg-[var(--bg-elevated)] p-4.5 rounded-[8px] flex items-center justify-between font-sans text-[14px] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all w-full h-full"
+              >
+                <span>ADD ROUTING RULE</span>
+                <PlusCircle className="w-4 h-4 text-[var(--accent)]" />
+              </Link>
+            </motion.div>
 
-            <button
-              onClick={handleRunScout}
-              disabled={runningScout}
-              className="border border-[var(--border-default)] bg-transparent hover:bg-[var(--bg-elevated)] p-4.5 rounded-[8px] flex items-center justify-between font-sans text-[14px] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all shadow-[0_1px_4px_rgba(0,0,0,0.1)] hover:-translate-y-0.5 disabled:opacity-50 text-left"
+            <motion.div
+              variants={{
+                hidden: { opacity: 0, y: 12 },
+                visible: { opacity: 1, y: 0, transition: { duration: 0.3, ease: 'easeOut' } }
+              }}
             >
-              <span>{runningScout ? 'RUNNING...' : 'RUN SCOUT ANALYSIS'}</span>
-              <RefreshCw className={`w-4 h-4 text-[var(--accent)] ${runningScout ? 'animate-spin' : ''}`} />
-            </button>
-          </div>
+              <button
+                onClick={handleRunScout}
+                disabled={runningScout}
+                className="card border border-[var(--border-default)] bg-transparent hover:bg-[var(--bg-elevated)] p-4.5 rounded-[8px] flex items-center justify-between font-sans text-[14px] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all disabled:opacity-50 text-left w-full h-full"
+              >
+                <span>{runningScout ? 'RUNNING...' : 'RUN SCOUT ANALYSIS'}</span>
+                <RefreshCw className={`w-4 h-4 text-[var(--accent)] ${runningScout ? 'animate-spin' : ''}`} />
+              </button>
+            </motion.div>
+          </motion.div>
         </div>
       )}
     </div>

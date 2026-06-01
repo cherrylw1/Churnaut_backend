@@ -14,6 +14,9 @@ import {
   Brain,
   Skull,
 } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import CountUp from '@/components/ui/CountUp';
+import Skeleton from '@/components/ui/Skeleton';
 
 interface ScoutDealDetail {
   id: string;
@@ -441,8 +444,21 @@ export default function ScoutDashboard() {
       </div>
 
       {loading ? (
-        <div className="text-center py-20 text-gray-500 font-mono text-sm tracking-wider">
-          RETRIEVING SCOUT PIPELINE INTEL...
+        <div className="space-y-6 max-w-5xl mx-auto animate-pulse">
+          {/* Skeleton header overview cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Skeleton variant="card" height={100} />
+            <Skeleton variant="card" height={100} />
+          </div>
+          {/* Skeleton inbox */}
+          <Skeleton variant="card" height={120} />
+          {/* Skeleton section headers and deal cards */}
+          <Skeleton variant="line" height={24} />
+          <div className="space-y-4">
+            <Skeleton variant="card" height={80} />
+            <Skeleton variant="card" height={80} />
+            <Skeleton variant="card" height={80} />
+          </div>
         </div>
       ) : (
         <div className="space-y-6 max-w-5xl mx-auto">
@@ -461,7 +477,7 @@ export default function ScoutDashboard() {
                   <div>
                     <span className="text-[12px] font-sans font-medium text-[var(--text-muted)] block uppercase tracking-wider">Pressure Score</span>
                     <span className="text-[48px] font-extrabold font-sans text-[var(--text-primary)] block mt-1 leading-none">
-                      {snapshot.pressure_score}
+                      <CountUp value={snapshot.pressure_score} />
                     </span>
                   </div>
                   <div className="border-l border-[var(--border-subtle)] pl-6 flex-1">
@@ -561,12 +577,16 @@ export default function ScoutDashboard() {
               )}
             </button>
 
-            <div
-              className={`transition-all duration-300 ease-in-out overflow-hidden ${
-                collapsedSections.triggers ? 'max-h-0 opacity-0' : 'max-h-[2000px] opacity-100'
-              }`}
-            >
-              <div className="p-5 space-y-4">
+            <AnimatePresence initial={false}>
+              {!collapsedSections.triggers && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.25, ease: 'easeInOut' }}
+                  className="overflow-hidden"
+                >
+                  <div className="p-5 space-y-4">
                 {triggers.length === 0 ? (
                   <div className="py-8 text-center border border-dashed border-[var(--border-subtle)] rounded bg-[var(--bg-elevated)]">
                     <p className="text-xs font-sans text-[var(--text-muted)]">No acceleration triggers in the last 24 hours.</p>
@@ -604,8 +624,10 @@ export default function ScoutDashboard() {
                   </div>
                 )}
               </div>
-            </div>
-          </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
 
           {/* SECTION 4 — PIPELINE HEALTH (collapsible, default expanded) */}
           <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-[12px] overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.25)]">
@@ -624,12 +646,16 @@ export default function ScoutDashboard() {
               )}
             </button>
 
-            <div
-              className={`transition-all duration-300 ease-in-out overflow-hidden ${
-                collapsedSections.pipelineHealth ? 'max-h-0 opacity-0' : 'max-h-[5000px] opacity-100'
-              }`}
-            >
-              <div className="p-5 space-y-4">
+            <AnimatePresence initial={false}>
+              {!collapsedSections.pipelineHealth && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.25, ease: 'easeInOut' }}
+                  className="overflow-hidden"
+                >
+                  <div className="p-5 space-y-4">
                 {/* Tabs Header */}
                 <div className="flex border-b border-[var(--border-subtle)] font-sans text-xs mb-4">
                   <button
@@ -904,8 +930,10 @@ export default function ScoutDashboard() {
                   </div>
                 )}
               </div>
-            </div>
-          </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
 
           {/* SECTION 5 — REP INTELLIGENCE (collapsible, default expanded) */}
           <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-[12px] overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.25)]">
@@ -924,12 +952,16 @@ export default function ScoutDashboard() {
               )}
             </button>
 
-            <div
-              className={`transition-all duration-300 ease-in-out overflow-hidden ${
-                collapsedSections.repIntelligence ? 'max-h-0 opacity-0' : 'max-h-[3000px] opacity-100'
-              }`}
-            >
-              <div className="p-5 space-y-4">
+            <AnimatePresence initial={false}>
+              {!collapsedSections.repIntelligence && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.25, ease: 'easeInOut' }}
+                  className="overflow-hidden"
+                >
+                  <div className="p-5 space-y-4">
                 {blindSpots.length === 0 || blindSpots.reduce((acc, report) => acc + (report.blind_spots?.length || 0), 0) === 0 ? (
                   <div className="py-8 text-center border border-dashed border-[var(--border-subtle)] rounded bg-[var(--bg-elevated)]">
                     <p className="text-xs font-sans text-[var(--text-muted)]">No blind spots detected across your team.</p>
@@ -987,8 +1019,10 @@ export default function ScoutDashboard() {
                   </div>
                 )}
               </div>
-            </div>
-          </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
 
           {/* SECTION 6 — DEAL OBITUARIES (collapsible, default collapsed) */}
           <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-[12px] overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.25)]">
@@ -1007,12 +1041,16 @@ export default function ScoutDashboard() {
               )}
             </button>
 
-            <div
-              className={`transition-all duration-300 ease-in-out overflow-hidden ${
-                collapsedSections.obituaries ? 'max-h-0 opacity-0' : 'max-h-[3000px] opacity-100'
-              }`}
-            >
-              <div className="p-5 space-y-4 font-sans">
+            <AnimatePresence initial={false}>
+              {!collapsedSections.obituaries && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.25, ease: 'easeInOut' }}
+                  className="overflow-hidden"
+                >
+                  <div className="p-5 space-y-4 font-sans">
                 <div className="flex justify-between items-center pb-2 border-b border-[var(--border-subtle)]">
                   <div className="text-[12px] text-[var(--text-muted)] uppercase tracking-wider font-semibold">
                     Post-Mortem Deal Reviews
@@ -1079,8 +1117,10 @@ export default function ScoutDashboard() {
                   </div>
                 )}
               </div>
-            </div>
-          </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
         </div>
       )}
 
