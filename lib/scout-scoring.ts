@@ -1,5 +1,5 @@
 import { redis } from '@/lib/redis';
-import { ScoutDeal, ScoutClosedLostDeal } from './integrations/hubspot-pipeline';
+import { ScoutDeal, ScoutClosedLostDeal, ScoutClosedWonDeal, fetchClosedWonDeals } from './integrations/hubspot-pipeline';
 import { supabaseAdmin } from '@/lib/supabase';
 
 export interface ScoredDeal {
@@ -451,4 +451,207 @@ Return ONLY the JSON. No markdown wrappers (no \`\`\`json block), no conversatio
 
   return upsertData || insertData;
 }
+
+export async function buildICPFromWins(
+  clientId: string
+): Promise<{ icp_profile: unknown; rules_created: number; error?: string } | null> {
+  if (!clientId) {
+    throw new Error('Missing client ID');
+  }
+
+  // 1. Fetch closed-won deals
+  const wonDeals: ScoutClosedWonDeal[] = await fetchClosedWonDeals(clientId);
+
+  if (!wonDeals || wonDeals.length < 3) {
+    return {
+      icp_profile: null,
+      rules_created: 0,
+      error: 'Need at least 3 closed-won deals to build ICP',
+    };
+  }
+
+  // 2. Perform Calculations
+  const winCount = wonDeals.length;
+  
+  // Average deal value
+  const totalValue = wonDeals.reduce((sum, d) => sum + d.deal_value, 0);
+  const avgDealValue = totalValue / winCount;
+
+  // Average days to close
+  const totalDays = wonDeals.reduce((sum, d) => sum + d.days_to_close, 0);
+  const avgDaysToClose = Math.round(totalDays / winCount);
+
+  // Top 5 job titles
+  const jobTitleCounts: Record<string, number> = {};
+  wonDeals.flatMap(d => d.contact_job_titles).forEach(title => {
+    if (title) {
+      const normalized = title.trim();
+      jobTitleCounts[normalized] = (jobTitleCounts[normalized] || 0) + 1;
+    }
+  });
+  const topJobTitles = Object.entries(jobTitleCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([title, count]) => ({ title, count }));
+
+  // Top deal stages (most common stage sequences)
+  const stageSequenceCounts: Record<string, number> = {};
+  wonDeals.forEach(d => {
+    const seqStr = d.stage_sequence.join(' -> ');
+    stageSequenceCounts[seqStr] = (stageSequenceCounts[seqStr] || 0) + 1;
+  });
+  const topDealStages = Object.entries(stageSequenceCounts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([sequence, count]) => ({ sequence, count }));
+
+  // 3. Gemini Prompt to build ICP Summary
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error('Gemini API key is not configured in the environment');
+  }
+
+  const prompt = `
+You are a B2B sales strategist. Based on these closed-won deals, write a crisp 3-sentence ICP (Ideal Customer Profile) summary. Be specific about job title, company type, deal size, and buying behavior.
+
+Calculated patterns from closed-won deals:
+- Total Won Deals: ${winCount}
+- Average Deal Value: $${avgDealValue.toFixed(2)}
+- Average Days to Close: ${avgDaysToClose} days
+- Top Job Titles identified: ${JSON.stringify(topJobTitles)}
+- Common Stage Sequences: ${JSON.stringify(topDealStages)}
+
+Your response must be a single, plain-text string containing exactly the 3-sentence ICP summary. No JSON, no markdown wrappers, no conversational text, no explanations. Just the raw 3-sentence summary.
+`;
+
+  const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`;
+  const geminiRes = await fetch(geminiUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      contents: [
+        {
+          parts: [
+            {
+              text: prompt,
+            },
+          ],
+        },
+      ],
+    }),
+  });
+
+  if (!geminiRes.ok) {
+    const errText = await geminiRes.text();
+    console.error(`[Scout ICP AI Error] Gemini returned status ${geminiRes.status}:`, errText);
+    throw new Error(`Gemini API call failed: ${geminiRes.statusText}`);
+  }
+
+  const resData = await geminiRes.json();
+  let icpSummary = resData.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  icpSummary = icpSummary.trim();
+
+  // Remove potential markdown code blocks if AI wrapped it
+  if (icpSummary.startsWith('```')) {
+    icpSummary = icpSummary.replace(/^```[a-zA-Z]*\n/, '').replace(/\n```$/, '').trim();
+  }
+
+  // 4. Upsert into icp_profiles
+  const profileData = {
+    client_id: clientId,
+    top_job_titles: topJobTitles,
+    top_industries: [],
+    avg_deal_value: avgDealValue,
+    avg_days_to_close: avgDaysToClose,
+    top_deal_stages: topDealStages,
+    win_count: winCount,
+    icp_summary: icpSummary,
+    generated_at: new Date().toISOString(),
+  };
+
+  const { data: upsertData, error: upsertError } = await supabaseAdmin
+    .from('icp_profiles')
+    .upsert(profileData, { onConflict: 'client_id' })
+    .select()
+    .maybeSingle();
+
+  if (upsertError) {
+    console.error('[Scout ICP] Error upserting ICP profile:', upsertError);
+    throw upsertError;
+  }
+
+  const activeProfile = upsertData || profileData;
+
+  // 5. Auto-generate routing rules for top job titles (up to 3)
+  let rulesCreated = 0;
+  const targetJobTitles = topJobTitles.slice(0, 3);
+
+  if (targetJobTitles.length > 0) {
+    // Fetch existing rules for client to check for duplicates and determine priority
+    const { data: existingRules, error: rulesFetchError } = await supabaseAdmin
+      .from('routing_rules')
+      .select('conditions, priority')
+      .eq('client_id', clientId);
+
+    if (rulesFetchError) {
+      console.error('[Scout ICP] Error fetching existing routing rules:', rulesFetchError);
+    }
+
+    const existingConditions = new Set(
+      (existingRules || []).map((r) => {
+        const conds = r.conditions || {};
+        return conds.job_title_contains ? conds.job_title_contains.toLowerCase().trim() : '';
+      }).filter(Boolean)
+    );
+
+    let maxPriority = (existingRules || []).reduce((max, r) => Math.max(max, r.priority || 0), 0);
+
+    for (const jobTitleObj of targetJobTitles) {
+      const jt = jobTitleObj.title;
+      const normalizedJt = jt.toLowerCase().trim();
+
+      if (!existingConditions.has(normalizedJt)) {
+        maxPriority++;
+        const newRule = {
+          client_id: clientId,
+          priority: maxPriority,
+          active: true,
+          signal_type: 'cold_email',
+          conditions: {
+            job_title_contains: jt,
+          },
+          action_type: 'swap_text',
+          action_payload: {
+            swaps: [
+              {
+                selector: 'h1',
+                content: `Hey ${jt} — this page was built for you.`,
+              }
+            ]
+          },
+          target_selector: 'h1',
+          variant_content: `Hey ${jt} — this page was built for you.`,
+          created_at: new Date().toISOString(),
+        };
+
+        const { error: ruleInsertError } = await supabaseAdmin
+          .from('routing_rules')
+          .insert(newRule);
+
+        if (ruleInsertError) {
+          console.error(`[Scout ICP] Error inserting auto-rule for ${jt}:`, ruleInsertError);
+        } else {
+          rulesCreated++;
+        }
+      }
+    }
+  }
+
+  return {
+    icp_profile: activeProfile,
+    rules_created: rulesCreated,
+  };
+}
+
 

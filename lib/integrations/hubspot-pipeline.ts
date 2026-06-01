@@ -615,3 +615,241 @@ export async function fetchClosedLostDeals(clientId: string): Promise<ScoutClose
   return closedLostDeals;
 }
 
+export interface ScoutClosedWonDeal {
+  deal_id: string;
+  deal_name: string;
+  deal_value: number;
+  days_to_close: number;
+  contact_job_titles: string[];
+  stage_sequence: string[];
+}
+
+export async function fetchClosedWonDeals(clientId: string): Promise<ScoutClosedWonDeal[]> {
+  if (!clientId) {
+    throw new Error('Missing client ID');
+  }
+
+  // 1. Look up the HubSpot access token in the crm_tokens table
+  const { data: tokens, error: tokenError } = await supabaseAdmin
+    .from('crm_tokens')
+    .select('access_token, refresh_token, expires_at')
+    .eq('client_id', clientId)
+    .eq('crm_type', 'hubspot')
+    .order('updated_at', { ascending: false });
+
+  if (tokenError) {
+    console.error('[Scout Closed Won] Error fetching HubSpot token:', tokenError);
+  }
+
+  const tokenData = tokens && tokens.length > 0 ? tokens[0] : null;
+  if (!tokenData) {
+    console.warn(`[Scout Closed Won] No HubSpot OAuth connection found for client ${clientId}`);
+    return [];
+  }
+
+  // 2. Decrypt access token
+  let accessToken = decrypt(tokenData.access_token);
+  if (!accessToken) {
+    throw new Error('Failed to decrypt HubSpot access token');
+  }
+
+  // Check token expiration
+  const expiresAt = tokenData.expires_at ? new Date(tokenData.expires_at).getTime() : 0;
+  const isExpired = expiresAt === 0 || expiresAt - Date.now() < 5 * 60 * 1000;
+
+  if (isExpired && tokenData.refresh_token) {
+    console.log('[HubSpot Closed Won] Access token is expired or expiring soon. Refreshing...');
+    try {
+      const decryptedRefreshToken = decrypt(tokenData.refresh_token);
+      
+      const params = new URLSearchParams();
+      params.append('grant_type', 'refresh_token');
+      params.append('client_id', process.env.HUBSPOT_CLIENT_ID || '');
+      params.append('client_secret', process.env.HUBSPOT_CLIENT_SECRET || '');
+      params.append('redirect_uri', 'https://app.churnaut.com/api/oauth/hubspot/callback');
+      params.append('refresh_token', decryptedRefreshToken);
+
+      const refreshRes = await fetch('https://api.hubapi.com/oauth/v1/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: params.toString(),
+      });
+
+      if (!refreshRes.ok) {
+        const errBody = await refreshRes.text();
+        console.error('[HubSpot Closed Won] Token refresh failed status:', refreshRes.status, errBody);
+      } else {
+        const refreshData = await refreshRes.json();
+        const newAccessToken = refreshData.access_token;
+        const newRefreshToken = refreshData.refresh_token;
+        const newExpiresAt = new Date(Date.now() + 1800 * 1000).toISOString();
+
+        const encryptedAccess = encrypt(newAccessToken);
+        const encryptedRefresh = encrypt(newRefreshToken);
+
+        const { error: updateError } = await supabaseAdmin
+          .from('crm_tokens')
+          .update({
+            access_token: encryptedAccess,
+            refresh_token: encryptedRefresh,
+            expires_at: newExpiresAt,
+            updated_at: new Date().toISOString()
+          })
+          .eq('client_id', clientId)
+          .eq('crm_type', 'hubspot');
+
+        if (updateError) {
+          console.error('[HubSpot Closed Won] Failed to update refreshed tokens in DB:', updateError.message);
+        } else {
+          console.log('[HubSpot Closed Won] Token refreshed and updated successfully.');
+          accessToken = newAccessToken;
+        }
+      }
+    } catch (refreshErr) {
+      console.error('[HubSpot Closed Won] Exception during token refresh:', refreshErr);
+    }
+  }
+
+  // 3. Search closedwon deals from HubSpot CRM
+  const searchUrl = 'https://api.hubapi.com/crm/v3/objects/deals/search';
+  const searchRes = await fetch(searchUrl, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      filterGroups: [
+        {
+          filters: [
+            {
+              propertyName: 'dealstage',
+              operator: 'EQ',
+              value: 'closedwon'
+            }
+          ]
+        }
+      ],
+      properties: ['dealname', 'dealstage', 'amount', 'closedate', 'createdate', 'hs_lastmodifieddate', 'hubspot_owner_id', 'hs_last_activity_date'],
+      limit: 100
+    })
+  });
+
+  if (!searchRes.ok) {
+    const errBody = await searchRes.json().catch(() => ({}));
+    console.error(`[Scout Closed Won API Error] Deals search failed:`, errBody);
+    throw new Error(`Failed to search closedwon deals: ${searchRes.statusText}`);
+  }
+
+  const searchData = await searchRes.json();
+  const rawDeals = searchData.results || [];
+
+  interface HubSpotDealResult {
+    id: string;
+    properties: {
+      dealname?: string;
+      dealstage?: string;
+      amount?: string;
+      closedate?: string;
+      createdate?: string;
+      hs_lastmodifieddate?: string;
+      hubspot_owner_id?: string;
+      hs_last_activity_date?: string;
+    };
+  }
+
+  // 4. Fetch contact associations for each deal
+  const detailedDeals = await Promise.all(
+    (rawDeals as HubSpotDealResult[]).map(async (deal) => {
+      const dealId = deal.id;
+      let contactIds: string[] = [];
+      try {
+        const assocRes = await fetch(`https://api.hubapi.com/crm/v3/objects/deals/${dealId}/associations/contacts`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+          },
+        });
+        if (assocRes.ok) {
+          const assocData = await assocRes.json();
+          contactIds = (assocData.results || []).map((r: { id: string }) => r.id);
+        }
+      } catch (err) {
+        console.error(`[Scout Closed Won Error] Failed to fetch contacts for deal ${dealId}:`, err);
+      }
+
+      return {
+        deal,
+        contactIds,
+      };
+    })
+  );
+
+  // 5. Fetch all unique contacts' job titles
+  const allContactIds = Array.from(new Set(detailedDeals.flatMap((d) => d.contactIds)));
+  const contactIdToJobTitle = new Map<string, string>();
+
+  if (allContactIds.length > 0) {
+    const chunkSize = 100;
+    for (let i = 0; i < allContactIds.length; i += chunkSize) {
+      const chunk = allContactIds.slice(i, i + chunkSize);
+      try {
+        const batchRes = await fetch('https://api.hubapi.com/crm/v3/objects/contacts/batch/read', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            properties: ['jobtitle'],
+            inputs: chunk.map((id) => ({ id })),
+          }),
+        });
+
+        if (batchRes.ok) {
+          const batchData = await batchRes.json();
+          for (const result of batchData.results || []) {
+            const title = result.properties?.jobtitle;
+            if (title) {
+              contactIdToJobTitle.set(result.id, title.trim());
+            }
+          }
+        }
+      } catch (err) {
+        console.error('[Scout Closed Won Error] Contact batch fetch failed:', err);
+      }
+    }
+  }
+
+  // 6. Compile the final list of closed-won deals
+  return detailedDeals.map((item) => {
+    const dealProps = item.deal.properties || {};
+    const createdate = dealProps.createdate;
+    const closedate = dealProps.closedate;
+
+    let days_to_close = 0;
+    if (createdate && closedate) {
+      const diffMs = new Date(closedate).getTime() - new Date(createdate).getTime();
+      days_to_close = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+    }
+
+    const contact_job_titles = item.contactIds
+      .map((id) => contactIdToJobTitle.get(id))
+      .filter((title): title is string => !!title);
+
+    const stage_sequence = dealProps.dealstage ? [dealProps.dealstage] : ['closedwon'];
+
+    return {
+      deal_id: item.deal.id,
+      deal_name: dealProps.dealname || 'Unnamed Deal',
+      deal_value: dealProps.amount ? parseFloat(dealProps.amount) : 0,
+      days_to_close,
+      contact_job_titles,
+      stage_sequence,
+    };
+  });
+}
+
+

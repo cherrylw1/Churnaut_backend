@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { Home as HomeIcon } from 'lucide-react';
+import { Home as HomeIcon, Target } from 'lucide-react';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -13,6 +13,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { label: 'Tracked Links', href: '/dashboard/links' },
     { label: 'Routing Rules', href: '/dashboard/rules' },
     { label: 'Playbook Library', href: '/dashboard/playbooks' },
+    { label: 'ICP Builder', href: '/dashboard/icp', icon: Target },
     { label: 'AI Insights', href: '/dashboard/ai-insights' },
     { label: 'Scout', href: '/dashboard/scout' },
     { label: 'Analytics', href: '/dashboard/analytics' },
