@@ -243,3 +243,55 @@ INSERT INTO playbook_templates (name, description, signal_type, tier, required_i
 ('Free Trial User', 'When a trial user visits your marketing site, show them a targeted upgrade CTA instead of a generic demo form.', 'cold_email', 4, '[{"field_name":"locked_feature","label":"Feature to Unlock","placeholder":"e.g. CRM Enrichment","type":"text"},{"field_name":"calendly_url","label":"Sales Calendly URL","placeholder":"https://calendly.com/your-link","type":"text"},{"field_name":"cta_text","label":"CTA Text","placeholder":"e.g. Talk to sales to unlock CRM Enrichment","type":"text"}]', '{"signal_type":"cold_email","conditions":{"visitor_type_equals":"trial_user"},"action_type":"show_calendar","target_selector":"#main-cta","variant_content":"{{cta_text}}"}'), 
 ('Freemium Usage Limit', 'When a freemium user hits their usage limit and lands on your site, show them exactly the plan that solves their problem.', 'cold_email', 4, '[{"field_name":"plan_name","label":"Plan Name","placeholder":"e.g. Growth Plan","type":"text"},{"field_name":"upgrade_url","label":"Upgrade URL","placeholder":"https://yoursite.com/pricing","type":"text"},{"field_name":"limit_description","label":"Limit Description","placeholder":"e.g. You have used all 5 tracked links this month","type":"text"}]', '{"signal_type":"cold_email","conditions":{"visitor_type_equals":"freemium"},"action_type":"inject_copy","target_selector":"#main-cta","variant_content":"{{limit_description}}. Upgrade to {{plan_name}} to unlock unlimited tracked links."}');
 
+-- ==========================================
+-- 8. ANOMALY ALERTS TABLE
+-- ==========================================
+CREATE TABLE IF NOT EXISTS anomaly_alerts (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    client_id uuid REFERENCES clients(id) ON DELETE CASCADE,
+    alert_text text NOT NULL,
+    severity text NOT NULL CHECK (severity IN ('info', 'warning', 'critical')),
+    created_at timestamptz DEFAULT now(),
+    read boolean DEFAULT false
+);
+
+CREATE INDEX IF NOT EXISTS idx_anomaly_alerts_client_id ON anomaly_alerts(client_id);
+CREATE INDEX IF NOT EXISTS idx_anomaly_alerts_read ON anomaly_alerts(client_id, read);
+
+ALTER TABLE anomaly_alerts ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Clients can view their own anomaly alerts" ON anomaly_alerts
+    FOR SELECT TO authenticated
+    USING (client_id = auth.uid());
+
+CREATE POLICY "Clients can update their own anomaly alerts" ON anomaly_alerts
+    FOR UPDATE TO authenticated
+    USING (client_id = auth.uid())
+    WITH CHECK (client_id = auth.uid());
+
+-- ==========================================
+-- 9. WEEKLY DIGESTS TABLE
+-- ==========================================
+CREATE TABLE IF NOT EXISTS weekly_digests (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    client_id uuid REFERENCES clients(id) ON DELETE CASCADE,
+    week_start date NOT NULL,
+    summary text NOT NULL,
+    top_signal text NOT NULL,
+    rep_spotlight text NOT NULL,
+    recommendation text NOT NULL,
+    created_at timestamptz DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_weekly_digests_client_id ON weekly_digests(client_id);
+
+ALTER TABLE weekly_digests ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Clients can view their own weekly digests" ON weekly_digests
+    FOR SELECT TO authenticated
+    USING (client_id = auth.uid());
+
+CREATE POLICY "Clients can manage their own weekly digests" ON weekly_digests
+    FOR ALL TO authenticated
+    USING (client_id = auth.uid())
+    WITH CHECK (client_id = auth.uid());
