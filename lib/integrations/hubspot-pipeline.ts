@@ -54,9 +54,11 @@ export async function fetchHubSpotPipeline(clientId: string): Promise<ScoutDeal[
   if (!accessToken) {
     throw new Error('Failed to decrypt HubSpot access token');
   }
+  console.log('[HubSpot Pipeline debug] Decrypted access token:', accessToken.substring(0, 20) + '...');
 
   // 4. Fetch open deals from HubSpot CRM
   const dealsUrl = 'https://api.hubapi.com/crm/v3/objects/deals?properties=dealname,dealstage,amount,closedate,createdate,hs_lastmodifieddate,hubspot_owner_id&limit=100&archived=false';
+  console.log('[HubSpot Pipeline debug] Fetching open deals from URL:', dealsUrl);
   const dealsRes = await fetch(dealsUrl, {
     method: 'GET',
     headers: {
@@ -67,7 +69,7 @@ export async function fetchHubSpotPipeline(clientId: string): Promise<ScoutDeal[
 
   if (!dealsRes.ok) {
     const errBody = await dealsRes.json().catch(() => ({}));
-    console.error(`[Scout Pipeline API Error] Deals fetch returned status ${dealsRes.status}:`, errBody);
+    console.error(`[Scout Pipeline API Error] Deals fetch from URL "${dealsUrl}" failed with status ${dealsRes.status}:`, errBody);
     throw new Error(`Failed to fetch deals from HubSpot: ${dealsRes.statusText}`);
   }
 
