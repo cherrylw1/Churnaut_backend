@@ -12,6 +12,8 @@ export interface ScoutDeal {
   last_activity_days: number | null;
   contact_count: number;
   website_visits_7d: number;
+  rep_name: string | null;
+  rep_email: string | null;
 }
 
 interface ActivityProperties {
@@ -189,6 +191,45 @@ interface HubSpotDealResult {
   // Log how many deals are returned and what their stages are after the fix
   const dealStages = (rawDeals as HubSpotDealResult[]).map((d) => d.properties?.dealstage || 'unknown');
   console.log(`[HubSpot Pipeline] Returned ${rawDeals.length} deals with stages:`, dealStages);
+
+  // Fetch unique owner details from HubSpot Owners API
+  const uniqueOwnerIds = Array.from(
+    new Set(
+      (rawDeals as HubSpotDealResult[])
+        .map((d) => d.properties?.hubspot_owner_id)
+        .filter((id): id is string => !!id)
+    )
+  );
+
+  const ownerMap = new Map<string, { email: string; name: string }>();
+
+  if (uniqueOwnerIds.length > 0) {
+    await Promise.all(
+      uniqueOwnerIds.map(async (ownerId) => {
+        try {
+          const ownerRes = await fetch(`https://api.hubapi.com/crm/v3/owners/${ownerId}`, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+          });
+          if (ownerRes.ok) {
+            const ownerData = await ownerRes.json();
+            const email = ownerData.email || '';
+            const firstName = ownerData.firstName || '';
+            const lastName = ownerData.lastName || '';
+            const name = `${firstName} ${lastName}`.trim() || 'Unknown Rep';
+            ownerMap.set(ownerId, { email, name });
+          } else {
+            console.warn(`[HubSpot Pipeline Warning] Failed to fetch owner details for ID: ${ownerId}. Status: ${ownerRes.status}`);
+          }
+        } catch (err) {
+          console.error(`[HubSpot Pipeline Error] Failed to fetch owner details for ID: ${ownerId}:`, err);
+        }
+      })
+    );
+  }
 
   // 5. Fetch associated contacts and last activity details for each deal
   const detailedDeals = await Promise.all(
@@ -385,6 +426,11 @@ interface HubSpotDealResult {
       last_activity_days = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
     }
 
+    const ownerId = dealProps.hubspot_owner_id;
+    const ownerInfo = ownerId ? ownerMap.get(ownerId) : null;
+    const rep_name = ownerInfo?.name || null;
+    const rep_email = ownerInfo?.email || null;
+
     return {
       deal_id: item.deal.id,
       deal_name: dealProps.dealname || 'Unnamed Deal',
@@ -395,6 +441,8 @@ interface HubSpotDealResult {
       last_activity_days,
       contact_count: item.contactIds.length,
       website_visits_7d,
+      rep_name,
+      rep_email,
     };
   });
 
