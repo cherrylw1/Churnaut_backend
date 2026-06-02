@@ -65,7 +65,7 @@ export default function SnippetPage() {
 
   const getSnippetCode = () => {
     const key = client?.snippet_key || 'CLIENT_UNIQUE_KEY_HERE';
-    return `<script>window.SR_CLIENT_ID = '${key}';</script>\n<script src="https://cdn.churnaut.io/snippet.js" async defer></script>`;
+    return `<script>window.SR_CLIENT_ID = '${key}';</script>\n<script src="https://cdn.churnaut.com/snippet.js" async defer></script>`;
   };
 
   const toggleGuide = (guideName: string) => {
