@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { sendNudgeEmail } from '@/lib/email/resend';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,6 +46,35 @@ export async function POST(req: NextRequest) {
     if (error) {
       console.error('[Scout Nudge POST] Database error:', error);
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    // 4. Query deal_scores for draft_email and next_action
+    if (deal_id) {
+      try {
+        const { data: scoreData, error: scoreError } = await supabaseAdmin
+          .from('deal_scores')
+          .select('draft_email, next_action')
+          .eq('client_id', clientId)
+          .eq('deal_id', deal_id)
+          .maybeSingle();
+
+        if (scoreError) {
+          console.error('[Scout Nudge POST] Error fetching deal_scores for email nudge:', scoreError);
+        } else {
+          const draftEmail = scoreData?.draft_email || null;
+          const nextAction = scoreData?.next_action || 'No next action specified';
+
+          // 5. Call sendNudgeEmail() with rep_email as the TO address
+          if (rep_email) {
+            console.log(`[Scout Nudge POST] Sending nudge email to: ${rep_email} for deal: ${deal_name}`);
+            await sendNudgeEmail(rep_email, deal_name || 'Unnamed Deal', draftEmail, nextAction);
+          } else {
+            console.warn('[Scout Nudge POST] Skipping email nudge: rep_email is missing');
+          }
+        }
+      } catch (emailErr) {
+        console.error('[Scout Nudge POST] Exception during email dispatch:', emailErr);
+      }
     }
 
     return NextResponse.json({ success: true, nudge: data });
