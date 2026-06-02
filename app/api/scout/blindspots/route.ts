@@ -28,6 +28,8 @@ interface ScoutDealScore {
   primary_risk: string | null;
   next_action: string | null;
   draft_email: string | null;
+  rep_name: string | null;
+  rep_email: string | null;
 }
 
 interface BlindSpot {
@@ -89,7 +91,7 @@ export async function GET(req: NextRequest) {
     const repDealsMap = new Map<string, ScoutDealScore[]>();
     const typedDealScores = (dealScores || []) as unknown as ScoutDealScore[];
     for (const deal of typedDealScores) {
-      const repName = dealRepMap.get(deal.deal_id) || 'Unknown Rep';
+      const repName = deal.rep_name || dealRepMap.get(deal.deal_id) || 'Unknown Rep';
       if (!repDealsMap.has(repName)) {
         repDealsMap.set(repName, []);
       }

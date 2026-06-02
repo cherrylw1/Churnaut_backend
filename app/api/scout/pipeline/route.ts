@@ -103,8 +103,8 @@ export async function GET(req: NextRequest) {
       const repInfo = dealRepMap.get(ds.deal_id) || { rep_name: 'Unknown Rep', rep_email: '' };
       return {
         ...ds,
-        rep_name: repInfo.rep_name,
-        rep_email: repInfo.rep_email,
+        rep_name: ds.rep_name || repInfo.rep_name,
+        rep_email: ds.rep_email || repInfo.rep_email,
       };
     });
 
@@ -182,9 +182,9 @@ export async function GET(req: NextRequest) {
             const deal = dealMap.get(s.crm_deal_id || '');
             if (!deal) return null;
 
-            const rep_name = s.assigned_rep || 'Unknown Rep';
+            const rep_name = deal.rep_name || s.assigned_rep || 'Unknown Rep';
             const cleanRepName = rep_name.toLowerCase().replace(/\s+/g, '.');
-            const rep_email = cleanRepName !== 'unknown.rep' ? `${cleanRepName}@company.com` : 'sales@company.com';
+            const rep_email = deal.rep_email || (cleanRepName !== 'unknown.rep' ? `${cleanRepName}@company.com` : 'sales@company.com');
 
             return {
               prospect_name: s.prospect_name || 'Unknown Prospect',

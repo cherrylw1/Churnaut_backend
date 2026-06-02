@@ -28,6 +28,8 @@ interface ScoutDealScore {
   primary_risk: string | null;
   next_action: string | null;
   draft_email: string | null;
+  rep_name: string | null;
+  rep_email: string | null;
 }
 
 export async function GET(req: NextRequest) {
@@ -116,7 +118,7 @@ export async function GET(req: NextRequest) {
     // Determine rep with the most RED deals
     const repCounts: Record<string, number> = {};
     redDeals.forEach((deal) => {
-      const rep = dealRepMap.get(deal.deal_id) || 'Unknown Rep';
+      const rep = deal.rep_name || dealRepMap.get(deal.deal_id) || 'Unknown Rep';
       repCounts[rep] = (repCounts[rep] || 0) + 1;
     });
 

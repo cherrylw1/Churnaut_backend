@@ -109,6 +109,8 @@ export async function POST(req: NextRequest) {
           primary_risk: sd.primary_risk,
           next_action: sd.next_action,
           draft_email: sd.draft_email || null,
+          rep_name: rawDeal?.rep_name || null,
+          rep_email: rawDeal?.rep_email || null,
           stage: rawDeal?.stage || 'Unknown Stage',
           deal_value: rawDeal?.deal_value || 0,
           close_date: rawDeal?.close_date || null,

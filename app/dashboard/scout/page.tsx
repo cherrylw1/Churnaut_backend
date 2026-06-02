@@ -642,6 +642,7 @@ export default function ScoutDashboard() {
                             <span className="font-sans text-xs text-[var(--text-secondary)]">{trigger.company_name}</span>
                           </div>
                           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] font-mono text-[var(--text-muted)]">
+                            <span>Rep: <span className="text-[var(--text-secondary)]">{trigger.rep_name}</span>{trigger.rep_email && <span className="text-[var(--text-muted)]"> ({trigger.rep_email})</span>}</span>
                             <span>Stage: <span className="text-[var(--text-secondary)]">{trigger.deal_stage}</span></span>
                             <span>Value: <span className="text-[var(--green)]">{formatCurrency(trigger.deal_value)}</span></span>
                             {trigger.last_visit_timestamp && (
@@ -751,7 +752,7 @@ export default function ScoutDashboard() {
                                 <div className="space-y-1">
                                   <h3 className="font-sans text-sm font-bold text-[var(--text-primary)]">{deal.deal_name}</h3>
                                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] font-mono text-[var(--text-muted)]">
-                                    <span>Rep: <span className="text-[var(--text-secondary)]">{deal.rep_name}</span></span>
+                                    <span>Rep: <span className="text-[var(--text-secondary)]">{deal.rep_name}</span>{deal.rep_email && <span className="text-[var(--text-muted)]"> ({deal.rep_email})</span>}</span>
                                     <span>Value: <span className="text-[var(--green)]">{formatCurrency(deal.deal_value)}</span></span>
                                     <span>Stage: <span className="text-[var(--text-secondary)]">{deal.stage}</span></span>
                                   </div>
@@ -870,7 +871,7 @@ export default function ScoutDashboard() {
                                 <div className="space-y-1">
                                   <h3 className="font-sans text-sm font-bold text-[var(--text-primary)]">{deal.deal_name}</h3>
                                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] font-mono text-[var(--text-muted)]">
-                                    <span>Rep: <span className="text-[var(--text-secondary)]">{deal.rep_name}</span></span>
+                                    <span>Rep: <span className="text-[var(--text-secondary)]">{deal.rep_name}</span>{deal.rep_email && <span className="text-[var(--text-muted)]"> ({deal.rep_email})</span>}</span>
                                     <span>Value: <span className="text-[var(--green)]">{formatCurrency(deal.deal_value)}</span></span>
                                     <span>Stage: <span className="text-[var(--text-secondary)]">{deal.stage}</span></span>
                                   </div>
@@ -953,7 +954,7 @@ export default function ScoutDashboard() {
                             <div className="space-y-0.5">
                               <span className="font-sans text-sm font-bold text-[var(--text-primary)]">{deal.deal_name}</span>
                               <div className="flex items-center gap-3 text-[10px] font-mono text-[var(--text-muted)]">
-                                <span>Rep: <span className="text-[var(--text-secondary)]">{deal.rep_name}</span></span>
+                                <span>Rep: <span className="text-[var(--text-secondary)]">{deal.rep_name}</span>{deal.rep_email && <span className="text-[var(--text-muted)]"> ({deal.rep_email})</span>}</span>
                                 <span>Stage: <span className="text-[var(--text-secondary)]">{deal.stage}</span></span>
                               </div>
                             </div>

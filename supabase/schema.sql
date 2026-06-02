@@ -315,6 +315,8 @@ CREATE TABLE IF NOT EXISTS deal_scores (
     primary_risk text,
     next_action text,
     draft_email text,
+    rep_name text,
+    rep_email text,
     created_at timestamptz DEFAULT now(),
     scored_at timestamptz DEFAULT now()
 );
