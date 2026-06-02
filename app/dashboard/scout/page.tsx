@@ -136,12 +136,12 @@ export default function ScoutDashboard() {
   const [sendingNudge, setSendingNudge] = useState(false);
 
   // Fetch all pipeline data
-  const fetchData = async () => {
+  const fetchData = async (refresh = false) => {
     try {
       setLoading(true);
       setError(null);
       
-      const res = await fetch('/api/scout/pipeline');
+      const res = await fetch(`/api/scout/pipeline${refresh ? '?refresh=true' : ''}`);
       if (res.ok) {
         const data = await res.json();
         setSnapshot(data.pipeline_snapshot || null);
@@ -238,6 +238,7 @@ export default function ScoutDashboard() {
 
   useEffect(() => {
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Run Scout AI scoring pipeline analysis
@@ -249,7 +250,7 @@ export default function ScoutDashboard() {
         method: 'POST',
       });
       if (res.ok) {
-        await fetchData();
+        await fetchData(true);
         toast.success('Scout analysis complete — pipeline updated');
       } else {
         toast.error('Scout analysis failed — check your HubSpot connection');

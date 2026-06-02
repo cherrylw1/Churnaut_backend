@@ -28,7 +28,7 @@ interface ActivityProperties {
  * and recent website visits, and returns a sanitized list of open deals.
  * Caches results in Upstash Redis for 30 minutes.
  */
-export async function fetchHubSpotPipeline(clientId: string): Promise<ScoutDeal[]> {
+export async function fetchHubSpotPipeline(clientId: string, bypassCache = false): Promise<ScoutDeal[]> {
   if (!clientId) {
     throw new Error('Missing client ID');
   }
@@ -36,13 +36,15 @@ export async function fetchHubSpotPipeline(clientId: string): Promise<ScoutDeal[
   const cacheKey = `scout:pipeline:${clientId}`;
 
   // 1. Try Cache Read
-  try {
-    const cached = await redis.get(cacheKey);
-    if (cached) {
-      return typeof cached === 'string' ? JSON.parse(cached) : (cached as ScoutDeal[]);
+  if (!bypassCache) {
+    try {
+      const cached = await redis.get(cacheKey);
+      if (cached) {
+        return typeof cached === 'string' ? JSON.parse(cached) : (cached as ScoutDeal[]);
+      }
+    } catch (cacheErr) {
+      console.error('[Scout Pipeline Cache Read Error] Failed to read from Redis:', cacheErr);
     }
-  } catch (cacheErr) {
-    console.error('[Scout Pipeline Cache Read Error] Failed to read from Redis:', cacheErr);
   }
 
   // 2. Look up the HubSpot access token in the crm_tokens table

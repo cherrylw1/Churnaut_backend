@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
     // 2. Fetch HubSpot pipeline deals
     let deals: ScoutDeal[];
     try {
-      deals = await fetchHubSpotPipeline(clientId);
+      deals = await fetchHubSpotPipeline(clientId, true);
       console.log(`[Scout Score POST] fetchHubSpotPipeline returned ${deals.length} deals`);
       console.log('SCOUT PIPELINE DATA:', JSON.stringify(deals, null, 2));
     } catch (err) {
