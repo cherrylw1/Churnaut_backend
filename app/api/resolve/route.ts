@@ -141,6 +141,38 @@ export async function POST(req: NextRequest) {
           );
         }
       }
+
+      if (session && session.id && sid) {
+        (async () => {
+          try {
+            await supabaseAdmin.rpc('increment_click_count', { session_id: session!.id });
+          } catch (err) {
+            console.error('[Click Count Error] Failed to increment click count:', err);
+          }
+        })();
+      }
+
+      if (session && session.click_count === 0 && session.assigned_rep) {
+        (async () => {
+          try {
+            // Try to get rep email from session metadata or HubSpot enrichment
+            const sessionRecord = session as unknown as Record<string, unknown>;
+            const repEmail = (sessionRecord.rep_email as string) || null;
+            if (repEmail) {
+              const { sendClickNotification } = await import('@/lib/email/resend');
+              await sendClickNotification(
+                repEmail,
+                session!.prospect_name || 'A prospect',
+                session!.company_name || null,
+                session!.signal_type || null,
+                session!.id
+              );
+            }
+          } catch (err) {
+            console.error('[Click Notification Error] Failed to send click notification:', err);
+          }
+        })();
+      }
     }
 
     // Fallback: Look up the session by visitor_token matching cookie
