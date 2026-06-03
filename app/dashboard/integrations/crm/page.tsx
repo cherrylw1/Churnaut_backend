@@ -72,15 +72,22 @@ export default function CrmIndexPage() {
     }
   }, []);
 
-  if (loading) {
-    return (
-      <div className="text-center py-12 text-gray-500 font-mono text-sm uppercase tracking-widest bg-[var(--bg-base)] text-[var(--text-primary)] min-h-screen">
-        RETRIEVING CRM INTEGRATION STATUS...
+  const crmType = status?.crm_type;
+
+  const getStatusBadge = (crmName: string) => {
+    if (loading) return <span className="text-[9px] font-mono text-gray-600">...</span>;
+    return crmType === crmName ? (
+      <div className="flex items-center gap-1.5 text-green-400 text-xs font-mono">
+        <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
+        Connected
+      </div>
+    ) : (
+      <div className="flex items-center gap-1.5 text-gray-500 text-xs font-mono">
+        <span className="w-1.5 h-1.5 rounded-full bg-gray-500"></span>
+        Disconnected
       </div>
     );
-  }
-
-  const crmType = status?.crm_type;
+  };
 
   return (
     <div className="space-y-8 max-w-6xl bg-[var(--bg-base)] text-[var(--text-primary)] min-h-screen">
@@ -139,17 +146,7 @@ export default function CrmIndexPage() {
             <div className="space-y-3">
               <div className="flex justify-between items-center">
                 <h3 className="font-mono font-bold uppercase text-sm text-[var(--text-primary)]">HubSpot</h3>
-                {crmType === 'hubspot' ? (
-                  <div className="flex items-center gap-1.5 text-green-400 text-xs font-mono">
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
-                    Connected
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1.5 text-gray-500 text-xs font-mono">
-                    <span className="w-1.5 h-1.5 rounded-full bg-gray-500"></span>
-                    Disconnected
-                  </div>
-                )}
+                {getStatusBadge('hubspot')}
               </div>
               <p className="font-mono text-xs text-gray-400 leading-relaxed">
                 Sync deals, owners, pipeline stages, and contact enrichment.
@@ -170,17 +167,7 @@ export default function CrmIndexPage() {
             <div className="space-y-3">
               <div className="flex justify-between items-center">
                 <h3 className="font-mono font-bold uppercase text-sm text-[var(--text-primary)]">Pipedrive</h3>
-                {crmType === 'pipedrive' ? (
-                  <div className="flex items-center gap-1.5 text-green-400 text-xs font-mono">
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
-                    Connected
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1.5 text-gray-500 text-xs font-mono">
-                    <span className="w-1.5 h-1.5 rounded-full bg-gray-500"></span>
-                    Disconnected
-                  </div>
-                )}
+                {getStatusBadge('pipedrive')}
               </div>
               <p className="font-mono text-xs text-gray-400 leading-relaxed">
                 Sync deals, contacts, and pipeline stages from Pipedrive.
@@ -201,17 +188,7 @@ export default function CrmIndexPage() {
             <div className="space-y-3">
               <div className="flex justify-between items-center">
                 <h3 className="font-mono font-bold uppercase text-sm text-[var(--text-primary)]">Zoho CRM</h3>
-                {crmType === 'zoho' ? (
-                  <div className="flex items-center gap-1.5 text-green-400 text-xs font-mono">
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
-                    Connected
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1.5 text-gray-500 text-xs font-mono">
-                    <span className="w-1.5 h-1.5 rounded-full bg-gray-500"></span>
-                    Disconnected
-                  </div>
-                )}
+                {getStatusBadge('zoho')}
               </div>
               <p className="font-mono text-xs text-gray-400 leading-relaxed">
                 Sync Zoho CRM contacts, leads, and deal stages for real-time personalization.
@@ -228,26 +205,23 @@ export default function CrmIndexPage() {
           </div>
 
           {/* Close */}
-          <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/50 rounded-lg p-5 flex flex-col justify-between gap-4 opacity-80">
+          <div className={`border bg-[var(--bg-elevated)]/50 rounded-lg p-5 flex flex-col justify-between gap-4 ${crmType === 'close' ? 'border-green-900/30' : 'border-[var(--border-subtle)]'}`}>
             <div className="space-y-3">
               <div className="flex justify-between items-center">
                 <h3 className="font-mono font-bold uppercase text-sm text-[var(--text-primary)]">Close</h3>
-                <div className="flex items-center gap-1.5 text-gray-500 text-xs font-mono">
-                  <span className="w-1.5 h-1.5 rounded-full bg-gray-500"></span>
-                  Coming Soon
-                </div>
+                {getStatusBadge('close')}
               </div>
               <p className="font-mono text-xs text-gray-400 leading-relaxed">
                 Sync Close CRM leads, opportunities, and rep activity into personalization flows.
               </p>
             </div>
             <div>
-              <button
-                disabled
-                className="w-full py-2 px-3 border border-[var(--border-subtle)] text-gray-500 font-mono text-xs rounded opacity-40 cursor-not-allowed text-center"
+              <Link
+                href="/dashboard/integrations/crm/close"
+                className="block w-full py-2 px-3 border border-[var(--border-subtle)] hover:border-[#6366f1] hover:text-white text-gray-300 font-mono text-xs rounded text-center transition-all hover:bg-[#6366f1]/5 active:scale-[0.98]"
               >
-                CONNECT →
-              </button>
+                MANAGE →
+              </Link>
             </div>
           </div>
 
