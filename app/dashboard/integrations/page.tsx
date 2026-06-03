@@ -14,6 +14,7 @@ interface ClientProfile {
 
 export default function IntegrationsPage() {
   const [crmStatus, setCrmStatus] = useState<{ connected: boolean; crm_type: string | null } | null>(null);
+  const [calendlyStatus, setCalendlyStatus] = useState<{ connected: boolean; connected_at: string | null } | null>(null);
   const [client, setClient] = useState<ClientProfile | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [openExpectedFields, setOpenExpectedFields] = useState<Record<string, boolean>>({});
@@ -22,6 +23,11 @@ export default function IntegrationsPage() {
     fetch('/api/oauth/crm')
       .then(res => res.json())
       .then(data => setCrmStatus(data))
+      .catch(() => {});
+
+    fetch('/api/oauth/calendly/status')
+      .then(res => res.json())
+      .then(data => setCalendlyStatus(data))
       .catch(() => {});
 
     fetch('/api/client')
@@ -538,26 +544,33 @@ export default function IntegrationsPage() {
         </div>
 
         {/* Calendly */}
-        <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/50 rounded-lg p-5 flex flex-col justify-between gap-4 opacity-80">
+        <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/50 rounded-lg p-5 flex flex-col justify-between gap-4">
           <div className="space-y-3">
             <div className="flex justify-between items-center">
               <h3 className="font-mono font-bold uppercase text-sm text-[var(--text-primary)]">Calendly</h3>
-              <div className="flex items-center gap-1.5 text-gray-500 text-xs font-mono">
-                <span className="w-1.5 h-1.5 rounded-full bg-gray-500"></span>
-                Coming Soon
-              </div>
+              {calendlyStatus?.connected ? (
+                <div className="flex items-center gap-1.5 text-green-400 text-xs font-mono">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
+                  Active
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 text-gray-500 text-xs font-mono">
+                  <span className="w-1.5 h-1.5 rounded-full bg-gray-500"></span>
+                  Disconnected
+                </div>
+              )}
             </div>
             <p className="font-mono text-xs text-gray-400 leading-relaxed">
               OAuth-based calendar embed — route visitors to the right rep&apos;s booking page.
             </p>
           </div>
           <div>
-            <button
-              disabled
-              className="w-full py-2 px-3 border border-[var(--border-subtle)] text-gray-500 font-mono text-xs rounded opacity-40 cursor-not-allowed text-center"
+            <Link
+              href="/dashboard/integrations/calendly"
+              className="block w-full py-2 px-3 border border-[var(--border-subtle)] hover:border-[#6366f1] hover:text-white text-gray-300 font-mono text-xs rounded text-center transition-all hover:bg-[#6366f1]/5 active:scale-[0.98]"
             >
-              CONNECT →
-            </button>
+              MANAGE →
+            </Link>
           </div>
         </div>
 
