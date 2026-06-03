@@ -245,30 +245,6 @@ export default function CrmSettingsPage() {
             )}
           </div>
 
-          {/* Salesforce Card Placeholder */}
-          <div className="border border-[var(--border-subtle)]/60 bg-[var(--bg-elevated)]/30 rounded-lg p-6 opacity-60 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="space-y-1.5">
-              <div className="flex items-center space-x-3">
-                <h3 className="text-sm font-mono font-bold text-gray-400 uppercase tracking-wider">
-                  Salesforce CRM
-                </h3>
-                <span className="text-[9px] font-mono font-bold bg-[var(--border-subtle)] text-gray-600 border border-[var(--border-subtle)]/60 px-2 py-0.5 rounded uppercase">
-                  COMING SOON
-                </span>
-              </div>
-              <p className="text-xs font-mono text-gray-500 leading-relaxed max-w-xl">
-                Direct integration with Salesforce Sales Cloud to map standard opportunity objects.
-              </p>
-            </div>
-            <div>
-              <button
-                disabled
-                className="w-full sm:w-auto bg-[var(--border-subtle)]/40 text-gray-600 font-mono text-xs py-2 px-5 rounded cursor-not-allowed border border-[var(--border-subtle)]/60"
-              >
-                UNAVAILABLE
-              </button>
-            </div>
-          </div>
         </div>
       </div>
     </div>
