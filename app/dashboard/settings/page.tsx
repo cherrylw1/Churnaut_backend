@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import Link from 'next/link';
 
 export default function SettingsPage() {
   return (
@@ -12,83 +11,70 @@ export default function SettingsPage() {
           SETTINGS
         </h1>
         <p className="text-xs font-mono text-gray-400 mt-1">
-          Manage your workspace configurations, data integrations, and webhook triggers.
+          Manage your account, security, and billing preferences.
         </p>
       </div>
 
-      {/* Integration Grid */}
+      {/* Settings Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         
-        {/* Card 1: Webhook Configuration */}
-        <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-lg p-6 flex flex-col justify-between hover:border-[#6366f1]/50 hover:bg-[var(--bg-elevated)] transition-all group">
+        {/* Card 1: Account */}
+        <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-lg p-6 flex flex-col justify-between hover:border-[#6366f1]/30 hover:bg-[var(--bg-elevated)]/30 transition-all group">
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-mono font-bold bg-[var(--border-subtle)] text-[#6366f1] border border-[var(--border-subtle)] px-2 py-0.5 rounded uppercase">
+              <span className="text-[10px] font-mono font-bold bg-green-950/20 text-green-400 border border-green-900/40 px-2 py-0.5 rounded uppercase">
                 ACTIVE
               </span>
-              <span className="text-xs font-mono text-gray-500">HTTP Webhook</span>
+              <span className="text-xs font-mono text-gray-500">Profile</span>
             </div>
             
             <div className="space-y-2">
               <h2 className="text-sm font-mono font-bold text-white uppercase group-hover:text-[#6366f1] transition-colors">
-                Webhook Configuration
+                Account
               </h2>
               <p className="text-xs font-mono text-gray-400 leading-relaxed">
-                Configure incoming data field mappings, manage authorization tokens, and review webhook ingestion transaction logs in real time.
+                Update your display name, email address, and workspace preferences.
               </p>
             </div>
           </div>
           
           <div className="pt-6">
-            <Link
-              href="/dashboard/settings/webhooks"
-              className="inline-block bg-[var(--border-subtle)] hover:bg-[#6366f1] text-white font-mono text-xs py-2 px-4 rounded text-center transition-all active:scale-[0.98] w-full md:w-auto"
+            <button
+              disabled
+              className="w-full py-2 px-3 border border-[var(--border-subtle)] text-gray-500 font-mono text-xs rounded cursor-not-allowed text-center transition-all"
             >
-              Configure Webhooks &rarr;
-            </Link>
+              MANAGE &rarr;
+            </button>
           </div>
         </div>
 
-        {/* Card 2: CRM Integrations */}
-        <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-lg p-6 flex flex-col justify-between hover:border-[#6366f1]/50 hover:bg-[var(--bg-elevated)] transition-all group">
+        {/* Card 2: Billing */}
+        <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-lg p-6 flex flex-col justify-between opacity-80 transition-all">
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-mono font-bold bg-[var(--border-subtle)] text-[#6366f1] border border-[var(--border-subtle)] px-2 py-0.5 rounded uppercase">
-                ACTIVE
+              <span className="text-[10px] font-mono font-bold bg-yellow-950/20 text-yellow-500 border border-yellow-900/40 px-2 py-0.5 rounded uppercase">
+                PENDING
               </span>
-              <span className="text-xs font-mono text-gray-500">Native Integration</span>
+              <span className="text-xs font-mono text-gray-500">Lemon Squeezy</span>
             </div>
             
             <div className="space-y-2">
-              <h2 className="text-sm font-mono font-bold text-white uppercase group-hover:text-[#6366f1] transition-colors">
-                CRM Integrations
+              <h2 className="text-sm font-mono font-bold text-white uppercase">
+                Billing
               </h2>
               <p className="text-xs font-mono text-gray-400 leading-relaxed">
-                Directly connect HubSpot, Salesforce, Pipedrive, and modern CRM suites. Streamline pipeline tracking and automate visitor segment conversions.
+                Manage your subscription, view invoices, and update payment details. Powered by Lemon Squeezy.
               </p>
-            </div>
-
-            {/* Visual CRM Logo Placeholders */}
-            <div className="flex items-center space-x-3 pt-2">
-              <div className="border border-[var(--border-subtle)] bg-[#080B0F] px-2.5 py-1 rounded font-mono text-[9px] text-[#6366f1] border-indigo-950 select-none">
-                HUBSPOT
-              </div>
-              <div className="border border-[var(--border-subtle)] bg-[#080B0F] px-2.5 py-1 rounded font-mono text-[9px] text-gray-600 select-none">
-                SALESFORCE
-              </div>
-              <div className="border border-[var(--border-subtle)] bg-[#080B0F] px-2.5 py-1 rounded font-mono text-[9px] text-gray-600 select-none">
-                PIPEDRIVE
-              </div>
             </div>
           </div>
           
           <div className="pt-6">
-            <Link
-              href="/dashboard/settings/crm"
-              className="inline-block bg-[var(--border-subtle)] hover:bg-[#6366f1] text-white font-mono text-xs py-2 px-4 rounded text-center transition-all active:scale-[0.98] w-full md:w-auto"
+            <button
+              disabled
+              className="w-full py-2 px-3 border border-[var(--border-subtle)] text-gray-500 font-mono text-xs rounded opacity-40 cursor-not-allowed text-center"
             >
-              Configure CRM &rarr;
-            </Link>
+              COMING SOON
+            </button>
           </div>
         </div>
 

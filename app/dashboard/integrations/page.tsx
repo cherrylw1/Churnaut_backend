@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 
 export default function IntegrationsPage() {
   return (
@@ -37,12 +38,12 @@ export default function IntegrationsPage() {
             </p>
           </div>
           <div>
-            <button
-              disabled
-              className="w-full py-2 px-3 border border-[var(--border-subtle)] text-gray-500 font-mono text-xs rounded cursor-not-allowed text-center transition-all"
+            <Link
+              href="/dashboard/integrations/crm"
+              className="block w-full py-2 px-3 border border-[var(--border-subtle)] hover:border-[#6366f1] hover:text-white text-gray-300 font-mono text-xs rounded text-center transition-all hover:bg-[#6366f1]/5 active:scale-[0.98]"
             >
               MANAGE →
-            </button>
+            </Link>
           </div>
         </div>
 
@@ -163,6 +164,39 @@ export default function IntegrationsPage() {
             >
               CONNECT →
             </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Webhooks Section Label */}
+      <div className="flex items-center pt-4">
+        <span className="text-[10px] font-mono text-[#6366f1] tracking-widest uppercase bg-[var(--border-subtle)]/40 py-1 px-2.5 rounded border border-[var(--border-subtle)]">
+          WEBHOOKS & AUTOMATION
+        </span>
+      </div>
+
+      {/* Webhook Configuration Card */}
+      <div className="grid grid-cols-1 gap-6">
+        <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/50 rounded-lg p-5 flex flex-col justify-between gap-4">
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <h3 className="font-mono font-bold uppercase text-sm text-[var(--text-primary)]">Webhook Configuration</h3>
+              <div className="flex items-center gap-1.5 text-green-400 text-xs font-mono">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
+                Active
+              </div>
+            </div>
+            <p className="font-mono text-xs text-gray-400 leading-relaxed max-w-2xl">
+              Configure incoming field mappings, manage authorization tokens, and review webhook ingestion logs in real time.
+            </p>
+          </div>
+          <div>
+            <Link
+              href="/dashboard/integrations/webhooks"
+              className="block w-full sm:w-fit py-2 px-6 border border-[var(--border-subtle)] hover:border-[#6366f1] hover:text-white text-gray-300 font-mono text-xs rounded text-center transition-all hover:bg-[#6366f1]/5 active:scale-[0.98]"
+            >
+              CONFIGURE →
+            </Link>
           </div>
         </div>
       </div>

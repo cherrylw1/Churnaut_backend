@@ -125,8 +125,8 @@ export default function CrmSettingsPage() {
       <div className="border-b border-[var(--border-subtle)] pb-5 flex justify-between items-end">
         <div>
           <div className="flex items-center space-x-2 text-[10px] font-mono text-gray-500 uppercase tracking-widest mb-1.5">
-            <Link href="/dashboard/settings" className="hover:text-white transition-colors">
-              SETTINGS
+            <Link href="/dashboard/integrations" className="hover:text-white transition-colors">
+              INTEGRATIONS
             </Link>
             <span>/</span>
             <span className="text-gray-300">CRM INTEGRATIONS</span>

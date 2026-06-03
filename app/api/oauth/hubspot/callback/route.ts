@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
 
   if (!code || !state) {
     console.error('[Hubspot OAuth Callback Error] Missing code or state parameters');
-    return NextResponse.redirect(new URL('/dashboard/settings/crm?error=missing_parameters', req.url));
+    return NextResponse.redirect(new URL('/dashboard/integrations/crm?error=missing_parameters', req.url));
   }
 
   try {
@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
 
     if (!hubspotClientId || !hubspotClientSecret) {
       console.error('[Hubspot OAuth Callback Error] HubSpot credentials are not configured in environment');
-      return NextResponse.redirect(new URL('/dashboard/settings/crm?error=server_configuration_error', req.url));
+      return NextResponse.redirect(new URL('/dashboard/integrations/crm?error=server_configuration_error', req.url));
     }
 
     // 1. Exchange OAuth code for access and refresh tokens
@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
       const errorData = await tokenResponse.json().catch(() => ({}));
       console.error('[Hubspot OAuth Callback Error] Token exchange failed:', errorData);
       return NextResponse.redirect(
-        new URL(`/dashboard/settings/crm?error=token_exchange_failed&details=${encodeURIComponent(JSON.stringify(errorData))}`, req.url)
+        new URL(`/dashboard/integrations/crm?error=token_exchange_failed&details=${encodeURIComponent(JSON.stringify(errorData))}`, req.url)
       );
     }
 
@@ -54,7 +54,7 @@ export async function GET(req: NextRequest) {
 
     if (!access_token || !refresh_token) {
       console.error('[Hubspot OAuth Callback Error] Token exchange response missing tokens');
-      return NextResponse.redirect(new URL('/dashboard/settings/crm?error=missing_tokens', req.url));
+      return NextResponse.redirect(new URL('/dashboard/integrations/crm?error=missing_tokens', req.url));
     }
 
     // 2. Lookup Churnaut client by snippet_key (matching state)
@@ -66,7 +66,7 @@ export async function GET(req: NextRequest) {
 
     if (clientError || !client) {
       console.error('[Hubspot OAuth Callback Error] Client lookup failed for state:', state, clientError);
-      return NextResponse.redirect(new URL('/dashboard/settings/crm?error=client_not_found', req.url));
+      return NextResponse.redirect(new URL('/dashboard/integrations/crm?error=client_not_found', req.url));
     }
 
     // 3. Encrypt the tokens
@@ -89,7 +89,7 @@ export async function GET(req: NextRequest) {
 
     if (updateClientError) {
       console.error('[Hubspot OAuth Callback Error] Failed to update client record:', updateClientError);
-      return NextResponse.redirect(new URL('/dashboard/settings/crm?error=database_update_failed', req.url));
+      return NextResponse.redirect(new URL('/dashboard/integrations/crm?error=database_update_failed', req.url));
     }
 
     // 5. Store/upsert the tokens in crm_tokens table
@@ -139,9 +139,9 @@ export async function GET(req: NextRequest) {
     }
 
     // 6. Redirect to settings page with connected flag
-    return NextResponse.redirect(new URL('/dashboard/settings/crm?connected=hubspot', req.url));
+    return NextResponse.redirect(new URL('/dashboard/integrations/crm?connected=hubspot', req.url));
   } catch (err) {
     console.error('[Hubspot OAuth Callback Exception] Unhandled callback error:', err);
-    return NextResponse.redirect(new URL('/dashboard/settings/crm?error=internal_server_error', req.url));
+    return NextResponse.redirect(new URL('/dashboard/integrations/crm?error=internal_server_error', req.url));
   }
 }
