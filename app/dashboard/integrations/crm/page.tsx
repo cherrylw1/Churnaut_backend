@@ -46,6 +46,8 @@ export default function CrmIndexPage() {
         setMessage({ type: 'success', text: 'Successfully connected to Pipedrive CRM!' });
       } else if (connected === 'zoho') {
         setMessage({ type: 'success', text: 'Successfully connected to Zoho CRM!' });
+      } else if (connected === 'close') {
+        setMessage({ type: 'success', text: 'Successfully connected to Close CRM!' });
       } else if (error) {
         let errorText = 'Failed to connect to CRM.';
         if (error === 'token_exchange_failed') {
