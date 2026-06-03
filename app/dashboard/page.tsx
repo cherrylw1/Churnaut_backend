@@ -39,6 +39,13 @@ interface DashboardSummary {
   recent_activity: RecentActivityEvent[];
 }
 
+interface OnboardingStatus {
+  snippet_installed: boolean;
+  first_link_created: boolean;
+  first_rule_created: boolean;
+  crm_connected: boolean;
+}
+
 export default function DashboardPage() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -46,6 +53,34 @@ export default function DashboardPage() {
   const [runningScout, setRunningScout] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string>('');
   const [firstName, setFirstName] = useState<string>('');
+
+  const [onboarding, setOnboarding] = useState<OnboardingStatus | null>(null);
+  const [onboardingDismissed, setOnboardingDismissed] = useState(false);
+
+  const allComplete = !!(onboarding?.snippet_installed && onboarding?.first_link_created && onboarding?.first_rule_created && onboarding?.crm_connected);
+
+  useEffect(() => {
+    // Check localStorage for dismissed state
+    const dismissed = localStorage.getItem('churnaut_onboarding_dismissed');
+    if (dismissed === 'true') {
+      setOnboardingDismissed(true);
+      return;
+    }
+    fetch('/api/onboarding/status')
+      .then(r => r.json())
+      .then(data => setOnboarding(data))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (allComplete && onboarding && !onboardingDismissed) {
+      const timer = setTimeout(() => {
+        localStorage.setItem('churnaut_onboarding_dismissed', 'true');
+        setOnboardingDismissed(true);
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [allComplete, onboarding, onboardingDismissed]);
 
   const fetchSummary = async () => {
     try {
@@ -178,6 +213,131 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
+
+      {onboarding && !onboardingDismissed && !allComplete && (
+        <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-[12px] p-6 space-y-5">
+          {/* Header row */}
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <h2 className="text-sm font-bold font-mono uppercase tracking-wider text-white">
+                GET STARTED WITH CHURNAUT
+              </h2>
+              <p className="text-xs font-mono text-gray-400">
+                Complete these steps to start personalizing your website.
+              </p>
+            </div>
+            <div className="flex items-center gap-4">
+              {/* Progress fraction */}
+              <span className="text-xs font-mono text-gray-500">
+                {[onboarding.snippet_installed, onboarding.first_link_created, onboarding.first_rule_created, onboarding.crm_connected].filter(Boolean).length} / 4 complete
+              </span>
+              {/* Dismiss button */}
+              <button
+                onClick={() => {
+                  localStorage.setItem('churnaut_onboarding_dismissed', 'true');
+                  setOnboardingDismissed(true);
+                }}
+                className="text-gray-600 hover:text-gray-400 font-mono text-xs transition-colors"
+              >
+                [DISMISS]
+              </button>
+            </div>
+          </div>
+
+          {/* Progress bar */}
+          <div className="h-0.5 bg-[var(--border-subtle)] rounded-full overflow-hidden">
+            <div
+              className="h-full bg-[#6366f1] rounded-full transition-all duration-500"
+              style={{ width: `${([onboarding.snippet_installed, onboarding.first_link_created, onboarding.first_rule_created, onboarding.crm_connected].filter(Boolean).length / 4) * 100}%` }}
+            />
+          </div>
+
+          {/* Steps list */}
+          <div className="space-y-3">
+            {[
+              {
+                key: 'snippet_installed',
+                done: onboarding.snippet_installed,
+                title: 'Install the Churnaut snippet',
+                description: 'Add the tracking script to your website head.',
+                href: '/dashboard/snippet',
+                cta: 'Go to Snippet →',
+              },
+              {
+                key: 'first_link_created',
+                done: onboarding.first_link_created,
+                title: 'Create your first tracked link',
+                description: 'Generate a personalized URL for a prospect.',
+                href: '/dashboard/links',
+                cta: 'Create Link →',
+              },
+              {
+                key: 'first_rule_created',
+                done: onboarding.first_rule_created,
+                title: 'Set your first routing rule',
+                description: 'Define what your website shows when a signal fires.',
+                href: '/dashboard/rules',
+                cta: 'Add Rule →',
+              },
+              {
+                key: 'crm_connected',
+                done: onboarding.crm_connected,
+                title: 'Connect your CRM',
+                description: 'Sync HubSpot, Pipedrive, or any supported CRM.',
+                href: '/dashboard/integrations/crm',
+                cta: 'Connect CRM →',
+              },
+            ].map((step) => (
+              <div
+                key={step.key}
+                className={`flex items-center justify-between gap-4 p-3.5 rounded-lg border transition-all ${
+                  step.done
+                    ? 'border-green-900/20 bg-green-950/10 opacity-50'
+                    : 'border-[var(--border-subtle)] bg-[var(--bg-elevated)]/30 hover:border-[#6366f1]/40'
+                }`}
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  {/* Completion indicator */}
+                  <div className={`flex-shrink-0 w-5 h-5 rounded-full border flex items-center justify-center transition-all ${
+                    step.done
+                      ? 'bg-green-500/20 border-green-500/40 text-green-400'
+                      : 'border-[var(--border-subtle)] text-transparent'
+                  }`}>
+                    {step.done && (
+                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                        <path d="M2 5l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <p className={`text-xs font-mono font-bold uppercase tracking-wide ${step.done ? 'text-gray-500 line-through' : 'text-white'}`}>
+                      {step.title}
+                    </p>
+                    <p className="text-[10px] font-mono text-gray-500 mt-0.5">{step.description}</p>
+                  </div>
+                </div>
+                {!step.done && (
+                  <Link
+                    href={step.href}
+                    className="flex-shrink-0 text-[10px] font-mono text-[#6366f1] hover:text-white border border-[#6366f1]/30 hover:border-[#6366f1] px-3 py-1.5 rounded transition-all whitespace-nowrap"
+                  >
+                    {step.cta}
+                  </Link>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {onboarding && !onboardingDismissed && allComplete && (
+        <div className="border border-green-900/30 bg-green-950/10 rounded-[12px] p-4 flex items-center gap-3">
+          <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse flex-shrink-0" />
+          <p className="text-xs font-mono text-green-400 font-bold uppercase tracking-wider">
+            Setup complete — Churnaut is fully configured and running.
+          </p>
+        </div>
+      )}
 
       {loading ? (
         <div className="space-y-8 animate-pulse">
