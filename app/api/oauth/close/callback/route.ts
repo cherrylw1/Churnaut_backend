@@ -4,17 +4,33 @@ import { encrypt } from '@/lib/crypto';
 
 export const dynamic = 'force-dynamic';
 
+function getClientId(req: NextRequest): string | null {
+  const cookie = req.cookies.get('sb-auth-token');
+  if (!cookie) return null;
+  try {
+    const session = JSON.parse(decodeURIComponent(cookie.value));
+    return session?.user?.id || null;
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const code = searchParams.get('code');
-  const state = searchParams.get('state'); // State contains Churnaut client's snippet_key
 
-  if (!code || !state) {
-    console.error('[Close OAuth Callback Error] Missing code or state parameters');
+  if (!code) {
+    console.error('[Close OAuth Callback Error] Missing code parameter');
     return NextResponse.redirect(new URL('/dashboard/integrations/crm?error=missing_parameters', req.url));
   }
 
   try {
+    const clientId = getClientId(req);
+    if (!clientId) {
+      console.error('[Close OAuth Callback Error] Client ID not found in session cookie');
+      return NextResponse.redirect(new URL('/dashboard/integrations/crm?error=client_not_found', req.url));
+    }
+
     const closeClientId = process.env.CLOSE_CLIENT_ID;
     const closeClientSecret = process.env.CLOSE_CLIENT_SECRET;
 
@@ -24,19 +40,16 @@ export async function GET(req: NextRequest) {
     }
 
     // 1. Exchange OAuth code for access and refresh tokens
-    const tokenUrl = 'https://app.close.com/oauth2/token';
-    const redirectUri = 'https://app.churnaut.com/api/oauth/close/callback';
+    const tokenUrl = 'https://api.close.com/oauth2/token/';
 
     const tokenResponse = await fetch(tokenUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': `Basic ${Buffer.from(`${closeClientId}:${closeClientSecret}`).toString('base64')}`,
       },
       body: new URLSearchParams({
         grant_type: 'authorization_code',
-        client_id: closeClientId,
-        client_secret: closeClientSecret,
-        redirect_uri: redirectUri,
         code,
       }),
     });
@@ -57,23 +70,11 @@ export async function GET(req: NextRequest) {
       return NextResponse.redirect(new URL('/dashboard/integrations/crm?error=missing_tokens', req.url));
     }
 
-    // 2. Lookup Churnaut client by snippet_key (matching state)
-    const { data: client, error: clientError } = await supabaseAdmin
-      .from('clients')
-      .select('id')
-      .eq('snippet_key', state)
-      .maybeSingle();
-
-    if (clientError || !client) {
-      console.error('[Close OAuth Callback Error] Client lookup failed for state:', state, clientError);
-      return NextResponse.redirect(new URL('/dashboard/integrations/crm?error=client_not_found', req.url));
-    }
-
-    // 3. Encrypt the tokens
+    // 2. Encrypt the tokens
     const encryptedAccessToken = encrypt(access_token);
     const encryptedRefreshToken = refresh_token ? encrypt(refresh_token) : null;
 
-    // 4. Update the clients table row
+    // 3. Update the clients table row
     const updatePayload: Record<string, string> = {
       crm_type: 'close',
     };
@@ -92,20 +93,20 @@ export async function GET(req: NextRequest) {
     const { error: updateClientError } = await supabaseAdmin
       .from('clients')
       .update(updatePayload)
-      .eq('id', client.id);
+      .eq('id', clientId);
 
     if (updateClientError) {
       console.error('[Close OAuth Callback Error] Failed to update client record:', updateClientError);
       return NextResponse.redirect(new URL('/dashboard/integrations/crm?error=database_update_failed', req.url));
     }
 
-    // 5. Store/upsert the tokens in crm_tokens table
+    // 4. Store/upsert the tokens in crm_tokens table
     const expiresAt = expires_in ? new Date(Date.now() + expires_in * 1000).toISOString() : null;
 
     const { data: existingToken, error: tokenSelectError } = await supabaseAdmin
       .from('crm_tokens')
       .select('id, refresh_token')
-      .eq('client_id', client.id)
+      .eq('client_id', clientId)
       .eq('crm_type', 'close')
       .maybeSingle();
 
@@ -134,7 +135,7 @@ export async function GET(req: NextRequest) {
         const { error: insertTokenError } = await supabaseAdmin
           .from('crm_tokens')
           .insert({
-            client_id: client.id,
+            client_id: clientId,
             crm_type: 'close',
             access_token: encryptedAccessToken,
             refresh_token: encryptedRefreshToken || '',
@@ -149,7 +150,7 @@ export async function GET(req: NextRequest) {
       console.error('[Close OAuth Callback Warning] Error checking existing token row in crm_tokens:', tokenSelectError);
     }
 
-    // 6. Redirect to integrations page with connected flag
+    // 5. Redirect to integrations page with connected flag
     return NextResponse.redirect(new URL('/dashboard/integrations/crm?connected=close', req.url));
   } catch (err) {
     console.error('[Close OAuth Callback Exception] Unhandled callback error:', err);
