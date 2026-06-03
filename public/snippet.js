@@ -96,26 +96,30 @@
     },
   };
 
+  var controller = new AbortController();
+  var timeoutId = setTimeout(function() {
+    controller.abort();
+  }, 4000);
+
   fetch("https://app.churnaut.com/api/resolve", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
+    signal: controller.signal,
     body: JSON.stringify(payload),
   })
     .then(function (response) {
+      clearTimeout(timeoutId);
       if (!response.ok) {
         throw new Error("HTTP error! Status: " + response.status);
       }
       return response.json();
     })
     .then(function (data) {
-      // 7. Store the visitor token from the response as a cookie with a 30-day expiry
       if (data && data.visitor_token) {
         setCookie("_sr_visitor", data.visitor_token, 30);
       }
-
-      // Iterate through the swaps array and modify matching DOM elements
       if (data && data.swaps && Array.isArray(data.swaps)) {
         for (var j = 0; j < data.swaps.length; j++) {
           var swap = data.swaps[j];
@@ -129,10 +133,14 @@
       }
     })
     .catch(function (error) {
-      console.error("[Churnaut] Failed to resolve signals:", error);
+      clearTimeout(timeoutId);
+      if (error.name === 'AbortError') {
+        console.warn("[Churnaut] Resolve request timed out — restoring original content.");
+      } else {
+        console.error("[Churnaut] Failed to resolve signals:", error);
+      }
     })
     .finally(function () {
-      // 8. Restore original visibility on all target elements regardless of outcome
       restoreVisibility(targets);
     });
 })();
