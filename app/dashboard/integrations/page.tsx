@@ -562,50 +562,144 @@ export default function IntegrationsPage() {
         </div>
 
         {/* Zapier */}
-        <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/50 rounded-lg p-5 flex flex-col justify-between gap-4 opacity-80">
-          <div className="space-y-3">
+        <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/50 rounded-lg p-5 flex flex-col justify-between gap-4">
+          <div className="space-y-4">
             <div className="flex justify-between items-center">
               <h3 className="font-mono font-bold uppercase text-sm text-[var(--text-primary)]">Zapier</h3>
-              <div className="flex items-center gap-1.5 text-gray-500 text-xs font-mono">
-                <span className="w-1.5 h-1.5 rounded-full bg-gray-500"></span>
-                Coming Soon
+              <div className="flex items-center gap-1.5 text-green-400 text-xs font-mono">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
+                Active
               </div>
             </div>
             <p className="font-mono text-xs text-gray-400 leading-relaxed">
-              Connect Churnaut to 5,000+ tools via Zapier webhooks and triggers.
+              Send prospect data from any Zap directly to Churnaut and generate a personalized tracked link automatically.
             </p>
-          </div>
-          <div>
-            <button
-              disabled
-              className="w-full py-2 px-3 border border-[var(--border-subtle)] text-gray-500 font-mono text-xs rounded opacity-40 cursor-not-allowed text-center"
-            >
-              CONNECT →
-            </button>
+
+            {/* Webhook URL Copy Area */}
+            <div className="space-y-1.5 pt-1">
+              <label className="text-[10px] font-mono text-gray-400 uppercase tracking-wider block">Webhook URL</label>
+              <div className="relative flex items-center border border-[var(--border-subtle)] bg-[#080B0F]/60 rounded p-2 font-mono text-[11px] overflow-hidden select-all text-gray-300">
+                <span className="truncate pr-16">{webhookUrl || 'Loading Webhook URL...'}</span>
+                <button
+                  type="button"
+                  onClick={() => handleCopy(webhookUrl, 'zapier')}
+                  disabled={!webhookUrl}
+                  className="absolute right-1 top-1 bottom-1 px-3 bg-[#6366f1] hover:bg-[#5053e1] disabled:bg-gray-700 text-white font-mono text-[10px] rounded transition-all active:scale-[0.98]"
+                >
+                  {copiedKey === 'zapier' ? 'COPIED!' : 'COPY'}
+                </button>
+              </div>
+            </div>
+
+            {/* Setup Instructions */}
+            <div className="text-[11px] font-mono text-gray-400 space-y-1 bg-[#080B0F]/20 p-2.5 rounded border border-[var(--border-subtle)]/40">
+              <span className="text-[10px] text-gray-300 font-bold uppercase tracking-wider block mb-1">Setup Instructions:</span>
+              <p>1. In Zapier, create a new Zap and choose your trigger app (e.g. Google Sheets, HubSpot, Instantly)</p>
+              <p>2. Add a Webhooks by Zapier action &rarr; POST</p>
+              <p>3. Paste your Churnaut webhook URL above as the endpoint</p>
+              <p>4. Map fields in the payload: prospect_name, prospect_email, company_name, job_title, assigned_rep, signal_type</p>
+              <p>5. Set signal_type to &quot;Zapier&quot; to correctly attribute traffic in analytics</p>
+              <p>6. Add <code className="text-green-400 font-bold font-mono text-[11px] select-all bg-gray-950 px-1 py-0.5 rounded">{"{{churnaut_link}}"}</code> as a custom variable in your email template</p>
+            </div>
+
+            {/* Expected Fields Collapsible */}
+            <div className="border border-[var(--border-subtle)]/60 bg-[#080B0F]/10 rounded overflow-hidden">
+              <button
+                type="button"
+                onClick={() => toggleExpectedFields('zapier')}
+                className="w-full text-left p-2.5 font-mono text-[10px] font-bold text-gray-400 hover:text-white uppercase hover:bg-[var(--border-subtle)]/20 transition-all flex justify-between items-center"
+              >
+                <span>Expected Payload Fields</span>
+                <span>{openExpectedFields['zapier'] ? '[-]' : '[+]'}</span>
+              </button>
+              {openExpectedFields['zapier'] && (
+                <div className="p-3 border-t border-[var(--border-subtle)]/60 text-[10px] font-mono text-gray-400 space-y-2 leading-relaxed bg-[#080B0F]/25">
+                  <p className="text-gray-300 font-semibold">JSON Fields:</p>
+                  <ul className="list-disc pl-4 space-y-1">
+                    <li><code className="text-indigo-400">prospect_name</code> (string)</li>
+                    <li><code className="text-indigo-400">prospect_email</code> (string)</li>
+                    <li><code className="text-indigo-400">company_name</code> (string)</li>
+                    <li><code className="text-indigo-400">job_title</code> (string)</li>
+                    <li><code className="text-indigo-400">assigned_rep</code> (string)</li>
+                    <li>
+                      <code className="text-indigo-400">signal_type</code> (string) — 
+                      <span className="text-yellow-400/90 font-semibold"> Must be &quot;Zapier&quot;</span>
+                    </li>
+                  </ul>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
         {/* Make */}
-        <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/50 rounded-lg p-5 flex flex-col justify-between gap-4 opacity-80">
-          <div className="space-y-3">
+        <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/50 rounded-lg p-5 flex flex-col justify-between gap-4">
+          <div className="space-y-4">
             <div className="flex justify-between items-center">
               <h3 className="font-mono font-bold uppercase text-sm text-[var(--text-primary)]">Make</h3>
-              <div className="flex items-center gap-1.5 text-gray-500 text-xs font-mono">
-                <span className="w-1.5 h-1.5 rounded-full bg-gray-500"></span>
-                Coming Soon
+              <div className="flex items-center gap-1.5 text-green-400 text-xs font-mono">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
+                Active
               </div>
             </div>
             <p className="font-mono text-xs text-gray-400 leading-relaxed">
-              Automate personalization workflows across 1,500+ apps using Make scenarios.
+              Connect any Make scenario to Churnaut via webhook and auto-generate tracked links for every prospect in your automation.
             </p>
-          </div>
-          <div>
-            <button
-              disabled
-              className="w-full py-2 px-3 border border-[var(--border-subtle)] text-gray-500 font-mono text-xs rounded opacity-40 cursor-not-allowed text-center"
-            >
-              CONNECT →
-            </button>
+
+            {/* Webhook URL Copy Area */}
+            <div className="space-y-1.5 pt-1">
+              <label className="text-[10px] font-mono text-gray-400 uppercase tracking-wider block">Webhook URL</label>
+              <div className="relative flex items-center border border-[var(--border-subtle)] bg-[#080B0F]/60 rounded p-2 font-mono text-[11px] overflow-hidden select-all text-gray-300">
+                <span className="truncate pr-16">{webhookUrl || 'Loading Webhook URL...'}</span>
+                <button
+                  type="button"
+                  onClick={() => handleCopy(webhookUrl, 'make')}
+                  disabled={!webhookUrl}
+                  className="absolute right-1 top-1 bottom-1 px-3 bg-[#6366f1] hover:bg-[#5053e1] disabled:bg-gray-700 text-white font-mono text-[10px] rounded transition-all active:scale-[0.98]"
+                >
+                  {copiedKey === 'make' ? 'COPIED!' : 'COPY'}
+                </button>
+              </div>
+            </div>
+
+            {/* Setup Instructions */}
+            <div className="text-[11px] font-mono text-gray-400 space-y-1 bg-[#080B0F]/20 p-2.5 rounded border border-[var(--border-subtle)]/40">
+              <span className="text-[10px] text-gray-300 font-bold uppercase tracking-wider block mb-1">Setup Instructions:</span>
+              <p>1. In Make, open your scenario and add an HTTP module &rarr; Make a request</p>
+              <p>2. Set method to POST and paste your Churnaut webhook URL above</p>
+              <p>3. Set Content-Type header to application/json</p>
+              <p>4. Map your prospect fields in the request body: prospect_name, prospect_email, company_name, job_title, assigned_rep, signal_type</p>
+              <p>5. Set signal_type to &quot;Make&quot; for correct analytics attribution</p>
+              <p>6. Use the churnaut_link value from the response in your downstream email or CRM module</p>
+            </div>
+
+            {/* Expected Fields Collapsible */}
+            <div className="border border-[var(--border-subtle)]/60 bg-[#080B0F]/10 rounded overflow-hidden">
+              <button
+                type="button"
+                onClick={() => toggleExpectedFields('make')}
+                className="w-full text-left p-2.5 font-mono text-[10px] font-bold text-gray-400 hover:text-white uppercase hover:bg-[var(--border-subtle)]/20 transition-all flex justify-between items-center"
+              >
+                <span>Expected Payload Fields</span>
+                <span>{openExpectedFields['make'] ? '[-]' : '[+]'}</span>
+              </button>
+              {openExpectedFields['make'] && (
+                <div className="p-3 border-t border-[var(--border-subtle)]/60 text-[10px] font-mono text-gray-400 space-y-2 leading-relaxed bg-[#080B0F]/25">
+                  <p className="text-gray-300 font-semibold">JSON Fields:</p>
+                  <ul className="list-disc pl-4 space-y-1">
+                    <li><code className="text-indigo-400">prospect_name</code> (string)</li>
+                    <li><code className="text-indigo-400">prospect_email</code> (string)</li>
+                    <li><code className="text-indigo-400">company_name</code> (string)</li>
+                    <li><code className="text-indigo-400">job_title</code> (string)</li>
+                    <li><code className="text-indigo-400">assigned_rep</code> (string)</li>
+                    <li>
+                      <code className="text-indigo-400">signal_type</code> (string) — 
+                      <span className="text-yellow-400/90 font-semibold"> Must be &quot;Make&quot;</span>
+                    </li>
+                  </ul>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
