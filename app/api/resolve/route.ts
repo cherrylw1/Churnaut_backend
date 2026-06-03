@@ -131,6 +131,16 @@ export async function POST(req: NextRequest) {
       if (!error) {
         session = data;
       }
+
+      if (session && session.expires_at) {
+        const isExpired = new Date(session.expires_at).getTime() < Date.now();
+        if (isExpired) {
+          return NextResponse.json(
+            { visitor_token: null, swaps: [] },
+            { headers: corsHeaders }
+          );
+        }
+      }
     }
 
     // Fallback: Look up the session by visitor_token matching cookie
