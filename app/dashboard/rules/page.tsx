@@ -13,14 +13,11 @@ const SIGNAL_OPTIONS = [
   'LinkedIn Ad',
   'Google Ad',
   'TikTok Ad',
+  'Meta Ad',
   'LinkedIn Lead Gen Form',
-  'QR Code',
   'G2 Referral',
-  'Webinar Follow-up',
   'Partner Referral',
-  'Conference QR Code',
   'Returning Visitor',
-  'Other',
   'Any',
 ];
 
@@ -30,22 +27,18 @@ const CONDITION_OPTIONS = [
   'Job title contains',
   'Company name equals',
   'Deal stage equals',
-  'Visitor type equals',
   'UTM campaign contains',
   'UTM source equals',
-  'UTM medium equals',
   'UTM content contains',
 ];
 
 // Action types mapping
 const ACTION_MAPPING = [
-  { value: 'show_calendar', label: 'Show Calendar Embed' },
-  { value: 'show_long_form', label: 'Show Long Form' },
-  { value: 'show_short_form', label: 'Show Short Form' },
-  { value: 'inject_copy', label: 'Inject Headline Copy' },
-  { value: 'show_case_study', label: 'Show Case Study URL' },
-  { value: 'redirect', label: 'Redirect to URL' },
-  { value: 'show_phone', label: 'Show Phone Number' },
+  { value: 'show_calendar', label: 'Show Rep Calendar' },
+  { value: 'show_short_form', label: 'Show Demo Request Form' },
+  { value: 'inject_copy', label: 'Change Page Text' },
+  { value: 'show_case_study', label: 'Show Case Study' },
+  { value: 'redirect', label: 'Send to Different Page' },
 ];
 
 export default function RulesPage() {
@@ -156,17 +149,11 @@ export default function RulesPage() {
     if (conditions.deal_stage_equals) {
       parts.push(`Deal stage equals "${conditions.deal_stage_equals}"`);
     }
-    if (conditions.visitor_type_equals) {
-      parts.push(`Visitor type equals "${conditions.visitor_type_equals}"`);
-    }
     if (conditions.utm_campaign_contains) {
       parts.push(`UTM campaign contains "${conditions.utm_campaign_contains}"`);
     }
     if (conditions.utm_source_equals) {
       parts.push(`UTM source equals "${conditions.utm_source_equals}"`);
-    }
-    if (conditions.utm_medium_equals) {
-      parts.push(`UTM medium equals "${conditions.utm_medium_equals}"`);
     }
     if (conditions.utm_content_contains) {
       parts.push(`UTM content contains "${conditions.utm_content_contains}"`);
@@ -188,17 +175,11 @@ export default function RulesPage() {
     if (conditions.deal_stage_equals) {
       return { type: 'Deal stage equals', value: conditions.deal_stage_equals };
     }
-    if (conditions.visitor_type_equals) {
-      return { type: 'Visitor type equals', value: conditions.visitor_type_equals };
-    }
     if (conditions.utm_campaign_contains) {
       return { type: 'UTM campaign contains', value: conditions.utm_campaign_contains };
     }
     if (conditions.utm_source_equals) {
       return { type: 'UTM source equals', value: conditions.utm_source_equals };
-    }
-    if (conditions.utm_medium_equals) {
-      return { type: 'UTM medium equals', value: conditions.utm_medium_equals };
     }
     if (conditions.utm_content_contains) {
       return { type: 'UTM content contains', value: conditions.utm_content_contains };
@@ -217,17 +198,11 @@ export default function RulesPage() {
     if (type === 'Deal stage equals') {
       return { deal_stage_equals: value };
     }
-    if (type === 'Visitor type equals') {
-      return { visitor_type_equals: value };
-    }
     if (type === 'UTM campaign contains') {
       return { utm_campaign_contains: value };
     }
     if (type === 'UTM source equals') {
       return { utm_source_equals: value };
-    }
-    if (type === 'UTM medium equals') {
-      return { utm_medium_equals: value };
     }
     if (type === 'UTM content contains') {
       return { utm_content_contains: value };
