@@ -55,7 +55,7 @@ export default function IntegrationsPage() {
           </div>
           <div>
             <Link
-              href="/dashboard/integrations/crm"
+              href="/dashboard/integrations/crm/hubspot"
               className="block w-full py-2 px-3 border border-[var(--border-subtle)] hover:border-[#6366f1] hover:text-white text-gray-300 font-mono text-xs rounded text-center transition-all hover:bg-[#6366f1]/5 active:scale-[0.98]"
             >
               MANAGE →
@@ -86,7 +86,7 @@ export default function IntegrationsPage() {
           </div>
           <div>
             <Link
-              href="/dashboard/integrations/crm"
+              href="/dashboard/integrations/crm/pipedrive"
               className="block w-full py-2 px-3 border border-[var(--border-subtle)] hover:border-[#6366f1] hover:text-white text-gray-300 font-mono text-xs rounded text-center transition-all hover:bg-[#6366f1]/5 active:scale-[0.98]"
             >
               MANAGE →
@@ -95,98 +95,126 @@ export default function IntegrationsPage() {
         </div>
 
         {/* Zoho CRM */}
-        <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/50 rounded-lg p-5 flex flex-col justify-between gap-4 opacity-80">
+        <div className={`border bg-[var(--bg-elevated)]/50 rounded-lg p-5 flex flex-col justify-between gap-4 ${crmStatus?.crm_type === 'zoho' ? 'border-green-900/30' : 'border-[var(--border-subtle)]'}`}>
           <div className="space-y-3">
             <div className="flex justify-between items-center">
               <h3 className="font-mono font-bold uppercase text-sm text-[var(--text-primary)]">Zoho CRM</h3>
-              <div className="flex items-center gap-1.5 text-gray-500 text-xs font-mono">
-                <span className="w-1.5 h-1.5 rounded-full bg-gray-500"></span>
-                Coming Soon
-              </div>
+              {crmStatus?.crm_type === 'zoho' ? (
+                <div className="flex items-center gap-1.5 text-green-400 text-xs font-mono">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
+                  Connected
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 text-gray-500 text-xs font-mono">
+                  <span className="w-1.5 h-1.5 rounded-full bg-gray-500"></span>
+                  Disconnected
+                </div>
+              )}
             </div>
             <p className="font-mono text-xs text-gray-400 leading-relaxed">
               Sync Zoho CRM contacts, leads, and deal stages for real-time personalization.
             </p>
           </div>
           <div>
-            <button
-              disabled
-              className="w-full py-2 px-3 border border-[var(--border-subtle)] text-gray-500 font-mono text-xs rounded opacity-40 cursor-not-allowed text-center"
+            <Link
+              href="/dashboard/integrations/crm/zoho"
+              className="block w-full py-2 px-3 border border-[var(--border-subtle)] hover:border-[#6366f1] hover:text-white text-gray-300 font-mono text-xs rounded text-center transition-all hover:bg-[#6366f1]/5 active:scale-[0.98]"
             >
-              CONNECT →
-            </button>
+              MANAGE →
+            </Link>
           </div>
         </div>
 
         {/* Close */}
-        <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/50 rounded-lg p-5 flex flex-col justify-between gap-4 opacity-80">
+        <div className={`border bg-[var(--bg-elevated)]/50 rounded-lg p-5 flex flex-col justify-between gap-4 ${crmStatus?.crm_type === 'close' ? 'border-green-900/30' : 'border-[var(--border-subtle)]'}`}>
           <div className="space-y-3">
             <div className="flex justify-between items-center">
               <h3 className="font-mono font-bold uppercase text-sm text-[var(--text-primary)]">Close</h3>
-              <div className="flex items-center gap-1.5 text-gray-500 text-xs font-mono">
-                <span className="w-1.5 h-1.5 rounded-full bg-gray-500"></span>
-                Coming Soon
-              </div>
+              {crmStatus?.crm_type === 'close' ? (
+                <div className="flex items-center gap-1.5 text-green-400 text-xs font-mono">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
+                  Connected
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 text-gray-500 text-xs font-mono">
+                  <span className="w-1.5 h-1.5 rounded-full bg-gray-500"></span>
+                  Disconnected
+                </div>
+              )}
             </div>
             <p className="font-mono text-xs text-gray-400 leading-relaxed">
               Sync Close CRM leads, opportunities, and rep activity into personalization flows.
             </p>
           </div>
           <div>
-            <button
-              disabled
-              className="w-full py-2 px-3 border border-[var(--border-subtle)] text-gray-500 font-mono text-xs rounded opacity-40 cursor-not-allowed text-center"
+            <Link
+              href="/dashboard/integrations/crm/close"
+              className="block w-full py-2 px-3 border border-[var(--border-subtle)] hover:border-[#6366f1] hover:text-white text-gray-300 font-mono text-xs rounded text-center transition-all hover:bg-[#6366f1]/5 active:scale-[0.98]"
             >
-              CONNECT →
-            </button>
+              MANAGE →
+            </Link>
           </div>
         </div>
 
         {/* Salesforce */}
-        <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/50 rounded-lg p-5 flex flex-col justify-between gap-4 opacity-80">
+        <div className={`border bg-[var(--bg-elevated)]/50 rounded-lg p-5 flex flex-col justify-between gap-4 ${crmStatus?.crm_type === 'salesforce' ? 'border-green-900/30' : 'border-[var(--border-subtle)]'}`}>
           <div className="space-y-3">
             <div className="flex justify-between items-center">
               <h3 className="font-mono font-bold uppercase text-sm text-[var(--text-primary)]">Salesforce</h3>
-              <div className="flex items-center gap-1.5 text-gray-500 text-xs font-mono">
-                <span className="w-1.5 h-1.5 rounded-full bg-gray-500"></span>
-                Coming Soon
-              </div>
+              {crmStatus?.crm_type === 'salesforce' ? (
+                <div className="flex items-center gap-1.5 text-green-400 text-xs font-mono">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
+                  Connected
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 text-gray-500 text-xs font-mono">
+                  <span className="w-1.5 h-1.5 rounded-full bg-gray-500"></span>
+                  Disconnected
+                </div>
+              )}
             </div>
             <p className="font-mono text-xs text-gray-400 leading-relaxed">
               Connect Salesforce Sales Cloud to map opportunity objects and lifecycle stages.
             </p>
           </div>
           <div>
-            <button
-              disabled
-              className="w-full py-2 px-3 border border-[var(--border-subtle)] text-gray-500 font-mono text-xs rounded opacity-40 cursor-not-allowed text-center"
+            <Link
+              href="/dashboard/integrations/crm/salesforce"
+              className="block w-full py-2 px-3 border border-[var(--border-subtle)] hover:border-[#6366f1] hover:text-white text-gray-300 font-mono text-xs rounded text-center transition-all hover:bg-[#6366f1]/5 active:scale-[0.98]"
             >
-              CONNECT →
-            </button>
+              MANAGE →
+            </Link>
           </div>
         </div>
 
         {/* Attio */}
-        <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/50 rounded-lg p-5 flex flex-col justify-between gap-4 opacity-80">
+        <div className={`border bg-[var(--bg-elevated)]/50 rounded-lg p-5 flex flex-col justify-between gap-4 ${crmStatus?.crm_type === 'attio' ? 'border-green-900/30' : 'border-[var(--border-subtle)]'}`}>
           <div className="space-y-3">
             <div className="flex justify-between items-center">
               <h3 className="font-mono font-bold uppercase text-sm text-[var(--text-primary)]">Attio</h3>
-              <div className="flex items-center gap-1.5 text-gray-500 text-xs font-mono">
-                <span className="w-1.5 h-1.5 rounded-full bg-gray-500"></span>
-                Coming Soon
-              </div>
+              {crmStatus?.crm_type === 'attio' ? (
+                <div className="flex items-center gap-1.5 text-green-400 text-xs font-mono">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
+                  Connected
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 text-gray-500 text-xs font-mono">
+                  <span className="w-1.5 h-1.5 rounded-full bg-gray-500"></span>
+                  Disconnected
+                </div>
+              )}
             </div>
             <p className="font-mono text-xs text-gray-400 leading-relaxed">
               Sync Attio workspace records, pipelines, and contact attributes in real time.
             </p>
           </div>
           <div>
-            <button
-              disabled
-              className="w-full py-2 px-3 border border-[var(--border-subtle)] text-gray-500 font-mono text-xs rounded opacity-40 cursor-not-allowed text-center"
+            <Link
+              href="/dashboard/integrations/crm/attio"
+              className="block w-full py-2 px-3 border border-[var(--border-subtle)] hover:border-[#6366f1] hover:text-white text-gray-300 font-mono text-xs rounded text-center transition-all hover:bg-[#6366f1]/5 active:scale-[0.98]"
             >
-              CONNECT →
-            </button>
+              MANAGE →
+            </Link>
           </div>
         </div>
       </div>

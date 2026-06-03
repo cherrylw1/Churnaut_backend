@@ -9,10 +9,9 @@ interface CrmStatus {
   connected_at: string | null;
 }
 
-export default function CrmSettingsPage() {
+export default function CrmIndexPage() {
   const [status, setStatus] = useState<CrmStatus | null>(null);
   const [loading, setLoading] = useState(true);
-  const [disconnecting, setDisconnecting] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const fetchStatus = async () => {
@@ -45,16 +44,18 @@ export default function CrmSettingsPage() {
         setMessage({ type: 'success', text: 'Successfully connected to HubSpot CRM!' });
       } else if (connected === 'pipedrive') {
         setMessage({ type: 'success', text: 'Successfully connected to Pipedrive CRM!' });
+      } else if (connected === 'zoho') {
+        setMessage({ type: 'success', text: 'Successfully connected to Zoho CRM!' });
       } else if (error) {
         let errorText = 'Failed to connect to CRM.';
         if (error === 'token_exchange_failed') {
-          errorText = 'Token exchange with HubSpot failed. Please check your credentials.';
+          errorText = 'Token exchange with HubSpot/Pipedrive/Zoho failed. Please check your credentials.';
         } else if (error === 'client_not_found') {
           errorText = 'Active client profile was not found. Please log in again.';
         } else if (error === 'missing_parameters') {
           errorText = 'Authentication callback was missing required fields.';
         } else if (error === 'server_configuration_error') {
-          errorText = 'HubSpot client secret or client ID is not configured on the server.';
+          errorText = 'CRM client secret or client ID is not configured on the server.';
         }
         if (details) {
           try {
@@ -69,50 +70,6 @@ export default function CrmSettingsPage() {
     }
   }, []);
 
-  const handleDisconnect = async () => {
-    if (!confirm('Are you sure you want to disconnect HubSpot CRM? This will remove all synchronization tokens.')) {
-      return;
-    }
-    setDisconnecting(true);
-    try {
-      const res = await fetch('/api/oauth/crm', {
-        method: 'DELETE',
-      });
-      if (res.ok) {
-        setStatus({ connected: false, crm_type: null, connected_at: null });
-        setMessage({ type: 'success', text: 'CRM connection successfully removed.' });
-        // Clear search parameters from URL
-        if (typeof window !== 'undefined') {
-          window.history.replaceState({}, document.title, window.location.pathname);
-        }
-      } else {
-        setMessage({ type: 'error', text: 'Failed to disconnect CRM. Please try again.' });
-      }
-    } catch (err) {
-      console.error('[CRM Disconnect Error] Failed to process disconnection:', err);
-      setMessage({ type: 'error', text: 'An unexpected error occurred during disconnection.' });
-    } finally {
-      setDisconnecting(false);
-    }
-  };
-
-  const formatDate = (dateStr: string | null) => {
-    if (!dateStr) return 'N/A';
-    try {
-      return new Date(dateStr).toLocaleString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        timeZoneName: 'short'
-      });
-    } catch {
-      return dateStr;
-    }
-  };
-
   if (loading) {
     return (
       <div className="text-center py-12 text-gray-500 font-mono text-sm uppercase tracking-widest bg-[var(--bg-base)] text-[var(--text-primary)] min-h-screen">
@@ -121,8 +78,10 @@ export default function CrmSettingsPage() {
     );
   }
 
+  const crmType = status?.crm_type;
+
   return (
-    <div className="space-y-8 max-w-4xl bg-[var(--bg-base)] text-[var(--text-primary)] min-h-screen">
+    <div className="space-y-8 max-w-6xl bg-[var(--bg-base)] text-[var(--text-primary)] min-h-screen">
       {/* Page Header */}
       <div className="border-b border-[var(--border-subtle)] pb-5 flex justify-between items-end">
         <div>
@@ -166,161 +125,177 @@ export default function CrmSettingsPage() {
         </div>
       )}
 
-      {/* CRM Providers Section */}
+      {/* CRM Providers Grid */}
       <div className="space-y-6">
         <h2 className="text-xs font-mono font-bold text-[#6366f1] uppercase tracking-widest bg-[var(--border-subtle)]/40 py-1.5 px-3 rounded border border-[var(--border-subtle)] inline-block">
           Supported CRM Suites
         </h2>
 
-        <div className="grid grid-cols-1 gap-6">
-          {/* HubSpot Card */}
-          <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-lg p-6 space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="space-y-2">
-                <div className="flex items-center space-x-3">
-                  <h3 className="text-sm font-mono font-bold text-white uppercase tracking-wider">
-                    HubSpot CRM
-                  </h3>
-                  {status?.connected && status.crm_type === 'hubspot' ? (
-                    <div className="flex items-center space-x-2 border border-green-900/40 bg-green-950/20 text-[#10b981] px-2.5 py-0.5 rounded font-mono text-[9px] font-bold">
-                      <span className="relative flex h-1.5 w-1.5">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#10b981]"></span>
-                      </span>
-                      <span>CONNECTED</span>
-                    </div>
-                  ) : (
-                    <span className="text-[9px] font-mono font-bold bg-[var(--border-subtle)] text-gray-500 border border-[var(--border-subtle)] px-2.5 py-0.5 rounded uppercase">
-                      DISCONNECTED
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs font-mono text-gray-400 leading-relaxed max-w-xl">
-                  Sync leads, assign sales reps, track deal stage changes, and personalize user experience routes according to HubSpot lifecycle events.
-                </p>
-              </div>
-
-              <div>
-                {status?.connected && status.crm_type === 'hubspot' ? (
-                  <button
-                    onClick={handleDisconnect}
-                    disabled={disconnecting}
-                    className="w-full sm:w-auto bg-red-950/20 hover:bg-red-950/40 border border-red-900/40 hover:border-red-800/80 text-red-400 font-mono text-xs py-2.5 px-6 rounded transition-all active:scale-[0.98] disabled:opacity-55"
-                  >
-                    {disconnecting ? 'DISCONNECTING...' : 'DISCONNECT HUBSPOT'}
-                  </button>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* HubSpot */}
+          <div className={`border bg-[var(--bg-elevated)]/50 rounded-lg p-5 flex flex-col justify-between gap-4 ${crmType === 'hubspot' ? 'border-green-900/30' : 'border-[var(--border-subtle)]'}`}>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <h3 className="font-mono font-bold uppercase text-sm text-[var(--text-primary)]">HubSpot</h3>
+                {crmType === 'hubspot' ? (
+                  <div className="flex items-center gap-1.5 text-green-400 text-xs font-mono">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
+                    Connected
+                  </div>
                 ) : (
-                  <a
-                    href="/api/oauth/hubspot"
-                    className="inline-block text-center w-full sm:w-auto bg-[#6366f1] hover:bg-[#5053e1] text-white font-mono text-xs py-2.5 px-6 rounded transition-all active:scale-[0.98]"
-                  >
-                    CONNECT HUBSPOT
-                  </a>
+                  <div className="flex items-center gap-1.5 text-gray-500 text-xs font-mono">
+                    <span className="w-1.5 h-1.5 rounded-full bg-gray-500"></span>
+                    Disconnected
+                  </div>
                 )}
               </div>
+              <p className="font-mono text-xs text-gray-400 leading-relaxed">
+                Sync deals, owners, pipeline stages, and contact enrichment.
+              </p>
             </div>
-
-            {/* If connected, show connection metadata panel */}
-            {status?.connected && status.crm_type === 'hubspot' && (
-              <div className="border border-[var(--border-subtle)]/60 bg-[#080B0F] rounded p-4 font-mono text-xs text-gray-400 space-y-2">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 leading-relaxed">
-                  <div>
-                    <span className="text-gray-500 uppercase tracking-tight">CRM Provider:</span>{' '}
-                    <span className="text-white uppercase">HUBSPOT</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-500 uppercase tracking-tight">Connection Date:</span>{' '}
-                    <span className="text-white">{formatDate(status.connected_at)}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-500 uppercase tracking-tight">Active Scopes:</span>{' '}
-                    <span className="text-indigo-400 text-[10px] leading-tight">
-                      contacts.read, deals.read, companies.read, owners.read
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-gray-500 uppercase tracking-tight">Sync Status:</span>{' '}
-                    <span className="text-green-400 font-bold">ACTIVE & SYNCED</span>
-                  </div>
-                </div>
-              </div>
-            )}
+            <div>
+              <Link
+                href="/dashboard/integrations/crm/hubspot"
+                className="block w-full py-2 px-3 border border-[var(--border-subtle)] hover:border-[#6366f1] hover:text-white text-gray-300 font-mono text-xs rounded text-center transition-all hover:bg-[#6366f1]/5 active:scale-[0.98]"
+              >
+                MANAGE →
+              </Link>
+            </div>
           </div>
 
-          {/* Pipedrive Card */}
-          <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-lg p-6 space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="space-y-2">
-                <div className="flex items-center space-x-3">
-                  <h3 className="text-sm font-mono font-bold text-white uppercase tracking-wider">
-                    Pipedrive CRM
-                  </h3>
-                  {status?.connected && status.crm_type === 'pipedrive' ? (
-                    <div className="flex items-center space-x-2 border border-green-900/40 bg-green-950/20 text-[#10b981] px-2.5 py-0.5 rounded font-mono text-[9px] font-bold">
-                      <span className="relative flex h-1.5 w-1.5">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#10b981]"></span>
-                      </span>
-                      <span>CONNECTED</span>
-                    </div>
-                  ) : (
-                    <span className="text-[9px] font-mono font-bold bg-[var(--border-subtle)] text-gray-500 border border-[var(--border-subtle)] px-2.5 py-0.5 rounded uppercase">
-                      DISCONNECTED
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs font-mono text-gray-400 leading-relaxed max-w-xl">
-                  Sync deals, contacts, and pipeline stages from Pipedrive to personalize visitor experiences in real time.
-                </p>
-              </div>
-
-              <div>
-                {status?.connected && status.crm_type === 'pipedrive' ? (
-                  <button
-                    onClick={handleDisconnect}
-                    disabled={disconnecting}
-                    className="w-full sm:w-auto bg-red-950/20 hover:bg-red-950/40 border border-red-900/40 hover:border-red-800/80 text-red-400 font-mono text-xs py-2.5 px-6 rounded transition-all active:scale-[0.98] disabled:opacity-55"
-                  >
-                    {disconnecting ? 'DISCONNECTING...' : 'DISCONNECT PIPEDRIVE'}
-                  </button>
+          {/* Pipedrive */}
+          <div className={`border bg-[var(--bg-elevated)]/50 rounded-lg p-5 flex flex-col justify-between gap-4 ${crmType === 'pipedrive' ? 'border-green-900/30' : 'border-[var(--border-subtle)]'}`}>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <h3 className="font-mono font-bold uppercase text-sm text-[var(--text-primary)]">Pipedrive</h3>
+                {crmType === 'pipedrive' ? (
+                  <div className="flex items-center gap-1.5 text-green-400 text-xs font-mono">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
+                    Connected
+                  </div>
                 ) : (
-                  <a
-                    href="/api/oauth/pipedrive"
-                    className="inline-block text-center w-full sm:w-auto bg-[#6366f1] hover:bg-[#5053e1] text-white font-mono text-xs py-2.5 px-6 rounded transition-all active:scale-[0.98]"
-                  >
-                    CONNECT PIPEDRIVE
-                  </a>
+                  <div className="flex items-center gap-1.5 text-gray-500 text-xs font-mono">
+                    <span className="w-1.5 h-1.5 rounded-full bg-gray-500"></span>
+                    Disconnected
+                  </div>
                 )}
               </div>
+              <p className="font-mono text-xs text-gray-400 leading-relaxed">
+                Sync deals, contacts, and pipeline stages from Pipedrive.
+              </p>
             </div>
-
-            {/* If connected, show connection metadata panel */}
-            {status?.connected && status.crm_type === 'pipedrive' && (
-              <div className="border border-[var(--border-subtle)]/60 bg-[#080B0F] rounded p-4 font-mono text-xs text-gray-400 space-y-2">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 leading-relaxed">
-                  <div>
-                    <span className="text-gray-500 uppercase tracking-tight">CRM Provider:</span>{' '}
-                    <span className="text-white uppercase">PIPEDRIVE</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-500 uppercase tracking-tight">Connection Date:</span>{' '}
-                    <span className="text-white">{formatDate(status.connected_at)}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-500 uppercase tracking-tight">Active Scopes:</span>{' '}
-                    <span className="text-indigo-400 text-[10px] leading-tight">
-                      deals:read, contacts:read, users:read, organizations:read
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-gray-500 uppercase tracking-tight">Sync Status:</span>{' '}
-                    <span className="text-green-400 font-bold">ACTIVE & SYNCED</span>
-                  </div>
-                </div>
-              </div>
-            )}
+            <div>
+              <Link
+                href="/dashboard/integrations/crm/pipedrive"
+                className="block w-full py-2 px-3 border border-[var(--border-subtle)] hover:border-[#6366f1] hover:text-white text-gray-300 font-mono text-xs rounded text-center transition-all hover:bg-[#6366f1]/5 active:scale-[0.98]"
+              >
+                MANAGE →
+              </Link>
+            </div>
           </div>
 
+          {/* Zoho CRM */}
+          <div className={`border bg-[var(--bg-elevated)]/50 rounded-lg p-5 flex flex-col justify-between gap-4 ${crmType === 'zoho' ? 'border-green-900/30' : 'border-[var(--border-subtle)]'}`}>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <h3 className="font-mono font-bold uppercase text-sm text-[var(--text-primary)]">Zoho CRM</h3>
+                {crmType === 'zoho' ? (
+                  <div className="flex items-center gap-1.5 text-green-400 text-xs font-mono">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
+                    Connected
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5 text-gray-500 text-xs font-mono">
+                    <span className="w-1.5 h-1.5 rounded-full bg-gray-500"></span>
+                    Disconnected
+                  </div>
+                )}
+              </div>
+              <p className="font-mono text-xs text-gray-400 leading-relaxed">
+                Sync Zoho CRM contacts, leads, and deal stages for real-time personalization.
+              </p>
+            </div>
+            <div>
+              <Link
+                href="/dashboard/integrations/crm/zoho"
+                className="block w-full py-2 px-3 border border-[var(--border-subtle)] hover:border-[#6366f1] hover:text-white text-gray-300 font-mono text-xs rounded text-center transition-all hover:bg-[#6366f1]/5 active:scale-[0.98]"
+              >
+                MANAGE →
+              </Link>
+            </div>
+          </div>
+
+          {/* Close */}
+          <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/50 rounded-lg p-5 flex flex-col justify-between gap-4 opacity-80">
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <h3 className="font-mono font-bold uppercase text-sm text-[var(--text-primary)]">Close</h3>
+                <div className="flex items-center gap-1.5 text-gray-500 text-xs font-mono">
+                  <span className="w-1.5 h-1.5 rounded-full bg-gray-500"></span>
+                  Coming Soon
+                </div>
+              </div>
+              <p className="font-mono text-xs text-gray-400 leading-relaxed">
+                Sync Close CRM leads, opportunities, and rep activity into personalization flows.
+              </p>
+            </div>
+            <div>
+              <button
+                disabled
+                className="w-full py-2 px-3 border border-[var(--border-subtle)] text-gray-500 font-mono text-xs rounded opacity-40 cursor-not-allowed text-center"
+              >
+                CONNECT →
+              </button>
+            </div>
+          </div>
+
+          {/* Salesforce */}
+          <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/50 rounded-lg p-5 flex flex-col justify-between gap-4 opacity-80">
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <h3 className="font-mono font-bold uppercase text-sm text-[var(--text-primary)]">Salesforce</h3>
+                <div className="flex items-center gap-1.5 text-gray-500 text-xs font-mono">
+                  <span className="w-1.5 h-1.5 rounded-full bg-gray-500"></span>
+                  Coming Soon
+                </div>
+              </div>
+              <p className="font-mono text-xs text-gray-400 leading-relaxed">
+                Connect Salesforce Sales Cloud to map opportunity objects and lifecycle stages.
+              </p>
+            </div>
+            <div>
+              <button
+                disabled
+                className="w-full py-2 px-3 border border-[var(--border-subtle)] text-gray-500 font-mono text-xs rounded opacity-40 cursor-not-allowed text-center"
+              >
+                CONNECT →
+              </button>
+            </div>
+          </div>
+
+          {/* Attio */}
+          <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/50 rounded-lg p-5 flex flex-col justify-between gap-4 opacity-80">
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <h3 className="font-mono font-bold uppercase text-sm text-[var(--text-primary)]">Attio</h3>
+                <div className="flex items-center gap-1.5 text-gray-500 text-xs font-mono">
+                  <span className="w-1.5 h-1.5 rounded-full bg-gray-500"></span>
+                  Coming Soon
+                </div>
+              </div>
+              <p className="font-mono text-xs text-gray-400 leading-relaxed">
+                Sync Attio workspace records, pipelines, and contact attributes in real time.
+              </p>
+            </div>
+            <div>
+              <button
+                disabled
+                className="w-full py-2 px-3 border border-[var(--border-subtle)] text-gray-500 font-mono text-xs rounded opacity-40 cursor-not-allowed text-center"
+              >
+                CONNECT →
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
