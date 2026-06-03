@@ -7,6 +7,31 @@ import { toast } from '@/hooks/useToast';
 import EmptyState from '@/components/ui/EmptyState';
 import ErrorState from '@/components/ui/ErrorState';
 
+interface PlaybookInput {
+  field_name: string;
+  label: string;
+  placeholder: string;
+  type: string;
+}
+
+interface PlaybookTemplate {
+  id: string;
+  name: string;
+  description: string;
+  signal_type: string;
+  tier: number;
+  required_inputs: PlaybookInput[];
+  rule_template: {
+    signal_type?: string;
+    conditions?: Record<string, unknown>;
+    action_type: string;
+    target_selector?: string;
+    variant_content?: string;
+    [key: string]: unknown;
+  };
+  created_at: string;
+}
+
 // Signal types list
 const SIGNAL_OPTIONS = [
   'Cold Email',
@@ -46,6 +71,17 @@ export default function RulesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedRule, setSelectedRule] = useState<RoutingRule | null>(null);
+
+  const [activeTab, setActiveTab] = useState<'rules' | 'playbooks'>('rules');
+
+  const [playbooks, setPlaybooks] = useState<PlaybookTemplate[]>([]);
+  const [playbooksLoading, setPlaybooksLoading] = useState(false);
+  const [playbooksWarning, setPlaybooksWarning] = useState<string | null>(null);
+  const [selectedPlaybook, setSelectedPlaybook] = useState<PlaybookTemplate | null>(null);
+  const [playbookFormValues, setPlaybookFormValues] = useState<Record<string, string>>({});
+  const [installing, setInstalling] = useState(false);
+  const [installSuccess, setInstallSuccess] = useState(false);
+  const [installError, setInstallError] = useState<string | null>(null);
   
   // Create Modal State
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -534,15 +570,119 @@ export default function RulesPage() {
     }
   };
 
+  const fetchPlaybooks = async () => {
+    try {
+      setPlaybooksLoading(true);
+      const res = await fetch('/api/playbooks');
+      if (res.ok) {
+        const data = await res.json();
+        setPlaybooks(data.playbooks || []);
+        if (data.warning) setPlaybooksWarning(data.warning);
+      }
+    } catch (err) {
+      console.error('Error fetching playbooks:', err);
+    } finally {
+      setPlaybooksLoading(false);
+    }
+  };
+
+  const openInstallModal = (playbook: PlaybookTemplate) => {
+    setSelectedPlaybook(playbook);
+    const initialValues: Record<string, string> = {};
+    playbook.required_inputs.forEach((input) => {
+      initialValues[input.field_name] = '';
+    });
+    setPlaybookFormValues(initialValues);
+    setInstallSuccess(false);
+    setInstallError(null);
+  };
+
+  const closeInstallModal = () => {
+    setSelectedPlaybook(null);
+    setPlaybookFormValues({});
+    setInstallSuccess(false);
+    setInstallError(null);
+  };
+
+  const handleInstallSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedPlaybook) return;
+    setInstalling(true);
+    setInstallError(null);
+    try {
+      let templateStr = JSON.stringify(selectedPlaybook.rule_template);
+      Object.entries(playbookFormValues).forEach(([key, val]) => {
+        const regex = new RegExp(`{{\\s*${key}\\s*}}`, 'g');
+        templateStr = templateStr.replace(regex, val);
+      });
+      const compiledRule = JSON.parse(templateStr);
+      const actionPayload: Record<string, unknown> = {};
+      if (playbookFormValues.calendly_url) actionPayload.calendar_url = playbookFormValues.calendly_url;
+      if (playbookFormValues.cta_url) actionPayload.url = playbookFormValues.cta_url;
+      if (playbookFormValues.case_study_url) actionPayload.url = playbookFormValues.case_study_url;
+      Object.entries(playbookFormValues).forEach(([k, v]) => { actionPayload[k] = v; });
+      compiledRule.action_payload = { ...(compiledRule.action_payload || {}), ...actionPayload };
+      const res = await fetch('/api/rules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(compiledRule),
+      });
+      if (res.ok) {
+        setInstallSuccess(true);
+        fetchRules();
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        setInstallError(errData.error || 'Failed to install playbook rule.');
+      }
+    } catch (err) {
+      console.error(err);
+      setInstallError('An unexpected error occurred during installation.');
+    } finally {
+      setInstalling(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'playbooks' && playbooks.length === 0) {
+      fetchPlaybooks();
+    }
+  }, [activeTab, playbooks.length]);
+
   return (
     <div className="space-y-6">
       {/* Top Header */}
-      <div className="flex justify-between items-center border-b border-[var(--border-subtle)] pb-5">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-[var(--border-subtle)] pb-5">
         <div>
           <h1 className="text-xl font-bold tracking-wider font-mono">ROUTING RULES</h1>
           <p className="text-xs font-mono text-gray-400 mt-1">Configure personalized web variants based on inbound context</p>
         </div>
+
+        <div className="flex border-b border-[var(--border-subtle)] mt-4 md:mt-0">
+          <button
+            onClick={() => setActiveTab('rules')}
+            className={`px-5 py-2.5 text-xs font-mono font-bold uppercase tracking-wider border-b-2 transition-all ${
+              activeTab === 'rules'
+                ? 'border-[#6366f1] text-[#6366f1]'
+                : 'border-transparent text-gray-500 hover:text-gray-300'
+            }`}
+          >
+            My Rules
+          </button>
+          <button
+            onClick={() => setActiveTab('playbooks')}
+            className={`px-5 py-2.5 text-xs font-mono font-bold uppercase tracking-wider border-b-2 transition-all ${
+              activeTab === 'playbooks'
+                ? 'border-[#6366f1] text-[#6366f1]'
+                : 'border-transparent text-gray-500 hover:text-gray-300'
+            }`}
+          >
+            Playbook Library
+          </button>
+        </div>
       </div>
+
+      {activeTab === 'rules' && (
+        <>
 
       <div className="flex flex-row gap-6 items-start w-full min-w-0">
         {/* Left Side: Rule Cards Drag Area */}
@@ -1175,6 +1315,228 @@ export default function RulesPage() {
           </div>
         </div>
       )}
+        </>
+      )}
+
+      {activeTab === 'playbooks' && (
+        <div className="space-y-8">
+          {playbooksLoading ? (
+            <div className="text-center py-12 text-gray-500 font-mono text-sm uppercase tracking-widest">
+              RETRIEVING PLAYBOOK TEMPLATES...
+            </div>
+          ) : (playbooksWarning || playbooks.length === 0) ? (
+            <div className="border border-yellow-900/40 bg-yellow-950/20 text-[#f59e0b] p-6 rounded-lg font-mono text-xs space-y-3">
+              <span className="font-bold block uppercase tracking-wider">DATABASE SEEDING REQUIRED</span>
+              <p className="leading-relaxed">
+                The Playbook templates have not been seeded into the database yet. Run the SQL migration from supabase/playbooks.sql in the Supabase SQL Editor to load the 21 standard playbooks.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-12">
+              {[1, 2, 3, 4].map((tier) => {
+                const tierPlaybooks = playbooks.filter((p) => p.tier === tier);
+                const tierLabels: Record<number, string> = {
+                  1: 'Tier 1 — Highest Value',
+                  2: 'Tier 2 — High Value',
+                  3: 'Tier 3 — Solid Value',
+                  4: 'Tier 4 — Completeness',
+                };
+                if (tierPlaybooks.length === 0) return null;
+                return (
+                  <div key={tier} className="space-y-4">
+                    <h2 className="text-xs font-mono font-bold text-[#10b981] uppercase tracking-widest bg-green-950/10 py-1.5 px-3 rounded border border-green-900/20 inline-block">
+                      {tierLabels[tier]}
+                    </h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {tierPlaybooks.map((playbook) => (
+                        <PlaybookCard key={playbook.id} playbook={playbook} onInstall={openInstallModal} />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {selectedPlaybook && (
+            <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-lg max-w-lg w-full overflow-hidden shadow-2xl">
+                <div className="h-14 flex items-center justify-between px-6 border-b border-[var(--border-subtle)] bg-[#090d12]">
+                  <span className="font-mono text-xs font-bold text-white uppercase tracking-wider">
+                    Install Playbook
+                  </span>
+                  <button
+                    onClick={closeInstallModal}
+                    className="text-gray-400 hover:text-white transition-colors text-xs font-mono"
+                  >
+                    [CLOSE]
+                  </button>
+                </div>
+
+                <div className="p-6">
+                  {installSuccess ? (
+                    <div className="space-y-6 text-center py-4">
+                      <div className="inline-flex items-center justify-center h-12 w-12 rounded-full bg-green-950/30 text-[#10b981] border border-green-900/40 mb-2">
+                        ✓
+                      </div>
+                      <div className="space-y-2">
+                        <h3 className="font-mono text-sm font-bold text-white uppercase">
+                          Playbook Installed Successfully
+                        </h3>
+                        <p className="font-mono text-xs text-gray-400 max-w-xs mx-auto leading-relaxed">
+                          The routing rule was created and added to your routing sequence.
+                        </p>
+                      </div>
+                      <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                        <button
+                          onClick={closeInstallModal}
+                          className="flex-1 bg-[var(--border-subtle)] hover:bg-[#252b3e] text-white font-mono text-xs py-2.5 px-4 rounded transition-all active:scale-[0.98]"
+                        >
+                          Close Window
+                        </button>
+                        <button
+                          onClick={() => { closeInstallModal(); setActiveTab('rules'); }}
+                          className="flex-1 bg-[#6366f1] hover:bg-[#5053e1] text-white font-mono text-xs py-2.5 px-4 rounded transition-all"
+                        >
+                          View My Rules &rarr;
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <form onSubmit={handleInstallSubmit} className="space-y-5">
+                      <div className="space-y-1.5">
+                        <h3 className="font-mono text-sm font-bold text-white uppercase">
+                          {selectedPlaybook.name}
+                        </h3>
+                        <p className="font-mono text-xs text-gray-400 leading-relaxed">
+                          {selectedPlaybook.description}
+                        </p>
+                      </div>
+
+                      {installError && (
+                        <div className="border border-red-900/40 bg-red-950/20 text-red-400 p-3 rounded font-mono text-xs">
+                          {installError}
+                        </div>
+                      )}
+
+                      <div className="space-y-4 max-h-[300px] overflow-y-auto pr-1">
+                        {selectedPlaybook.required_inputs.map((input) => (
+                          <div key={input.field_name} className="space-y-1.5">
+                            <label className="block text-[10px] font-mono text-gray-400 uppercase tracking-wider">
+                              {input.label}
+                            </label>
+                            <input
+                              type="text"
+                              required
+                              value={playbookFormValues[input.field_name] || ''}
+                              onChange={(e) =>
+                                setPlaybookFormValues((prev) => ({ ...prev, [input.field_name]: e.target.value }))
+                              }
+                              placeholder={input.placeholder}
+                              className="w-full bg-[#080B0F] border border-[var(--border-subtle)] focus:border-[#6366f1] outline-none text-xs px-3 py-2.5 rounded text-white font-mono"
+                            />
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="flex justify-end gap-3 pt-3 border-t border-[var(--border-subtle)]">
+                        <button
+                          type="button"
+                          onClick={closeInstallModal}
+                          className="bg-[var(--border-subtle)] hover:bg-[#252b3e] text-white font-mono text-xs py-2.5 px-5 rounded transition-all active:scale-[0.98]"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={installing}
+                          className="bg-[#6366f1] hover:bg-[#5053e1] text-white font-mono text-xs py-2.5 px-6 rounded transition-all active:scale-[0.98] disabled:opacity-55"
+                        >
+                          {installing ? 'INSTALLING...' : 'INSTALL PLAYBOOK'}
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Sub-component: Playbook Card
+interface PlaybookCardProps {
+  playbook: PlaybookTemplate;
+  onInstall: (playbook: PlaybookTemplate) => void;
+}
+
+function PlaybookCard({ playbook, onInstall }: PlaybookCardProps) {
+  const getSignalBadgeClass = (signalType: string) => {
+    const base = 'border text-[9px] font-mono px-2 py-0.5 rounded uppercase font-bold select-none';
+    switch (signalType) {
+      case 'cold_email':
+        return `${base} bg-indigo-950/20 text-[#6366f1] border-indigo-900/40`;
+      case 'linkedin_lead_gen':
+        return `${base} bg-blue-950/20 text-blue-400 border-blue-900/40`;
+      case 'returning_visitor':
+        return `${base} bg-green-950/20 text-[#10b981] border-green-900/40`;
+      case 'google_ad':
+        return `${base} bg-yellow-950/20 text-yellow-500 border-yellow-900/40`;
+      case 'linkedin_ad':
+        return `${base} bg-sky-950/20 text-sky-400 border-sky-900/40`;
+      case 'meta_ad':
+        return `${base} bg-purple-950/20 text-purple-400 border-purple-900/40`;
+      case 'tiktok_ad':
+        return `${base} bg-pink-950/20 text-pink-400 border-pink-900/40`;
+      case 'qr_code':
+        return `${base} bg-teal-950/20 text-teal-400 border-teal-900/40`;
+      case 'g2_referral':
+        return `${base} bg-orange-950/20 text-orange-400 border-orange-900/40`;
+      case 'partner_referral':
+        return `${base} bg-rose-950/20 text-rose-400 border-rose-900/40`;
+      default:
+        return `${base} bg-[var(--border-subtle)] text-gray-400 border-[var(--border-subtle)]`;
+    }
+  };
+
+  const getSignalLabel = (signalType: string) => {
+    return signalType.replace(/_/g, ' ');
+  };
+
+  return (
+    <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-lg p-5 flex flex-col justify-between hover:border-[#6366f1]/50 hover:bg-[var(--bg-elevated)] transition-all group">
+      <div className="space-y-3.5">
+        <div className="flex items-center justify-between gap-2">
+          <span className={getSignalBadgeClass(playbook.signal_type)}>
+            {getSignalLabel(playbook.signal_type)}
+          </span>
+          <span className="text-[10px] font-mono text-gray-500">Tier {playbook.tier}</span>
+        </div>
+        
+        <div className="space-y-1.5">
+          <h3 className="text-xs font-mono font-bold text-white uppercase group-hover:text-[#6366f1] transition-colors leading-tight">
+            {playbook.name}
+          </h3>
+          <p className="text-[11px] font-mono text-gray-400 leading-relaxed min-h-[48px]">
+            {playbook.description}
+          </p>
+        </div>
+      </div>
+      
+      <div className="pt-4 border-t border-[var(--border-subtle)]/60 mt-4 flex items-center justify-between gap-2">
+        <span className="text-[10px] font-mono text-gray-500">
+          {playbook.required_inputs.length} input{playbook.required_inputs.length !== 1 ? 's' : ''} required
+        </span>
+        <button
+          onClick={() => onInstall(playbook)}
+          className="bg-[var(--border-subtle)] hover:bg-[#6366f1] text-white font-mono text-[10px] py-1.5 px-4 rounded transition-all active:scale-[0.98]"
+        >
+          Install
+        </button>
+      </div>
     </div>
   );
 }
