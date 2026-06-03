@@ -43,6 +43,8 @@ export default function CrmSettingsPage() {
 
       if (connected === 'hubspot') {
         setMessage({ type: 'success', text: 'Successfully connected to HubSpot CRM!' });
+      } else if (connected === 'pipedrive') {
+        setMessage({ type: 'success', text: 'Successfully connected to Pipedrive CRM!' });
       } else if (error) {
         let errorText = 'Failed to connect to CRM.';
         if (error === 'token_exchange_failed') {
@@ -234,6 +236,80 @@ export default function CrmSettingsPage() {
                     <span className="text-gray-500 uppercase tracking-tight">Active Scopes:</span>{' '}
                     <span className="text-indigo-400 text-[10px] leading-tight">
                       contacts.read, deals.read, companies.read, owners.read
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 uppercase tracking-tight">Sync Status:</span>{' '}
+                    <span className="text-green-400 font-bold">ACTIVE & SYNCED</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Pipedrive Card */}
+          <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-lg p-6 space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-2">
+                <div className="flex items-center space-x-3">
+                  <h3 className="text-sm font-mono font-bold text-white uppercase tracking-wider">
+                    Pipedrive CRM
+                  </h3>
+                  {status?.connected && status.crm_type === 'pipedrive' ? (
+                    <div className="flex items-center space-x-2 border border-green-900/40 bg-green-950/20 text-[#10b981] px-2.5 py-0.5 rounded font-mono text-[9px] font-bold">
+                      <span className="relative flex h-1.5 w-1.5">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#10b981]"></span>
+                      </span>
+                      <span>CONNECTED</span>
+                    </div>
+                  ) : (
+                    <span className="text-[9px] font-mono font-bold bg-[var(--border-subtle)] text-gray-500 border border-[var(--border-subtle)] px-2.5 py-0.5 rounded uppercase">
+                      DISCONNECTED
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs font-mono text-gray-400 leading-relaxed max-w-xl">
+                  Sync deals, contacts, and pipeline stages from Pipedrive to personalize visitor experiences in real time.
+                </p>
+              </div>
+
+              <div>
+                {status?.connected && status.crm_type === 'pipedrive' ? (
+                  <button
+                    onClick={handleDisconnect}
+                    disabled={disconnecting}
+                    className="w-full sm:w-auto bg-red-950/20 hover:bg-red-950/40 border border-red-900/40 hover:border-red-800/80 text-red-400 font-mono text-xs py-2.5 px-6 rounded transition-all active:scale-[0.98] disabled:opacity-55"
+                  >
+                    {disconnecting ? 'DISCONNECTING...' : 'DISCONNECT PIPEDRIVE'}
+                  </button>
+                ) : (
+                  <a
+                    href="/api/oauth/pipedrive"
+                    className="inline-block text-center w-full sm:w-auto bg-[#6366f1] hover:bg-[#5053e1] text-white font-mono text-xs py-2.5 px-6 rounded transition-all active:scale-[0.98]"
+                  >
+                    CONNECT PIPEDRIVE
+                  </a>
+                )}
+              </div>
+            </div>
+
+            {/* If connected, show connection metadata panel */}
+            {status?.connected && status.crm_type === 'pipedrive' && (
+              <div className="border border-[var(--border-subtle)]/60 bg-[#080B0F] rounded p-4 font-mono text-xs text-gray-400 space-y-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 leading-relaxed">
+                  <div>
+                    <span className="text-gray-500 uppercase tracking-tight">CRM Provider:</span>{' '}
+                    <span className="text-white uppercase">PIPEDRIVE</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 uppercase tracking-tight">Connection Date:</span>{' '}
+                    <span className="text-white">{formatDate(status.connected_at)}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 uppercase tracking-tight">Active Scopes:</span>{' '}
+                    <span className="text-indigo-400 text-[10px] leading-tight">
+                      deals:read, contacts:read, users:read, organizations:read
                     </span>
                   </div>
                   <div>
