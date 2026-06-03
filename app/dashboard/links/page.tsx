@@ -13,13 +13,12 @@ const SIGNAL_OPTIONS = [
   'LinkedIn Ad',
   'Google Ad',
   'TikTok Ad',
-  'QR Code',
+  'Meta Ad',
+  'LinkedIn Lead Gen Form',
   'G2 Referral',
-  'Webinar Follow-up',
   'Partner Referral',
-  'Conference QR Code',
   'Returning Visitor',
-  'Other',
+  'Any',
 ];
 
 export default function LinksPage() {
@@ -36,7 +35,6 @@ export default function LinksPage() {
   const [jobTitle, setJobTitle] = useState('');
   const [signalType, setSignalType] = useState('Cold Email');
   const [assignedRep, setAssignedRep] = useState('');
-  const [calendarUrl, setCalendarUrl] = useState('');
   const [destinationUrl, setDestinationUrl] = useState('');
   const [expiresInDays, setExpiresInDays] = useState('30');
 
@@ -101,7 +99,6 @@ export default function LinksPage() {
           job_title: jobTitle,
           signal_type: signalType,
           assigned_rep: assignedRep,
-          calendar_url: calendarUrl,
           destination_url: destinationUrl,
           expires_in_days: expiresInDays ? parseInt(expiresInDays, 10) : null,
         }),
@@ -118,7 +115,6 @@ export default function LinksPage() {
         setCompanyName('');
         setJobTitle('');
         setAssignedRep('');
-        setCalendarUrl('');
         setDestinationUrl('');
       } else {
         const errData = await res.json();
@@ -574,19 +570,6 @@ export default function LinksPage() {
                             className="w-full bg-[#080B0F] border border-[var(--border-subtle)] focus:border-[#6366f1] outline-none text-xs px-3 py-2 rounded text-white font-mono"
                           />
                         </div>
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <label className="block text-[10px] font-mono text-gray-400 uppercase tracking-wider">
-                          Calendar URL (For show_calendar actions)
-                        </label>
-                        <input
-                          type="url"
-                          value={calendarUrl}
-                          onChange={(e) => setCalendarUrl(e.target.value)}
-                          placeholder="https://calendly.com/your-representative"
-                          className="w-full bg-[#080B0F] border border-[var(--border-subtle)] focus:border-[#6366f1] outline-none text-xs px-3 py-2 rounded text-white font-mono"
-                        />
                       </div>
 
                       <div className="grid grid-cols-3 gap-4">
