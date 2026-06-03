@@ -1491,8 +1491,6 @@ function PlaybookCard({ playbook, onInstall }: PlaybookCardProps) {
         return `${base} bg-purple-950/20 text-purple-400 border-purple-900/40`;
       case 'tiktok_ad':
         return `${base} bg-pink-950/20 text-pink-400 border-pink-900/40`;
-      case 'qr_code':
-        return `${base} bg-teal-950/20 text-teal-400 border-teal-900/40`;
       case 'g2_referral':
         return `${base} bg-orange-950/20 text-orange-400 border-orange-900/40`;
       case 'partner_referral':

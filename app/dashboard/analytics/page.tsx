@@ -138,7 +138,7 @@ export default function AnalyticsPage() {
       {/* Top Header */}
       <div className="flex justify-between items-center border-b border-[var(--border-subtle)] pb-5">
         <div>
-          <h1 className="text-xl font-bold tracking-wider font-mono">ANALYTICS SYSTEM</h1>
+          <h1 className="text-xl font-bold tracking-wider font-mono">ANALYTICS</h1>
           <p className="text-xs font-mono text-gray-400 mt-1">Real-time performance metrics and signal conversions logs</p>
         </div>
       </div>
@@ -210,7 +210,7 @@ export default function AnalyticsPage() {
               <CountUp value={summaryStats.overallConversionRate} suffix="%" />
             </span>
             <span className="text-[9px] font-mono text-gray-500">
-              CRMs Synced
+              Converted
             </span>
           </div>
         </div>
@@ -350,7 +350,19 @@ export default function AnalyticsPage() {
                       <td className="py-2.5 font-bold">
                         #{rule.priority} - {rule.signal_type}
                       </td>
-                      <td className="py-2.5 text-gray-400">{rule.action_type}</td>
+                      <td className="py-2.5 text-gray-400">
+                        {
+                          (
+                            {
+                              show_calendar: 'Show Rep Calendar',
+                              show_short_form: 'Show Demo Request Form',
+                              inject_copy: 'Change Page Text',
+                              show_case_study: 'Show Case Study',
+                              redirect: 'Send to Different Page'
+                            } as Record<string, string>
+                          )[rule.action_type] || rule.action_type
+                        }
+                      </td>
                       <td className="py-2.5 text-center">{rule.triggers}</td>
                       <td className="py-2.5 text-center text-green-400">{rule.conversions}</td>
                       <td className="py-2.5 text-right font-bold text-indigo-400">
