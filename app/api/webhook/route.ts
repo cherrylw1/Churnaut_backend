@@ -309,8 +309,9 @@ export async function POST(req: NextRequest) {
       session_id: finalSessionId,
     };
 
-    if (isLinkedInLeadGen) {
+    if (trackedUrl) {
       responseObj.tracked_url = trackedUrl;
+      responseObj.churnaut_link = trackedUrl;
     }
 
     return NextResponse.json(responseObj);
