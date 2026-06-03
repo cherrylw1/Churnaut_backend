@@ -8,13 +8,13 @@ import {
   Target, 
   Link2, 
   Sliders, 
-  BookOpen, 
   Radar, 
   Sparkles, 
   BarChart3, 
   Code2, 
   Settings,
-  Menu
+  Menu,
+  Plug
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ToastContainer } from '@/components/ui/Toast';
@@ -37,7 +37,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { label: 'Home', href: '/dashboard', icon: HomeIcon },
     { label: 'Tracked Links', href: '/dashboard/links', icon: Link2 },
     { label: 'Routing Rules', href: '/dashboard/rules', icon: Sliders },
-    { label: 'Playbook Library', href: '/dashboard/playbooks', icon: BookOpen },
+    { label: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
   ];
 
   const intelligenceGroup = [
@@ -46,14 +46,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { label: 'AI Insights', href: '/dashboard/ai-insights', icon: Sparkles },
   ];
 
-  const accountGroup = [
-    { label: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
+  const setupGroup = [
+    { label: 'Integrations', href: '/dashboard/integrations', icon: Plug },
     { label: 'Snippet', href: '/dashboard/snippet', icon: Code2 },
     { label: 'Settings', href: '/dashboard/settings', icon: Settings },
   ];
 
   // Combine to find the current active page label for breadcrumbs
-  const allItems = [...coreGroup, ...intelligenceGroup, ...accountGroup];
+  const allItems = [...coreGroup, ...intelligenceGroup, ...setupGroup];
   const activeItem = allItems.find(item => item.href === pathname) || allItems.find(item => pathname.startsWith(item.href) && item.href !== '/dashboard');
   const pageLabel = activeItem ? activeItem.label : 'Dashboard';
 
@@ -107,7 +107,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       <nav className="p-4 space-y-6 flex-1 overflow-y-auto">
         {renderNavGroup('CORE', coreGroup)}
         {renderNavGroup('INTELLIGENCE', intelligenceGroup)}
-        {renderNavGroup('ACCOUNT', accountGroup)}
+        {renderNavGroup('SETUP', setupGroup)}
 
         {/* Sidebar Status Indicator */}
         <div className="pt-4 border-t border-[var(--border-subtle)] flex items-center space-x-3">
