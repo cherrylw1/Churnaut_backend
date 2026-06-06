@@ -5,7 +5,7 @@ import { supabaseAdmin } from '@/lib/supabase'
 export const dynamic = 'force-dynamic'
 
 const TOGETHER_API_URL = 'https://api.together.xyz/v1/chat/completions'
-const TOGETHER_MODEL = 'meta-llama/Llama-3.2-3B-Instruct-Turbo'
+const TOGETHER_MODEL = 'Qwen/Qwen2.5-7B-Instruct-Turbo'
 
 const SYSTEM_PROMPT = `You are an expert AI assistant with complete knowledge of the Churnaut codebase.
 
