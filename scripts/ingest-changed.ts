@@ -1,3 +1,4 @@
+// auto-index enabled: June 6, 2026
 import fs from 'fs'
 import path from 'path'
 import { createClient } from '@supabase/supabase-js'
