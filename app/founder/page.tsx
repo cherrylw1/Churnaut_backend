@@ -1,6 +1,6 @@
 'use client'
-import React, { useState, useRef, useEffect } from 'react'
-import { Bot, Send, Loader2, Code2, ChevronDown, ChevronUp, Sparkles, Lock } from 'lucide-react'
+import React, { useState, useRef, useEffect, useCallback } from 'react'
+import { Bot, Send, Loader2, Code2, ChevronDown, ChevronUp, Sparkles, Lock, Plus, MessageSquare, Trash2 } from 'lucide-react'
 
 interface Message {
   id: string
@@ -10,23 +10,46 @@ interface Message {
   loading?: boolean
 }
 
+interface Chat {
+  id: string
+  title: string
+  created_at: string
+  updated_at: string
+  messages: Message[]
+}
+
 const FOUNDER_PASSWORD = process.env.NEXT_PUBLIC_FOUNDER_KEY || 'churnaut2026'
+
+const WELCOME_MSG: Message = {
+  id: 'welcome',
+  role: 'assistant',
+  content: "Hey Sharath — I know your entire Churnaut codebase. Ask me anything about how it's built, how a specific feature works, why something behaves a certain way, or what files to look at for a given problem.",
+  sources: [],
+}
+
+const SUGGESTED = [
+  'How does the resolve API work step by step?',
+  'Explain Scout AI scoring end to end',
+  'How are routing rules evaluated?',
+  'How does HubSpot OAuth work?',
+  'How does the webhook create a tracked link?',
+  'What features are still blocked and why?',
+  'What is Churnaut and what problem does it solve?',
+  'What should I build next?',
+]
 
 export default function FounderPage() {
   const [unlocked, setUnlocked] = useState(false)
   const [passwordInput, setPasswordInput] = useState('')
   const [passwordError, setPasswordError] = useState(false)
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 'welcome',
-      role: 'assistant',
-      content: "Hey Sharath — I know your entire Churnaut codebase. Ask me anything about how it's built, how a specific feature works, why something behaves a certain way, or what files to look at for a given problem.",
-      sources: [],
-    },
-  ])
+  const [chats, setChats] = useState<Chat[]>([])
+  const [activeChatId, setActiveChatId] = useState<string | null>(null)
+  const [messages, setMessages] = useState<Message[]>([WELCOME_MSG])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [expandedSources, setExpandedSources] = useState<Record<string, boolean>>({})
+  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
@@ -36,8 +59,20 @@ export default function FounderPage() {
   }, [])
 
   useEffect(() => {
+    if (unlocked) loadChats()
+  }, [unlocked])
+
+  useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  const loadChats = async () => {
+    const res = await fetch('/api/founder/chats')
+    if (res.ok) {
+      const data = await res.json()
+      setChats(data.chats || [])
+    }
+  }
 
   const handleUnlock = () => {
     if (passwordInput === FOUNDER_PASSWORD) {
@@ -49,24 +84,72 @@ export default function FounderPage() {
     }
   }
 
-  const getHistory = () =>
-    messages
-      .filter((m) => !m.loading && m.id !== 'welcome')
-      .map((m) => ({ role: m.role, content: m.content }))
+  const startNewChat = () => {
+    setActiveChatId(null)
+    setMessages([WELCOME_MSG])
+    setInput('')
+    setExpandedSources({})
+    inputRef.current?.focus()
+  }
+
+  const openChat = async (chat: Chat) => {
+    setActiveChatId(chat.id)
+    setMessages(chat.messages.length > 0 ? chat.messages : [WELCOME_MSG])
+    setExpandedSources({})
+  }
+
+  const deleteChat = async (e: React.MouseEvent, chatId: string) => {
+    e.stopPropagation()
+    setDeletingId(chatId)
+    await fetch(`/api/founder/chats?id=${chatId}`, { method: 'DELETE' })
+    if (activeChatId === chatId) startNewChat()
+    await loadChats()
+    setDeletingId(null)
+  }
+
+  const saveChat = useCallback(async (chatId: string | null, msgs: Message[], firstUserMsg: string) => {
+    const cleanMsgs = msgs.filter(m => !m.loading && m.id !== 'welcome')
+    if (chatId) {
+      await fetch('/api/founder/chats', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: chatId, messages: cleanMsgs }),
+      })
+      return chatId
+    } else {
+      const title = firstUserMsg.slice(0, 50) + (firstUserMsg.length > 50 ? '...' : '')
+      const res = await fetch('/api/founder/chats', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, messages: cleanMsgs }),
+      })
+      const data = await res.json()
+      return data.id as string
+    }
+  }, [])
+
+  const getHistory = (msgs: Message[]) =>
+    msgs.filter(m => !m.loading && m.id !== 'welcome').map(m => ({ role: m.role, content: m.content }))
 
   const handleSend = async () => {
     const text = input.trim()
     if (!text || loading) return
     const userMsg: Message = { id: crypto.randomUUID(), role: 'user', content: text }
     const loadingMsg: Message = { id: 'loading', role: 'assistant', content: '', loading: true }
-    setMessages((prev) => [...prev, userMsg, loadingMsg])
+    const newMessages = [...messages, userMsg, loadingMsg]
+    setMessages(newMessages)
     setInput('')
     setLoading(true)
+    let currentChatId = activeChatId
     try {
       const res = await fetch('/api/chat/codebase', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, history: getHistory(), founderKey: passwordInput || localStorage.getItem('founder_unlocked') }),
+        body: JSON.stringify({
+          message: text,
+          history: getHistory(messages),
+          founderKey: 'true',
+        }),
       })
       const data = await res.json()
       const assistantMsg: Message = {
@@ -75,9 +158,13 @@ export default function FounderPage() {
         content: res.ok ? data.answer : data.error || 'Something went wrong.',
         sources: res.ok ? data.sources : [],
       }
-      setMessages((prev) => prev.filter((m) => m.id !== 'loading').concat(assistantMsg))
+      const finalMessages = newMessages.filter(m => m.id !== 'loading').concat(assistantMsg)
+      setMessages(finalMessages)
+      currentChatId = await saveChat(currentChatId, finalMessages, text)
+      if (!activeChatId) setActiveChatId(currentChatId)
+      await loadChats()
     } catch {
-      setMessages((prev) => prev.filter((m) => m.id !== 'loading').concat({
+      setMessages(prev => prev.filter(m => m.id !== 'loading').concat({
         id: crypto.randomUUID(), role: 'assistant',
         content: 'Network error — could not reach the codebase chat API.', sources: [],
       }))
@@ -91,20 +178,18 @@ export default function FounderPage() {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() }
   }
 
-  const toggleSources = (id: string) => {
-    setExpandedSources((prev) => ({ ...prev, [id]: !prev[id] }))
-  }
+  const toggleSources = (id: string) => setExpandedSources(prev => ({ ...prev, [id]: !prev[id] }))
 
-  const SUGGESTED = [
-    'How does the resolve API work step by step?',
-    'Explain Scout AI scoring end to end',
-    'How are routing rules evaluated?',
-    'How does HubSpot OAuth work?',
-    'How does the webhook create a tracked link?',
-    'What features are still blocked and why?',
-    'What is Churnaut and what problem does it solve?',
-    'What should I build next?',
-  ]
+  const formatDate = (dateStr: string) => {
+    const d = new Date(dateStr)
+    const now = new Date()
+    const diff = now.getTime() - d.getTime()
+    const days = Math.floor(diff / 86400000)
+    if (days === 0) return 'Today'
+    if (days === 1) return 'Yesterday'
+    if (days < 7) return `${days}d ago`
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  }
 
   if (!unlocked) {
     return (
@@ -118,21 +203,14 @@ export default function FounderPage() {
             <p className="text-xs text-gray-500 font-mono uppercase tracking-wider">Churnaut Internal</p>
           </div>
           <div className="space-y-3">
-            <input
-              type="password"
-              value={passwordInput}
+            <input type="password" value={passwordInput}
               onChange={(e) => { setPasswordInput(e.target.value); setPasswordError(false) }}
               onKeyDown={(e) => e.key === 'Enter' && handleUnlock()}
               placeholder="Enter founder key"
-              className="w-full bg-[#111118] border border-[#1e1e2e] focus:border-[#6366f1]/50 rounded-[10px] px-4 py-3 text-sm font-mono text-white placeholder:text-gray-600 outline-none"
-            />
-            {passwordError && (
-               <p className="text-xs text-red-400 font-mono text-center">Invalid key</p>
-            )}
-            <button
-              onClick={handleUnlock}
-              className="w-full bg-[#6366f1] hover:bg-[#5053e1] text-white py-3 rounded-[10px] text-sm font-mono font-medium transition-all"
-            >
+              className="w-full bg-[#111118] border border-[#1e1e2e] focus:border-[#6366f1]/50 rounded-[10px] px-4 py-3 text-sm font-mono text-white placeholder:text-gray-600 outline-none" />
+            {passwordError && <p className="text-xs text-red-400 font-mono text-center">Invalid key</p>}
+            <button onClick={handleUnlock}
+              className="w-full bg-[#6366f1] hover:bg-[#5053e1] text-white py-3 rounded-[10px] text-sm font-mono font-medium transition-all">
               Unlock
             </button>
           </div>
@@ -142,34 +220,72 @@ export default function FounderPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#080B0F] p-6">
-      <div className="max-w-4xl mx-auto flex flex-col h-[calc(100vh-48px)]">
-        <div className="flex items-center justify-between border-b border-[#1e1e2e] pb-5 mb-4 flex-shrink-0">
-          <div>
-            <h1 className="text-[24px] font-bold text-white font-sans flex items-center gap-2.5">
-              <Bot className="text-[#6366f1] w-6 h-6" />
-              CHURNAUT AI
-            </h1>
-            <p className="text-xs text-gray-500 mt-1 font-mono uppercase tracking-wider">
-              Founder-only · Full codebase + product context
-            </p>
+    <div className="min-h-screen bg-[#080B0F] flex">
+      {/* Sidebar */}
+      <div className={`${sidebarOpen ? 'w-64' : 'w-0'} flex-shrink-0 transition-all duration-200 overflow-hidden border-r border-[#1e1e2e] flex flex-col`}>
+        <div className="p-3 flex-shrink-0">
+          <button onClick={startNewChat}
+            className="w-full flex items-center gap-2 bg-[#6366f1] hover:bg-[#5053e1] text-white px-3 py-2.5 rounded-[8px] text-sm font-mono transition-all">
+            <Plus className="w-4 h-4" />
+            New Chat
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto px-2 pb-4 space-y-0.5">
+          {chats.length === 0 && (
+            <p className="text-[10px] font-mono text-gray-600 uppercase tracking-wider px-2 py-3">No chats yet</p>
+          )}
+          {chats.map(chat => (
+            <div key={chat.id} onClick={() => openChat(chat)}
+              className={`group flex items-center gap-2 px-2 py-2 rounded-[6px] cursor-pointer transition-all ${
+                activeChatId === chat.id ? 'bg-[#6366f1]/10 border border-[#6366f1]/20' : 'hover:bg-[#111118]'
+              }`}>
+              <MessageSquare className="w-3.5 h-3.5 text-gray-600 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-sans text-gray-300 truncate">{chat.title}</p>
+                <p className="text-[10px] font-mono text-gray-600">{formatDate(chat.updated_at)}</p>
+              </div>
+              <button onClick={(e) => deleteChat(e, chat.id)}
+                className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 hover:text-red-400 text-gray-600">
+                {deletingId === chat.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+              </button>
+            </div>
+          ))}
+        </div>
+        <div className="p-3 border-t border-[#1e1e2e] flex-shrink-0">
+          <p className="text-[10px] font-mono text-gray-600 uppercase tracking-wider">Churnaut AI · Founder</p>
+        </div>
+      </div>
+
+      {/* Main chat */}
+      <div className="flex-1 flex flex-col min-w-0">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#1e1e2e] flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <button onClick={() => setSidebarOpen(p => !p)}
+              className="text-gray-500 hover:text-white transition-colors p-1">
+              <MessageSquare className="w-4 h-4" />
+            </button>
+            <div>
+              <h1 className="text-base font-bold text-white font-sans flex items-center gap-2">
+                <Bot className="text-[#6366f1] w-4 h-4" />
+                {activeChatId ? (chats.find(c => c.id === activeChatId)?.title || 'Chat') : 'New Chat'}
+              </h1>
+            </div>
           </div>
           <div className="flex items-center gap-2">
-            <Sparkles className="w-3.5 h-3.5 text-[#6366f1]" />
-            <span className="text-[10px] font-mono text-gray-500 uppercase tracking-wider">
-              Qwen2.5-7B · RAG · 549 chunks
-            </span>
+            <Sparkles className="w-3 h-3 text-[#6366f1]" />
+            <span className="text-[10px] font-mono text-gray-500 uppercase tracking-wider">Qwen2.5-7B · RAG</span>
           </div>
         </div>
-        <div className="flex-1 overflow-y-auto space-y-4 pr-1 pb-4">
-          {messages.map((msg) => (
+
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+          {messages.map(msg => (
             <div key={msg.id} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               {msg.role === 'assistant' && (
                 <div className="w-7 h-7 rounded-full bg-[#6366f1]/10 border border-[#6366f1]/20 flex items-center justify-center flex-shrink-0 mt-1">
                   <Bot className="w-3.5 h-3.5 text-[#6366f1]" />
                 </div>
               )}
-              <div className={`max-w-[80%] space-y-2 ${msg.role === 'user' ? 'items-end flex flex-col' : ''}`}>
+              <div className={`max-w-[75%] space-y-2 ${msg.role === 'user' ? 'items-end flex flex-col' : ''}`}>
                 {msg.loading ? (
                   <div className="border border-[#1e1e2e] bg-[#111118] rounded-[12px] px-4 py-3 flex items-center gap-2">
                     <Loader2 className="w-3.5 h-3.5 text-[#6366f1] animate-spin" />
@@ -186,16 +302,14 @@ export default function FounderPage() {
                       <div className="w-full">
                         <button onClick={() => toggleSources(msg.id)}
                           className="flex items-center gap-1.5 text-[10px] font-mono text-gray-600 hover:text-gray-400 transition-colors uppercase tracking-wider">
-                          <Code2 className="w-3.5 h-3.5" />
+                          <Code2 className="w-3 h-3" />
                           {msg.sources.length} source{msg.sources.length > 1 ? 's' : ''} used
                           {expandedSources[msg.id] ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                         </button>
                         {expandedSources[msg.id] && (
                           <div className="mt-1.5 space-y-1">
-                            {msg.sources.map((src) => (
-                              <div key={src} className="text-[10px] font-mono text-[#6366f1] bg-[#6366f1]/5 border border-[#6366f1]/10 px-2 py-1 rounded-[4px]">
-                                {src}
-                              </div>
+                            {msg.sources.map(src => (
+                              <div key={src} className="text-[10px] font-mono text-[#6366f1] bg-[#6366f1]/5 border border-[#6366f1]/10 px-2 py-1 rounded-[4px]">{src}</div>
                             ))}
                           </div>
                         )}
@@ -215,7 +329,7 @@ export default function FounderPage() {
             <div className="space-y-2 pt-2">
               <p className="text-[10px] font-mono text-gray-600 uppercase tracking-wider">Suggested questions</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {SUGGESTED.map((q) => (
+                {SUGGESTED.map(q => (
                   <button key={q} onClick={() => { setInput(q); inputRef.current?.focus() }}
                     className="text-left text-xs font-sans text-gray-400 border border-[#1e1e2e] bg-[#111118] hover:bg-[#1a1a2e] hover:border-[#6366f1]/30 hover:text-white px-3 py-2.5 rounded-[8px] transition-all">
                     {q}
@@ -226,9 +340,10 @@ export default function FounderPage() {
           )}
           <div ref={bottomRef} />
         </div>
-        <div className="flex-shrink-0 border-t border-[#1e1e2e] pt-4">
+
+        <div className="flex-shrink-0 border-t border-[#1e1e2e] px-6 py-4">
           <div className="flex gap-3 items-end">
-            <textarea ref={inputRef} value={input} onChange={(e) => setInput(e.target.value)}
+            <textarea ref={inputRef} value={input} onChange={e => setInput(e.target.value)}
               onKeyDown={handleKeyDown} placeholder="Ask anything about Churnaut..."
               rows={1} disabled={loading}
               className="flex-1 bg-[#111118] border border-[#1e1e2e] focus:border-[#6366f1]/50 rounded-[10px] px-4 py-3 text-sm font-sans text-white placeholder:text-gray-600 outline-none resize-none transition-all disabled:opacity-50"
@@ -238,9 +353,7 @@ export default function FounderPage() {
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             </button>
           </div>
-          <p className="text-[10px] font-mono text-gray-600 mt-2 text-center uppercase tracking-wider">
-            Enter to send · Shift+Enter for new line
-          </p>
+          <p className="text-[10px] font-mono text-gray-600 mt-2 text-center uppercase tracking-wider">Enter to send · Shift+Enter for new line</p>
         </div>
       </div>
     </div>
