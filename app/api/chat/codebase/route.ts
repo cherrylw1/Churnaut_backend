@@ -115,7 +115,7 @@ export async function POST(req: NextRequest) {
     if (!response.ok) {
       const err = await response.text()
       console.error('[Chat] Together AI error:', err)
-      return NextResponse.json({ error: 'AI inference failed' }, { status: 500 })
+      return NextResponse.json({ error: err }, { status: 500 })
     }
 
     const data = await response.json()
