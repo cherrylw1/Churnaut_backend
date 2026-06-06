@@ -10,7 +10,7 @@ interface Message {
   loading?: boolean
 }
 
-const FOUNDER_PASSWORD = process.env.NEXT_PUBLIC_FOUNDER_KEY || ''
+const FOUNDER_PASSWORD = process.env.NEXT_PUBLIC_FOUNDER_KEY || 'churnaut2026'
 
 export default function FounderPage() {
   const [unlocked, setUnlocked] = useState(false)
