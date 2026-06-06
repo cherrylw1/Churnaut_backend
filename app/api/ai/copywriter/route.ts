@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { redis } from '@/lib/redis';
+import { logLLMCall } from '@/lib/llm/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -64,6 +65,7 @@ export async function POST(req: NextRequest) {
 
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`;
 
+    const llmStart = Date.now();
     const geminiRes = await fetch(geminiUrl, {
       method: 'POST',
       headers: {
@@ -112,6 +114,14 @@ export async function POST(req: NextRequest) {
       console.error('[Copywriter Parse Error] Failed to parse JSON content:', cleanedText, parseErr);
       return NextResponse.json({ error: 'Failed to parse AI response as a JSON list' }, { status: 502 });
     }
+
+    logLLMCall({
+      client_id: clientId,
+      feature: 'copywriter',
+      input_payload: body as unknown as Record<string, unknown>,
+      output_payload: { variants } as unknown as Record<string, unknown>,
+      latency_ms: Date.now() - llmStart,
+    });
 
     // 7. Write to Redis cache with 30-day TTL (2,592,000 seconds)
     try {

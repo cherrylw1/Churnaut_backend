@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { fetchHubSpotPipeline, ScoutDeal } from '@/lib/integrations/hubspot-pipeline';
 import { scoreDealsWithScout, calculateDealPatterns, ScoutScoreResult } from '@/lib/scout-scoring';
+import { logLLMCall } from '@/lib/llm/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -68,8 +69,24 @@ export async function POST(req: NextRequest) {
     // 3. Score deals using Gemini AI
     let scores: ScoutScoreResult;
     try {
+      const llmStart = Date.now();
       scores = await scoreDealsWithScout(clientId, deals, true);
+      const latency = Date.now() - llmStart;
       console.log('[Scout Score POST] scoreDealsWithScout output response:', JSON.stringify(scores));
+
+      if (scores && Array.isArray(scores.deals)) {
+        scores.deals.forEach((sd) => {
+          const rawDeal = deals.find((d) => d.deal_id === sd.deal_id);
+          logLLMCall({
+            client_id: clientId,
+            deal_id: sd.deal_id,
+            feature: 'scout_score',
+            input_payload: (rawDeal || {}) as unknown as Record<string, unknown>,
+            output_payload: sd as unknown as Record<string, unknown>,
+            latency_ms: latency,
+          });
+        });
+      }
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);
       console.error('[Scout Score POST] Error in scoreDealsWithScout:', errMsg);
@@ -219,8 +236,25 @@ export async function POST(req: NextRequest) {
     if (patterns) {
       console.log('[Scout Score POST] Re-running scoring with enriched patterns:', JSON.stringify(patterns));
       try {
+        const llmStart = Date.now();
         scores = await scoreDealsWithScout(clientId, deals, true, patterns);
+        const latency = Date.now() - llmStart;
         console.log('[Scout Score POST] Enriched scoreDealsWithScout response:', JSON.stringify(scores));
+
+        if (scores && Array.isArray(scores.deals)) {
+          scores.deals.forEach((sd) => {
+            const rawDeal = deals.find((d) => d.deal_id === sd.deal_id);
+            logLLMCall({
+              client_id: clientId,
+              deal_id: sd.deal_id,
+              feature: 'scout_score',
+              input_payload: { deal: rawDeal || {}, patterns } as unknown as Record<string, unknown>,
+              output_payload: sd as unknown as Record<string, unknown>,
+              latency_ms: latency,
+            });
+          });
+        }
+
         // Overwrite DB saves with the enriched scores
         saveResult = await saveScoresToDb(scores);
       } catch (err) {

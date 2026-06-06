@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { redis } from '@/lib/redis';
+import { logLLMCall } from '@/lib/llm/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -227,6 +228,7 @@ Output only a JSON object with keys: summary, top_signal, rep_spotlight, recomme
 
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`;
 
+    const llmStart = Date.now();
     const geminiRes = await fetch(geminiUrl, {
       method: 'POST',
       headers: {
@@ -269,6 +271,14 @@ Output only a JSON object with keys: summary, top_signal, rep_spotlight, recomme
       console.error('[Digest Parse Error] Failed parsing JSON:', cleanedText, parseErr);
       return NextResponse.json({ error: 'Failed to parse AI response as JSON' }, { status: 502 });
     }
+
+    logLLMCall({
+      client_id: clientId,
+      feature: 'weekly_digest',
+      input_payload: performanceData as unknown as Record<string, unknown>,
+      output_payload: digestJson as unknown as Record<string, unknown>,
+      latency_ms: Date.now() - llmStart,
+    });
 
     // 4. Store Weekly Digest in weekly_digests table
     const weekStartStr = sevenDaysAgo.toISOString().split('T')[0];
