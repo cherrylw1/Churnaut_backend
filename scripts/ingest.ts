@@ -1,7 +1,6 @@
 import fs from 'fs'
 import path from 'path'
 import { createClient } from '@supabase/supabase-js'
-import { GoogleGenerativeAI } from '@google/generative-ai'
 import * as dotenv from 'dotenv'
 
 dotenv.config({ path: '.env.local' })
@@ -11,8 +10,6 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
-const embeddingModel = genAI.getGenerativeModel({ model: 'text-embedding-005' })
 
 const TARGET_FILES = [
   'app/api/ai/anomaly/route.ts',
@@ -113,8 +110,20 @@ function chunkContent(content: string): string[] {
 }
 
 async function embedText(text: string): Promise<number[]> {
-  const result = await embeddingModel.embedContent(text)
-  return result.embedding.values
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${process.env.GEMINI_EMBEDDING_KEY}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'models/gemini-embedding-001', content: { parts: [{ text }] }, outputDimensionality: 768 }),
+    }
+  )
+  if (!res.ok) {
+    const err = await res.text()
+    throw new Error(`Embedding API error ${res.status}: ${err}`)
+  }
+  const data = await res.json()
+  return data.embedding.values
 }
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))

@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
-import { GoogleGenerativeAI } from '@google/generative-ai'
 
 export const dynamic = 'force-dynamic'
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
-const embeddingModel = genAI.getGenerativeModel({ model: 'text-embedding-005' })
 
 const TOGETHER_API_URL = 'https://api.together.xyz/v1/chat/completions'
 const TOGETHER_MODEL = 'google/gemma-3-4b-it-free'
@@ -47,8 +43,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Message is required' }, { status: 400 })
     }
 
-    const embeddingResult = await embeddingModel.embedContent(message)
-    const queryEmbedding = embeddingResult.embedding.values
+    const embeddingRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${process.env.GEMINI_EMBEDDING_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: 'models/gemini-embedding-001', content: { parts: [{ text: message }] }, outputDimensionality: 768 }),
+      }
+    )
+    if (!embeddingRes.ok) {
+      const err = await embeddingRes.text()
+      console.error('[Chat] Embedding error:', err)
+      return NextResponse.json({ error: 'Failed to embed query' }, { status: 500 })
+    }
+    const embeddingData = await embeddingRes.json()
+    const queryEmbedding = embeddingData.embedding.values
 
     const { data: chunks, error: searchError } = await supabaseAdmin.rpc(
       'match_code_chunks',
