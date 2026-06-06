@@ -14,8 +14,7 @@ import {
   Code2, 
   Settings,
   Menu,
-  Plug,
-  Bot
+  Plug
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ToastContainer } from '@/components/ui/Toast';
@@ -39,7 +38,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { label: 'Tracked Links', href: '/dashboard/links', icon: Link2 },
     { label: 'Routing Rules', href: '/dashboard/rules', icon: Sliders },
     { label: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
-    { label: 'CODEBASE CHAT', href: '/dashboard/chat', icon: Bot },
   ];
 
   const intelligenceGroup = [

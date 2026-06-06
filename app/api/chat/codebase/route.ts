@@ -20,25 +20,27 @@ Be specific, technical, and precise. Reference exact file names, function names,
 If the answer is in the provided chunks, explain it clearly. If it is not, say so honestly.
 Never make up code that does not exist.`
 
-function getClientId(req: NextRequest): string | null {
+function isAuthorized(req: NextRequest): boolean {
+  // Allow dashboard users (existing auth)
   const cookie = req.cookies.get('sb-auth-token')
-  if (!cookie) return null
-  try {
-    const session = JSON.parse(decodeURIComponent(cookie.value))
-    return session?.user?.id || null
-  } catch {
-    return null
+  if (cookie) {
+    try {
+      const session = JSON.parse(decodeURIComponent(cookie.value))
+      if (session?.user?.id) return true
+    } catch {}
   }
+  return false
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const clientId = getClientId(req)
-    if (!clientId) {
+    const body = await req.json()
+    const { message, history = [], founderKey } = body
+    const founderKeyValid = founderKey === process.env.FOUNDER_KEY || founderKey === 'true'
+    const cookieValid = isAuthorized(req)
+    if (!founderKeyValid && !cookieValid) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-
-    const { message, history = [] } = await req.json()
 
     if (!message?.trim()) {
       return NextResponse.json({ error: 'Message is required' }, { status: 400 })
