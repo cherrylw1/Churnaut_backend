@@ -14,12 +14,14 @@ import {
   Code2, 
   Settings,
   Menu,
-  Plug
+  Plug,
+  HelpCircle
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ToastContainer } from '@/components/ui/Toast';
 import KeyboardShortcutsModal from '@/components/ui/KeyboardShortcutsModal';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
+import SupportWidget from '@/components/SupportWidget';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -50,6 +52,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { label: 'Integrations', href: '/dashboard/integrations', icon: Plug },
     { label: 'Snippet', href: '/dashboard/snippet', icon: Code2 },
     { label: 'Settings', href: '/dashboard/settings', icon: Settings },
+    { label: 'Support', href: '/dashboard/support', icon: HelpCircle },
   ];
 
   // Combine to find the current active page label for breadcrumbs
@@ -212,6 +215,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         isOpen={shortcutsOpen} 
         onClose={() => setShortcutsOpen(false)} 
       />
+
+      {/* Support widget helper */}
+      <SupportWidget />
     </div>
   );
 }
