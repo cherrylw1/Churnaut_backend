@@ -28,13 +28,13 @@ const WELCOME_MSG: Message = {
 }
 
 const SUGGESTED = [
+  'What broke recently?',
   'How does the resolve API work step by step?',
+  'Write a build prompt to add Salesforce OAuth',
   'Explain Scout AI scoring end to end',
-  'How are routing rules evaluated?',
-  'How does HubSpot OAuth work?',
-  'How does the webhook create a tracked link?',
+  'Where is this bug coming from: Cannot read properties of undefined',
   'What features are still blocked and why?',
-  'What is Churnaut and what problem does it solve?',
+  'Write a build prompt to add email notifications for new signups',
   'What should I build next?',
 ]
 
@@ -142,7 +142,7 @@ export default function FounderPage() {
     setLoading(true)
     let currentChatId = activeChatId
     try {
-      const res = await fetch('/api/chat/codebase', {
+      const res = await fetch('/api/chat/founder', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
