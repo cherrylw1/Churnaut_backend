@@ -1,3 +1,4 @@
+// cache-bust: gemini-embedding-001
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 
