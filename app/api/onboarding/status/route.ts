@@ -1,17 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-
-function getClientId(req: NextRequest): string | null {
-  const cookie = req.cookies.get('sb-auth-token');
-  if (!cookie) return null;
-  try {
-    const session = JSON.parse(decodeURIComponent(cookie.value));
-    return session?.user?.id || null;
-  } catch { return null; }
-}
+import { getVerifiedClientId } from '@/lib/auth';
 
 export async function GET(req: NextRequest) {
-  const clientId = getClientId(req);
+  const clientId = await getVerifiedClientId(req);
   if (!clientId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const [eventsRes, sessionsRes, rulesRes, clientRes] = await Promise.all([

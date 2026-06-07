@@ -1,23 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getClientPlan } from '@/lib/gate';
-
-// Helper to extract authenticated client_id from cookie session
-function getClientId(req: NextRequest): string | null {
-  const cookie = req.cookies.get('sb-auth-token');
-  if (!cookie) return null;
-  try {
-    const session = JSON.parse(decodeURIComponent(cookie.value));
-    return session?.user?.id || null;
-  } catch {
-    return null;
-  }
-}
+import { getVerifiedClientId } from '@/lib/auth';
 
 // GET: Retrieve all rules for the authenticated client in priority order
 export async function GET(req: NextRequest) {
   try {
-    const clientId = getClientId(req);
+    const clientId = await getVerifiedClientId(req);
     if (!clientId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -44,7 +33,7 @@ export async function GET(req: NextRequest) {
 // POST: Create a new routing rule
 export async function POST(req: NextRequest) {
   try {
-    const clientId = getClientId(req);
+    const clientId = await getVerifiedClientId(req);
     if (!clientId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -124,7 +113,7 @@ export async function POST(req: NextRequest) {
 // PATCH: Update rule(s) - either bulk priority reorder or individual field updates
 export async function PATCH(req: NextRequest) {
   try {
-    const clientId = getClientId(req);
+    const clientId = await getVerifiedClientId(req);
     if (!clientId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -199,7 +188,7 @@ export async function PATCH(req: NextRequest) {
 // DELETE: Remove routing rule by ID
 export async function DELETE(req: NextRequest) {
   try {
-    const clientId = getClientId(req);
+    const clientId = await getVerifiedClientId(req);
     if (!clientId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { getVerifiedClientId } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
@@ -34,16 +35,7 @@ SPECIAL CAPABILITIES — you have access to the user's real account data:
 
 3. ACCOUNT CONTEXT: If the user's message contains ACCOUNT_CONTEXT, use it to give personalized answers — e.g. if they have no rules, guide them to create one; if HubSpot is connected, reference that.`
 
-function getClientId(req: NextRequest): string | null {
-  const cookie = req.cookies.get('sb-auth-token')
-  if (!cookie) return null
-  try {
-    const session = JSON.parse(decodeURIComponent(cookie.value))
-    return session?.user?.id || null
-  } catch {
-    return null
-  }
-}
+
 
 async function embedQuery(text: string): Promise<number[]> {
   const res = await fetch(
@@ -162,7 +154,7 @@ async function createRule(clientId: string, intent: ReturnType<typeof parseRuleI
 
 export async function POST(req: NextRequest) {
   try {
-    const clientId = getClientId(req)
+    const clientId = await getVerifiedClientId(req)
     const { message, history = [] } = await req.json()
     if (!message?.trim()) return NextResponse.json({ error: 'Message required' }, { status: 400 })
 

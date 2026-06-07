@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { getVerifiedClientId } from '@/lib/auth'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -7,12 +8,9 @@ const supabaseAdmin = createClient(
 )
 
 export async function getClientPlan(req: NextRequest): Promise<string | null> {
-  const cookie = req.cookies.get('sb-auth-token')
-  if (!cookie) return null
+  const userId = await getVerifiedClientId(req)
+  if (!userId) return null
   try {
-    const session = JSON.parse(decodeURIComponent(cookie.value))
-    const userId = session?.user?.id
-    if (!userId) return null
     const { data } = await supabaseAdmin
       .from('clients')
       .select('plan, plan_status')

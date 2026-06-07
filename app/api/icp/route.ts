@@ -2,19 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { buildICPFromWins } from '@/lib/scout-scoring';
 import { getClientPlan, planGate } from '@/lib/gate';
+import { getVerifiedClientId } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
-
-function getClientId(req: NextRequest): string | null {
-  const cookie = req.cookies.get('sb-auth-token');
-  if (!cookie) return null;
-  try {
-    const session = JSON.parse(decodeURIComponent(cookie.value));
-    return session?.user?.id || null;
-  } catch {
-    return null;
-  }
-}
 
 export async function GET(req: NextRequest) {
   const plan = await getClientPlan(req)
@@ -22,7 +12,7 @@ export async function GET(req: NextRequest) {
   if (gate) return gate
 
   try {
-    const clientId = getClientId(req);
+    const clientId = await getVerifiedClientId(req);
     if (!clientId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -51,7 +41,7 @@ export async function POST(req: NextRequest) {
   if (gate) return gate
 
   try {
-    const clientId = getClientId(req);
+    const clientId = await getVerifiedClientId(req);
     if (!clientId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }

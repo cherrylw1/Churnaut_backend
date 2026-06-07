@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { getVerifiedClientId } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
@@ -30,15 +31,9 @@ For all other questions, answer as a senior developer who built every line of Ch
 Reference exact file names, function names, and variable names.
 Never make up code that doesn't exist.`
 
-function verifyFounderKey(req: NextRequest): boolean {
-  const cookie = req.cookies.get('sb-auth-token')
-  if (cookie) {
-    try {
-      const session = JSON.parse(decodeURIComponent(cookie.value))
-      if (session?.user?.id) return true
-    } catch {}
-  }
-  return false
+async function verifyFounderKey(req: NextRequest): Promise<boolean> {
+  const userId = await getVerifiedClientId(req)
+  return !!userId
 }
 
 async function embedQuery(text: string): Promise<number[]> {
@@ -115,7 +110,7 @@ async function searchCodebase(query: string, matchCount = 8) {
 
 export async function POST(req: NextRequest) {
   try {
-    const authorized = verifyFounderKey(req)
+    const authorized = await verifyFounderKey(req)
     const body = await req.json()
     const { message, history = [], founderKey } = body
 

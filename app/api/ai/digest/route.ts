@@ -3,20 +3,9 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { redis } from '@/lib/redis';
 import { logLLMCall } from '@/lib/llm/logger';
 import { getClientPlan, planGate } from '@/lib/gate';
+import { getVerifiedClientId } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
-
-// Helper to extract authenticated client_id from cookie session
-function getClientId(req: NextRequest): string | null {
-  const cookie = req.cookies.get('sb-auth-token');
-  if (!cookie) return null;
-  try {
-    const session = JSON.parse(decodeURIComponent(cookie.value));
-    return session?.user?.id || null;
-  } catch {
-    return null;
-  }
-}
 
 // GET handler: retrieves the latest generated Weekly Digest
 export async function GET(req: NextRequest) {
@@ -25,7 +14,7 @@ export async function GET(req: NextRequest) {
   if (gate) return gate
 
   try {
-    const clientId = getClientId(req);
+    const clientId = await getVerifiedClientId(req);
     if (!clientId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -59,7 +48,7 @@ export async function POST(req: NextRequest) {
   if (gate) return gate
 
   try {
-    const clientId = getClientId(req);
+    const clientId = await getVerifiedClientId(req);
     if (!clientId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }

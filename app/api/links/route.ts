@@ -1,18 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { supabaseAdmin } from '@/lib/supabase';
-
-// Helper to get client_id from cookie session
-function getClientId(req: NextRequest): string | null {
-  const cookie = req.cookies.get('sb-auth-token');
-  if (!cookie) return null;
-  try {
-    const session = JSON.parse(decodeURIComponent(cookie.value));
-    return session?.user?.id || null;
-  } catch {
-    return null;
-  }
-}
+import { getVerifiedClientId } from '@/lib/auth';
 
 // Helper to generate a random 6-character session ID
 function generateSessionId(length: number = 6): string {
@@ -39,7 +28,7 @@ function buildTrackedUrl(destinationUrl: string, sid: string): string {
 // GET handler: Fetch all links/sessions for the logged-in client
 export async function GET(req: NextRequest) {
   try {
-    const clientId = getClientId(req);
+    const clientId = await getVerifiedClientId(req);
     if (!clientId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -66,7 +55,7 @@ export async function GET(req: NextRequest) {
 // POST handler: Create a new tracked link/session
 export async function POST(req: NextRequest) {
   try {
-    const clientId = getClientId(req);
+    const clientId = await getVerifiedClientId(req);
     if (!clientId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }

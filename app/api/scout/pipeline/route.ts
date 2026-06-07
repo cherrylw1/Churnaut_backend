@@ -2,20 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { redis } from '@/lib/redis';
 import { getClientPlan, planGate } from '@/lib/gate';
+import { getVerifiedClientId } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
-
-// Helper to extract authenticated client_id from cookie session
-function getClientId(req: NextRequest): string | null {
-  const cookie = req.cookies.get('sb-auth-token');
-  if (!cookie) return null;
-  try {
-    const session = JSON.parse(decodeURIComponent(cookie.value));
-    return session?.user?.id || null;
-  } catch {
-    return null;
-  }
-}
 
 export async function GET(req: NextRequest) {
   const plan = await getClientPlan(req)
@@ -24,7 +13,7 @@ export async function GET(req: NextRequest) {
 
   try {
     // 1. Authenticate Client
-    const clientId = getClientId(req);
+    const clientId = await getVerifiedClientId(req);
     if (!clientId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
