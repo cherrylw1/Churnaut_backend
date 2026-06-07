@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { getClientPlan } from '@/lib/gate';
 
 // Helper to extract authenticated client_id from cookie session
 function getClientId(req: NextRequest): string | null {
@@ -46,6 +47,20 @@ export async function POST(req: NextRequest) {
     const clientId = getClientId(req);
     if (!clientId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const plan = await getClientPlan(req)
+    const { data: existingRules } = await supabaseAdmin
+      .from('routing_rules')
+      .select('id')
+      .eq('client_id', clientId)
+
+    const ruleLimit = plan === 'starter' ? 5 : Infinity
+    if (existingRules && existingRules.length >= ruleLimit) {
+      return NextResponse.json(
+        { error: 'upgrade_required', required_plan: 'growth', message: 'Starter plan is limited to 5 routing rules' },
+        { status: 403 }
+      )
     }
 
     // action_payload can contain a swaps array: { swaps: Array<{selector: string, content: string}> }

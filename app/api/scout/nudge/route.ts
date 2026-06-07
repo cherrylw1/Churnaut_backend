@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { sendNudgeEmail } from '@/lib/email/resend';
+import { getClientPlan, planGate } from '@/lib/gate';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,6 +18,10 @@ function getClientId(req: NextRequest): string | null {
 }
 
 export async function POST(req: NextRequest) {
+  const plan = await getClientPlan(req)
+  const gate = planGate(plan, 'growth')
+  if (gate) return gate
+
   try {
     // 1. Authenticate Client
     const clientId = getClientId(req);

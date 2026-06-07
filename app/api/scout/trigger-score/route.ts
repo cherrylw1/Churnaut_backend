@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { fetchHubSpotPipeline } from '@/lib/integrations/hubspot-pipeline';
 import { scoreDealsWithScout } from '@/lib/scout-scoring';
+import { getClientPlan, planGate } from '@/lib/gate';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,6 +11,10 @@ function scoredDealsCount(deals: unknown[] | undefined): number {
 }
 
 export async function GET(req: NextRequest) {
+  const plan = await getClientPlan(req)
+  const gate = planGate(plan, 'growth')
+  if (gate) return gate
+
   const { searchParams } = new URL(req.url);
   const secret = searchParams.get('secret');
   

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { fetchClosedLostDeals } from '@/lib/integrations/hubspot-pipeline';
 import { generateDealObituary } from '@/lib/scout-scoring';
+import { getClientPlan, planGate } from '@/lib/gate';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,6 +18,10 @@ function getClientId(req: NextRequest): string | null {
 }
 
 export async function GET(req: NextRequest) {
+  const plan = await getClientPlan(req)
+  const gate = planGate(plan, 'growth')
+  if (gate) return gate
+
   try {
     const clientId = getClientId(req);
     if (!clientId) {
@@ -42,6 +47,10 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const plan = await getClientPlan(req)
+  const gate = planGate(plan, 'growth')
+  if (gate) return gate
+
   try {
     const clientId = getClientId(req);
     if (!clientId) {

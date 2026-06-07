@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { redis } from '@/lib/redis';
+import { getClientPlan, planGate } from '@/lib/gate';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,6 +19,10 @@ function getClientId(req: NextRequest): string | null {
 
 // GET handler: either runs anomaly detection (if run=true) or fetches unread alerts
 export async function GET(req: NextRequest) {
+  const plan = await getClientPlan(req)
+  const gate = planGate(plan, 'growth')
+  if (gate) return gate
+
   try {
     const clientId = getClientId(req);
     if (!clientId) {

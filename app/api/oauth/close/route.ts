@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getClientPlan, planGate } from '@/lib/gate';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,6 +15,10 @@ function getClientId(req: NextRequest): string | null {
 }
 
 export async function GET(req: NextRequest) {
+  const plan = await getClientPlan(req)
+  const gate = planGate(plan, 'growth')
+  if (gate) return gate
+
   try {
     // 1. Authenticate user from session cookie
     const clientId = getClientId(req);
