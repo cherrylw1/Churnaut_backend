@@ -39,7 +39,23 @@ export async function generateText(prompt: string, opts: GenOpts = {}): Promise<
     throw new Error(`Together AI error ${res.status}: ${await res.text()}`);
   }
   const data = await res.json();
-  return data.choices?.[0]?.message?.content || '';
+  const choice = data.choices?.[0];
+  const msg = choice?.message;
+  let content: string = msg?.content || '';
+  // Some models place their answer in a reasoning field instead of content.
+  if (!content) {
+    content = msg?.reasoning_content || msg?.reasoning || '';
+  }
+  if (!content) {
+    console.error('[LLM empty content]', JSON.stringify({
+      model: opts.model || DEFAULT_MODEL,
+      finish_reason: choice?.finish_reason,
+      message_keys: msg ? Object.keys(msg) : null,
+      usage: data.usage,
+      raw_snippet: JSON.stringify(data).slice(0, 1000),
+    }));
+  }
+  return content;
 }
 
 function stripFences(s: string): string {
