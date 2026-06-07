@@ -226,7 +226,7 @@ Write a plain-English digest with 4 sections:
 Tone: direct, data-driven, peer-level. Total under 150 words.
 Output only a JSON object with keys: summary, top_signal, rep_spotlight, recommendation. Do not include markdown formatting or preamble.`;
 
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`;
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
     const llmStart = Date.now();
     const geminiRes = await fetch(geminiUrl, {

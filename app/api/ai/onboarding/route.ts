@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
     Generate exactly 3 highly relevant and helpful rules in priority order based on their profile. E.g., if they use Cold Email, signal_type should be 'Cold Email'. If they sell to large companies, target executives.
     Return ONLY a JSON array. No markdown, no preambles, no explanation.`;
 
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`;
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
     const geminiRes = await fetch(geminiUrl, {
       method: 'POST',
