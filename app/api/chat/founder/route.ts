@@ -95,13 +95,18 @@ async function fetchHealthData() {
 }
 
 async function searchCodebase(query: string, matchCount = 8) {
-  const embedding = await embedQuery(query)
-  const { data } = await supabaseAdmin.rpc('match_code_chunks', {
-    query_embedding: JSON.stringify(embedding),
-    match_count: matchCount,
-    match_threshold: 0.35,
-  })
-  return data || []
+  try {
+    const embedding = await embedQuery(query)
+    const { data } = await supabaseAdmin.rpc('match_code_chunks', {
+      query_embedding: JSON.stringify(embedding),
+      match_count: matchCount,
+      match_threshold: 0.35,
+    })
+    return data || []
+  } catch (err) {
+    console.error('[Founder Chat] Codebase search failed, bypassing RAG context:', err)
+    return []
+  }
 }
 
 export async function POST(req: NextRequest) {

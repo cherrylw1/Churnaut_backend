@@ -36,34 +36,39 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Message is required' }, { status: 400 })
     }
 
-    const embeddingRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${process.env.GEMINI_EMBEDDING_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'models/gemini-embedding-001', content: { parts: [{ text: message }] }, outputDimensionality: 768 }),
-      }
-    )
-    if (!embeddingRes.ok) {
-      const err = await embeddingRes.text()
-      console.error('[Chat] Embedding error:', err)
-      return NextResponse.json({ error: 'Failed to embed query' }, { status: 500 })
-    }
-    const embeddingData = await embeddingRes.json()
-    const queryEmbedding = embeddingData.embedding.values
+    let chunks: Array<{ file_path: string; content: string; similarity: number }> = [];
+    try {
+      const embeddingRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${process.env.GEMINI_EMBEDDING_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model: 'models/gemini-embedding-001', content: { parts: [{ text: message }] }, outputDimensionality: 768 }),
+        }
+      )
+      if (embeddingRes.ok) {
+        const embeddingData = await embeddingRes.json()
+        const queryEmbedding = embeddingData.embedding.values
 
-    const { data: chunks, error: searchError } = await supabaseAdmin.rpc(
-      'match_code_chunks',
-      {
-        query_embedding: JSON.stringify(queryEmbedding),
-        match_count: 8,
-        match_threshold: 0.4,
+        const { data, error: searchError } = await supabaseAdmin.rpc(
+          'match_code_chunks',
+          {
+            query_embedding: JSON.stringify(queryEmbedding),
+            match_count: 8,
+            match_threshold: 0.4,
+          }
+        )
+        if (!searchError) {
+          chunks = data || [];
+        } else {
+          console.error('[Chat] Vector search error:', searchError)
+        }
+      } else {
+        const err = await embeddingRes.text()
+        console.error('[Chat] Embedding error:', err)
       }
-    )
-
-    if (searchError) {
-      console.error('[Chat] Vector search error:', searchError)
-      return NextResponse.json({ error: 'Failed to search codebase' }, { status: 500 })
+    } catch (err) {
+      console.error('[Chat] Embedding exception:', err)
     }
 
     const context = chunks && chunks.length > 0
