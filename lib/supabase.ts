@@ -5,6 +5,7 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 const isProduction = process.env.NODE_ENV === 'production' || process.env.NEXT_PUBLIC_VERCEL_ENV === 'production';
+const isServer = typeof window === 'undefined';
 
 if (isProduction) {
   if (!supabaseUrl) {
@@ -13,7 +14,8 @@ if (isProduction) {
   if (!supabaseAnonKey) {
     throw new Error('NEXT_PUBLIC_SUPABASE_ANON_KEY environment variable is missing in production!');
   }
-  if (!supabaseServiceKey) {
+  // Service-role key exists only on the server and must never be in the browser bundle.
+  if (isServer && !supabaseServiceKey) {
     throw new Error('SUPABASE_SERVICE_ROLE_KEY environment variable is missing in production!');
   }
 }
