@@ -21,7 +21,6 @@ export async function POST(req: NextRequest) {
     }
 
     const body = JSON.parse(rawBody)
-    console.log('Full webhook payload:', JSON.stringify(body, null, 2))
     const eventName = body?.meta?.event_name
     const data = body?.data
 
