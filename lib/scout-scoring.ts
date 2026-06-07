@@ -132,7 +132,7 @@ Return ONLY the JSON. No markdown wrappers, no conversational text, no explanati
 `;
 
   // 3. Invoke Gemini 2.5 Flash-Lite API
-  const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
   const geminiRes = await fetch(geminiUrl, {
     method: 'POST',
     headers: {
@@ -372,7 +372,7 @@ Return ONLY the JSON. No markdown wrappers (no \`\`\`json block), no conversatio
 `;
 
   // 3. Invoke Gemini
-  const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
   const geminiRes = await fetch(geminiUrl, {
     method: 'POST',
     headers: {
@@ -523,7 +523,7 @@ Calculated patterns from closed-won deals:
 Your response must be a single, plain-text string containing exactly the 3-sentence ICP summary. No JSON, no markdown wrappers, no conversational text, no explanations. Just the raw 3-sentence summary.
 `;
 
-  const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
   const geminiRes = await fetch(geminiUrl, {
     method: 'POST',
     headers: {
