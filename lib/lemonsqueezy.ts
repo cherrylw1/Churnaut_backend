@@ -8,21 +8,32 @@ export function verifyWebhookSignature(payload: string, signature: string, secre
 }
 
 export function getVariantId(data: any): string | null {
-  return data?.attributes?.first_subscription_item?.variant_id?.toString() ?? null
+  console.log('getVariantId data attributes:', JSON.stringify(data?.attributes, null, 2))
+  const val = data?.attributes?.first_subscription_item?.variant_id?.toString() ?? null
+  console.log('getVariantId resolved to:', val)
+  return val
 }
 
 export function getCustomerId(data: any): string | null {
-  return data?.attributes?.customer_id?.toString() ?? null
+  const val = data?.attributes?.customer_id?.toString() ?? null
+  console.log('getCustomerId resolved to:', val)
+  return val
 }
 
 export function getSubscriptionId(data: any): string | null {
-  return data?.id?.toString() ?? null
+  const val = data?.id?.toString() ?? null
+  console.log('getSubscriptionId resolved to:', val)
+  return val
 }
 
 export function getTrialEndsAt(data: any): string | null {
-  return data?.attributes?.trial_ends_at ?? null
+  const val = data?.attributes?.trial_ends_at ?? null
+  console.log('getTrialEndsAt resolved to:', val)
+  return val
 }
 
 export function getStatus(data: any): string | null {
-  return data?.attributes?.status ?? null
+  const val = data?.attributes?.status ?? null
+  console.log('getStatus resolved to:', val)
+  return val
 }
