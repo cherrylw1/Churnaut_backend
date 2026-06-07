@@ -5,6 +5,7 @@ import { scoreDealsWithScout } from '@/lib/scout-scoring';
 import { getClientPlan, planGate } from '@/lib/gate';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 
 function scoredDealsCount(deals: unknown[] | undefined): number {
   return deals ? deals.length : 0;
