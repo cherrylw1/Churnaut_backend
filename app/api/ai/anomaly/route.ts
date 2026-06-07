@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { redis } from '@/lib/redis';
-import { generateText } from '@/lib/llm/complete';
+import { generateJSON } from '@/lib/llm/complete';
 import { getClientPlan, planGate } from '@/lib/gate';
 import { getAuthedClientId } from '@/lib/auth';
 
@@ -191,26 +191,24 @@ export async function GET(req: NextRequest) {
 
     // 4. Call Together AI API to compile alerts
 
-    const geminiPrompt = `You are a B2B SaaS performance analyst. Here are anomalies detected in a website personalization system:
+    const prompt = `You are a B2B SaaS performance analyst. Here are anomalies detected in a website personalization system:
 ${anomalies.map(a => `- ${a}`).join('\n')}
 
-Write 1-3 short, plain-English alert messages a non-technical marketing manager would understand. Each under 20 words. Output only a JSON array of strings. Do not wrap in markdown or explanation.`;
+Write 1-3 short, plain-English alert messages a non-technical marketing manager would understand. Each under 20 words.
 
-    const rawText = (await generateText(geminiPrompt, { maxTokens: 1200 })) || '[]';
-
-    let cleanedText = rawText.trim();
-    if (cleanedText.startsWith('```')) {
-      cleanedText = cleanedText.replace(/^```[a-zA-Z]*\n/, '').replace(/\n```$/, '').trim();
-    }
+Respond with ONLY a JSON array of strings — no markdown, no commentary, no extra text.
+Example of the exact format required:
+["Conversion rate fell 35% this week versus last week","Mobile visitors tripled on Tuesday"]`;
 
     let alertTexts: string[] = [];
     try {
-      alertTexts = JSON.parse(cleanedText);
-      if (!Array.isArray(alertTexts)) {
+      const { parsed } = await generateJSON(prompt, { maxTokens: 1200 });
+      if (!Array.isArray(parsed)) {
         throw new Error('Response is not a JSON array');
       }
+      alertTexts = parsed;
     } catch (parseErr) {
-      console.error('[Anomaly Parse Error] Failed parsing JSON:', cleanedText, parseErr);
+      console.error('[Anomaly Parse Error] Failed parsing JSON:', parseErr);
       return NextResponse.json({ error: 'Failed to parse AI response as JSON' }, { status: 502 });
     }
 
