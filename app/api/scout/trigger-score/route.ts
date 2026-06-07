@@ -27,11 +27,13 @@ export async function GET(req: NextRequest) {
     
     // 1. Fetch HubSpot pipeline deals
     const deals = await fetchHubSpotPipeline(clientId);
-    console.log(`[Trigger Score GET] fetchHubSpotPipeline returned ${deals.length} deals`);
+
+    // console.log(`[Trigger Score GET] fetchHubSpotPipeline returned ${deals.length} deals`);
 
     // 2. Score deals using Gemini AI
     const scores = await scoreDealsWithScout(clientId, deals, true);
-    console.log('[Trigger Score GET] scoreDealsWithScout output response:', JSON.stringify(scores));
+
+    // console.log('[Trigger Score GET] scoreDealsWithScout output response:', JSON.stringify(scores));
 
     // If no deals exist, return early
     if (scoredDealsCount(scores.deals) === 0) {
@@ -102,28 +104,34 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    console.log('[Trigger Score GET] Starting database writes. toInsert:', JSON.stringify(toInsert, null, 2));
-    console.log('[Trigger Score GET] toUpdate:', JSON.stringify(toUpdate, null, 2));
+
+    // console.log('[Trigger Score GET] Starting database writes. toInsert:', JSON.stringify(toInsert, null, 2));
+
+    // console.log('[Trigger Score GET] toUpdate:', JSON.stringify(toUpdate, null, 2));
 
     const insertResponses = [];
     const updateResponses = [];
 
     // Perform inserts
     if (toInsert.length > 0) {
-      console.log('[Trigger Score GET] Executing Supabase insert...');
+
+      // console.log('[Trigger Score GET] Executing Supabase insert...');
       const insRes = await supabaseAdmin.from('deal_scores').insert(toInsert);
-      console.log('[Trigger Score GET] Supabase insert response:', JSON.stringify(insRes, null, 2));
+
+      // console.log('[Trigger Score GET] Supabase insert response:', JSON.stringify(insRes, null, 2));
       insertResponses.push(insRes);
     }
 
     // Perform updates
     for (const updateRec of toUpdate) {
-      console.log(`[Trigger Score GET] Executing Supabase update for deal_id ${updateRec.deal_id}...`);
+
+      // console.log(`[Trigger Score GET] Executing Supabase update for deal_id ${updateRec.deal_id}...`);
       const updRes = await supabaseAdmin
         .from('deal_scores')
         .update(updateRec)
         .eq('id', updateRec.id as string);
-      console.log(`[Trigger Score GET] Supabase update response for deal_id ${updateRec.deal_id}:`, JSON.stringify(updRes, null, 2));
+
+      // console.log(`[Trigger Score GET] Supabase update response for deal_id ${updateRec.deal_id}:`, JSON.stringify(updRes, null, 2));
       updateResponses.push(updRes);
     }
 

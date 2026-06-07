@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { redis } from '@/lib/redis';
 import { getClientPlan, planGate } from '@/lib/gate';
-import { getVerifiedClientId } from '@/lib/auth';
+import { getAuthedClientId } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   if (gate) return gate
 
   try {
-    const clientId = await getVerifiedClientId(req);
+    const clientId = await getAuthedClientId(req);
     if (!clientId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -294,7 +294,7 @@ Write 1-3 short, plain-English alert messages a non-technical marketing manager 
 // PATCH handler: marks a specific alert as read
 export async function PATCH(req: NextRequest) {
   try {
-    const clientId = await getVerifiedClientId(req);
+    const clientId = await getAuthedClientId(req);
     if (!clientId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }

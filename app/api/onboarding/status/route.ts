@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { getVerifiedClientId } from '@/lib/auth';
+import { getAuthedClientId } from '@/lib/auth';
 
 export async function GET(req: NextRequest) {
-  const clientId = await getVerifiedClientId(req);
+  const clientId = await getAuthedClientId(req);
   if (!clientId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const [eventsRes, sessionsRes, rulesRes, clientRes] = await Promise.all([

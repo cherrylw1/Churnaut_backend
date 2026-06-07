@@ -1,3 +1,4 @@
+// NOTE: middleware.ts is NOT a security boundary; all data access is enforced per-route via getAuthedClientId.
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 

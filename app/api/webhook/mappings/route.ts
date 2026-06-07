@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { getVerifiedClientId } from '@/lib/auth';
+import { getAuthedClientId } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 // GET: Retrieve all webhook field mappings for client
 export async function GET(req: NextRequest) {
   try {
-    const clientId = await getVerifiedClientId(req);
+    const clientId = await getAuthedClientId(req);
     if (!clientId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
 // POST: Create or upsert a webhook field mapping
 export async function POST(req: NextRequest) {
   try {
-    const clientId = await getVerifiedClientId(req);
+    const clientId = await getAuthedClientId(req);
     if (!clientId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
 // DELETE: Remove field mapping
 export async function DELETE(req: NextRequest) {
   try {
-    const clientId = await getVerifiedClientId(req);
+    const clientId = await getAuthedClientId(req);
     if (!clientId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }

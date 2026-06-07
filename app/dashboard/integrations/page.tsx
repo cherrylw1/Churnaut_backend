@@ -8,6 +8,7 @@ interface ClientProfile {
   company_name: string;
   domain: string;
   snippet_key: string;
+  webhook_secret?: string;
   crm_type?: string;
   active: boolean;
 }
@@ -50,7 +51,7 @@ export default function IntegrationsPage() {
     }));
   };
 
-  const webhookUrl = client ? `${window.location.origin}/api/webhook?client_key=${client.snippet_key}` : '';
+  const webhookUrl = client ? `${window.location.origin}/api/webhook?client_key=${client.webhook_secret || client.snippet_key}` : '';
 
   return (
     <div className="space-y-6">

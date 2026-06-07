@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
-import { getVerifiedClientId } from '@/lib/auth'
+import { getAuthedClientId } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
@@ -154,7 +154,7 @@ async function createRule(clientId: string, intent: ReturnType<typeof parseRuleI
 
 export async function POST(req: NextRequest) {
   try {
-    const clientId = await getVerifiedClientId(req)
+    const clientId = await getAuthedClientId(req)
     const { message, history = [] } = await req.json()
     if (!message?.trim()) return NextResponse.json({ error: 'Message required' }, { status: 400 })
 

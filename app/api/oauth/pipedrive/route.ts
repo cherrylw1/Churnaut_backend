@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
 import { getClientPlan, planGate } from '@/lib/gate';
-import { getVerifiedClientId } from '@/lib/auth';
+import { getAuthedClientId } from '@/lib/auth';
+import { redis } from '@/lib/redis';
+import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,22 +13,10 @@ export async function GET(req: NextRequest) {
 
   try {
     // 1. Authenticate user from session cookie
-    const clientId = await getVerifiedClientId(req);
+    const clientId = await getAuthedClientId(req);
     if (!clientId) {
       // Redirect unauthenticated requests to login page
       return NextResponse.redirect(new URL('/login', req.url));
-    }
-
-    // 2. Fetch the client's snippet_key to pass as state parameter
-    const { data: client, error } = await supabaseAdmin
-      .from('clients')
-      .select('snippet_key')
-      .eq('id', clientId)
-      .maybeSingle();
-
-    if (error || !client || !client.snippet_key) {
-      console.error('[Pipedrive OAuth Redirect Error] Client lookup failed:', error);
-      return NextResponse.json({ error: 'Client profile not found or invalid session' }, { status: 404 });
     }
 
     const pipedriveClientId = process.env.PIPEDRIVE_CLIENT_ID;
@@ -35,6 +24,10 @@ export async function GET(req: NextRequest) {
       console.error('[Pipedrive OAuth Redirect Error] PIPEDRIVE_CLIENT_ID env variable is not set');
       return NextResponse.json({ error: 'Pipedrive integration is not configured on the server' }, { status: 500 });
     }
+
+    // Generate dynamic state nonce and store in Redis with 10-minute TTL
+    const nonce = crypto.randomUUID();
+    await redis.setex(`oauth_state:${nonce}`, 600, clientId);
 
     // 3. Construct Pipedrive Authorization URL
     const redirectUri = 'https://app.churnaut.com/api/oauth/pipedrive/callback';
@@ -44,7 +37,7 @@ export async function GET(req: NextRequest) {
       `?client_id=${encodeURIComponent(pipedriveClientId)}` +
       `&redirect_uri=${encodeURIComponent(redirectUri)}` +
       `&scope=${encodeURIComponent(scope)}` +
-      `&state=${encodeURIComponent(client.snippet_key)}`;
+      `&state=${encodeURIComponent(nonce)}`;
 
     // 4. Redirect to Pipedrive
     return NextResponse.redirect(pipedriveAuthUrl);

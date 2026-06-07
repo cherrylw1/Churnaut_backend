@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getAuthedClientId } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase'
-import { getVerifiedClientId } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
@@ -31,10 +31,6 @@ For all other questions, answer as a senior developer who built every line of Ch
 Reference exact file names, function names, and variable names.
 Never make up code that doesn't exist.`
 
-async function verifyFounderKey(req: NextRequest): Promise<boolean> {
-  const userId = await getVerifiedClientId(req)
-  return !!userId
-}
 
 async function embedQuery(text: string): Promise<number[]> {
   const res = await fetch(
@@ -110,13 +106,12 @@ async function searchCodebase(query: string, matchCount = 8) {
 
 export async function POST(req: NextRequest) {
   try {
-    const authorized = await verifyFounderKey(req)
-    const body = await req.json()
-    const { message, history = [], founderKey } = body
-
-    if (!authorized && founderKey !== 'true') {
+    const clientId = await getAuthedClientId(req)
+    if (!clientId || clientId !== process.env.FOUNDER_CLIENT_ID) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+    const body = await req.json()
+    const { message, history = [] } = body
 
     if (!message?.trim()) return NextResponse.json({ error: 'Message required' }, { status: 400 })
 

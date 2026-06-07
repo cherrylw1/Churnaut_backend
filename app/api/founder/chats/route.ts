@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { getAuthedClientId } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
@@ -8,7 +9,12 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const clientId = await getAuthedClientId(req)
+  if (!clientId || clientId !== process.env.FOUNDER_CLIENT_ID) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   const { data, error } = await supabase
     .from('founder_chats')
     .select('id, title, created_at, updated_at, messages')
@@ -19,6 +25,11 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const clientId = await getAuthedClientId(req)
+  if (!clientId || clientId !== process.env.FOUNDER_CLIENT_ID) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   const { title, messages } = await req.json()
   const { data, error } = await supabase
     .from('founder_chats')
@@ -30,6 +41,11 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
+  const clientId = await getAuthedClientId(req)
+  if (!clientId || clientId !== process.env.FOUNDER_CLIENT_ID) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   const { id, messages } = await req.json()
   const { error } = await supabase
     .from('founder_chats')
@@ -40,6 +56,11 @@ export async function PATCH(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const clientId = await getAuthedClientId(req)
+  if (!clientId || clientId !== process.env.FOUNDER_CLIENT_ID) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   const id = req.nextUrl.searchParams.get('id')
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
   const { error } = await supabase

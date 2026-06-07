@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { supabaseAdmin } from '@/lib/supabase';
-import { redis } from '@/lib/redis';
+import { redis, ratelimit } from '@/lib/redis';
 
 // Helper to extract value from nested paths (e.g. "prospect.email")
 function getValueByPath(obj: unknown, path: string): unknown {
@@ -40,12 +40,34 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing client_key or Authorization Bearer token' }, { status: 401 });
     }
 
-    // Lookup client by snippet_key matching the incoming key
-    const { data: client, error: clientErr } = await supabaseAdmin
+    // Lookup client by webhook_secret or legacy snippet_key
+    let client = null;
+    let clientErr = null;
+
+    // First try webhook_secret
+    const { data: clientBySecret, error: secretErr } = await supabaseAdmin
       .from('clients')
       .select('*')
-      .eq('snippet_key', key)
+      .eq('webhook_secret', key)
       .maybeSingle();
+
+    client = clientBySecret;
+    clientErr = secretErr;
+
+    if (!client && !clientErr) {
+      // Fallback to legacy snippet_key
+      const { data: clientByKey, error: keyErr } = await supabaseAdmin
+        .from('clients')
+        .select('*')
+        .eq('snippet_key', key)
+        .maybeSingle();
+
+      client = clientByKey;
+      clientErr = keyErr;
+      if (client) {
+        console.warn('[DEPRECATION WARNING] Webhook authenticated using snippet_key. Please transition to using webhook_secret.');
+      }
+    }
 
     if (clientErr || !client) {
       console.error('[Webhook Auth Error] Failed client lookup:', clientErr);
@@ -53,6 +75,16 @@ export async function POST(req: NextRequest) {
     }
 
     const clientId = client.id;
+
+    // Rate Limiting by client ID
+    try {
+      const { success } = await ratelimit.limit(clientId);
+      if (!success) {
+        return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
+      }
+    } catch (rlError) {
+      console.error('[RateLimit Error] Failed to enforce rate limiting on webhook:', rlError);
+    }
 
     // 2. Parse Incoming Payload
     const payload = await req.json();

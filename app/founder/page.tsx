@@ -1,6 +1,6 @@
 'use client'
 import React, { useState, useRef, useEffect, useCallback } from 'react'
-import { Bot, Send, Loader2, Code2, ChevronDown, ChevronUp, Sparkles, Lock, Plus, MessageSquare, Trash2 } from 'lucide-react'
+import { Bot, Send, Loader2, Code2, ChevronDown, ChevronUp, Sparkles, Plus, MessageSquare, Trash2 } from 'lucide-react'
 
 interface Message {
   id: string
@@ -18,7 +18,7 @@ interface Chat {
   messages: Message[]
 }
 
-const FOUNDER_PASSWORD = process.env.NEXT_PUBLIC_FOUNDER_KEY || 'churnaut2026'
+
 
 const WELCOME_MSG: Message = {
   id: 'welcome',
@@ -39,9 +39,6 @@ const SUGGESTED = [
 ]
 
 export default function FounderPage() {
-  const [unlocked, setUnlocked] = useState(false)
-  const [passwordInput, setPasswordInput] = useState('')
-  const [passwordError, setPasswordError] = useState(false)
   const [chats, setChats] = useState<Chat[]>([])
   const [activeChatId, setActiveChatId] = useState<string | null>(null)
   const [messages, setMessages] = useState<Message[]>([WELCOME_MSG])
@@ -54,13 +51,8 @@ export default function FounderPage() {
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
-    const saved = localStorage.getItem('founder_unlocked')
-    if (saved === 'true') setUnlocked(true)
+    loadChats()
   }, [])
-
-  useEffect(() => {
-    if (unlocked) loadChats()
-  }, [unlocked])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -74,15 +66,7 @@ export default function FounderPage() {
     }
   }
 
-  const handleUnlock = () => {
-    if (passwordInput === FOUNDER_PASSWORD) {
-      setUnlocked(true)
-      localStorage.setItem('founder_unlocked', 'true')
-      setPasswordError(false)
-    } else {
-      setPasswordError(true)
-    }
-  }
+
 
   const startNewChat = () => {
     setActiveChatId(null)
@@ -148,7 +132,6 @@ export default function FounderPage() {
         body: JSON.stringify({
           message: text,
           history: getHistory(messages),
-          founderKey: 'true',
         }),
       })
       const data = await res.json()
@@ -191,33 +174,7 @@ export default function FounderPage() {
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
   }
 
-  if (!unlocked) {
-    return (
-      <div className="min-h-screen bg-[#080B0F] flex items-center justify-center p-4">
-        <div className="w-full max-w-sm space-y-6">
-          <div className="text-center space-y-2">
-            <div className="w-12 h-12 rounded-full bg-[#6366f1]/10 border border-[#6366f1]/20 flex items-center justify-center mx-auto">
-              <Lock className="w-5 h-5 text-[#6366f1]" />
-            </div>
-            <h1 className="text-xl font-bold text-white font-sans">Founder Access</h1>
-            <p className="text-xs text-gray-500 font-mono uppercase tracking-wider">Churnaut Internal</p>
-          </div>
-          <div className="space-y-3">
-            <input type="password" value={passwordInput}
-              onChange={(e) => { setPasswordInput(e.target.value); setPasswordError(false) }}
-              onKeyDown={(e) => e.key === 'Enter' && handleUnlock()}
-              placeholder="Enter founder key"
-              className="w-full bg-[#111118] border border-[#1e1e2e] focus:border-[#6366f1]/50 rounded-[10px] px-4 py-3 text-sm font-mono text-white placeholder:text-gray-600 outline-none" />
-            {passwordError && <p className="text-xs text-red-400 font-mono text-center">Invalid key</p>}
-            <button onClick={handleUnlock}
-              className="w-full bg-[#6366f1] hover:bg-[#5053e1] text-white py-3 rounded-[10px] text-sm font-mono font-medium transition-all">
-              Unlock
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
+
 
   return (
     <div className="min-h-screen bg-[#080B0F] flex">

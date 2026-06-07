@@ -4,7 +4,7 @@ import { fetchHubSpotPipeline, ScoutDeal } from '@/lib/integrations/hubspot-pipe
 import { scoreDealsWithScout, calculateDealPatterns, ScoutScoreResult } from '@/lib/scout-scoring';
 import { logLLMCall } from '@/lib/llm/logger';
 import { getClientPlan, planGate } from '@/lib/gate';
-import { getVerifiedClientId } from '@/lib/auth';
+import { getAuthedClientId } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,18 +15,21 @@ export async function POST(req: NextRequest) {
 
   try {
     // 1. Authenticate Client
-    const clientId = await getVerifiedClientId(req);
+    const clientId = await getAuthedClientId(req);
     if (!clientId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    console.log('[Scout Score POST] Client lookup successful. client_id:', clientId, 'crm_type: hubspot');
+
+    // console.log('[Scout Score POST] Client lookup successful. client_id:', clientId, 'crm_type: hubspot');
 
     // 2. Fetch HubSpot pipeline deals
     let deals: ScoutDeal[];
     try {
       deals = await fetchHubSpotPipeline(clientId, true);
-      console.log(`[Scout Score POST] fetchHubSpotPipeline returned ${deals.length} deals`);
-      console.log('SCOUT PIPELINE DATA:', JSON.stringify(deals, null, 2));
+
+      // console.log(`[Scout Score POST] fetchHubSpotPipeline returned ${deals.length} deals`);
+
+      // console.log('SCOUT PIPELINE DATA:', JSON.stringify(deals, null, 2));
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);
       console.error('[Scout Score POST] Error in fetchHubSpotPipeline:', errMsg);
@@ -35,29 +38,33 @@ export async function POST(req: NextRequest) {
 
     // Cleanup step: delete stale deals from deal_scores
     const currentDealIds = deals.map((d) => d.deal_id);
-    console.log(`[Scout Score POST] Cleaning up stale deal_scores. Current active deal IDs:`, currentDealIds);
+
+    // console.log(`[Scout Score POST] Cleaning up stale deal_scores. Current active deal IDs:`, currentDealIds);
     if (currentDealIds.length > 0) {
       try {
-        const { error: deleteError, count: deleteCount } = await supabaseAdmin
+        const { error: deleteError } = await supabaseAdmin
           .from('deal_scores')
           .delete({ count: 'exact' })
           .eq('client_id', clientId)
           .not('deal_id', 'in', `(${currentDealIds.map(id => `"${id}"`).join(',')})`);
 
-        console.log('[Scout Score POST] Cleanup result:', { deleteCount, deleteError, currentDealIds });
+
+        // console.log('[Scout Score POST] Cleanup result:', { deleteCount, deleteError, currentDealIds });
 
         if (deleteError) {
           console.error('[Scout Score POST] Error cleaning up stale deal_scores:', deleteError);
           throw deleteError;
         }
-        console.log('[Scout Score POST] Stale deal_scores cleanup completed successfully');
+
+        // console.log('[Scout Score POST] Stale deal_scores cleanup completed successfully');
       } catch (err) {
         const errMsg = err instanceof Error ? err.message : String(err);
         console.error('[Scout Score POST] Failed during deal_scores cleanup:', errMsg);
         throw err;
       }
     } else {
-      console.log('[Scout Score POST] Skipping cleanup delete because currentDealIds is empty');
+
+      // console.log('[Scout Score POST] Skipping cleanup delete because currentDealIds is empty');
     }
 
     // 3. Score deals using Gemini AI
@@ -66,7 +73,8 @@ export async function POST(req: NextRequest) {
       const llmStart = Date.now();
       scores = await scoreDealsWithScout(clientId, deals, true);
       const latency = Date.now() - llmStart;
-      console.log('[Scout Score POST] scoreDealsWithScout output response:', JSON.stringify(scores));
+
+      // console.log('[Scout Score POST] scoreDealsWithScout output response:', JSON.stringify(scores));
 
       if (scores && Array.isArray(scores.deals)) {
         scores.deals.forEach((sd) => {
@@ -157,14 +165,18 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      console.log('[Scout Score POST] Starting database writes. toInsert:', JSON.stringify(toInsert, null, 2));
-      console.log('[Scout Score POST] toUpdate:', JSON.stringify(toUpdate, null, 2));
+
+      // console.log('[Scout Score POST] Starting database writes. toInsert:', JSON.stringify(toInsert, null, 2));
+
+      // console.log('[Scout Score POST] toUpdate:', JSON.stringify(toUpdate, null, 2));
 
       // Perform inserts
       if (toInsert.length > 0) {
-        console.log('[Scout Score POST] Executing Supabase insert for toInsert...');
+
+        // console.log('[Scout Score POST] Executing Supabase insert for toInsert...');
         const insRes = await supabaseAdmin.from('deal_scores').insert(toInsert);
-        console.log('[Scout Score POST] Supabase insert response:', JSON.stringify(insRes, null, 2));
+
+        // console.log('[Scout Score POST] Supabase insert response:', JSON.stringify(insRes, null, 2));
         if (insRes.error) {
           console.error('[Scout Score POST] Error inserting deal_scores:', insRes.error);
           throw insRes.error;
@@ -173,12 +185,14 @@ export async function POST(req: NextRequest) {
 
       // Perform updates
       for (const updateRec of toUpdate) {
-        console.log(`[Scout Score POST] Executing Supabase update for deal_id ${updateRec.deal_id}...`);
+
+        // console.log(`[Scout Score POST] Executing Supabase update for deal_id ${updateRec.deal_id}...`);
         const updRes = await supabaseAdmin
           .from('deal_scores')
           .update(updateRec)
           .eq('id', updateRec.id as string);
-        console.log(`[Scout Score POST] Supabase update response for deal_id ${updateRec.deal_id}:`, JSON.stringify(updRes, null, 2));
+
+        // console.log(`[Scout Score POST] Supabase update response for deal_id ${updateRec.deal_id}:`, JSON.stringify(updRes, null, 2));
         if (updRes.error) {
           console.error('[Scout Score POST] Error updating deal_scores:', updRes.error);
           throw updRes.error;
@@ -228,12 +242,14 @@ export async function POST(req: NextRequest) {
 
     // If patterns exist, re-run scoring with enriched prompt
     if (patterns) {
-      console.log('[Scout Score POST] Re-running scoring with enriched patterns:', JSON.stringify(patterns));
+
+      // console.log('[Scout Score POST] Re-running scoring with enriched patterns:', JSON.stringify(patterns));
       try {
         const llmStart = Date.now();
         scores = await scoreDealsWithScout(clientId, deals, true, patterns);
         const latency = Date.now() - llmStart;
-        console.log('[Scout Score POST] Enriched scoreDealsWithScout response:', JSON.stringify(scores));
+
+        // console.log('[Scout Score POST] Enriched scoreDealsWithScout response:', JSON.stringify(scores));
 
         if (scores && Array.isArray(scores.deals)) {
           scores.deals.forEach((sd) => {

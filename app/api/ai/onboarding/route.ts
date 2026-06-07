@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { getVerifiedClientId } from '@/lib/auth';
+import { getAuthedClientId } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,7 +19,7 @@ interface IncomingRule {
 export async function POST(req: NextRequest) {
   try {
     // 1. Authenticate Client
-    const clientId = await getVerifiedClientId(req);
+    const clientId = await getAuthedClientId(req);
     if (!clientId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }

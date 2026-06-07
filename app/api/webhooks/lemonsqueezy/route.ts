@@ -1,13 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { supabaseAdmin } from '@/lib/supabase'
 import { verifyWebhookSignature, getVariantId, getCustomerId, getSubscriptionId, getTrialEndsAt, getStatus } from '@/lib/lemonsqueezy'
 import { VARIANT_TO_PLAN } from '@/lib/plans'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
 
 export async function POST(req: NextRequest) {
   try {
@@ -33,57 +28,99 @@ export async function POST(req: NextRequest) {
     const variantId = getVariantId(data)
     const trialEndsAt = getTrialEndsAt(data)
     const status = getStatus(data)
-    const plan = variantId ? VARIANT_TO_PLAN[variantId] ?? 'starter' : 'starter'
 
-    console.log(`Webhook received: ${eventName}`, { subscriptionId, customerId, variantId, plan, status })
+    const eventId = signature || `${eventName}_${data.id}_${Date.now()}`
+
+    // Idempotency check
+    const { data: alreadyProcessed } = await supabaseAdmin
+      .from('processed_webhooks')
+      .select('event_id')
+      .eq('event_id', eventId)
+      .maybeSingle()
+
+    if (alreadyProcessed) {
+      console.log(`Webhook already processed: ${eventId}`)
+      return NextResponse.json({ received: true, alreadyProcessed: true }, { status: 200 })
+    }
+
+    // Process event
+    console.log(`Webhook received: ${eventName}`, { subscriptionId, customerId, variantId, status })
 
     switch (eventName) {
       case 'subscription_created': {
         const email = data?.attributes?.user_email
         if (!email) break
 
-        const { data: { users }, error: authError } = await supabase.auth.admin.listUsers()
-        if (authError || !users) {
-          console.error('Failed to list auth users:', authError)
-          break
-        }
-
-        const user = users.find((u: any) => u.email?.toLowerCase() === email.toLowerCase())
-        if (!user) {
-          console.error('No auth user found for email:', email)
-          break
-        }
-
-        await supabase
+        // Look up client by email directly from the clients table
+        const { data: clientUser, error: clientError } = await supabaseAdmin
           .from('clients')
-          .update({
-            plan,
-            plan_status: 'trialing',
-            lemonsqueezy_customer_id: customerId,
-            lemonsqueezy_subscription_id: subscriptionId,
-            lemonsqueezy_variant_id: variantId,
-            trial_ends_at: trialEndsAt,
-          })
-          .eq('id', user.id)
+          .select('id')
+          .eq('email', email.toLowerCase())
+          .maybeSingle()
+
+        if (clientError || !clientUser) {
+          console.error('No client profile found for email:', email, clientError)
+          break
+        }
+
+        const updateData: any = {
+          plan_status: 'trialing',
+          lemonsqueezy_customer_id: customerId,
+          lemonsqueezy_subscription_id: subscriptionId,
+          lemonsqueezy_variant_id: variantId,
+          trial_ends_at: trialEndsAt,
+        }
+
+        if (variantId) {
+          const mappedPlan = VARIANT_TO_PLAN[variantId]
+          if (mappedPlan) {
+            updateData.plan = mappedPlan
+          } else {
+            console.error(`Unknown variant ID in subscription_created: ${variantId}`)
+          }
+        }
+
+        const { error: updateError } = await supabaseAdmin
+          .from('clients')
+          .update(updateData)
+          .eq('id', clientUser.id)
+
+        if (updateError) {
+          console.error('Failed to update client subscription:', updateError)
+        }
 
         break
       }
 
       case 'subscription_updated': {
-        await supabase
+        const updateData: any = {
+          plan_status: status ?? 'active',
+          lemonsqueezy_variant_id: variantId,
+          trial_ends_at: trialEndsAt,
+        }
+
+        if (variantId) {
+          const mappedPlan = VARIANT_TO_PLAN[variantId]
+          if (mappedPlan) {
+            updateData.plan = mappedPlan
+          } else {
+            console.error(`Unknown variant ID in subscription_updated: ${variantId}`)
+          }
+        }
+
+        const { error: updateError } = await supabaseAdmin
           .from('clients')
-          .update({
-            plan,
-            plan_status: status ?? 'active',
-            lemonsqueezy_variant_id: variantId,
-            trial_ends_at: trialEndsAt,
-          })
+          .update(updateData)
           .eq('lemonsqueezy_subscription_id', subscriptionId)
+
+        if (updateError) {
+          console.error('Failed to update client subscription:', updateError)
+        }
         break
       }
 
       case 'subscription_cancelled': {
-        await supabase
+        await supabaseAdmin
           .from('clients')
           .update({ plan_status: 'cancelled' })
           .eq('lemonsqueezy_subscription_id', subscriptionId)
@@ -91,7 +128,7 @@ export async function POST(req: NextRequest) {
       }
 
       case 'subscription_resumed': {
-        await supabase
+        await supabaseAdmin
           .from('clients')
           .update({ plan_status: 'active' })
           .eq('lemonsqueezy_subscription_id', subscriptionId)
@@ -99,7 +136,7 @@ export async function POST(req: NextRequest) {
       }
 
       case 'subscription_expired': {
-        await supabase
+        await supabaseAdmin
           .from('clients')
           .update({ plan: 'starter', plan_status: 'expired' })
           .eq('lemonsqueezy_subscription_id', subscriptionId)
@@ -107,7 +144,7 @@ export async function POST(req: NextRequest) {
       }
 
       case 'subscription_payment_failed': {
-        await supabase
+        await supabaseAdmin
           .from('clients')
           .update({ plan_status: 'past_due' })
           .eq('lemonsqueezy_subscription_id', subscriptionId)
@@ -116,6 +153,17 @@ export async function POST(req: NextRequest) {
 
       default:
         console.log(`Unhandled event: ${eventName}`)
+    }
+
+    // Insert into processed_webhooks to ensure idempotency
+    const { error: insertError } = await supabaseAdmin
+      .from('processed_webhooks')
+      .insert({ event_id: eventId })
+
+    if (insertError) {
+      if (insertError.code !== '23505') { // Do not print normal duplicate violations
+        console.error('Failed to record processed webhook event_id:', insertError)
+      }
     }
 
     return NextResponse.json({ received: true }, { status: 200 })

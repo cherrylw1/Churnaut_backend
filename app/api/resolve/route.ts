@@ -27,6 +27,9 @@ function replaceVariables(content: string, session: Session | null): string {
     return content.replace(/{{\s*\w+\s*}}/g, '');
   }
 
+  const escapeHtml = (s: string) => s.replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+
   const sessionRecord = session as unknown as Record<string, unknown>;
   const vars: Record<string, string | undefined> = {
     prospect_name: session.prospect_name || undefined,
@@ -43,7 +46,8 @@ function replaceVariables(content: string, session: Session | null): string {
   let result = content;
   Object.entries(vars).forEach(([key, val]) => {
     const regex = new RegExp(`{{\\s*${key}\\s*}}`, 'g');
-    result = result.replace(regex, val || '');
+    const escapedVal = val ? escapeHtml(val) : '';
+    result = result.replace(regex, escapedVal);
   });
 
   // Replace any unmatched variable tokens with an empty string
@@ -63,10 +67,6 @@ export async function POST(req: NextRequest) {
     const li_fat_id = signals?.li_fat_id;
     const ttclid = signals?.ttclid;
 
-    if (cookie) {
-      console.log('[DEBUG] Resolve request cookie present:', cookie);
-    }
-
     if (!clientIdParam) {
       return NextResponse.json(
         { error: 'Missing client_id parameter' },
@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
     // 2. Look up the client in the clients table by snippet_key matching client_id
     const { data: clientData, error: clientError } = await supabaseAdmin
       .from('clients')
-      .select('id, crm_type')
+      .select('id, crm_type, plan, monthly_visits')
       .eq('snippet_key', clientIdParam)
       .maybeSingle();
 
@@ -92,20 +92,14 @@ export async function POST(req: NextRequest) {
     const client_id = clientData.id;
 
     // Visit limit check
-    const { data: clientPlanData } = await supabaseAdmin
-      .from('clients')
-      .select('plan, monthly_visits')
-      .eq('id', client_id)
-      .maybeSingle();
-
     const planLimits: Record<string, number> = {
       starter: 500,
       growth: 5000,
       pro: Infinity,
     }
-    const clientPlan = clientPlanData?.plan ?? 'starter'
+    const clientPlan = clientData?.plan ?? 'starter'
     const visitLimit = planLimits[clientPlan] ?? 500
-    const currentVisits = clientPlanData?.monthly_visits ?? 0
+    const currentVisits = clientData?.monthly_visits ?? 0
 
     if (currentVisits >= visitLimit) {
       return NextResponse.json(
@@ -249,8 +243,24 @@ export async function POST(req: NextRequest) {
     // 3.5 Live HubSpot CRM Session Enrichment
     if (clientData.crm_type === 'hubspot' && session?.prospect_email) {
       try {
-        const enrichment = await enrichSessionFromHubSpot(client_id, session.prospect_email);
-        if (enrichment) {
+        const timeoutPromise = new Promise<unknown>((resolve) => setTimeout(() => resolve(null), 1200));
+        const enrichment = (await Promise.race([
+          enrichSessionFromHubSpot(client_id, session.prospect_email),
+          timeoutPromise,
+        ])) as {
+          contact_name?: string | null;
+          job_title?: string | null;
+          company_name?: string | null;
+          deal_stage?: string | null;
+          rep_name?: string | null;
+          deal_name?: string | null;
+          deal_amount?: number | null;
+          rep_email?: string | null;
+        } | null;
+
+        if (enrichment === null) {
+          console.warn('[Enrichment Timeout] HubSpot live enrichment timed out after 1.2s');
+        } else if (enrichment) {
           session.prospect_name = enrichment.contact_name || session.prospect_name;
           session.job_title = enrichment.job_title || session.job_title;
           session.company_name = enrichment.company_name || session.company_name;
@@ -349,8 +359,11 @@ export async function POST(req: NextRequest) {
       if (matchedRule.target_selector !== null && matchedRule.target_selector !== undefined) {
         let content = matchedRule.variant_content || '';
         if (matchedRule.action_type === 'show_calendar') {
-          const calendarUrl = matchedRule.action_payload?.calendar_url || session?.calendar_url || '';
-          content = `<iframe src="${calendarUrl}" width="100%" height="100%" frameborder="0"></iframe>`;
+          const rawCalUrl = (matchedRule.action_payload?.calendar_url || session?.calendar_url || '').toString();
+          const safeCalUrl = /^https?:\/\//i.test(rawCalUrl) ? rawCalUrl.replace(/"/g, '&quot;') : '';
+          content = safeCalUrl
+            ? `<iframe src="${safeCalUrl}" width="100%" height="100%" frameborder="0"></iframe>`
+            : '';
         }
         content = replaceVariables(content, session);
         swapsList.push({

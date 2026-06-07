@@ -1,18 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { encrypt } from '@/lib/crypto';
+import { redis } from '@/lib/redis';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const code = searchParams.get('code');
-  const state = searchParams.get('state'); // State contains Churnaut client's snippet_key
+  const state = searchParams.get('state'); // State contains Churnaut client's dynamic nonce
 
   if (!code || !state) {
     console.error('[Hubspot OAuth Callback Error] Missing code or state parameters');
     return NextResponse.redirect(new URL('/dashboard/integrations/crm?error=missing_parameters', req.url));
   }
+
+  // 1. Verify and consume the state nonce from Redis
+  const redisKey = `oauth_state:${state}`;
+  const clientId = await redis.get(redisKey);
+  if (!clientId) {
+    console.error('[Hubspot OAuth Callback Error] Invalid or expired state nonce');
+    return NextResponse.redirect(new URL('/dashboard/integrations/crm?error=invalid_state', req.url));
+  }
+  await redis.del(redisKey); // Consume it immediately
 
   try {
     const hubspotClientId = process.env.HUBSPOT_CLIENT_ID;
@@ -23,7 +33,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.redirect(new URL('/dashboard/integrations/crm?error=server_configuration_error', req.url));
     }
 
-    // 1. Exchange OAuth code for access and refresh tokens
+    // 2. Exchange OAuth code for access and refresh tokens
     const tokenUrl = 'https://api.hubapi.com/oauth/v1/token';
     const redirectUri = 'https://app.churnaut.com/api/oauth/hubspot/callback';
 
@@ -45,7 +55,7 @@ export async function GET(req: NextRequest) {
       const errorData = await tokenResponse.json().catch(() => ({}));
       console.error('[Hubspot OAuth Callback Error] Token exchange failed:', errorData);
       return NextResponse.redirect(
-        new URL(`/dashboard/integrations/crm?error=token_exchange_failed&details=${encodeURIComponent(JSON.stringify(errorData))}`, req.url)
+        new URL('/dashboard/integrations/crm?error=token_exchange_failed', req.url)
       );
     }
 
@@ -57,23 +67,11 @@ export async function GET(req: NextRequest) {
       return NextResponse.redirect(new URL('/dashboard/integrations/crm?error=missing_tokens', req.url));
     }
 
-    // 2. Lookup Churnaut client by snippet_key (matching state)
-    const { data: client, error: clientError } = await supabaseAdmin
-      .from('clients')
-      .select('id')
-      .eq('snippet_key', state)
-      .maybeSingle();
-
-    if (clientError || !client) {
-      console.error('[Hubspot OAuth Callback Error] Client lookup failed for state:', state, clientError);
-      return NextResponse.redirect(new URL('/dashboard/integrations/crm?error=client_not_found', req.url));
-    }
-
     // 3. Encrypt the tokens
     const encryptedAccessToken = encrypt(access_token);
     const encryptedRefreshToken = encrypt(refresh_token);
 
-    // 4. Update the clients table row
+    // 4. Update the clients table row using clientId retrieved from Redis
     const crmApiKeyJson = JSON.stringify({
       access_token: encryptedAccessToken,
       refresh_token: encryptedRefreshToken,
@@ -85,7 +83,7 @@ export async function GET(req: NextRequest) {
         crm_type: 'hubspot',
         crm_api_key: crmApiKeyJson,
       })
-      .eq('id', client.id);
+      .eq('id', clientId);
 
     if (updateClientError) {
       console.error('[Hubspot OAuth Callback Error] Failed to update client record:', updateClientError);
@@ -98,7 +96,7 @@ export async function GET(req: NextRequest) {
     const { data: existingToken, error: tokenSelectError } = await supabaseAdmin
       .from('crm_tokens')
       .select('id')
-      .eq('client_id', client.id)
+      .eq('client_id', clientId)
       .eq('crm_type', 'hubspot')
       .maybeSingle();
 
@@ -123,7 +121,7 @@ export async function GET(req: NextRequest) {
         const { error: insertTokenError } = await supabaseAdmin
           .from('crm_tokens')
           .insert({
-            client_id: client.id,
+            client_id: clientId,
             crm_type: 'hubspot',
             access_token: encryptedAccessToken,
             refresh_token: encryptedRefreshToken,

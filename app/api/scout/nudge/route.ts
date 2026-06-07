@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { sendNudgeEmail } from '@/lib/email/resend';
 import { getClientPlan, planGate } from '@/lib/gate';
-import { getVerifiedClientId } from '@/lib/auth';
+import { getAuthedClientId } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
 
   try {
     // 1. Authenticate Client
-    const clientId = await getVerifiedClientId(req);
+    const clientId = await getAuthedClientId(req);
     if (!clientId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
 
           // 5. Call sendNudgeEmail() with rep_email as the TO address
           if (rep_email) {
-            console.log(`[Scout Nudge POST] Sending nudge email to: ${rep_email} for deal: ${deal_name}`);
+            // console.log(`[Scout Nudge POST] Sending nudge email to: ${rep_email} for deal: ${deal_name}`);
             await sendNudgeEmail(rep_email, deal_name || 'Unnamed Deal', draftEmail, nextAction);
           } else {
             console.warn('[Scout Nudge POST] Skipping email nudge: rep_email is missing');

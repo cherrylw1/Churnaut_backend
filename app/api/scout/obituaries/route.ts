@@ -3,7 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { fetchClosedLostDeals } from '@/lib/integrations/hubspot-pipeline';
 import { generateDealObituary } from '@/lib/scout-scoring';
 import { getClientPlan, planGate } from '@/lib/gate';
-import { getVerifiedClientId } from '@/lib/auth';
+import { getAuthedClientId } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   if (gate) return gate
 
   try {
-    const clientId = await getVerifiedClientId(req);
+    const clientId = await getAuthedClientId(req);
     if (!clientId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
   if (gate) return gate
 
   try {
-    const clientId = await getVerifiedClientId(req);
+    const clientId = await getAuthedClientId(req);
     if (!clientId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }

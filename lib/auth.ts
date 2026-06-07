@@ -1,24 +1,27 @@
-import { NextRequest } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { NextRequest } from 'next/server';
+import { supabaseAdmin } from '@/lib/supabase';
 
-export async function getVerifiedClientId(req: NextRequest): Promise<string | null> {
+/**
+ * Authoritative server-side auth. Verifies the Supabase access token's
+ * signature + expiry via supabaseAdmin.auth.getUser(). Returns the verified
+ * client/user id, or null. NEVER trust the cookie JSON directly.
+ */
+export async function getAuthedClientId(req: NextRequest): Promise<string | null> {
+  const cookie = req.cookies.get('sb-auth-token');
+  if (!cookie) return null;
   try {
-    const cookie = req.cookies.get('sb-auth-token')
-    if (!cookie) return null
-
-    const session = JSON.parse(decodeURIComponent(cookie.value))
-    const accessToken = session?.access_token
-    if (!accessToken) return null
-
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    const supabase = createClient(supabaseUrl, supabaseAnonKey)
-
-    const { data: { user }, error } = await supabase.auth.getUser(accessToken)
-    if (error || !user) return null
-
-    return user.id
+    const session = JSON.parse(decodeURIComponent(cookie.value));
+    const token = session?.access_token;
+    if (!token || typeof token !== 'string') return null;
+    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+    if (error || !user) return null;
+    return user.id;
   } catch {
-    return null
+    return null;
   }
+}
+
+// Deprecated wrapper for legacy references (will be removed once all routes migrate)
+export async function getVerifiedClientId(req: NextRequest): Promise<string | null> {
+  return getAuthedClientId(req);
 }

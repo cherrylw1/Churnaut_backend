@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getClientPlan, planGate } from '@/lib/gate';
-import { getVerifiedClientId } from '@/lib/auth';
+import { getAuthedClientId } from '@/lib/auth';
+import { redis } from '@/lib/redis';
+import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
-
 
 export async function GET(req: NextRequest) {
   const plan = await getClientPlan(req)
@@ -12,7 +13,7 @@ export async function GET(req: NextRequest) {
 
   try {
     // 1. Authenticate user from session cookie
-    const clientId = await getVerifiedClientId(req);
+    const clientId = await getAuthedClientId(req);
     if (!clientId) {
       // Redirect unauthenticated requests to login page
       return NextResponse.redirect(new URL('/login', req.url));
@@ -24,10 +25,15 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Close integration is not configured on the server' }, { status: 500 });
     }
 
+    // Generate dynamic state nonce and store in Redis with 10-minute TTL
+    const nonce = crypto.randomUUID();
+    await redis.setex(`oauth_state:${nonce}`, 600, clientId);
+
     // 2. Construct Close Authorization URL
     const closeAuthUrl = `https://app.close.com/oauth2/authorize/` +
       `?client_id=${encodeURIComponent(closeClientId)}` +
-      `&response_type=code`;
+      `&response_type=code` +
+      `&state=${encodeURIComponent(nonce)}`;
 
     // 3. Redirect to Close
     return NextResponse.redirect(closeAuthUrl);

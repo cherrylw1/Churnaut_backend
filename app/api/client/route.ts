@@ -1,20 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { getVerifiedClientId } from '@/lib/auth';
+import { getAuthedClientId } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 
 export async function GET(req: NextRequest) {
   try {
-    const clientId = await getVerifiedClientId(req);
+    const clientId = await getAuthedClientId(req);
     if (!clientId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { data: client, error } = await supabaseAdmin
       .from('clients')
-      .select('id, company_name, domain, plan, snippet_key, crm_type, active')
+      .select('id, company_name, domain, plan, snippet_key, crm_type, active, webhook_secret')
       .eq('id', clientId)
       .maybeSingle();
 
@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   try {
-    const clientId = await getVerifiedClientId(req);
+    const clientId = await getAuthedClientId(req);
     if (!clientId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }

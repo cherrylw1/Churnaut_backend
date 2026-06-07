@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { redis } from '@/lib/redis';
 import { getClientPlan, planGate } from '@/lib/gate';
-import { getVerifiedClientId } from '@/lib/auth';
+import { getAuthedClientId } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,12 +13,12 @@ export async function GET(req: NextRequest) {
 
   try {
     // 1. Authenticate Client
-    const clientId = await getVerifiedClientId(req);
+    const clientId = await getAuthedClientId(req);
     if (!clientId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    console.log('[Scout Pipeline GET] Authenticated client ID:', clientId);
+    // console.log('[Scout Pipeline GET] Authenticated client ID:', clientId);
 
     const { searchParams } = new URL(req.url);
     const refresh = searchParams.get('refresh') === 'true';
@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
       try {
         const cached = await redis.get(cacheKey);
         if (cached) {
-          console.log('[Scout Pipeline GET] Cache hit for client:', clientId);
+          // console.log('[Scout Pipeline GET] Cache hit for client:', clientId);
           return NextResponse.json(typeof cached === 'string' ? JSON.parse(cached) : cached);
         }
       } catch (cacheErr) {
@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
     }
 
     // 2. Fetch the latest snapshot for this client
-    console.log('[Scout Pipeline GET] Fetching latest snapshot...');
+    // console.log('[Scout Pipeline GET] Fetching latest snapshot...');
     const snapshotRes = await supabaseAdmin
       .from('pipeline_snapshots')
       .select('*')
@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
       .limit(1)
       .maybeSingle();
 
-    console.log('[Scout Pipeline GET] Raw snapshot query response:', JSON.stringify(snapshotRes, null, 2));
+    // console.log('[Scout Pipeline GET] Raw snapshot query response:', JSON.stringify(snapshotRes, null, 2));
     const { data: latestSnapshot, error: snapshotError } = snapshotRes;
 
     if (snapshotError) {
@@ -55,13 +55,13 @@ export async function GET(req: NextRequest) {
     }
 
     // 3. Fetch deal scores for this client
-    console.log('[Scout Pipeline GET] Fetching deal scores...');
+    // console.log('[Scout Pipeline GET] Fetching deal scores...');
     const dealScoresRes = await supabaseAdmin
       .from('deal_scores')
       .select('*')
       .eq('client_id', clientId);
 
-    console.log('[Scout Pipeline GET] Raw deal scores query response:', JSON.stringify(dealScoresRes, null, 2));
+    // console.log('[Scout Pipeline GET] Raw deal scores query response:', JSON.stringify(dealScoresRes, null, 2));
     const { data: dealScores, error: scoresError } = dealScoresRes;
 
     if (scoresError) {

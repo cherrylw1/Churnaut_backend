@@ -52,6 +52,7 @@ export default function SignupPage() {
         body: JSON.stringify({
           userId: user.id,
           companyName: companyName,
+          email: email,
         }),
       });
 

@@ -43,6 +43,21 @@
     }
   }
 
+  /**
+   * Helper function to sanitize HTML content from script tags, event handlers, and javascript URIs.
+   * @param {string} html - HTML string to sanitize.
+   * @returns {string} - Sanitized HTML string.
+   */
+  function sanitizeHtml(html) {
+    if (typeof html !== 'string') return '';
+    var clean = html;
+    clean = clean.replace(/<script[^>]*>([\s\S]*?)<\/script>/gi, '');
+    clean = clean.replace(/<script[^>]*\/>/gi, '');
+    clean = clean.replace(/\s+on[a-z]+\s*=\s*(['"][^'"]*['"]|[^\s>]+)/gi, '');
+    clean = clean.replace(/\s+(href|src)\s*=\s*(['"]\s*javascript:[^'"]*['"]|javascript:[^\s>]+)/gi, '');
+    return clean;
+  }
+
   // 1. Check if the global client ID variable is defined
   var clientId = window.SR_CLIENT_ID;
   if (!clientId) {
@@ -126,7 +141,7 @@
           if (swap.selector && typeof swap.content === "string") {
             var element = document.querySelector(swap.selector);
             if (element) {
-              element.innerHTML = swap.content;
+              element.innerHTML = sanitizeHtml(swap.content);
             }
           }
         }

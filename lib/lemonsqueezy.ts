@@ -2,9 +2,12 @@
 import crypto from 'crypto'
 
 export function verifyWebhookSignature(payload: string, signature: string, secret: string): boolean {
-  const hmac = crypto.createHmac('sha256', secret)
-  const digest = hmac.update(payload).digest('hex')
-  return crypto.timingSafeEqual(Buffer.from(digest), Buffer.from(signature))
+  if (!signature || !secret) return false;
+  const digest = crypto.createHmac('sha256', secret).update(payload).digest('hex');
+  const expected = Buffer.from(digest, 'utf8');
+  const received = Buffer.from(signature, 'utf8');
+  if (expected.length !== received.length) return false;
+  return crypto.timingSafeEqual(expected, received);
 }
 
 export function getVariantId(data: any): string | null {

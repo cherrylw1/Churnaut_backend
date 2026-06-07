@@ -1,7 +1,7 @@
 // cache-bust: gemini-embedding-001
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
-import { getVerifiedClientId } from '@/lib/auth'
+import { getAuthedClientId } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,21 +21,16 @@ Be specific, technical, and precise. Reference exact file names, function names,
 If the answer is in the provided chunks, explain it clearly. If it is not, say so honestly.
 Never make up code that does not exist.`
 
-async function isAuthorized(req: NextRequest): Promise<boolean> {
-  // Allow dashboard users (existing auth)
-  const userId = await getVerifiedClientId(req)
-  return !!userId
-}
+
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json()
-    const { message, history = [], founderKey } = body
-    const founderKeyValid = founderKey === (process.env.FOUNDER_KEY || 'churnaut2026') || founderKey === 'true'
-    const cookieValid = await isAuthorized(req)
-    if (!founderKeyValid && !cookieValid) {
+    const clientId = await getAuthedClientId(req)
+    if (!clientId || clientId !== process.env.FOUNDER_CLIENT_ID) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+    const body = await req.json()
+    const { message, history = [] } = body
 
     if (!message?.trim()) {
       return NextResponse.json({ error: 'Message is required' }, { status: 400 })
