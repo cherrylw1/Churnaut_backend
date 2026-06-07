@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { verifyWebhookSignature, getVariantId, getCustomerId, getSubscriptionId, getTrialEndsAt, getStatus } from '@/lib/lemonsqueezy'
@@ -38,6 +39,21 @@ export async function POST(req: NextRequest) {
 
     switch (eventName) {
       case 'subscription_created': {
+        const email = data?.attributes?.user_email
+        if (!email) break
+
+        const { data: { users }, error: authError } = await supabase.auth.admin.listUsers()
+        if (authError || !users) {
+          console.error('Failed to list auth users:', authError)
+          break
+        }
+
+        const user = users.find((u: any) => u.email?.toLowerCase() === email.toLowerCase())
+        if (!user) {
+          console.error('No auth user found for email:', email)
+          break
+        }
+
         await supabase
           .from('clients')
           .update({
@@ -48,24 +64,8 @@ export async function POST(req: NextRequest) {
             lemonsqueezy_variant_id: variantId,
             trial_ends_at: trialEndsAt,
           })
-          .eq('lemonsqueezy_customer_id', customerId)
+          .eq('id', user.id)
 
-        if (!customerId) break
-
-        const email = data?.attributes?.user_email
-        if (email) {
-          await supabase
-            .from('clients')
-            .update({
-              plan,
-              plan_status: 'trialing',
-              lemonsqueezy_customer_id: customerId,
-              lemonsqueezy_subscription_id: subscriptionId,
-              lemonsqueezy_variant_id: variantId,
-              trial_ends_at: trialEndsAt,
-            })
-            .eq('email', email)
-        }
         break
       }
 
