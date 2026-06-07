@@ -91,6 +91,29 @@ export async function POST(req: NextRequest) {
 
     const client_id = clientData.id;
 
+    // Visit limit check
+    const { data: clientPlanData } = await supabaseAdmin
+      .from('clients')
+      .select('plan, monthly_visits')
+      .eq('id', client_id)
+      .maybeSingle();
+
+    const planLimits: Record<string, number> = {
+      starter: 500,
+      growth: 5000,
+      pro: Infinity,
+    }
+    const clientPlan = clientPlanData?.plan ?? 'starter'
+    const visitLimit = planLimits[clientPlan] ?? 500
+    const currentVisits = clientPlanData?.monthly_visits ?? 0
+
+    if (currentVisits >= visitLimit) {
+      return NextResponse.json(
+        { visitor_token: null, swaps: [] },
+        { headers: corsHeaders }
+      )
+    }
+
     // Rate limiting
     try {
       const { success } = await ratelimit.limit(client_id);
@@ -364,6 +387,15 @@ export async function POST(req: NextRequest) {
         console.error('[Cache Set Error] Failed to write to cache:', cacheSetError);
       }
     }
+
+    // Increment monthly visit counter (fire and forget)
+    ;(async () => {
+      try {
+        await supabaseAdmin.rpc('increment_monthly_visits', { client_id_input: client_id })
+      } catch (err) {
+        console.error('[Visit Counter Error] Failed to increment monthly visits:', err)
+      }
+    })()
 
     return NextResponse.json(instructions, { headers: corsHeaders });
 
