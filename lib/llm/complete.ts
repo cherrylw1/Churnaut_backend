@@ -9,6 +9,7 @@ export interface GenOpts {
   temperature?: number;
   maxTokens?: number;
   model?: string;
+  thinking?: boolean;
 }
 
 /**
@@ -32,6 +33,7 @@ export async function generateText(prompt: string, opts: GenOpts = {}): Promise<
       max_tokens: opts.maxTokens ?? 2048,
       temperature: opts.temperature ?? 0.3,
       top_p: 0.9,
+      chat_template_kwargs: { thinking: opts.thinking ?? false },
     }),
   });
 
