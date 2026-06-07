@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getAuthedClientId } from '@/lib/auth';
+import { generateText } from '@/lib/llm/complete';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,12 +29,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { crm, ideal_customer, company_size, channels, problem } = body;
 
-    // 3. Call Gemini 2.5 Flash-Lite to Generate Routing Rules
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ error: 'Gemini API key is not configured' }, { status: 500 });
-    }
-
+    // 3. Call Together AI to Generate Routing Rules
     const prompt = `You are Churnaut's AI Assistant. Generate a set of routing rules (JSON array of objects) for a B2B client based on their onboarding profile.
     Client profile:
     - CRM: ${crm || 'None'}
@@ -55,37 +51,10 @@ export async function POST(req: NextRequest) {
     Generate exactly 3 highly relevant and helpful rules in priority order based on their profile. E.g., if they use Cold Email, signal_type should be 'Cold Email'. If they sell to large companies, target executives.
     Return ONLY a JSON array. No markdown, no preambles, no explanation.`;
 
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-
-    const geminiRes = await fetch(geminiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              {
-                text: prompt,
-              },
-            ],
-          },
-        ],
-      }),
-    });
-
-    if (!geminiRes.ok) {
-      const errText = await geminiRes.text();
-      console.error('[Onboarding Gemini Error] API returned status:', geminiRes.status, errText);
-      return NextResponse.json({ error: 'Failed to generate onboarding rules via AI' }, { status: 502 });
-    }
-
-    const resData = await geminiRes.json();
-    const rawText = resData.candidates?.[0]?.content?.parts?.[0]?.text;
+    const rawText = await generateText(prompt, { maxTokens: 1500 });
 
     if (!rawText) {
-      console.error('[Onboarding Gemini Error] Empty response structure:', JSON.stringify(resData));
+      console.error('[Onboarding Error] Empty response structure');
       return NextResponse.json({ error: 'Invalid response from AI model' }, { status: 502 });
     }
 

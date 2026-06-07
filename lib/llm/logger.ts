@@ -25,7 +25,7 @@ export async function logLLMCall(data: LLMLogInput): Promise<void> {
     .from('llm_logs')
     .insert({
       ...data,
-      model_used: data.model_used ?? 'gemini-2.0-flash',
+      model_used: data.model_used ?? 'moonshotai/Kimi-K2.6',
       prompt_version: data.prompt_version ?? 'v1.0',
     })
     .then();

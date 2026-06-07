@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { redis } from '@/lib/redis';
 import { logLLMCall } from '@/lib/llm/logger';
+import { generateText } from '@/lib/llm/complete';
 import { getClientPlan, planGate } from '@/lib/gate';
 import { getAuthedClientId } from '@/lib/auth';
 
@@ -49,48 +50,12 @@ export async function POST(req: NextRequest) {
       // Soft fail: continue to query Gemini
     }
 
-    // 5. Call Gemini 2.5 Flash-Lite API
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ error: 'Gemini API key is not configured' }, { status: 500 });
-    }
+    // 5. Call Together AI API
 
     const prompt = `You are a B2B SaaS copywriter specializing in high-converting CTA copy for sales-led growth companies. Generate exactly 5 short CTA variants for a website button. Context: Signal type is ${signal_type}. The visitor's job title is ${job_title}. Their industry is ${industry}. Company size is ${company_size}. Desired tone is ${desired_tone}. Each variant should be under 10 words. Output only a JSON array of 5 strings. No explanation, no preamble, no markdown.`;
 
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-
     const llmStart = Date.now();
-    const geminiRes = await fetch(geminiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              {
-                text: prompt,
-              },
-            ],
-          },
-        ],
-      }),
-    });
-
-    if (!geminiRes.ok) {
-      const errText = await geminiRes.text();
-      console.error('[Copywriter Gemini Error] API returned status:', geminiRes.status, errText);
-      return NextResponse.json({ error: `Gemini API call failed: ${geminiRes.statusText}` }, { status: 502 });
-    }
-
-    const resData = await geminiRes.json();
-    const rawText = resData.candidates?.[0]?.content?.parts?.[0]?.text;
-
-    if (!rawText) {
-      console.error('[Copywriter Gemini Error] Empty response structure:', JSON.stringify(resData));
-      return NextResponse.json({ error: 'Invalid response from Gemini model' }, { status: 502 });
-    }
+    const rawText = await generateText(prompt, { maxTokens: 1200 });
 
     // 6. Clean Markdown formatting out of JSON response
     let cleanedText = rawText.trim();

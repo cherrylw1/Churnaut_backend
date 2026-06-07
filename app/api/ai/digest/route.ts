@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { redis } from '@/lib/redis';
 import { logLLMCall } from '@/lib/llm/logger';
+import { generateText } from '@/lib/llm/complete';
 import { getClientPlan, planGate } from '@/lib/gate';
 import { getAuthedClientId } from '@/lib/auth';
 
@@ -201,12 +202,7 @@ export async function POST(req: NextRequest) {
       best_performing_rule: bestRuleDesc,
     };
 
-    // 3. Call Gemini 2.5 Flash-Lite API
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      console.error('[Digest Gemini Error] API key missing');
-      return NextResponse.json({ error: 'Gemini API key is not configured' }, { status: 500 });
-    }
+    // 3. Call Together AI API
 
     const geminiPrompt = `You are a B2B revenue analyst writing a weekly performance digest for a SaaS company using website personalization.
 Data:
@@ -224,35 +220,8 @@ Write a plain-English digest with 4 sections:
 Tone: direct, data-driven, peer-level. Total under 150 words.
 Output only a JSON object with keys: summary, top_signal, rep_spotlight, recommendation. Do not include markdown formatting or preamble.`;
 
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-
     const llmStart = Date.now();
-    const geminiRes = await fetch(geminiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              {
-                text: geminiPrompt,
-              },
-            ],
-          },
-        ],
-      }),
-    });
-
-    if (!geminiRes.ok) {
-      const errText = await geminiRes.text();
-      console.error('[Digest Gemini Error] API failed:', geminiRes.status, errText);
-      return NextResponse.json({ error: `Gemini API call failed: ${geminiRes.statusText}` }, { status: 502 });
-    }
-
-    const resData = await geminiRes.json();
-    const rawText = resData.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+    const rawText = (await generateText(geminiPrompt, { maxTokens: 1500 })) || '{}';
 
     let cleanedText = rawText.trim();
     if (cleanedText.startsWith('```')) {

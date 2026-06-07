@@ -1,5 +1,6 @@
 import { redis } from '@/lib/redis';
 import { ScoutDeal, ScoutClosedLostDeal, ScoutClosedWonDeal, fetchClosedWonDeals } from './integrations/hubspot-pipeline';
+import { generateText } from '@/lib/llm/complete';
 import { supabaseAdmin } from '@/lib/supabase';
 
 export interface ScoredDeal {
@@ -65,11 +66,6 @@ export async function scoreDealsWithScout(
     return emptyResult;
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error('Gemini API key is not configured in the environment');
-  }
-
   // 2. Build Structured Three-Layer Prompt
   const currentDateStr = new Date().toLocaleDateString('en-US', {
     weekday: 'long',
@@ -131,39 +127,12 @@ Return ALL deals passed in. Never return an empty deals array if deals were prov
 Return ONLY the JSON. No markdown wrappers, no conversational text, no explanations, no preamble. Just raw JSON.
 `;
 
-  // 3. Invoke Gemini 2.5 Flash-Lite API
-  const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-  const geminiRes = await fetch(geminiUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      contents: [
-        {
-          parts: [
-            {
-              text: prompt,
-            },
-          ],
-        },
-      ],
-    }),
-  });
-
-  if (!geminiRes.ok) {
-    const errText = await geminiRes.text();
-    console.error(`[Scout Scoring API Error] Gemini returned status ${geminiRes.status}:`, errText);
-    throw new Error(`Gemini API call failed: ${geminiRes.statusText}`);
-  }
-
-  const resData = await geminiRes.json();
-  console.log('GEMINI RAW RESPONSE:', JSON.stringify(resData, null, 2));
-  const rawText = resData.candidates?.[0]?.content?.parts?.[0]?.text;
+  // 3. Invoke Together AI/Kimi API
+  const rawText = await generateText(prompt, { maxTokens: 3000 });
 
   if (!rawText) {
-    console.error('[Scout Scoring Error] Empty response structure from Gemini:', JSON.stringify(resData));
-    throw new Error('Invalid response structure from Gemini model');
+    console.error('[Scout Scoring Error] Empty response structure from AI model');
+    throw new Error('Invalid response structure from AI model');
   }
 
   // 4. Parse and Clean response JSON
@@ -342,11 +311,7 @@ export async function generateDealObituary(
     return existing;
   }
 
-  // 2. Build Gemini prompt
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error('Gemini API key is not configured in the environment');
-  }
+  // 2. Build Together AI prompt
 
   const prompt = `
 You are Scout, a B2B sales coach writing a deal post-mortem. Be direct, specific, and actionable.
@@ -371,38 +336,8 @@ You must respond with a single, valid JSON object containing exactly these keys 
 Return ONLY the JSON. No markdown wrappers (no \`\`\`json block), no conversational text, no explanations. Just raw JSON.
 `;
 
-  // 3. Invoke Gemini
-  const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-  const geminiRes = await fetch(geminiUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      contents: [
-        {
-          parts: [
-            {
-              text: prompt,
-            },
-          ],
-        },
-      ],
-    }),
-  });
-
-  if (!geminiRes.ok) {
-    const errText = await geminiRes.text();
-    console.error(`[Scout Obituary API Error] Gemini returned status ${geminiRes.status}:`, errText);
-    throw new Error(`Gemini API call failed: ${geminiRes.statusText}`);
-  }
-
-  const resData = await geminiRes.json();
-  const rawText = resData.candidates?.[0]?.content?.parts?.[0]?.text;
-
-  if (!rawText) {
-    throw new Error('Invalid response structure from Gemini model');
-  }
+  // 3. Invoke Together AI/Kimi API
+  const rawText = await generateText(prompt, { maxTokens: 2500 });
 
   let cleanedText = rawText.trim();
   if (cleanedText.startsWith('```')) {
@@ -504,11 +439,7 @@ export async function buildICPFromWins(
     .sort((a, b) => b[1] - a[1])
     .map(([sequence, count]) => ({ sequence, count }));
 
-  // 3. Gemini Prompt to build ICP Summary
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error('Gemini API key is not configured in the environment');
-  }
+  // 3. Prompt to build ICP Summary
 
   const prompt = `
 You are a B2B sales strategist. Based on these closed-won deals, write a crisp 3-sentence ICP (Ideal Customer Profile) summary. Be specific about job title, company type, deal size, and buying behavior.
@@ -523,33 +454,7 @@ Calculated patterns from closed-won deals:
 Your response must be a single, plain-text string containing exactly the 3-sentence ICP summary. No JSON, no markdown wrappers, no conversational text, no explanations. Just the raw 3-sentence summary.
 `;
 
-  const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-  const geminiRes = await fetch(geminiUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      contents: [
-        {
-          parts: [
-            {
-              text: prompt,
-            },
-          ],
-        },
-      ],
-    }),
-  });
-
-  if (!geminiRes.ok) {
-    const errText = await geminiRes.text();
-    console.error(`[Scout ICP AI Error] Gemini returned status ${geminiRes.status}:`, errText);
-    throw new Error(`Gemini API call failed: ${geminiRes.statusText}`);
-  }
-
-  const resData = await geminiRes.json();
-  let icpSummary = resData.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  let icpSummary = (await generateText(prompt, { maxTokens: 1500 })) || '';
   icpSummary = icpSummary.trim();
 
   // Remove potential markdown code blocks if AI wrapped it

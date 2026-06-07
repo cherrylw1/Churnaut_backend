@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { redis } from '@/lib/redis';
+import { generateText } from '@/lib/llm/complete';
 import { getClientPlan, planGate } from '@/lib/gate';
 import { getAuthedClientId } from '@/lib/auth';
 
@@ -188,46 +189,14 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ alerts: [] });
     }
 
-    // 4. Call Gemini 2.5 Flash-Lite API to compile alerts
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      console.error('[Anomaly Gemini Error] API key missing');
-      return NextResponse.json({ error: 'Gemini API key is not configured' }, { status: 500 });
-    }
+    // 4. Call Together AI API to compile alerts
 
     const geminiPrompt = `You are a B2B SaaS performance analyst. Here are anomalies detected in a website personalization system:
 ${anomalies.map(a => `- ${a}`).join('\n')}
 
 Write 1-3 short, plain-English alert messages a non-technical marketing manager would understand. Each under 20 words. Output only a JSON array of strings. Do not wrap in markdown or explanation.`;
 
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-
-    const geminiRes = await fetch(geminiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              {
-                text: geminiPrompt,
-              },
-            ],
-          },
-        ],
-      }),
-    });
-
-    if (!geminiRes.ok) {
-      const errText = await geminiRes.text();
-      console.error('[Anomaly Gemini Error] API failed:', geminiRes.status, errText);
-      return NextResponse.json({ error: `Gemini API call failed: ${geminiRes.statusText}` }, { status: 502 });
-    }
-
-    const resData = await geminiRes.json();
-    const rawText = resData.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
+    const rawText = (await generateText(geminiPrompt, { maxTokens: 1200 })) || '[]';
 
     let cleanedText = rawText.trim();
     if (cleanedText.startsWith('```')) {
