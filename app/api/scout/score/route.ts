@@ -82,6 +82,12 @@ export async function POST(req: NextRequest) {
         last_activity_days: null as number | null,
         contact_count: crm?.contacts?.length || 0,
         website_visits_7d: uni?.website?.visits_7d || 0,
+        confidence: b.confidence,
+        reasoning: b.reasoning,
+        comparison: b.comparison || null,
+        what_would_move_score: b.what_would_move_score || null,
+        evidence: b.evidence || [],
+        data_gaps: b.data_gaps || [],
         scored_at: new Date().toISOString(),
       };
     });
