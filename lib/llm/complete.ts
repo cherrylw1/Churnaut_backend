@@ -12,21 +12,24 @@ const TOGETHER_EMBED_URL = 'https://api.together.xyz/v1/embeddings';
  * Generate an embedding vector for the given text via Together AI.
  * Returns the embedding as a number[]. Throws on a non-OK response.
  */
-export async function embed(text: string): Promise<number[]> {
+export async function embed(text: string, opts: { type?: 'query' | 'document' } = {}): Promise<number[]> {
+  const input =
+    opts.type === 'query'
+      ? `Instruct: Given a question, retrieve the most relevant passages that answer it.\nQuery: ${text}`
+      : text;
   const res = await fetch(TOGETHER_EMBED_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${process.env.TOGETHER_API_KEY}`,
     },
-    body: JSON.stringify({ model: EMBED_MODEL, input: text }),
+    body: JSON.stringify({ model: EMBED_MODEL, input }),
   });
   if (!res.ok) {
     throw new Error(`Together embedding error ${res.status}: ${await res.text()}`);
   }
   const data = await res.json();
-  const vector = data.data?.[0]?.embedding || [];
-  return vector.slice(0, 768);
+  return data.data?.[0]?.embedding || [];
 }
 
 export interface GenOpts {
