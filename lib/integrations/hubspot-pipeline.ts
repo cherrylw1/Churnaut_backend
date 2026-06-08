@@ -11,6 +11,7 @@ export interface ScoutDeal {
   days_in_stage: number;
   last_activity_days: number | null;
   contact_count: number;
+  contact_emails: string[];
   website_visits_7d: number;
   rep_name: string | null;
   rep_email: string | null;
@@ -442,6 +443,7 @@ interface HubSpotDealResult {
       days_in_stage,
       last_activity_days,
       contact_count: item.contactIds.length,
+      contact_emails: item.emails,
       website_visits_7d,
       rep_name,
       rep_email,

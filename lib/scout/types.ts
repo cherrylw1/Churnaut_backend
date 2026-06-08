@@ -28,6 +28,7 @@ export interface ActivityEvent {
 
 export interface DealContact {
   name?: string;
+  email?: string;
   title?: string;
   seniority: Seniority;
   is_decision_maker?: boolean;

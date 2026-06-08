@@ -34,9 +34,11 @@ export async function buildHubSpotCrmSignals(clientId: string): Promise<CrmSigna
   const DAY = 24 * 60 * 60 * 1000;
 
   return deals.map((d): CrmSignals => {
-    const contacts: DealContact[] = Array.from({ length: d.contact_count }, () => ({
-      seniority: 'unknown',
-    }));
+    const emails = d.contact_emails || [];
+    const contacts: DealContact[] = Array.from(
+      { length: Math.max(d.contact_count, emails.length) },
+      (_, i) => ({ email: emails[i], seniority: 'unknown' as const })
+    );
     const last_activity_at =
       d.last_activity_days != null
         ? new Date(now - d.last_activity_days * DAY).toISOString()
