@@ -113,6 +113,18 @@ export async function POST(req: NextRequest) {
       if (updRes.error) { console.error('[Scout Score POST] Update error:', updRes.error); throw updRes.error; }
     }
 
+    // 5b. Append to score history (append-only; powers score trajectory over time)
+    const historyRows = scoredDeals.map((d) => ({
+      client_id: clientId,
+      deal_id: d.deal_id,
+      deal_name: d.deal_name,
+      score: d.score,
+      confidence: d.confidence,
+      scored_at: d.scored_at,
+    }));
+    const { error: historyErr } = await supabaseAdmin.from('deal_score_history').insert(historyRows);
+    if (historyErr) console.error('[Scout Score POST] history insert failed (non-fatal):', historyErr);
+
     // 6. Pipeline snapshot
     const redCount = scoredDeals.filter((d) => d.score === 'RED').length;
     const amberCount = scoredDeals.filter((d) => d.score === 'AMBER').length;
