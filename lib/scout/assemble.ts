@@ -1,6 +1,6 @@
 import { buildHubSpotCrmSignals } from '@/lib/scout/hubspot';
 import { buildUniversalSignals } from '@/lib/scout/universal';
-import { buildPriors } from '@/lib/scout/priors';
+import { buildPriors, getScoreTrajectory } from '@/lib/scout/priors';
 import type { NormalizedDeal, Priors, SignalCompleteness, Availability } from '@/lib/scout/types';
 
 // Until CRM contacts are enriched with real emails (next phase), there is no key to join a deal
@@ -17,12 +17,12 @@ function priorsAvailability(p: Priors): Availability {
 }
 
 export async function buildNormalizedDeals(clientId: string): Promise<NormalizedDeal[]> {
-  const [crmDeals, priors] = await Promise.all([
+  const [crmDeals, basePriors] = await Promise.all([
     buildHubSpotCrmSignals(clientId),
     buildPriors(clientId),
   ]);
 
-  const priorsAvail = priorsAvailability(priors);
+  const priorsAvail = priorsAvailability(basePriors);
   const deals: NormalizedDeal[] = [];
 
   for (const crm of crmDeals) {
@@ -38,6 +38,9 @@ export async function buildNormalizedDeals(clientId: string): Promise<Normalized
       stage_history: crm.stage_history && crm.stage_history.length > 0 ? 'present' : 'missing',
       priors: priorsAvail,
     };
+
+    const score_trajectory = await getScoreTrajectory(clientId, crm.deal_id);
+    const priors = score_trajectory.length ? { ...basePriors, score_trajectory } : basePriors;
 
     deals.push({ universal, crm, priors, completeness });
   }

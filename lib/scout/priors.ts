@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { supabaseAdmin } from '@/lib/supabase';
-import type { Priors, LossPattern } from './types';
+import type { Priors, LossPattern, ScoreTrajectoryPoint, ScoutScore } from './types';
 
 /**
  * Assemble the client's priors (winning ICP, company benchmarks, loss patterns) by READING
@@ -50,4 +50,27 @@ export async function buildPriors(clientId: string): Promise<Priors> {
   } catch (e) { console.error('[buildPriors] deal_obituaries read failed:', e); }
 
   return priors;
+}
+
+export async function getScoreTrajectory(clientId: string, dealId: string): Promise<ScoreTrajectoryPoint[]> {
+  try {
+    const { data } = await supabaseAdmin
+      .from('deal_score_history')
+      .select('scored_at, score')
+      .eq('client_id', clientId)
+      .eq('deal_id', dealId)
+      .order('scored_at', { ascending: true })
+      .limit(50);
+    return ((data || []) as any[])
+      .map((r): ScoreTrajectoryPoint | null => {
+        const s = String(r.score || '').toUpperCase();
+        return s === 'RED' || s === 'AMBER' || s === 'GREEN'
+          ? { scored_at: r.scored_at, score: s as ScoutScore }
+          : null;
+      })
+      .filter((x): x is ScoreTrajectoryPoint => x !== null);
+  } catch (e) {
+    console.error('[getScoreTrajectory] read failed:', e);
+    return [];
+  }
 }

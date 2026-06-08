@@ -11,6 +11,7 @@ HOW TO REASON (weigh these together — do NOT apply rigid thresholds):
 - Engagement: tracked-link clicks, conversions, whether personalization fired, and the entry source.
 - Fit vs WINS: compare to the client's ICP / winning profile when provided.
 - Risk vs LOSSES: compare to the client's loss patterns when provided — if this deal resembles how past deals died, say so explicitly.
+- Trajectory: if score_trajectory is present, weigh whether the deal is improving or deteriorating over time — a deal sliding toward RED is a stronger warning than a stable score.
 
 SCORING (judgment, not thresholds):
 - GREEN: healthy momentum, adequate stakeholder coverage, on or ahead of normal pace.
