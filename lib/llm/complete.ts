@@ -4,6 +4,31 @@ const TOGETHER_API_URL = 'https://api.together.xyz/v1/chat/completions';
 // Model is configurable via env so we can swap/upgrade without code changes.
 export const DEFAULT_MODEL = process.env.TOGETHER_MODEL || 'moonshotai/Kimi-K2.6';
 
+export const EMBED_MODEL = process.env.TOGETHER_EMBED_MODEL || 'intfloat/multilingual-e5-large-instruct';
+
+const TOGETHER_EMBED_URL = 'https://api.together.xyz/v1/embeddings';
+
+/**
+ * Generate an embedding vector for the given text via Together AI.
+ * Returns the embedding as a number[]. Throws on a non-OK response.
+ */
+export async function embed(text: string): Promise<number[]> {
+  const res = await fetch(TOGETHER_EMBED_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${process.env.TOGETHER_API_KEY}`,
+    },
+    body: JSON.stringify({ model: EMBED_MODEL, input: text }),
+  });
+  if (!res.ok) {
+    throw new Error(`Together embedding error ${res.status}: ${await res.text()}`);
+  }
+  const data = await res.json();
+  const vector = data.data?.[0]?.embedding || [];
+  return vector.slice(0, 768);
+}
+
 export interface GenOpts {
   system?: string;
   temperature?: number;
