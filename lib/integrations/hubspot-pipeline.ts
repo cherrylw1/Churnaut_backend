@@ -12,6 +12,7 @@ export interface ScoutDeal {
   last_activity_days: number | null;
   contact_count: number;
   contact_emails: string[];
+  contacts_info: { email: string | null; title: string | null }[];
   website_visits_7d: number;
   rep_name: string | null;
   rep_email: string | null;
@@ -289,6 +290,7 @@ interface HubSpotDealResult {
   // 6. Gather all unique contact IDs and batch read their emails
   const allContactIds = Array.from(new Set(detailedDeals.flatMap((d) => d.contactIds)));
   const contactIdToEmail = new Map<string, string>();
+  const contactIdToTitle = new Map<string, string>();
 
   if (allContactIds.length > 0) {
     const chunkSize = 100;
@@ -302,7 +304,7 @@ interface HubSpotDealResult {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            properties: ['email'],
+            properties: ['email', 'jobtitle'],
             inputs: chunk.map((id) => ({ id })),
           }),
         });
@@ -313,6 +315,10 @@ interface HubSpotDealResult {
             const email = result.properties?.email;
             if (email) {
               contactIdToEmail.set(result.id, email.toLowerCase().trim());
+            }
+            const jobtitle = result.properties?.jobtitle;
+            if (jobtitle) {
+              contactIdToTitle.set(result.id, String(jobtitle).trim());
             }
           }
         }
@@ -327,9 +333,14 @@ interface HubSpotDealResult {
     const emails = d.contactIds
       .map((id) => contactIdToEmail.get(id))
       .filter((email): email is string => !!email);
+    const contactsInfo = d.contactIds.map((id) => ({
+      email: contactIdToEmail.get(id) || null,
+      title: contactIdToTitle.get(id) || null,
+    }));
     return {
       ...d,
       emails,
+      contactsInfo,
     };
   });
 
@@ -442,6 +453,7 @@ interface HubSpotDealResult {
       last_activity_days,
       contact_count: item.contactIds.length,
       contact_emails: item.emails,
+      contacts_info: item.contactsInfo,
       website_visits_7d,
       rep_name,
       rep_email,

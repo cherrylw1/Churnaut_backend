@@ -1,5 +1,5 @@
 import { fetchHubSpotPipeline } from '@/lib/integrations/hubspot-pipeline';
-import type { CrmSignals, CanonicalStage, DealContact } from './types';
+import type { CrmSignals, CanonicalStage, DealContact, Seniority } from './types';
 
 function mapStage(raw: string): CanonicalStage {
   const s = (raw || '').toLowerCase();
@@ -23,6 +23,16 @@ function mapStage(raw: string): CanonicalStage {
   return 'unknown';
 }
 
+function classifySeniority(title?: string | null): Seniority {
+  if (!title) return 'unknown';
+  const t = title.toLowerCase();
+  if (/\b(ceo|cfo|coo|cto|cmo|cro|chief|founder|owner|president|partner)\b/.test(t)) return 'c_level';
+  if (/\b(svp|evp|vp|vice president|head of)\b/.test(t)) return 'vp';
+  if (/\bdirector\b/.test(t)) return 'director';
+  if (/\b(manager|lead|principal)\b/.test(t)) return 'manager';
+  return 'ic';
+}
+
 /**
  * HubSpot CRM adapter (#1). Reshapes the existing pipeline fetch into normalized
  * CrmSignals. Basic fields now; contact titles / activity timeline / stage history
@@ -34,11 +44,23 @@ export async function buildHubSpotCrmSignals(clientId: string): Promise<CrmSigna
   const DAY = 24 * 60 * 60 * 1000;
 
   return deals.map((d): CrmSignals => {
-    const emails = d.contact_emails || [];
-    const contacts: DealContact[] = Array.from(
-      { length: Math.max(d.contact_count, emails.length) },
-      (_, i) => ({ email: emails[i], seniority: 'unknown' as const })
-    );
+    const info = d.contacts_info || [];
+    const contacts: DealContact[] =
+      info.length > 0
+        ? info.map((c) => {
+            const seniority = classifySeniority(c.title);
+            return {
+              email: c.email ?? undefined,
+              title: c.title ?? undefined,
+              seniority,
+              is_decision_maker: seniority === 'c_level' || seniority === 'vp' || seniority === 'director',
+            };
+          })
+        : Array.from(
+            { length: Math.max(d.contact_count, (d.contact_emails || []).length) },
+            (_, i) => ({ email: (d.contact_emails || [])[i], seniority: 'unknown' as const })
+          );
+
     const last_activity_at =
       d.last_activity_days != null
         ? new Date(now - d.last_activity_days * DAY).toISOString()
