@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthedClientId } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase'
-import { embed } from '@/lib/llm/complete'
+import { embed, DEFAULT_MODEL } from '@/lib/llm/complete'
 
 export const dynamic = 'force-dynamic'
 
 const TOGETHER_API_URL = 'https://api.together.xyz/v1/chat/completions'
-const TOGETHER_MODEL = 'Qwen/Qwen2.5-7B-Instruct-Turbo'
 
 const SYSTEM_PROMPT = `You are an expert AI assistant for Sharath, the solo founder of Churnaut — a B2B RevOps SaaS product.
 
@@ -160,7 +159,14 @@ export async function POST(req: NextRequest) {
     const response = await fetch(TOGETHER_API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.TOGETHER_API_KEY}` },
-      body: JSON.stringify({ model: TOGETHER_MODEL, messages, max_tokens: 1500, temperature: 0.3, top_p: 0.9 }),
+      body: JSON.stringify({
+        model: DEFAULT_MODEL,
+        messages,
+        max_tokens: 1500,
+        temperature: 0.3,
+        top_p: 0.9,
+        chat_template_kwargs: { thinking: false },
+      }),
     })
 
     if (!response.ok) {
