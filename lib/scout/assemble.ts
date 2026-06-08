@@ -26,8 +26,9 @@ export async function buildNormalizedDeals(clientId: string): Promise<Normalized
   const deals: NormalizedDeal[] = [];
 
   for (const crm of crmDeals) {
-    // No contact email available yet -> empty universal (see NO_EMAIL note above).
-    const universal = await buildUniversalSignals(clientId, NO_EMAIL);
+    // Join website activity via the deal's primary contact email (empty when none available).
+    const primaryEmail = crm.contacts.find((c) => c.email)?.email || NO_EMAIL;
+    const universal = await buildUniversalSignals(clientId, primaryEmail);
 
     const completeness: SignalCompleteness = {
       crm: 'present',
