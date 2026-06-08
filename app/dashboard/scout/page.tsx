@@ -43,6 +43,7 @@ interface ScoutDealDetail {
   what_would_move_score?: string | null;
   evidence?: string[];
   data_gaps?: string[];
+  score_trajectory?: { scored_at: string; score: 'RED' | 'AMBER' | 'GREEN' }[];
   rep_name: string;
   rep_email: string;
 }
@@ -111,6 +112,21 @@ function DealInsights({ deal }: { deal: ScoutDealDetail }) {
   const body = "font-sans text-[var(--text-secondary)] leading-relaxed";
   return (
     <>
+      {deal.score_trajectory && deal.score_trajectory.length > 1 && (
+        <div className="space-y-1 text-xs font-sans">
+          <span className="font-sans text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider block">Score Trend</span>
+          <div className="flex items-center gap-1">
+            {deal.score_trajectory.map((p, i) => (
+              <span
+                key={i}
+                title={new Date(p.scored_at).toLocaleDateString()}
+                className="w-2.5 h-2.5 rounded-full"
+                style={{ backgroundColor: p.score === 'RED' ? 'var(--red)' : p.score === 'AMBER' ? 'var(--amber)' : 'var(--green)' }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
       {deal.reasoning && (
         <div className="space-y-1 text-xs font-sans">
           <span className={label}>Analyst Read</span>

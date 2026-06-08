@@ -92,6 +92,19 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // Fetch score history for sparkline trends
+    const { data: historyData } = await supabaseAdmin
+      .from('deal_score_history')
+      .select('deal_id, score, scored_at')
+      .eq('client_id', clientId)
+      .order('scored_at', { ascending: true });
+    const historyMap = new Map<string, { scored_at: string; score: string }[]>();
+    for (const h of historyData || []) {
+      const list = historyMap.get(h.deal_id) || [];
+      list.push({ scored_at: h.scored_at, score: h.score });
+      historyMap.set(h.deal_id, list);
+    }
+
     // Decorate each deal score with rep details
     const decoratedScores = (dealScores || []).map((ds) => {
       const repInfo = dealRepMap.get(ds.deal_id) || { rep_name: 'Unknown Rep', rep_email: '' };
@@ -99,6 +112,7 @@ export async function GET(req: NextRequest) {
         ...ds,
         rep_name: ds.rep_name || repInfo.rep_name,
         rep_email: ds.rep_email || repInfo.rep_email,
+        score_trajectory: historyMap.get(ds.deal_id) || [],
       };
     });
 
