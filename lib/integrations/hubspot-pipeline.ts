@@ -134,8 +134,6 @@ export async function fetchHubSpotPipeline(clientId: string, bypassCache = false
     }
   }
 
-  console.log('[HubSpot Pipeline debug] Decrypted access token:', accessToken.substring(0, 20) + '...');
-
   // 4. Fetch open deals from HubSpot CRM
   const searchUrl = 'https://api.hubapi.com/crm/v3/objects/deals/search';
   console.log('[HubSpot Pipeline debug] Fetching open deals from Search URL:', searchUrl);
