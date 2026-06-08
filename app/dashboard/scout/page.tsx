@@ -37,6 +37,12 @@ interface ScoutDealDetail {
   primary_risk: string;
   next_action: string;
   draft_email: string | null;
+  confidence?: string;
+  reasoning?: string;
+  comparison?: string | null;
+  what_would_move_score?: string | null;
+  evidence?: string[];
+  data_gaps?: string[];
   rep_name: string;
   rep_email: string;
 }
@@ -98,6 +104,44 @@ interface DealObituary {
   pattern_match: string;
   full_obituary: string;
   created_at: string;
+}
+
+function DealInsights({ deal }: { deal: ScoutDealDetail }) {
+  const label = "font-sans text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider block";
+  const body = "font-sans text-[var(--text-secondary)] leading-relaxed";
+  return (
+    <>
+      {deal.reasoning && (
+        <div className="space-y-1 text-xs font-sans">
+          <span className={label}>Analyst Read</span>
+          <p className={body}>
+            {deal.reasoning}
+            {deal.confidence ? <span className="text-[var(--text-muted)]"> (confidence: {deal.confidence})</span> : null}
+          </p>
+        </div>
+      )}
+      {deal.evidence && deal.evidence.length > 0 && (
+        <div className="space-y-1 text-xs font-sans">
+          <span className={label}>Evidence</span>
+          <ul className="list-disc list-inside font-mono text-[var(--text-secondary)] leading-relaxed space-y-0.5">
+            {deal.evidence.map((e, i) => <li key={i}>{e}</li>)}
+          </ul>
+        </div>
+      )}
+      {deal.comparison && (
+        <div className="space-y-1 text-xs font-sans">
+          <span className={label}>Pattern Match</span>
+          <p className={body}>{deal.comparison}</p>
+        </div>
+      )}
+      {deal.what_would_move_score && (
+        <div className="space-y-1 text-xs font-sans">
+          <span className={label}>What Would Move the Score</span>
+          <p className={body}>{deal.what_would_move_score}</p>
+        </div>
+      )}
+    </>
+  );
 }
 
 export default function ScoutDashboard() {
@@ -793,6 +837,7 @@ export default function ScoutDashboard() {
                                     <span className="font-sans text-[11px] font-bold text-[var(--red)] uppercase tracking-wider block">Primary Risk Factor</span>
                                     <p className="font-mono text-[var(--red)] leading-relaxed">{deal.primary_risk}</p>
                                   </div>
+                                  <DealInsights deal={deal} />
 
                                   <div className="bg-[var(--red)]/5 border border-[var(--red)]/20 p-3 rounded-[8px] space-y-1 text-xs font-sans">
                                     <span className="font-sans text-[11px] font-bold text-[var(--red)] uppercase tracking-wider block">Recommended Rep Action (Today)</span>
@@ -912,6 +957,7 @@ export default function ScoutDashboard() {
                                     <span className="font-sans text-[11px] font-bold text-[var(--amber)] uppercase tracking-wider block">Primary Risk Factor</span>
                                     <p className="font-mono text-[var(--amber)] leading-relaxed">{deal.primary_risk}</p>
                                   </div>
+                                  <DealInsights deal={deal} />
 
                                   <div className="bg-[var(--amber)]/5 border border-[var(--amber)]/20 p-3 rounded-[8px] space-y-1 text-xs font-sans">
                                     <span className="font-sans text-[11px] font-bold text-[var(--amber)] uppercase tracking-wider block">Recommended Rep Action (Today)</span>
