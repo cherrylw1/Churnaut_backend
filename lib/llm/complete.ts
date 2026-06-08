@@ -38,6 +38,7 @@ export interface GenOpts {
   maxTokens?: number;
   model?: string;
   thinking?: boolean;
+  jsonMode?: boolean;
 }
 
 /**
@@ -49,20 +50,23 @@ export async function generateText(prompt: string, opts: GenOpts = {}): Promise<
   if (opts.system) messages.push({ role: 'system', content: opts.system });
   messages.push({ role: 'user', content: prompt });
 
+  const body: Record<string, any> = {
+    model: opts.model || DEFAULT_MODEL,
+    messages,
+    max_tokens: opts.maxTokens ?? 2048,
+    temperature: opts.temperature ?? 0.3,
+    top_p: 0.9,
+    chat_template_kwargs: { thinking: opts.thinking ?? false },
+  };
+  if (opts.jsonMode) body.response_format = { type: 'json_object' };
+
   const res = await fetch(TOGETHER_API_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${process.env.TOGETHER_API_KEY}`,
     },
-    body: JSON.stringify({
-      model: opts.model || DEFAULT_MODEL,
-      messages,
-      max_tokens: opts.maxTokens ?? 2048,
-      temperature: opts.temperature ?? 0.3,
-      top_p: 0.9,
-      chat_template_kwargs: { thinking: opts.thinking ?? false },
-    }),
+    body: JSON.stringify(body),
   });
 
   if (!res.ok) {
@@ -98,13 +102,13 @@ function stripFences(s: string): string {
  * Throws if both attempts fail to parse.
  */
 export async function generateJSON(prompt: string, opts: GenOpts = {}): Promise<{ raw: string; parsed: any }> {
-  let raw = await generateText(prompt, opts);
+  let raw = await generateText(prompt, { ...opts, jsonMode: true });
   try {
     return { raw, parsed: JSON.parse(stripFences(raw)) };
   } catch {
     raw = await generateText(
       `${prompt}\n\nReturn ONLY valid minified JSON — no prose, no markdown, no code fences.`,
-      { ...opts, temperature: 0 }
+      { ...opts, temperature: 0, jsonMode: true }
     );
     return { raw, parsed: JSON.parse(stripFences(raw)) };
   }
