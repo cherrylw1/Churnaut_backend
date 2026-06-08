@@ -347,8 +347,8 @@ TEST ACCOUNT:
 ]
 
 function chunkContent(content: string): string[] {
-  const CHUNK_SIZE = 1500
-  const OVERLAP = 200
+  const CHUNK_SIZE = 1000
+  const OVERLAP = 150
   if (content.length <= 2000) return [content]
   const chunks: string[] = []
   let start = 0
