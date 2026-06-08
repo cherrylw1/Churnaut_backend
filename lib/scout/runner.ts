@@ -4,15 +4,10 @@ import type { ScoutAnalysis, ScoutBrief, NormalizedDeal } from '@/lib/scout/type
 
 const SCORE_WEIGHT: Record<string, number> = { RED: 1, AMBER: 0.5, GREEN: 0 };
 
-async function mapWithConcurrency<T, R>(
-  items: T[],
-  limit: number,
-  fn: (item: T) => Promise<R>
-): Promise<R[]> {
+async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
   const results: R[] = [];
   for (let i = 0; i < items.length; i += limit) {
-    const batch = items.slice(i, i + limit);
-    results.push(...(await Promise.all(batch.map(fn))));
+    results.push(...(await Promise.all(items.slice(i, i + limit).map(fn))));
   }
   return results;
 }
@@ -36,11 +31,17 @@ async function analyzeOne(deal: NormalizedDeal): Promise<ScoutBrief> {
   }
 }
 
-export async function runScoutPipeline(clientId: string): Promise<ScoutAnalysis> {
-  const deals = await buildNormalizedDeals(clientId);
+/** Analyze already-assembled deals into briefs + pipeline pressure. */
+export async function analyzeDeals(deals: NormalizedDeal[]): Promise<ScoutAnalysis> {
   const briefs = await mapWithConcurrency(deals, 5, analyzeOne);
   const pipeline_pressure_score = briefs.length
     ? Math.round((briefs.reduce((s, b) => s + (SCORE_WEIGHT[b.score] ?? 0.5), 0) / briefs.length) * 100)
     : 0;
   return { pipeline_pressure_score, briefs };
+}
+
+/** Convenience: assemble the client's deals then analyze them. */
+export async function runScoutPipeline(clientId: string): Promise<ScoutAnalysis> {
+  const deals = await buildNormalizedDeals(clientId);
+  return analyzeDeals(deals);
 }
