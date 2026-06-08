@@ -192,6 +192,24 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Scout pipeline health (non-fatal) for a two-pillar digest
+    let pipelineHealthLine = '';
+    try {
+      const { data: snap } = await supabaseAdmin
+        .from('pipeline_snapshots')
+        .select('pressure_score, red_count, amber_count, total_deals')
+        .eq('client_id', clientId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (snap && (snap.total_deals || 0) > 0) {
+        const atRisk = (snap.red_count || 0) + (snap.amber_count || 0);
+        pipelineHealthLine = `\n- Pipeline health (Scout): pressure score ${snap.pressure_score}/100, ${atRisk} of ${snap.total_deals} open deals flagged at risk (RED/AMBER).`;
+      }
+    } catch (e) {
+      console.error('[Digest] pipeline health fetch failed (non-fatal):', e);
+    }
+
     const performanceData = {
       top_signal_this_week: topSignal,
       top_signal_conversion_rate: topSignal !== 'None' ? `${Math.round((thisWeekSignalData.rates[topSignal] || 0) * 100)}%` : '0%',
@@ -209,10 +227,10 @@ Data:
 - Top converting traffic source/signal: ${performanceData.top_signal_this_week} (Conversion rate: ${performanceData.top_signal_conversion_rate}, Change from last week: ${performanceData.top_signal_change_vs_last_week})
 - Best performing sales rep: ${performanceData.best_converting_rep}
 - Total personalization triggers this week vs last week: ${performanceData.personalization_triggers_this_week} (this week) vs ${performanceData.personalization_triggers_last_week} (last week)
-- Best performing routing rule: ${performanceData.best_performing_rule}
+- Best performing routing rule: ${performanceData.best_performing_rule}${pipelineHealthLine}
 
 Write a plain-English digest with 4 sections:
-1. THIS WEEK SUMMARY (2 sentences summarizing triggers variation and general conversion performance)
+1. THIS WEEK SUMMARY (2 sentences summarizing triggers variation, conversion performance, and — if pipeline health data is shown above — overall deal-pipeline risk)
 2. TOP SIGNAL (1 sentence explaining which signal performed best)
 3. REP SPOTLIGHT (1 sentence celebrating the top converting rep)
 4. ONE RECOMMENDATION (1 actionable sentence on how to optimize rules or links)
