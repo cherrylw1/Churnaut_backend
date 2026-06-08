@@ -56,6 +56,7 @@ export async function buildHubSpotCrmSignals(clientId: string): Promise<CrmSigna
       close_date: d.close_date ?? undefined,
       days_in_current_stage: d.days_in_stage,
       last_activity_at,
+      days_since_last_activity: d.last_activity_days ?? undefined,
       contacts,
     };
   });

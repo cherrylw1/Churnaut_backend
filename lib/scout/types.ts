@@ -104,6 +104,7 @@ export interface CrmSignals {
   days_in_current_stage?: number;
   last_activity_at?: string;
   last_activity_type?: ActivityType;
+  days_since_last_activity?: number;
   last_meeting_at?: string;
   next_meeting_at?: string;
   activity_timeline?: ActivityEvent[];

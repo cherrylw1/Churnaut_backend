@@ -29,6 +29,7 @@ OUTPUT RULES:
 - "draft_message" is a short, grounded outreach draft referencing real specifics — include it for RED and AMBER, return "" for GREEN.
 - "what_would_move_score" is the single lever that would most improve this deal.
 - "data_gaps" lists missing/partial signals that would sharpen the assessment.
+- Day-counts such as days_in_current_stage and days_since_last_activity are provided as numbers — cite them directly. Do NOT compute durations from timestamps yourself.
 - Be concise. Ground everything in the provided data.
 
 Respond with ONLY a JSON object (no prose, no markdown) with exactly these keys:

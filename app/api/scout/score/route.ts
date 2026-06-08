@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
         deal_value: crm?.value || 0,
         close_date: crm?.close_date || null,
         days_in_stage: crm?.days_in_current_stage || 0,
-        last_activity_days: null as number | null,
+        last_activity_days: crm?.days_since_last_activity ?? null,
         contact_count: crm?.contacts?.length || 0,
         website_visits_7d: uni?.website?.visits_7d || 0,
         confidence: b.confidence,
