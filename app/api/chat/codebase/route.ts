@@ -1,7 +1,7 @@
-// cache-bust: gemini-embedding-001
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { getAuthedClientId } from '@/lib/auth'
+import { embed } from '@/lib/llm/complete'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,6 +23,10 @@ Never make up code that does not exist.`
 
 
 
+async function embedQuery(text: string): Promise<number[]> {
+  return embed(text, { type: 'query' })
+}
+
 export async function POST(req: NextRequest) {
   try {
     const clientId = await getAuthedClientId(req)
@@ -38,19 +42,9 @@ export async function POST(req: NextRequest) {
 
     let chunks: Array<{ file_path: string; content: string; similarity: number }> = [];
     try {
-      const embeddingRes = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${process.env.GEMINI_EMBEDDING_KEY}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ model: 'models/gemini-embedding-001', content: { parts: [{ text: message }] }, outputDimensionality: 768 }),
-        }
-      )
-      if (embeddingRes.ok) {
-        const embeddingData = await embeddingRes.json()
-        const queryEmbedding = embeddingData.embedding.values
+      const queryEmbedding = await embedQuery(message);
 
-        const { data, error: searchError } = await supabaseAdmin.rpc(
+      const { data, error: searchError } = await supabaseAdmin.rpc(
           'match_code_chunks',
           {
             query_embedding: JSON.stringify(queryEmbedding),
@@ -63,10 +57,6 @@ export async function POST(req: NextRequest) {
         } else {
           console.error('[Chat] Vector search error:', searchError)
         }
-      } else {
-        const err = await embeddingRes.text()
-        console.error('[Chat] Embedding error:', err)
-      }
     } catch (err) {
       console.error('[Chat] Embedding exception:', err)
     }

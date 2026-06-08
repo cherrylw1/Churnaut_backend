@@ -2,6 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import { createClient } from '@supabase/supabase-js'
 import * as dotenv from 'dotenv'
+import { embed } from '../lib/llm/complete'
 
 dotenv.config({ path: '.env.local' })
 
@@ -110,20 +111,7 @@ function chunkContent(content: string): string[] {
 }
 
 async function embedText(text: string): Promise<number[]> {
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${process.env.GEMINI_EMBEDDING_KEY}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'models/gemini-embedding-001', content: { parts: [{ text }] }, outputDimensionality: 768 }),
-    }
-  )
-  if (!res.ok) {
-    const err = await res.text()
-    throw new Error(`Embedding API error ${res.status}: ${err}`)
-  }
-  const data = await res.json()
-  return data.embedding.values
+  return embed(text)
 }
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))

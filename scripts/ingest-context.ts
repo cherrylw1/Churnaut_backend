@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import * as dotenv from 'dotenv'
+import { embed } from '../lib/llm/complete'
 
 dotenv.config({ path: '.env.local' })
 
@@ -82,7 +83,7 @@ Database: Supabase (PostgreSQL) — all RLS enabled, all API routes use supabase
 Cache: Upstash Redis — rate limiting + caching (300s TTL for resolve, 60s for pipeline)
 CDN/Hosting: Vercel — auto-deploys from GitHub main branch
 AI (Product): Google Gemini 2.5 Flash-Lite
-AI (Embeddings): Google gemini-embedding-001 (768 dimensions, outputDimensionality: 768)
+AI (Embeddings): Together AI multilingual-e5-large-instruct (1024 dimensions)
 AI (Codebase Chat): Qwen/Qwen2.5-7B-Instruct-Turbo via Together AI
 Email: Resend — sent from noreply@churnaut.com
 Payments: Lemon Squeezy (pending — blocked on Pvt Ltd registration)
@@ -104,7 +105,7 @@ Design System:
 Environment Variables:
 NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
 UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN
-GEMINI_API_KEY, GEMINI_EMBEDDING_KEY, TOGETHER_API_KEY
+GEMINI_API_KEY, TOGETHER_API_KEY
 HUBSPOT_CLIENT_ID/SECRET, PIPEDRIVE_CLIENT_ID/SECRET, ZOHO_CLIENT_ID/SECRET
 CLOSE_CLIENT_ID/SECRET, CALENDLY_CLIENT_ID/SECRET, CALENDLY_WEBHOOK_SIGNING_KEY
 RESEND_API_KEY, NEXT_PUBLIC_SNIPPET_CDN_URL`
@@ -216,7 +217,7 @@ PHASE 2 — FEEDBACK COLLECTION (COMPLETE)
 Thumbs up/down on RED and AMBER Scout deal cards. log_id returned in Scout score API response. /api/scout/feedback PATCH endpoint writes feedback_type back to llm_logs. feedbackGiven state prevents double-submission.
 
 PHASE 3 — CODEBASE RAG CHAT (COMPLETE)
-pgvector enabled on Supabase. code_embeddings table with HNSW index (768 dimensions). match_code_chunks() RPC for cosine similarity search. scripts/ingest.ts walks repo, chunks files, embeds via gemini-embedding-001, stores in Supabase. /api/chat/codebase route: embeds query, vector search top 8 chunks, passes to Qwen2.5-7B. /dashboard/chat: clean chat UI, suggested questions, sources shown.
+pgvector enabled on Supabase. code_embeddings table with HNSW index (1024 dimensions). match_code_chunks() RPC for cosine similarity search. scripts/ingest.ts walks repo, chunks files, embeds via Together AI E5 helper, stores in Supabase. /api/chat/codebase route: embeds query, vector search top 8 chunks, passes to Qwen2.5-7B. /dashboard/chat: clean chat UI, suggested questions, sources shown.
 
 PHASE 4 — FINE-TUNING PLAN (FUTURE)
 Target model: Gemma 3 4B (or Qwen2.5-7B when data is ready)
@@ -360,20 +361,7 @@ function chunkContent(content: string): string[] {
 }
 
 async function embedText(text: string): Promise<number[]> {
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${process.env.GEMINI_EMBEDDING_KEY}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'models/gemini-embedding-001', content: { parts: [{ text }] }, outputDimensionality: 768 }),
-    }
-  )
-  if (!res.ok) {
-    const err = await res.text()
-    throw new Error(`Embedding API error ${res.status}: ${err}`)
-  }
-  const data = await res.json()
-  return data.embedding.values
+  return embed(text)
 }
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))

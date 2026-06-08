@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthedClientId } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase'
+import { embed } from '@/lib/llm/complete'
 
 export const dynamic = 'force-dynamic'
 
@@ -33,17 +34,7 @@ Never make up code that doesn't exist.`
 
 
 async function embedQuery(text: string): Promise<number[]> {
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${process.env.GEMINI_EMBEDDING_KEY}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'models/gemini-embedding-001', content: { parts: [{ text }] }, outputDimensionality: 768 }),
-    }
-  )
-  if (!res.ok) throw new Error(`Embedding error ${res.status}`)
-  const data = await res.json()
-  return data.embedding.values
+  return embed(text, { type: 'query' })
 }
 
 function isHealthCheckRequest(message: string): boolean {
