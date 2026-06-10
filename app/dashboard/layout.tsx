@@ -15,7 +15,8 @@ import {
   Settings,
   Menu,
   Plug,
-  HelpCircle
+  HelpCircle,
+  CreditCard
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ToastContainer } from '@/components/ui/Toast';
@@ -52,6 +53,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { label: 'Integrations', href: '/dashboard/integrations', icon: Plug },
     { label: 'Snippet', href: '/dashboard/snippet', icon: Code2 },
     { label: 'Settings', href: '/dashboard/settings', icon: Settings },
+    { label: 'Billing', href: '/dashboard/billing', icon: CreditCard },
     { label: 'Support', href: '/dashboard/support', icon: HelpCircle },
   ];
 
