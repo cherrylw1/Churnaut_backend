@@ -110,12 +110,12 @@ export default function IntegrationsPage() {
         {/* Pipedrive */}
         <div className="relative">
           {plan === 'starter' && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 rounded-lg z-10 gap-2">
-              <span className="text-xs font-mono uppercase tracking-wider text-[var(--text-muted)]">Growth Plan</span>
-              <a href="/dashboard/billing" className="text-xs text-[#6366f1] hover:underline font-sans">Upgrade to unlock</a>
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-[var(--bg-base)]/85 backdrop-blur-[2px] rounded-lg z-10 gap-2 pointer-events-auto">
+              <span className="text-[10px] font-mono uppercase tracking-widest text-[var(--text-muted)]">Growth Plan</span>
+              <a href="/dashboard/billing" className="text-xs font-semibold text-[#6366f1] hover:text-white border border-[#6366f1]/30 hover:border-[#6366f1] px-3 py-1.5 rounded transition-all font-sans">Upgrade to unlock &rarr;</a>
             </div>
           )}
-          <div className={`border bg-[var(--bg-elevated)]/50 rounded-lg p-5 flex flex-col justify-between gap-4 ${crmStatus?.crm_type === 'pipedrive' ? 'border-green-900/30' : 'border-[var(--border-subtle)]'}`}>
+          <div className={`border bg-[var(--bg-elevated)]/50 rounded-lg p-5 flex flex-col justify-between gap-4 ${plan === 'starter' ? 'pointer-events-none select-none' : ''} ${crmStatus?.crm_type === 'pipedrive' ? 'border-green-900/30' : 'border-[var(--border-subtle)]'}`}>
             <div className="space-y-3">
               <div className="flex justify-between items-center">
                 <h3 className="font-mono font-bold uppercase text-sm text-[var(--text-primary)]">Pipedrive</h3>
@@ -149,12 +149,12 @@ export default function IntegrationsPage() {
         {/* Zoho CRM */}
         <div className="relative">
           {plan === 'starter' && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 rounded-lg z-10 gap-2">
-              <span className="text-xs font-mono uppercase tracking-wider text-[var(--text-muted)]">Growth Plan</span>
-              <a href="/dashboard/billing" className="text-xs text-[#6366f1] hover:underline font-sans">Upgrade to unlock</a>
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-[var(--bg-base)]/85 backdrop-blur-[2px] rounded-lg z-10 gap-2 pointer-events-auto">
+              <span className="text-[10px] font-mono uppercase tracking-widest text-[var(--text-muted)]">Growth Plan</span>
+              <a href="/dashboard/billing" className="text-xs font-semibold text-[#6366f1] hover:text-white border border-[#6366f1]/30 hover:border-[#6366f1] px-3 py-1.5 rounded transition-all font-sans">Upgrade to unlock &rarr;</a>
             </div>
           )}
-          <div className={`border bg-[var(--bg-elevated)]/50 rounded-lg p-5 flex flex-col justify-between gap-4 ${crmStatus?.crm_type === 'zoho' ? 'border-green-900/30' : 'border-[var(--border-subtle)]'}`}>
+          <div className={`border bg-[var(--bg-elevated)]/50 rounded-lg p-5 flex flex-col justify-between gap-4 ${plan === 'starter' ? 'pointer-events-none select-none' : ''} ${crmStatus?.crm_type === 'zoho' ? 'border-green-900/30' : 'border-[var(--border-subtle)]'}`}>
             <div className="space-y-3">
               <div className="flex justify-between items-center">
                 <h3 className="font-mono font-bold uppercase text-sm text-[var(--text-primary)]">Zoho CRM</h3>
@@ -188,12 +188,12 @@ export default function IntegrationsPage() {
         {/* Close */}
         <div className="relative">
           {plan === 'starter' && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 rounded-lg z-10 gap-2">
-              <span className="text-xs font-mono uppercase tracking-wider text-[var(--text-muted)]">Growth Plan</span>
-              <a href="/dashboard/billing" className="text-xs text-[#6366f1] hover:underline font-sans">Upgrade to unlock</a>
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-[var(--bg-base)]/85 backdrop-blur-[2px] rounded-lg z-10 gap-2 pointer-events-auto">
+              <span className="text-[10px] font-mono uppercase tracking-widest text-[var(--text-muted)]">Growth Plan</span>
+              <a href="/dashboard/billing" className="text-xs font-semibold text-[#6366f1] hover:text-white border border-[#6366f1]/30 hover:border-[#6366f1] px-3 py-1.5 rounded transition-all font-sans">Upgrade to unlock &rarr;</a>
             </div>
           )}
-          <div className={`border bg-[var(--bg-elevated)]/50 rounded-lg p-5 flex flex-col justify-between gap-4 ${crmStatus?.crm_type === 'close' ? 'border-green-900/30' : 'border-[var(--border-subtle)]'}`}>
+          <div className={`border bg-[var(--bg-elevated)]/50 rounded-lg p-5 flex flex-col justify-between gap-4 ${plan === 'starter' ? 'pointer-events-none select-none' : ''} ${crmStatus?.crm_type === 'close' ? 'border-green-900/30' : 'border-[var(--border-subtle)]'}`}>
             <div className="space-y-3">
               <div className="flex justify-between items-center">
                 <h3 className="font-mono font-bold uppercase text-sm text-[var(--text-primary)]">Close</h3>

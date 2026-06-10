@@ -1,12 +1,17 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
+
+const VISIT_LIMITS: Record<string, number> = { starter: 500, growth: 5000, pro: Infinity };
+const PLAN_LABELS: Record<string, string> = { starter: 'Starter', growth: 'Growth', pro: 'Pro' };
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [domain, setDomain] = useState('');
   const [companyName, setCompanyName] = useState('');
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [plan, setPlan] = useState('starter');
+  const [monthlyVisits, setMonthlyVisits] = useState(0);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -19,6 +24,8 @@ export default function SettingsPage() {
           if (data.client) {
             setDomain(data.client.domain || '');
             setCompanyName(data.client.company_name || '');
+            setPlan(data.client.plan || 'starter');
+            setMonthlyVisits(data.client.monthly_visits || 0);
           }
         }
       } catch (err) {
@@ -36,12 +43,9 @@ export default function SettingsPage() {
     try {
       const res = await fetch('/api/client', {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ domain }),
       });
-
       const data = await res.json();
       if (res.ok && data.success) {
         setMessage({ type: 'success', text: 'Domain updated successfully.' });
@@ -49,151 +53,135 @@ export default function SettingsPage() {
       } else {
         setMessage({ type: 'error', text: data.error || 'Failed to update domain.' });
       }
-    } catch (err) {
-      console.error('Error updating domain:', err);
+    } catch {
       setMessage({ type: 'error', text: 'Network error occurred.' });
     } finally {
       setSaving(false);
     }
   };
 
+  const visitLimit = VISIT_LIMITS[plan] ?? 500;
+  const visitPct = visitLimit === Infinity ? 0 : Math.min((monthlyVisits / visitLimit) * 100, 100);
+  const barColor = visitPct >= 90 ? '#ef4444' : visitPct >= 70 ? '#f59e0b' : '#6366f1';
+
   return (
-    <div className="space-y-8 max-w-4xl bg-[var(--bg-base)] text-[var(--text-primary)] min-h-screen">
-      {/* Page Header */}
-      <div className="border-b border-[var(--border-subtle)] pb-5">
-        <h1 className="text-xl font-bold tracking-wider font-mono uppercase text-white">
-          SETTINGS
-        </h1>
-        <p className="text-xs font-mono text-gray-400 mt-1">
-          Manage your account, security, and billing preferences.
+    <div className="space-y-8 max-w-4xl font-sans">
+
+      {/* Page header */}
+      <div>
+        <h1 className="text-[24px] font-bold text-[var(--text-primary)]">Settings</h1>
+        <p className="text-sm text-[var(--text-secondary)] mt-1">
+          Manage your account, workspace, and plan.
         </p>
       </div>
 
-      {/* Settings Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        
+
         {/* Card 1: Account */}
-        <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-lg p-6 flex flex-col justify-between hover:border-[#6366f1]/30 hover:bg-[var(--bg-elevated)]/30 transition-all group">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-mono font-bold bg-green-950/20 text-green-400 border border-green-900/40 px-2 py-0.5 rounded uppercase">
-                ACTIVE
-              </span>
-              <span className="text-xs font-mono text-gray-500">Profile</span>
+        <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-[12px] p-6 flex flex-col gap-5">
+          <div>
+            <p className="text-[11px] font-mono uppercase tracking-widest text-[var(--text-muted)] mb-3">Account</p>
+            <h2 className="text-[15px] font-bold text-[var(--text-primary)]">Workspace</h2>
+            <p className="text-xs text-[var(--text-secondary)] mt-1">Your company profile and tracked domain.</p>
+          </div>
+
+          {loading ? (
+            <div className="space-y-3 animate-pulse">
+              <div className="h-8 bg-[var(--border-subtle)] rounded" />
+              <div className="h-8 bg-[var(--border-subtle)] rounded" />
             </div>
-            
-            <div className="space-y-2">
-              <h2 className="text-sm font-mono font-bold text-white uppercase group-hover:text-[#6366f1] transition-colors">
-                Account
-              </h2>
-              <p className="text-xs font-mono text-gray-400 leading-relaxed">
-                Update your display name, email address, and workspace preferences.
-              </p>
-            </div>
-
-            {loading ? (
-              <div className="text-xs font-mono text-gray-500 pt-4">Loading client details...</div>
-            ) : (
-              isExpanded && (
-                <div className="space-y-4 pt-4 border-t border-[var(--border-subtle)]">
-                  {/* Website Domain Input */}
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-mono text-gray-400 uppercase block">
-                      Website Domain
-                    </label>
-                    <input
-                      type="text"
-                      value={domain}
-                      onChange={(e) => setDomain(e.target.value)}
-                      placeholder="https://yourwebsite.com"
-                      className="w-full bg-[#080B0F] border border-[var(--border-subtle)] text-white text-xs font-mono px-3 py-2 rounded focus:outline-none focus:border-[#6366f1] transition-all"
-                    />
-                  </div>
-
-                  {/* Company Name Input (Display Only) */}
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-mono text-gray-400 uppercase block">
-                      Company Name
-                    </label>
-                    <input
-                      type="text"
-                      value={companyName}
-                      readOnly
-                      className="w-full bg-[#080B0F] border border-[var(--border-subtle)] text-gray-500 text-xs font-mono px-3 py-2 rounded cursor-not-allowed outline-none opacity-60"
-                    />
-                  </div>
-
-                  {message && (
-                    <div className={`text-[11px] font-mono ${message.type === 'success' ? 'text-green-400' : 'text-red-400'}`}>
-                      {message.text}
-                    </div>
-                  )}
+          ) : (
+            <div className="space-y-4">
+              {/* Company name — read only */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-mono uppercase tracking-wider text-[var(--text-muted)]">
+                  Company Name
+                </label>
+                <div className="w-full bg-[var(--bg-base)] border border-[var(--border-subtle)] text-[var(--text-muted)] text-xs font-mono px-3 py-2.5 rounded-[6px] opacity-60 cursor-not-allowed">
+                  {companyName || '—'}
                 </div>
-              )
-            )}
-          </div>
-          
-          <div className="pt-6 flex gap-2">
-            {!loading && (
-              isExpanded ? (
-                <>
-                  <button
-                    onClick={() => {
-                      setIsExpanded(false);
-                      setMessage(null);
-                    }}
-                    className="flex-1 py-2 px-3 border border-[var(--border-subtle)] text-white font-mono text-xs rounded hover:bg-white/5 transition-all text-center"
-                  >
-                    CANCEL
-                  </button>
-                  <button
-                    onClick={handleSave}
-                    disabled={saving}
-                    className="flex-1 py-2 px-3 bg-[#6366f1] text-white font-mono text-xs rounded hover:bg-[#4f46e5] disabled:opacity-50 transition-all text-center"
-                  >
-                    {saving ? 'SAVING...' : 'SAVE'}
-                  </button>
-                </>
-              ) : (
-                <button
-                  onClick={() => setIsExpanded(true)}
-                  className="w-full py-2 px-3 border border-[var(--border-subtle)] text-white font-mono text-xs rounded hover:border-[#6366f1]/50 hover:bg-white/5 text-center transition-all"
-                >
-                  MANAGE &rarr;
-                </button>
-              )
-            )}
-          </div>
+              </div>
+
+              {/* Domain — editable */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-mono uppercase tracking-wider text-[var(--text-muted)]">
+                  Tracked Domain
+                </label>
+                <input
+                  type="text"
+                  value={domain}
+                  onChange={(e) => setDomain(e.target.value)}
+                  placeholder="https://yourwebsite.com"
+                  className="w-full bg-[var(--bg-base)] border border-[var(--border-subtle)] focus:border-[#6366f1] text-[var(--text-primary)] text-xs font-mono px-3 py-2.5 rounded-[6px] outline-none transition-colors"
+                />
+              </div>
+
+              {message && (
+                <p className={`text-[11px] font-mono ${message.type === 'success' ? 'text-green-400' : 'text-red-400'}`}>
+                  {message.text}
+                </p>
+              )}
+
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="w-full bg-[#6366f1] hover:bg-[#5053e1] disabled:opacity-50 text-white text-xs font-semibold font-sans py-2.5 rounded-[8px] transition-all active:scale-[0.98]"
+              >
+                {saving ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* Card 2: Billing */}
-        <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-lg p-6 flex flex-col justify-between opacity-80 transition-all">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-mono font-bold bg-yellow-950/20 text-yellow-500 border border-yellow-900/40 px-2 py-0.5 rounded uppercase">
-                PENDING
-              </span>
-              <span className="text-xs font-mono text-gray-500">Lemon Squeezy</span>
-            </div>
-            
-            <div className="space-y-2">
-              <h2 className="text-sm font-mono font-bold text-white uppercase">
-                Billing
-              </h2>
-              <p className="text-xs font-mono text-gray-400 leading-relaxed">
-                Manage your subscription, view invoices, and update payment details. Powered by Lemon Squeezy.
-              </p>
-            </div>
+        {/* Card 2: Plan & Usage */}
+        <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-[12px] p-6 flex flex-col gap-5">
+          <div>
+            <p className="text-[11px] font-mono uppercase tracking-widest text-[var(--text-muted)] mb-3">Subscription</p>
+            <h2 className="text-[15px] font-bold text-[var(--text-primary)]">Plan & Usage</h2>
+            <p className="text-xs text-[var(--text-secondary)] mt-1">{"Your current plan and this month's visit usage."}</p>
           </div>
-          
-          <div className="pt-6">
-            <button
-              disabled
-              className="w-full py-2 px-3 border border-[var(--border-subtle)] text-gray-500 font-mono text-xs rounded opacity-40 cursor-not-allowed text-center"
-            >
-              COMING SOON
-            </button>
-          </div>
+
+          {loading ? (
+            <div className="space-y-3 animate-pulse">
+              <div className="h-6 bg-[var(--border-subtle)] rounded w-1/3" />
+              <div className="h-2 bg-[var(--border-subtle)] rounded" />
+            </div>
+          ) : (
+            <div className="space-y-5">
+              {/* Plan badge */}
+              <div className="flex items-center gap-3">
+                <span className="text-[11px] font-mono uppercase tracking-widest text-[var(--text-muted)]">Current plan</span>
+                <span className="text-[11px] font-mono font-bold text-[#6366f1] border border-[#6366f1]/30 bg-[#6366f1]/10 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                  {PLAN_LABELS[plan] || 'Starter'}
+                </span>
+              </div>
+
+              {/* Usage bar */}
+              {visitLimit !== Infinity ? (
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-[var(--text-muted)]">Tracked visits this month</span>
+                    <span className={`text-[10px] font-mono font-bold ${visitPct >= 90 ? 'text-red-400' : visitPct >= 70 ? 'text-amber-400' : 'text-[var(--text-muted)]'}`}>
+                      {monthlyVisits.toLocaleString()} / {visitLimit.toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="h-1.5 bg-[var(--border-subtle)] rounded-full overflow-hidden">
+                    <div className="h-full rounded-full transition-all duration-700" style={{ width: `${visitPct}%`, backgroundColor: barColor }} />
+                  </div>
+                  <p className="text-[9px] font-mono text-[var(--text-muted)]">Resets on the 1st of each month.</p>
+                </div>
+              ) : (
+                <p className="text-xs font-mono text-green-400">Unlimited tracked visits</p>
+              )}
+
+              <Link
+                href="/dashboard/billing"
+                className="block w-full text-center border border-[#6366f1]/30 hover:border-[#6366f1] hover:bg-[#6366f1]/5 text-[#6366f1] hover:text-white text-xs font-semibold font-sans py-2.5 rounded-[8px] transition-all"
+              >
+                Manage Billing &rarr;
+              </Link>
+            </div>
+          )}
         </div>
 
       </div>
