@@ -47,6 +47,9 @@ interface OnboardingStatus {
 }
 
 export default function DashboardPage() {
+  const [plan, setPlan] = useState<string>('starter');
+  const [monthlyVisits, setMonthlyVisits] = useState<number>(0);
+  const [planStatus, setPlanStatus] = useState<string>('active');
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -58,6 +61,10 @@ export default function DashboardPage() {
   const [onboardingDismissed, setOnboardingDismissed] = useState(false);
 
   const allComplete = !!(onboarding?.snippet_installed && onboarding?.first_link_created && onboarding?.first_rule_created && onboarding?.crm_connected);
+
+  if (planStatus === 'expired') {
+    // future support for expired status banners
+  }
 
   useEffect(() => {
     // Check localStorage for dismissed state
@@ -137,6 +144,19 @@ export default function DashboardPage() {
     };
 
     fetchUser();
+
+    const fetchPlan = async () => {
+      try {
+        const res = await fetch('/api/client');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.client?.plan) setPlan(data.client.plan);
+          if (typeof data.client?.monthly_visits === 'number') setMonthlyVisits(data.client.monthly_visits);
+          if (data.client?.plan_status) setPlanStatus(data.client.plan_status);
+        }
+      } catch {}
+    };
+    fetchPlan();
   }, []);
 
   const handleRunScout = async () => {
@@ -502,6 +522,66 @@ export default function DashboardPage() {
                   View full analytics <ArrowRight className="w-3.5 h-3.5" />
                 </Link>
               </div>
+            </div>
+          )}
+
+          {/* SECTION 4B: VISIT USAGE BAR */}
+          {(() => {
+            const limits: Record<string, number> = { starter: 500, growth: 5000, pro: Infinity };
+            const limit = limits[plan] ?? 500;
+            if (limit === Infinity) return null;
+            const pct = Math.min((monthlyVisits / limit) * 100, 100);
+            const barColor = pct >= 90 ? '#ef4444' : pct >= 70 ? '#f59e0b' : '#6366f1';
+            const textColor = pct >= 90 ? 'text-red-400' : pct >= 70 ? 'text-amber-400' : 'text-[var(--text-muted)]';
+            return (
+              <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-[12px] px-6 py-5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-mono uppercase tracking-wider text-[var(--text-muted)]">
+                    Monthly Tracked Visits
+                  </span>
+                  <span className={`text-[11px] font-mono font-bold ${textColor}`}>
+                    {monthlyVisits.toLocaleString()} / {limit.toLocaleString()}
+                  </span>
+                </div>
+                <div className="h-1.5 bg-[var(--border-subtle)] rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-700"
+                    style={{ width: `${pct}%`, backgroundColor: barColor }}
+                  />
+                </div>
+                {pct >= 80 && plan === 'starter' && (
+                  <p className="text-[10px] font-mono text-amber-400">
+                    {pct >= 100 ? 'Visit limit reached — new visitors will not be personalised.' : `You've used ${Math.round(pct)}% of your monthly limit.`}
+                    {' '}<a href="/dashboard/billing" className="underline hover:text-white transition-colors">Upgrade to Growth for 10× more visits &rarr;</a>
+                  </p>
+                )}
+                {pct >= 80 && plan === 'growth' && (
+                  <p className="text-[10px] font-mono text-amber-400">
+                    {pct >= 100 ? 'Visit limit reached.' : `You've used ${Math.round(pct)}% of your monthly limit.`}
+                    {' '}<a href="/dashboard/billing" className="underline hover:text-white transition-colors">Upgrade to Pro for unlimited visits &rarr;</a>
+                  </p>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* SECTION 4C: UPSELL NUDGE (starter only) */}
+          {plan === 'starter' && (
+            <div className="border border-[#6366f1]/15 bg-[#6366f1]/5 rounded-[12px] px-6 py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <p className="text-[12px] font-mono font-bold uppercase tracking-wider text-[#6366f1]">
+                  Unlock Scout AI + Unlimited Rules
+                </p>
+                <p className="text-[11px] font-sans text-[var(--text-secondary)] max-w-md">
+                  Growth gives you Scout deal intelligence, AI weekly digests, Pipedrive, Zoho & Close CRM support, and 10× more tracked visits — starting at $399/mo.
+                </p>
+              </div>
+              <a
+                href="/dashboard/billing"
+                className="flex-shrink-0 bg-[#6366f1] hover:bg-[#5053e1] text-white font-sans text-xs font-semibold py-2 px-5 rounded-[8px] transition-all active:scale-[0.98] whitespace-nowrap"
+              >
+                Upgrade to Growth &rarr;
+              </a>
             </div>
           )}
 
