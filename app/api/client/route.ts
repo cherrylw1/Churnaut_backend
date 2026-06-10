@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
 
     const { data: client, error } = await supabaseAdmin
       .from('clients')
-      .select('id, company_name, domain, plan, snippet_key, crm_type, active, webhook_secret')
+      .select('id, company_name, domain, plan, plan_status, monthly_visits, snippet_key, crm_type, active, webhook_secret')
       .eq('id', clientId)
       .maybeSingle();
 

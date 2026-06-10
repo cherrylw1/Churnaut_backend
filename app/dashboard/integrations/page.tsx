@@ -14,6 +14,7 @@ interface ClientProfile {
 }
 
 export default function IntegrationsPage() {
+  const [plan, setPlan] = useState<string>('starter');
   const [crmStatus, setCrmStatus] = useState<{ connected: boolean; crm_type: string | null } | null>(null);
   const [calendlyStatus, setCalendlyStatus] = useState<{ connected: boolean; connected_at: string | null } | null>(null);
   const [client, setClient] = useState<ClientProfile | null>(null);
@@ -33,7 +34,10 @@ export default function IntegrationsPage() {
 
     fetch('/api/client')
       .then(res => res.json())
-      .then(data => setClient(data.client))
+      .then(data => {
+        setClient(data.client);
+        if (data.client?.plan) setPlan(data.client.plan);
+      })
       .catch(() => {});
   }, []);
 
@@ -104,95 +108,119 @@ export default function IntegrationsPage() {
         </div>
 
         {/* Pipedrive */}
-        <div className={`border bg-[var(--bg-elevated)]/50 rounded-lg p-5 flex flex-col justify-between gap-4 ${crmStatus?.crm_type === 'pipedrive' ? 'border-green-900/30' : 'border-[var(--border-subtle)]'}`}>
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <h3 className="font-mono font-bold uppercase text-sm text-[var(--text-primary)]">Pipedrive</h3>
-              {crmStatus?.crm_type === 'pipedrive' ? (
-                <div className="flex items-center gap-1.5 text-green-400 text-xs font-mono">
-                  <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
-                  Connected
-                </div>
-              ) : (
-                <div className="flex items-center gap-1.5 text-gray-500 text-xs font-mono">
-                  <span className="w-1.5 h-1.5 rounded-full bg-gray-500"></span>
-                  Disconnected
-                </div>
-              )}
+        <div className="relative">
+          {plan === 'starter' && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 rounded-lg z-10 gap-2">
+              <span className="text-xs font-mono uppercase tracking-wider text-[var(--text-muted)]">Growth Plan</span>
+              <a href="/dashboard/billing" className="text-xs text-[#6366f1] hover:underline font-sans">Upgrade to unlock</a>
             </div>
-            <p className="font-mono text-xs text-gray-400 leading-relaxed">
-              Sync deals, contacts, and pipeline stages from Pipedrive.
-            </p>
-          </div>
-          <div>
-            <Link
-              href="/dashboard/integrations/crm/pipedrive"
-              className="block w-full py-2 px-3 border border-[var(--border-subtle)] hover:border-[#6366f1] hover:text-white text-gray-300 font-mono text-xs rounded text-center transition-all hover:bg-[#6366f1]/5 active:scale-[0.98]"
-            >
-              MANAGE →
-            </Link>
+          )}
+          <div className={`border bg-[var(--bg-elevated)]/50 rounded-lg p-5 flex flex-col justify-between gap-4 ${crmStatus?.crm_type === 'pipedrive' ? 'border-green-900/30' : 'border-[var(--border-subtle)]'}`}>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <h3 className="font-mono font-bold uppercase text-sm text-[var(--text-primary)]">Pipedrive</h3>
+                {crmStatus?.crm_type === 'pipedrive' ? (
+                  <div className="flex items-center gap-1.5 text-green-400 text-xs font-mono">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
+                    Connected
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5 text-gray-500 text-xs font-mono">
+                    <span className="w-1.5 h-1.5 rounded-full bg-gray-500"></span>
+                    Disconnected
+                  </div>
+                )}
+              </div>
+              <p className="font-mono text-xs text-gray-400 leading-relaxed">
+                Sync deals, contacts, and pipeline stages from Pipedrive.
+              </p>
+            </div>
+            <div>
+              <Link
+                href="/dashboard/integrations/crm/pipedrive"
+                className="block w-full py-2 px-3 border border-[var(--border-subtle)] hover:border-[#6366f1] hover:text-white text-gray-300 font-mono text-xs rounded text-center transition-all hover:bg-[#6366f1]/5 active:scale-[0.98]"
+              >
+                MANAGE →
+              </Link>
+            </div>
           </div>
         </div>
 
         {/* Zoho CRM */}
-        <div className={`border bg-[var(--bg-elevated)]/50 rounded-lg p-5 flex flex-col justify-between gap-4 ${crmStatus?.crm_type === 'zoho' ? 'border-green-900/30' : 'border-[var(--border-subtle)]'}`}>
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <h3 className="font-mono font-bold uppercase text-sm text-[var(--text-primary)]">Zoho CRM</h3>
-              {crmStatus?.crm_type === 'zoho' ? (
-                <div className="flex items-center gap-1.5 text-green-400 text-xs font-mono">
-                  <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
-                  Connected
-                </div>
-              ) : (
-                <div className="flex items-center gap-1.5 text-gray-500 text-xs font-mono">
-                  <span className="w-1.5 h-1.5 rounded-full bg-gray-500"></span>
-                  Disconnected
-                </div>
-              )}
+        <div className="relative">
+          {plan === 'starter' && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 rounded-lg z-10 gap-2">
+              <span className="text-xs font-mono uppercase tracking-wider text-[var(--text-muted)]">Growth Plan</span>
+              <a href="/dashboard/billing" className="text-xs text-[#6366f1] hover:underline font-sans">Upgrade to unlock</a>
             </div>
-            <p className="font-mono text-xs text-gray-400 leading-relaxed">
-              Sync Zoho CRM contacts, leads, and deal stages for real-time personalization.
-            </p>
-          </div>
-          <div>
-            <Link
-              href="/dashboard/integrations/crm/zoho"
-              className="block w-full py-2 px-3 border border-[var(--border-subtle)] hover:border-[#6366f1] hover:text-white text-gray-300 font-mono text-xs rounded text-center transition-all hover:bg-[#6366f1]/5 active:scale-[0.98]"
-            >
-              MANAGE →
-            </Link>
+          )}
+          <div className={`border bg-[var(--bg-elevated)]/50 rounded-lg p-5 flex flex-col justify-between gap-4 ${crmStatus?.crm_type === 'zoho' ? 'border-green-900/30' : 'border-[var(--border-subtle)]'}`}>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <h3 className="font-mono font-bold uppercase text-sm text-[var(--text-primary)]">Zoho CRM</h3>
+                {crmStatus?.crm_type === 'zoho' ? (
+                  <div className="flex items-center gap-1.5 text-green-400 text-xs font-mono">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
+                    Connected
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5 text-gray-500 text-xs font-mono">
+                    <span className="w-1.5 h-1.5 rounded-full bg-gray-500"></span>
+                    Disconnected
+                  </div>
+                )}
+              </div>
+              <p className="font-mono text-xs text-gray-400 leading-relaxed">
+                Sync Zoho CRM contacts, leads, and deal stages for real-time personalization.
+              </p>
+            </div>
+            <div>
+              <Link
+                href="/dashboard/integrations/crm/zoho"
+                className="block w-full py-2 px-3 border border-[var(--border-subtle)] hover:border-[#6366f1] hover:text-white text-gray-300 font-mono text-xs rounded text-center transition-all hover:bg-[#6366f1]/5 active:scale-[0.98]"
+              >
+                MANAGE →
+              </Link>
+            </div>
           </div>
         </div>
 
         {/* Close */}
-        <div className={`border bg-[var(--bg-elevated)]/50 rounded-lg p-5 flex flex-col justify-between gap-4 ${crmStatus?.crm_type === 'close' ? 'border-green-900/30' : 'border-[var(--border-subtle)]'}`}>
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <h3 className="font-mono font-bold uppercase text-sm text-[var(--text-primary)]">Close</h3>
-              {crmStatus?.crm_type === 'close' ? (
-                <div className="flex items-center gap-1.5 text-green-400 text-xs font-mono">
-                  <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
-                  Connected
-                </div>
-              ) : (
-                <div className="flex items-center gap-1.5 text-gray-500 text-xs font-mono">
-                  <span className="w-1.5 h-1.5 rounded-full bg-gray-500"></span>
-                  Disconnected
-                </div>
-              )}
+        <div className="relative">
+          {plan === 'starter' && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 rounded-lg z-10 gap-2">
+              <span className="text-xs font-mono uppercase tracking-wider text-[var(--text-muted)]">Growth Plan</span>
+              <a href="/dashboard/billing" className="text-xs text-[#6366f1] hover:underline font-sans">Upgrade to unlock</a>
             </div>
-            <p className="font-mono text-xs text-gray-400 leading-relaxed">
-              Sync Close CRM leads, opportunities, and rep activity into personalization flows.
-            </p>
-          </div>
-          <div>
-            <Link
-              href="/dashboard/integrations/crm/close"
-              className="block w-full py-2 px-3 border border-[var(--border-subtle)] hover:border-[#6366f1] hover:text-white text-gray-300 font-mono text-xs rounded text-center transition-all hover:bg-[#6366f1]/5 active:scale-[0.98]"
-            >
-              MANAGE →
-            </Link>
+          )}
+          <div className={`border bg-[var(--bg-elevated)]/50 rounded-lg p-5 flex flex-col justify-between gap-4 ${crmStatus?.crm_type === 'close' ? 'border-green-900/30' : 'border-[var(--border-subtle)]'}`}>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <h3 className="font-mono font-bold uppercase text-sm text-[var(--text-primary)]">Close</h3>
+                {crmStatus?.crm_type === 'close' ? (
+                  <div className="flex items-center gap-1.5 text-green-400 text-xs font-mono">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
+                    Connected
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5 text-gray-500 text-xs font-mono">
+                    <span className="w-1.5 h-1.5 rounded-full bg-gray-500"></span>
+                    Disconnected
+                  </div>
+                )}
+              </div>
+              <p className="font-mono text-xs text-gray-400 leading-relaxed">
+                Sync Close CRM leads, opportunities, and rep activity into personalization flows.
+              </p>
+            </div>
+            <div>
+              <Link
+                href="/dashboard/integrations/crm/close"
+                className="block w-full py-2 px-3 border border-[var(--border-subtle)] hover:border-[#6366f1] hover:text-white text-gray-300 font-mono text-xs rounded text-center transition-all hover:bg-[#6366f1]/5 active:scale-[0.98]"
+              >
+                MANAGE →
+              </Link>
+            </div>
           </div>
         </div>
 

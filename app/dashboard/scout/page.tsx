@@ -21,6 +21,8 @@ import Skeleton from '@/components/ui/Skeleton';
 import { toast } from '@/hooks/useToast';
 import EmptyState from '@/components/ui/EmptyState';
 import ErrorState from '@/components/ui/ErrorState';
+import UpgradeGate from '@/components/UpgradeGate';
+
 
 interface ScoutDealDetail {
   id: string;
@@ -161,6 +163,7 @@ function DealInsights({ deal }: { deal: ScoutDealDetail }) {
 }
 
 export default function ScoutDashboard() {
+  const [plan, setPlan] = useState<string>('starter');
   const [snapshot, setSnapshot] = useState<PipelineSnapshot | null>(null);
   const [deals, setDeals] = useState<ScoutDealDetail[]>([]);
   const [triggers, setTriggers] = useState<AccelerationTrigger[]>([]);
@@ -299,6 +302,13 @@ export default function ScoutDashboard() {
   useEffect(() => {
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    fetch('/api/client')
+      .then(res => res.json())
+      .then(data => { if (data.client?.plan) setPlan(data.client.plan); })
+      .catch(() => {});
   }, []);
 
   // Run Scout AI scoring pipeline analysis
@@ -485,6 +495,18 @@ export default function ScoutDashboard() {
       maximumFractionDigits: 0,
     }).format(val);
   };
+
+  if (plan === 'starter') {
+    return (
+      <div className="p-6">
+        <UpgradeGate
+          feature="Scout AI"
+          description="Know which deals are dying before they do. Scout AI scores your entire HubSpot pipeline Red, Amber, or Green — and tells your reps exactly what to do next."
+          requiredPlan="growth"
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 text-gray-300">

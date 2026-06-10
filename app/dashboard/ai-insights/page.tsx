@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { toast } from '@/hooks/useToast';
+import UpgradeGate from '@/components/UpgradeGate';
+
 
 interface AnomalyAlert {
   id: string;
@@ -21,6 +23,7 @@ interface WeeklyDigest {
 }
 
 export default function AiInsightsPage() {
+  const [plan, setPlan] = useState<string>('starter');
   const [alerts, setAlerts] = useState<AnomalyAlert[]>([]);
   const [digest, setDigest] = useState<WeeklyDigest | null>(null);
   const [loadingAlerts, setLoadingAlerts] = useState(true);
@@ -63,6 +66,13 @@ export default function AiInsightsPage() {
   useEffect(() => {
     fetchAlerts();
     fetchDigest();
+  }, []);
+
+  useEffect(() => {
+    fetch('/api/client')
+      .then(res => res.json())
+      .then(data => { if (data.client?.plan) setPlan(data.client.plan); })
+      .catch(() => {});
   }, []);
 
   // Run Anomaly Detection
@@ -136,6 +146,18 @@ export default function AiInsightsPage() {
     }
     return 'text-blue-400 bg-blue-950/20 border-blue-900/50';
   };
+
+  if (plan === 'starter') {
+    return (
+      <div className="p-6">
+        <UpgradeGate
+          feature="AI Revenue Insights"
+          description="Weekly pipeline digests and anomaly detection — delivered automatically every Monday. Know what changed in your pipeline before your Monday standup."
+          requiredPlan="growth"
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

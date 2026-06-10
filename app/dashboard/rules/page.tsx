@@ -67,6 +67,8 @@ const ACTION_MAPPING = [
 ];
 
 export default function RulesPage() {
+  const [plan, setPlan] = useState<string>('starter');
+  const [ruleCount, setRuleCount] = useState<number>(0);
   const [rules, setRules] = useState<RoutingRule[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -283,6 +285,7 @@ export default function RulesPage() {
       if (res.ok) {
         const data = await res.json();
         setRules(data.rules || []);
+        setRuleCount((data.rules || []).length);
       } else {
         const errData = await res.json();
         setError(errData.error || 'Failed to retrieve routing rules.');
@@ -297,6 +300,13 @@ export default function RulesPage() {
 
   useEffect(() => {
     fetchRules();
+  }, []);
+
+  useEffect(() => {
+    fetch('/api/client')
+      .then(res => res.json())
+      .then(data => { if (data.client?.plan) setPlan(data.client.plan); })
+      .catch(() => {});
   }, []);
 
   // Fetch rules whenever selectedRule changes (e.g. to load edit panel fields)
@@ -786,12 +796,20 @@ export default function RulesPage() {
 
           {/* Add Rule Button Trigger */}
           <div className="pt-2">
-            <button
-              onClick={() => setCreateModalOpen(true)}
-              className="w-full bg-[#6366f1] hover:bg-[#5053e1] text-white font-mono text-xs py-3 px-4 rounded transition-all active:scale-[0.99]"
-            >
-              + ADD ROUTING RULE
-            </button>
+            {plan === 'starter' && ruleCount >= 5 ? (
+              <div className="border border-[#6366f1]/20 bg-[#6366f1]/5 rounded-[10px] p-4 text-center space-y-1">
+                <p className="text-xs font-mono uppercase tracking-wider text-[#6366f1]">5 Rule Limit Reached</p>
+                <p className="text-xs text-[var(--text-secondary)] font-sans">Starter plan is limited to 5 routing rules.</p>
+                <a href="/dashboard/billing" className="text-xs text-[#6366f1] hover:underline font-sans">Upgrade to Growth for unlimited rules &rarr;</a>
+              </div>
+            ) : (
+              <button
+                onClick={() => setCreateModalOpen(true)}
+                className="w-full bg-[#6366f1] hover:bg-[#5053e1] text-white font-mono text-xs py-3 px-4 rounded transition-all active:scale-[0.99]"
+              >
+                + ADD ROUTING RULE
+              </button>
+            )}
           </div>
         </div>
 
