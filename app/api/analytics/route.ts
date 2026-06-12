@@ -149,6 +149,54 @@ export async function GET(req: NextRequest) {
       conversion_rate: Math.round((item.conversions / Math.max(1, item.links)) * 100),
     }));
 
+    // 8. Personalization Lift Report
+    // Compares conversion rate of personalized sessions vs unmatched sessions (control group)
+    const ruleTriggeredEvents = events?.filter(e => e.event_type === 'rule_triggered') || []
+    const personalizedSessionIds = new Set(
+      ruleTriggeredEvents.map(e => e.session_id).filter((id): id is string => !!id)
+    )
+    const personalizedSessions = (sessions || []).filter(s => personalizedSessionIds.has(s.id))
+    const unpersonalizedSessions = (sessions || []).filter(s => !personalizedSessionIds.has(s.id))
+
+    const personalizedRate = personalizedSessions.length > 0
+      ? Math.round((personalizedSessions.filter(s => s.converted).length / personalizedSessions.length) * 100)
+      : 0
+    const baselineRate = unpersonalizedSessions.length > 0
+      ? Math.round((unpersonalizedSessions.filter(s => s.converted).length / unpersonalizedSessions.length) * 100)
+      : 0
+
+    const ruleLift = (rules || []).map(r => {
+      const ruleSessionIds = new Set(
+        ruleTriggeredEvents
+          .filter(e => e.rule_id === r.id)
+          .map(e => e.session_id)
+          .filter((id): id is string => !!id)
+      )
+      const ruleSessions = (sessions || []).filter(s => ruleSessionIds.has(s.id))
+      const ruleRate = ruleSessions.length > 0
+        ? Math.round((ruleSessions.filter(s => s.converted).length / ruleSessions.length) * 100)
+        : 0
+      return {
+        rule_id: r.id,
+        signal_type: r.signal_type || 'Any Signal',
+        action_type: r.action_type,
+        personalized_sessions: ruleSessions.length,
+        personalized_rate: ruleRate,
+        baseline_rate: baselineRate,
+        lift_pp: ruleRate - baselineRate,
+      }
+    }).filter(r => r.personalized_sessions > 0)
+      .sort((a, b) => b.lift_pp - a.lift_pp)
+
+    const liftReport = {
+      personalized_sessions: personalizedSessions.length,
+      unpersonalized_sessions: unpersonalizedSessions.length,
+      personalized_rate: personalizedRate,
+      baseline_rate: baselineRate,
+      overall_lift_pp: personalizedRate - baselineRate,
+      rules: ruleLift,
+    }
+
     // 8. Recent events (last 20 events)
     const sortedEvents = [...(events || [])]
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
@@ -202,6 +250,7 @@ export async function GET(req: NextRequest) {
       recentEvents,
       repPerformance,
       dailyVolume: dailyVolumeArray,
+      liftReport,
     });
 
   } catch (err) {

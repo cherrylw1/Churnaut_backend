@@ -43,6 +43,25 @@ interface RulePerformance {
   conversion_rate: number;
 }
 
+interface RuleLift {
+  rule_id: string;
+  signal_type: string;
+  action_type: string;
+  personalized_sessions: number;
+  personalized_rate: number;
+  baseline_rate: number;
+  lift_pp: number;
+}
+
+interface LiftReport {
+  personalized_sessions: number;
+  unpersonalized_sessions: number;
+  personalized_rate: number;
+  baseline_rate: number;
+  overall_lift_pp: number;
+  rules: RuleLift[];
+}
+
 interface RepPerformance {
   rep: string;
   links: number;
@@ -68,6 +87,7 @@ interface AnalyticsData {
   summaryStats: SummaryStats;
   signalBreakdown: SignalBreakdown[];
   rulePerformance: RulePerformance[];
+  liftReport?: LiftReport;
   recentEvents: RecentEvent[];
   repPerformance: RepPerformance[];
   dailyVolume: DailyVolume[];
@@ -128,6 +148,7 @@ export default function AnalyticsPage() {
     summaryStats,
     signalBreakdown,
     rulePerformance,
+    liftReport,
     recentEvents,
     repPerformance,
     dailyVolume,
@@ -415,6 +436,69 @@ export default function AnalyticsPage() {
           </div>
         </div>
       </div>
+
+      {/* Personalization Lift Report */}
+      {liftReport && liftReport.personalized_sessions > 0 && (
+        <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/50 p-5 rounded-lg space-y-5">
+          <div>
+            <h2 className="text-sm font-bold font-mono uppercase tracking-wider text-white">Personalization Lift</h2>
+            <p className="text-[10px] font-mono text-gray-500 mt-1">
+              Conversion rate of personalized visitors vs unmatched visitors (control group)
+            </p>
+          </div>
+
+          {/* Overall lift summary */}
+          <div className="grid grid-cols-3 gap-4">
+            <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 rounded-lg text-center">
+              <p className="text-[10px] font-mono text-gray-500 uppercase tracking-wider mb-1">Personalized</p>
+              <p className="text-2xl font-bold font-mono text-white">{liftReport.personalized_rate}%</p>
+              <p className="text-[10px] font-mono text-gray-600 mt-1">{liftReport.personalized_sessions} sessions</p>
+            </div>
+            <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 rounded-lg text-center">
+              <p className="text-[10px] font-mono text-gray-500 uppercase tracking-wider mb-1">Baseline</p>
+              <p className="text-2xl font-bold font-mono text-gray-400">{liftReport.baseline_rate}%</p>
+              <p className="text-[10px] font-mono text-gray-600 mt-1">{liftReport.unpersonalized_sessions} sessions</p>
+            </div>
+            <div className={`border p-4 rounded-lg text-center ${liftReport.overall_lift_pp > 0 ? 'border-green-900/30 bg-green-950/10' : 'border-[var(--border-subtle)] bg-[var(--bg-surface)]'}`}>
+              <p className="text-[10px] font-mono text-gray-500 uppercase tracking-wider mb-1">Lift</p>
+              <p className={`text-2xl font-bold font-mono ${liftReport.overall_lift_pp > 0 ? 'text-green-400' : 'text-gray-400'}`}>
+                {liftReport.overall_lift_pp > 0 ? '+' : ''}{liftReport.overall_lift_pp}pp
+              </p>
+              <p className="text-[10px] font-mono text-gray-600 mt-1">percentage points</p>
+            </div>
+          </div>
+
+          {/* Per-rule lift table */}
+          {liftReport.rules.length > 0 && (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs font-mono">
+                <thead>
+                  <tr className="border-b border-[var(--border-subtle)]">
+                    <th className="py-2 pr-4 text-[10px] text-gray-500 uppercase tracking-wider font-normal">Signal</th>
+                    <th className="py-2 pr-4 text-[10px] text-gray-500 uppercase tracking-wider font-normal">Action</th>
+                    <th className="py-2 pr-4 text-[10px] text-gray-500 uppercase tracking-wider font-normal text-right">Personalized</th>
+                    <th className="py-2 pr-4 text-[10px] text-gray-500 uppercase tracking-wider font-normal text-right">Baseline</th>
+                    <th className="py-2 text-[10px] text-gray-500 uppercase tracking-wider font-normal text-right">Lift</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {liftReport.rules.map((rule, idx) => (
+                    <tr key={rule.rule_id} className={idx < liftReport.rules.length - 1 ? 'border-b border-[var(--border-subtle)]/50' : ''}>
+                      <td className="py-2.5 pr-4 text-white">{rule.signal_type}</td>
+                      <td className="py-2.5 pr-4 text-gray-400">{rule.action_type}</td>
+                      <td className="py-2.5 pr-4 text-white text-right">{rule.personalized_rate}% <span className="text-gray-600">({rule.personalized_sessions})</span></td>
+                      <td className="py-2.5 pr-4 text-gray-400 text-right">{rule.baseline_rate}%</td>
+                      <td className={`py-2.5 text-right font-bold ${rule.lift_pp > 0 ? 'text-green-400' : rule.lift_pp < 0 ? 'text-red-400' : 'text-gray-500'}`}>
+                        {rule.lift_pp > 0 ? '+' : ''}{rule.lift_pp}pp
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Bottom Table: Recent Activity Log */}
       <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/50 p-5 rounded-lg space-y-4">
