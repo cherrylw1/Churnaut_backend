@@ -289,6 +289,27 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* Standalone demo data card — always visible when not seeded, independent of onboarding state */}
+      {!demoSeededAt && (
+        <div className="flex items-center justify-between gap-4 border border-[#6366f1]/20 bg-[#6366f1]/5 rounded-[12px] px-5 py-4">
+          <div>
+            <p className="text-xs font-mono font-bold uppercase tracking-wider text-[#6366f1]">
+              💡 See Churnaut with sample data
+            </p>
+            <p className="text-[10px] font-mono text-gray-500 mt-0.5">
+              Load 32 scored deals, tracked sessions, and analytics in one click — no setup required. Clear anytime.
+            </p>
+          </div>
+          <button
+            onClick={handleLoadDemo}
+            disabled={demoLoading}
+            className="flex-shrink-0 text-[10px] font-mono text-[#6366f1] hover:text-white border border-[#6366f1]/30 hover:border-[#6366f1] hover:bg-[#6366f1] px-4 py-2 rounded transition-all disabled:opacity-50 whitespace-nowrap"
+          >
+            {demoLoading ? 'Loading...' : 'Load demo data →'}
+          </button>
+        </div>
+      )}
+
       {onboarding && !onboardingDismissed && !allComplete && (
         <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-[12px] p-6 space-y-5">
           {/* Header row */}
@@ -326,27 +347,6 @@ export default function DashboardPage() {
               style={{ width: `${([onboarding.snippet_installed, onboarding.first_link_created, onboarding.first_rule_created, onboarding.crm_connected, onboarding.first_personalized_visit].filter(Boolean).length / 5) * 100}%` }}
             />
           </div>
-
-          {/* Demo data shortcut */}
-          {!demoSeededAt && (
-            <div className="flex items-center justify-between gap-4 border border-[#6366f1]/20 bg-[#6366f1]/5 rounded-lg px-4 py-3">
-              <div>
-                <p className="text-xs font-mono font-bold uppercase tracking-wide text-[#6366f1]">
-                  💡 See Churnaut with sample data
-                </p>
-                <p className="text-[10px] font-mono text-gray-500 mt-0.5">
-                  Load 32 scored deals, sessions, and analytics instantly — no setup required.
-                </p>
-              </div>
-              <button
-                onClick={handleLoadDemo}
-                disabled={demoLoading}
-                className="flex-shrink-0 text-[10px] font-mono text-[#6366f1] hover:text-white border border-[#6366f1]/30 hover:border-[#6366f1] hover:bg-[#6366f1] px-3 py-1.5 rounded transition-all disabled:opacity-50 whitespace-nowrap"
-              >
-                {demoLoading ? 'Loading...' : 'Load demo data →'}
-              </button>
-            </div>
-          )}
 
           {/* Steps list */}
           <div className="space-y-3">
