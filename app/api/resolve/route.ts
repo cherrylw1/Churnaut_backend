@@ -110,6 +110,14 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // Increment visit counter here — before cache check and before rule evaluation
+    // so every resolve that passes the limit gate is counted (cache hits, no-matches, and rule matches alike)
+    waitUntil(
+      Promise.resolve(supabaseAdmin.rpc('increment_monthly_visits', { client_id_input: client_id }))
+        .then(() => {})
+        .catch((err: unknown) => console.error('[Visit Counter Error] Failed to increment monthly visits:', err))
+    )
+
     // Rate limiting
     try {
       const { success } = await ratelimit.limit(client_id);
@@ -403,12 +411,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Increment monthly visit counter — waitUntil ensures it runs even after response returns
-    waitUntil(
-      Promise.resolve(supabaseAdmin.rpc('increment_monthly_visits', { client_id_input: client_id }))
-        .then(() => {})
-        .catch((err: unknown) => console.error('[Visit Counter Error] Failed to increment monthly visits:', err))
-    )
+    // Visit counter moved to top of handler (after limit check) — removed from here
 
     return NextResponse.json(instructions, { headers: corsHeaders });
 
