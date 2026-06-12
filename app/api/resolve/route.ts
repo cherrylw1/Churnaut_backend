@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server'
+import { waitUntil } from '@vercel/functions'
 import { supabaseAdmin } from '@/lib/supabase';
 import { ratelimit, redis } from '@/lib/redis';
 import { evaluateRules } from '@/lib/rules-engine';
@@ -160,35 +161,34 @@ export async function POST(req: NextRequest) {
       }
 
       if (session && session.id && sid) {
-        (async () => {
-          try {
-            await supabaseAdmin.rpc('increment_click_count', { session_id: session!.id });
-          } catch (err) {
-            console.error('[Click Count Error] Failed to increment click count:', err);
-          }
-        })();
+        waitUntil(
+          Promise.resolve(supabaseAdmin.rpc('increment_click_count', { session_id: session!.id }))
+            .then(() => {})
+            .catch((err: unknown) => console.error('[Click Count Error] Failed to increment click count:', err))
+        );
       }
 
       if (session && session.click_count === 0 && session.assigned_rep) {
-        (async () => {
-          try {
-            // Try to get rep email from session metadata or HubSpot enrichment
-            const sessionRecord = session as unknown as Record<string, unknown>;
-            const repEmail = (sessionRecord.rep_email as string) || null;
-            if (repEmail) {
-              const { sendClickNotification } = await import('@/lib/email/resend');
-              await sendClickNotification(
-                repEmail,
-                session!.prospect_name || 'A prospect',
-                session!.company_name || null,
-                session!.signal_type || null,
-                session!.id
-              );
+        waitUntil(
+          (async () => {
+            try {
+              const sessionRecord = session as unknown as Record<string, unknown>;
+              const repEmail = (sessionRecord.rep_email as string) || null;
+              if (repEmail) {
+                const { sendClickNotification } = await import('@/lib/email/resend');
+                await sendClickNotification(
+                  repEmail,
+                  session!.prospect_name || 'A prospect',
+                  session!.company_name || null,
+                  session!.signal_type || null,
+                  session!.id
+                );
+              }
+            } catch (err) {
+              console.error('[Click Notification Error] Failed to send click notification:', err);
             }
-          } catch (err) {
-            console.error('[Click Notification Error] Failed to send click notification:', err);
-          }
-        })();
+          })()
+        );
       }
     }
 
@@ -287,9 +287,9 @@ export async function POST(req: NextRequest) {
       preview: string | null = null
     ) => {
       const detectedSignal = session?.signal_type || (sid ? 'sid' : (cookie ? 'cookie' : null));
-      (async () => {
-        try {
-          const { error } = await supabaseAdmin
+      waitUntil(
+        Promise.resolve(
+          supabaseAdmin
             .from('analytics_events')
             .insert({
               client_id,
@@ -302,14 +302,13 @@ export async function POST(req: NextRequest) {
                 selector,
                 content_preview: preview,
               },
-            });
-          if (error) {
-            console.error('[Analytics Error] Failed to log analytics event:', error);
-          }
-        } catch (err) {
-          console.error('[Analytics Exception] Failed to execute analytics log:', err);
-        }
-      })();
+            })
+        )
+        .then(({ error }) => {
+          if (error) console.error('[Analytics Error] Failed to log analytics event:', error);
+        })
+        .catch((err: unknown) => console.error('[Analytics Exception] Failed to execute analytics log:', err))
+      );
     };
 
     // 4. Fetch all active routing rules for the client ordered by priority ascending
@@ -401,14 +400,12 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Increment monthly visit counter (fire and forget)
-    ;(async () => {
-      try {
-        await supabaseAdmin.rpc('increment_monthly_visits', { client_id_input: client_id })
-      } catch (err) {
-        console.error('[Visit Counter Error] Failed to increment monthly visits:', err)
-      }
-    })()
+    // Increment monthly visit counter — waitUntil ensures it runs even after response returns
+    waitUntil(
+      Promise.resolve(supabaseAdmin.rpc('increment_monthly_visits', { client_id_input: client_id }))
+        .then(() => {})
+        .catch((err: unknown) => console.error('[Visit Counter Error] Failed to increment monthly visits:', err))
+    )
 
     return NextResponse.json(instructions, { headers: corsHeaders });
 
