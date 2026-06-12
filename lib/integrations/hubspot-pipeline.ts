@@ -523,7 +523,7 @@ export async function fetchClosedLostDeals(clientId: string): Promise<ScoutClose
           ]
         }
       ],
-      properties: ['dealname', 'dealstage', 'amount', 'closedate', 'createdate', 'hs_lastmodifieddate', 'hubspot_owner_id', 'hs_last_activity_date'],
+      properties: ['dealname', 'dealstage', 'amount', 'closedate', 'createdate', 'hs_lastmodifieddate', 'hubspot_owner_id', 'hs_last_activity_date', 'notes_last_contacted', 'hs_last_booked_meeting_date', 'hs_last_sales_activity_timestamp'],
       limit: 100
     })
   });
@@ -548,50 +548,44 @@ export async function fetchClosedLostDeals(clientId: string): Promise<ScoutClose
       hs_lastmodifieddate?: string;
       hubspot_owner_id?: string;
       hs_last_activity_date?: string;
+      notes_last_contacted?: string;
+      hs_last_booked_meeting_date?: string;
+      hs_last_sales_activity_timestamp?: string;
     };
   }
 
-  // 4. Fetch associated contacts and last activity details
-  const closedLostDeals: ScoutClosedLostDeal[] = await Promise.all(
-    (rawDeals as HubSpotDealResult[]).map(async (deal) => {
-      const dealId = deal.id;
-
-      // Call associations endpoint for contacts
-      let contactIds: string[] = [];
-      try {
-        const assocRes = await fetch(`https://api.hubapi.com/crm/v3/objects/deals/${dealId}/associations/contacts`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-          },
-        });
-        if (assocRes.ok) {
-          const assocData = await assocRes.json();
-          contactIds = (assocData.results || []).map((r: { id: string }) => r.id);
+  // 4. Batch-fetch all deal→contact associations (replaces N+1 per-deal fetches)
+  // Activity properties are already in rawDeals from the search request above
+  const closedLostDealIds = (rawDeals as HubSpotDealResult[]).map(d => d.id);
+  const closedLostContactMap = new Map<string, string[]>();
+  if (closedLostDealIds.length > 0) {
+    try {
+      const assocRes = await fetch('https://api.hubapi.com/crm/v3/associations/deals/contacts/batch/read', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ inputs: closedLostDealIds.map(id => ({ from: { id } })) }),
+      });
+      if (assocRes.ok) {
+        const assocData = await assocRes.json();
+        for (const result of assocData.results || []) {
+          const fromId: string = result.from?.id;
+          const toIds: string[] = (result.to || []).map((t: { id: string }) => t.id);
+          if (fromId) closedLostContactMap.set(fromId, toIds);
         }
-      } catch (err) {
-        console.error(`[Scout Closed Lost Error] Failed to fetch contacts for deal ${dealId}:`, err);
       }
+    } catch (err) {
+      console.error('[Scout Closed Lost] Batch associations error:', err);
+    }
+  }
 
-      // Call details endpoint for activity properties
-      let activityProperties: ActivityProperties = {};
-      try {
-        const activityRes = await fetch(
-          `https://api.hubapi.com/crm/v3/objects/deals/${dealId}?properties=notes_last_contacted,hs_last_booked_meeting_date,hs_last_sales_activity_timestamp,hs_last_activity_date`,
-          {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-            },
-          }
-        );
-        if (activityRes.ok) {
-          const activityData = await activityRes.json();
-          activityProperties = activityData.properties || {};
-        }
-      } catch (err) {
-        console.error(`[Scout Closed Lost Error] Failed to fetch last activity for deal ${dealId}:`, err);
-      }
+  const closedLostDeals: ScoutClosedLostDeal[] = (rawDeals as HubSpotDealResult[]).map((deal) => {
+      const contactIds = closedLostContactMap.get(deal.id) || [];
+      const activityProperties: ActivityProperties = {
+        notes_last_contacted: deal.properties.notes_last_contacted,
+        hs_last_booked_meeting_date: deal.properties.hs_last_booked_meeting_date,
+        hs_last_sales_activity_timestamp: deal.properties.hs_last_sales_activity_timestamp,
+        hs_last_activity_date: deal.properties.hs_last_activity_date,
+      };
 
       const dealProps = deal.properties || {};
       const createdate = dealProps.createdate;
@@ -630,8 +624,7 @@ export async function fetchClosedLostDeals(clientId: string): Promise<ScoutClose
         last_activity_days,
         contact_count: contactIds.length,
       };
-    })
-  );
+    });
 
   return closedLostDeals;
 }
@@ -674,7 +667,7 @@ export async function fetchClosedWonDeals(clientId: string): Promise<ScoutClosed
           ]
         }
       ],
-      properties: ['dealname', 'dealstage', 'amount', 'closedate', 'createdate', 'hs_lastmodifieddate', 'hubspot_owner_id', 'hs_last_activity_date'],
+      properties: ['dealname', 'dealstage', 'amount', 'closedate', 'createdate', 'hs_lastmodifieddate', 'hubspot_owner_id', 'hs_last_activity_date', 'notes_last_contacted', 'hs_last_booked_meeting_date', 'hs_last_sales_activity_timestamp'],
       limit: 100
     })
   });
@@ -699,35 +692,42 @@ export async function fetchClosedWonDeals(clientId: string): Promise<ScoutClosed
       hs_lastmodifieddate?: string;
       hubspot_owner_id?: string;
       hs_last_activity_date?: string;
+      notes_last_contacted?: string;
+      hs_last_booked_meeting_date?: string;
+      hs_last_sales_activity_timestamp?: string;
     };
   }
 
-  // 4. Fetch contact associations for each deal
-  const detailedDeals = await Promise.all(
-    (rawDeals as HubSpotDealResult[]).map(async (deal) => {
-      const dealId = deal.id;
-      let contactIds: string[] = [];
-      try {
-        const assocRes = await fetch(`https://api.hubapi.com/crm/v3/objects/deals/${dealId}/associations/contacts`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-          },
-        });
-        if (assocRes.ok) {
-          const assocData = await assocRes.json();
-          contactIds = (assocData.results || []).map((r: { id: string }) => r.id);
+  // 4. Batch-fetch all deal→contact associations (replaces N+1 per-deal fetches)
+  const closedWonDealIds = (rawDeals as HubSpotDealResult[]).map(d => d.id);
+  const closedWonContactMap = new Map<string, string[]>();
+  if (closedWonDealIds.length > 0) {
+    try {
+      const assocRes = await fetch('https://api.hubapi.com/crm/v3/associations/deals/contacts/batch/read', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ inputs: closedWonDealIds.map(id => ({ from: { id } })) }),
+      });
+      if (assocRes.ok) {
+        const assocData = await assocRes.json();
+        for (const result of assocData.results || []) {
+          const fromId: string = result.from?.id;
+          const toIds: string[] = (result.to || []).map((t: { id: string }) => t.id);
+          if (fromId) closedWonContactMap.set(fromId, toIds);
         }
-      } catch (err) {
-        console.error(`[Scout Closed Won Error] Failed to fetch contacts for deal ${dealId}:`, err);
       }
+    } catch (err) {
+      console.error('[Scout Closed Won] Batch associations error:', err);
+    }
+  }
 
-      return {
-        deal,
-        contactIds,
-      };
-    })
-  );
+  const detailedDeals = (rawDeals as HubSpotDealResult[]).map((deal) => {
+    const contactIds = closedWonContactMap.get(deal.id) || [];
+    return {
+      deal,
+      contactIds,
+    };
+  });
 
   // 5. Fetch all unique contacts' job titles
   const allContactIds = Array.from(new Set(detailedDeals.flatMap((d) => d.contactIds)));
