@@ -1,3 +1,4 @@
+import crypto from 'crypto'
 import { supabaseAdmin } from '@/lib/supabase'
 
 // ─── compact deal type ───────────────────────────────────────────────────────
@@ -419,6 +420,7 @@ export async function seedDemoData(clientId: string): Promise<{ success: boolean
     // 4. Insert sessions
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
     const sessionRows = DEMO_SESSIONS.map((s, i) => ({
+      id: crypto.randomUUID(),
       client_id: clientId,
       visitor_token: s.visitor_token,
       prospect_name: s.prospect_name,
