@@ -11,7 +11,7 @@ const supabase = createClient(
 
 export async function GET(req: NextRequest) {
   const clientId = await getAuthedClientId(req)
-  if (!clientId || clientId !== process.env.FOUNDER_CLIENT_ID) {
+  if (!clientId || clientId !== 'founder') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const clientId = await getAuthedClientId(req)
-  if (!clientId || clientId !== process.env.FOUNDER_CLIENT_ID) {
+  if (!clientId || clientId !== 'founder') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   const clientId = await getAuthedClientId(req)
-  if (!clientId || clientId !== process.env.FOUNDER_CLIENT_ID) {
+  if (!clientId || clientId !== 'founder') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -57,7 +57,7 @@ export async function PATCH(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   const clientId = await getAuthedClientId(req)
-  if (!clientId || clientId !== process.env.FOUNDER_CLIENT_ID) {
+  if (!clientId || clientId !== 'founder') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

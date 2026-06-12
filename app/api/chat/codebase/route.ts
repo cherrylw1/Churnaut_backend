@@ -30,7 +30,7 @@ async function embedQuery(text: string): Promise<number[]> {
 export async function POST(req: NextRequest) {
   try {
     const clientId = await getAuthedClientId(req)
-    if (!clientId || clientId !== process.env.FOUNDER_CLIENT_ID) {
+    if (!clientId || clientId !== 'founder') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     const body = await req.json()

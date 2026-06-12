@@ -12,10 +12,10 @@ export async function getAuthedClientId(req: NextRequest): Promise<string | null
   if (authHeader && authHeader.toLowerCase().startsWith('bearer ')) {
     const token = authHeader.substring(7).trim();
     if (token) {
-      // Direct passkey comparison for founder bypass
-      const founderId = process.env.FOUNDER_CLIENT_ID;
-      if (founderId && token === founderId) {
-        return token;
+      // Founder bypass — checked against dedicated secret, not user ID
+      const founderSecret = process.env.FOUNDER_API_SECRET;
+      if (founderSecret && token === founderSecret) {
+        return 'founder';
       }
       // Otherwise, attempt standard Supabase JWT validation
       try {
