@@ -295,7 +295,7 @@ export default function DashboardPage() {
       )}
 
       {/* Standalone demo data card — always visible when not seeded, independent of onboarding state */}
-      {!demoSeededAt && onboarding && !onboarding.snippet_installed && !onboarding.first_link_created && !onboarding.first_rule_created && !onboarding.crm_connected && (
+      {!demoSeededAt && (!onboarding || (!onboarding.snippet_installed && !onboarding.first_link_created && !onboarding.first_rule_created && !onboarding.crm_connected)) && (
         <div className="flex items-center justify-between gap-4 border border-[#6366f1]/20 bg-[#6366f1]/5 rounded-[12px] px-5 py-4">
           <div>
             <p className="text-xs font-mono font-bold uppercase tracking-wider text-[#6366f1]">
