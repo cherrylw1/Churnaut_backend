@@ -161,7 +161,10 @@ export async function fetchHubSpotPipeline(clientId: string, bypassCache = false
         'createdate',
         'hs_lastmodifieddate',
         'hubspot_owner_id',
-        'hs_last_activity_date'
+        'hs_last_activity_date',
+        'notes_last_contacted',
+        'hs_last_booked_meeting_date',
+        'hs_last_sales_activity_timestamp'
       ],
       limit: 100
     })
@@ -187,6 +190,9 @@ interface HubSpotDealResult {
     hs_lastmodifieddate?: string;
     hubspot_owner_id?: string;
     hs_last_activity_date?: string;
+    notes_last_contacted?: string;
+    hs_last_booked_meeting_date?: string;
+    hs_last_sales_activity_timestamp?: string;
   };
 }
 
@@ -233,59 +239,66 @@ interface HubSpotDealResult {
     );
   }
 
-  // 5. Fetch associated contacts and last activity details for each deal
-  const detailedDeals = await Promise.all(
-    (rawDeals as HubSpotDealResult[]).map(async (deal) => {
-      const dealId = deal.id;
+  // 5. Batch-fetch all deal→contact associations in one API call (replaces N+1 per-deal fetches)
+  // Activity properties are already present in rawDeals from the search request (Step 1 above)
+  const dealIds = (rawDeals as HubSpotDealResult[]).map(d => d.id);
+  const dealContactMap = new Map<string, string[]>();
 
-      // Call associations endpoint for contact IDs
-      let contactIds: string[] = [];
-      try {
-        const assocRes = await fetch(`https://api.hubapi.com/crm/v3/objects/deals/${dealId}/associations/contacts`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-          },
-        });
-        if (assocRes.ok) {
-          const assocData = await assocRes.json();
-          contactIds = (assocData.results || []).map((r: { id: string }) => r.id);
-        } else {
-          console.warn(`[Scout Pipeline Warning] Failed to fetch contacts for deal ${dealId}. Status: ${assocRes.status}`);
-        }
-      } catch (err) {
-        console.error(`[Scout Pipeline Error] Failed to fetch contacts for deal ${dealId}:`, err);
-      }
-
-      // Call details endpoint for specific activity properties
-      let activityProperties: ActivityProperties = {};
-      try {
-        const activityRes = await fetch(
-          `https://api.hubapi.com/crm/v3/objects/deals/${dealId}?properties=notes_last_contacted,hs_last_booked_meeting_date,hs_last_sales_activity_timestamp,hs_last_activity_date`,
-          {
-            method: 'GET',
+  if (dealIds.length > 0) {
+    // HubSpot batch associations: up to 100 inputs per call
+    const batchSize = 100;
+    for (let i = 0; i < dealIds.length; i += batchSize) {
+      const chunk = dealIds.slice(i, i + batchSize);
+      let retries = 0;
+      while (retries < 3) {
+        try {
+          const assocRes = await fetch('https://api.hubapi.com/crm/v3/associations/deals/contacts/batch/read', {
+            method: 'POST',
             headers: {
               'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
             },
-          }
-        );
-        if (activityRes.ok) {
-          const activityData = await activityRes.json() as { properties?: ActivityProperties };
-          activityProperties = activityData.properties || {};
-        } else {
-          console.warn(`[Scout Pipeline Warning] Failed to fetch activities for deal ${dealId}. Status: ${activityRes.status}`);
-        }
-      } catch (err) {
-        console.error(`[Scout Pipeline Error] Failed to fetch last activity for deal ${dealId}:`, err);
-      }
+            body: JSON.stringify({ inputs: chunk.map(id => ({ from: { id } })) }),
+          });
 
-      return {
-        deal,
-        contactIds,
-        activityProperties,
-      };
-    })
-  );
+          if (assocRes.status === 429) {
+            const retryAfter = parseInt(assocRes.headers.get('Retry-After') || '10', 10);
+            console.warn(`[Scout Pipeline] 429 on batch associations — waiting ${retryAfter}s`);
+            await new Promise(r => setTimeout(r, retryAfter * 1000));
+            retries++;
+            continue;
+          }
+
+          if (assocRes.ok) {
+            const assocData = await assocRes.json();
+            for (const result of assocData.results || []) {
+              const fromId: string = result.from?.id;
+              const toIds: string[] = (result.to || []).map((t: { id: string }) => t.id);
+              if (fromId) dealContactMap.set(fromId, toIds);
+            }
+          } else {
+            console.warn(`[Scout Pipeline] Batch associations failed: ${assocRes.status}`);
+          }
+          break;
+        } catch (err) {
+          console.error('[Scout Pipeline] Batch associations error:', err);
+          break;
+        }
+      }
+    }
+  }
+
+  const detailedDeals = (rawDeals as HubSpotDealResult[]).map(deal => ({
+    deal,
+    contactIds: dealContactMap.get(deal.id) || [],
+    // Activity properties now come from the search result — no extra fetch needed
+    activityProperties: {
+      notes_last_contacted: deal.properties.notes_last_contacted,
+      hs_last_booked_meeting_date: deal.properties.hs_last_booked_meeting_date,
+      hs_last_sales_activity_timestamp: deal.properties.hs_last_sales_activity_timestamp,
+      hs_last_activity_date: deal.properties.hs_last_activity_date,
+    } as ActivityProperties,
+  }));
 
   // 6. Gather all unique contact IDs and batch read their emails
   const allContactIds = Array.from(new Set(detailedDeals.flatMap((d) => d.contactIds)));
