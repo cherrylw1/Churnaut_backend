@@ -33,18 +33,31 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { data: sessions, error } = await supabaseAdmin
+    const url = new URL(req.url);
+    const page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10));
+    const limit = Math.min(200, Math.max(1, parseInt(url.searchParams.get('limit') || '50', 10)));
+    const offset = (page - 1) * limit;
+
+    const { data: sessions, error, count } = await supabaseAdmin
       .from('sessions')
-      .select('*')
+      .select('*', { count: 'exact' })
       .eq('client_id', clientId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
 
     if (error) {
       console.error('[GET Links Error] Failed to fetch sessions:', error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ sessions: sessions || [] });
+    const total = count ?? 0;
+    return NextResponse.json({
+      sessions: sessions || [],
+      total,
+      page,
+      limit,
+      hasMore: offset + limit < total,
+    });
   } catch (err) {
     console.error('[GET Links Exception] Unhandled exception:', err);
     const errorMessage = err instanceof Error ? err.message : 'Internal server error';

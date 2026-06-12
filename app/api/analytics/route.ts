@@ -12,11 +12,19 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // 1. Fetch all sessions for this client
+    // Analytics window: last 90 days by default, overridable via ?days= param
+    const url = new URL(req.url);
+    const days = Math.min(365, Math.max(7, parseInt(url.searchParams.get('days') || '90', 10)));
+    const fromDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+
+    // 1. Fetch sessions within window (capped at 2000 rows)
     const { data: sessions, error: sessionsErr } = await supabaseAdmin
       .from('sessions')
       .select('*')
-      .eq('client_id', clientId);
+      .eq('client_id', clientId)
+      .gte('created_at', fromDate)
+      .order('created_at', { ascending: false })
+      .limit(2000);
 
     if (sessionsErr) {
       console.error('[GET Analytics Error] Sessions fetch failed:', sessionsErr);
@@ -25,11 +33,14 @@ export async function GET(req: NextRequest) {
 
     const totalSessions = sessions?.length || 0;
 
-    // 2. Fetch all resolve events for this client
+    // 2. Fetch analytics events within window (capped at 10000 rows)
     const { data: events, error: eventsErr } = await supabaseAdmin
       .from('analytics_events')
       .select('*')
-      .eq('client_id', clientId);
+      .eq('client_id', clientId)
+      .gte('created_at', fromDate)
+      .order('created_at', { ascending: false })
+      .limit(10000);
 
     if (eventsErr) {
       console.error('[GET Analytics Error] Events fetch failed:', eventsErr);
