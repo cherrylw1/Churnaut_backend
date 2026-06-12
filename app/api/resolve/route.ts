@@ -145,6 +145,7 @@ export async function POST(req: NextRequest) {
         .from('sessions')
         .select('*')
         .eq('id', sid)
+        .eq('client_id', client_id)
         .maybeSingle();
 
       if (!error) {
@@ -199,6 +200,7 @@ export async function POST(req: NextRequest) {
         .from('sessions')
         .select('*')
         .eq('visitor_token', cookie)
+        .eq('client_id', client_id)
         .maybeSingle();
 
       if (!error && data) {
