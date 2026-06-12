@@ -1,3 +1,4 @@
+// Next.js and Vercel functions imports
 import { NextRequest, NextResponse } from 'next/server'
 import { waitUntil } from '@vercel/functions'
 import { supabaseAdmin } from '@/lib/supabase';
