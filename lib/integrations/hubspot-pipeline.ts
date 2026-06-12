@@ -30,6 +30,88 @@ interface ActivityProperties {
  * and recent website visits, and returns a sanitized list of open deals.
  * Caches results in Upstash Redis for 30 minutes.
  */
+export async function getValidHubSpotToken(clientId: string): Promise<string | null> {
+  const { data: tokens, error: tokenError } = await supabaseAdmin
+    .from('crm_tokens')
+    .select('access_token, refresh_token, expires_at')
+    .eq('client_id', clientId)
+    .eq('crm_type', 'hubspot')
+    .order('updated_at', { ascending: false });
+
+  if (tokenError) {
+    console.error('[HubSpot Token] Error fetching token from crm_tokens:', tokenError);
+  }
+
+  const tokenData = tokens && tokens.length > 0 ? tokens[0] : null;
+  if (!tokenData) {
+    console.warn(`[HubSpot Token] No HubSpot OAuth connection found for client ${clientId}`);
+    return null;
+  }
+
+  let accessToken = decrypt(tokenData.access_token);
+  if (!accessToken) {
+    console.error('[HubSpot Token] Failed to decrypt access token');
+    return null;
+  }
+
+  const expiresAt = tokenData.expires_at ? new Date(tokenData.expires_at).getTime() : 0;
+  const isExpired = expiresAt === 0 || expiresAt - Date.now() < 5 * 60 * 1000;
+
+  if (isExpired && tokenData.refresh_token) {
+    console.log('[HubSpot Token] Access token expired or expiring soon. Refreshing...');
+    try {
+      const decryptedRefreshToken = decrypt(tokenData.refresh_token);
+      const params = new URLSearchParams();
+      params.append('grant_type', 'refresh_token');
+      params.append('client_id', process.env.HUBSPOT_CLIENT_ID || '');
+      params.append('client_secret', process.env.HUBSPOT_CLIENT_SECRET || '');
+      params.append('redirect_uri', 'https://app.churnaut.com/api/oauth/hubspot/callback');
+      params.append('refresh_token', decryptedRefreshToken);
+
+      const refreshRes = await fetch('https://api.hubapi.com/oauth/v1/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: params.toString(),
+      });
+
+      if (!refreshRes.ok) {
+        const errBody = await refreshRes.text();
+        console.error('[HubSpot Token] Refresh failed:', refreshRes.status, errBody);
+        return accessToken;
+      }
+
+      const refreshData = await refreshRes.json();
+      const newAccessToken = refreshData.access_token;
+      const newRefreshToken = refreshData.refresh_token;
+      const newExpiresAt = new Date(Date.now() + 1800 * 1000).toISOString();
+      const encryptedAccess = encrypt(newAccessToken);
+      const encryptedRefresh = encrypt(newRefreshToken);
+
+      const { error: updateError } = await supabaseAdmin
+        .from('crm_tokens')
+        .update({
+          access_token: encryptedAccess,
+          refresh_token: encryptedRefresh,
+          expires_at: newExpiresAt,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('client_id', clientId)
+        .eq('crm_type', 'hubspot');
+
+      if (updateError) {
+        console.error('[HubSpot Token] Failed to update refreshed tokens:', updateError.message);
+      } else {
+        console.log('[HubSpot Token] Refreshed and updated successfully.');
+        accessToken = newAccessToken;
+      }
+    } catch (refreshErr) {
+      console.error('[HubSpot Token] Exception during refresh:', refreshErr);
+    }
+  }
+
+  return accessToken;
+}
+
 export async function fetchHubSpotPipeline(clientId: string, bypassCache = false): Promise<ScoutDeal[]> {
   if (!clientId) {
     throw new Error('Missing client ID');
@@ -49,91 +131,9 @@ export async function fetchHubSpotPipeline(clientId: string, bypassCache = false
     }
   }
 
-  // 2. Look up the HubSpot access token in the crm_tokens table
-  const { data: tokens, error: tokenError } = await supabaseAdmin
-    .from('crm_tokens')
-    .select('access_token, refresh_token, expires_at')
-    .eq('client_id', clientId)
-    .eq('crm_type', 'hubspot')
-    .order('updated_at', { ascending: false });
-
-  if (tokenError) {
-    console.error('[Scout Pipeline] Error fetching HubSpot token from crm_tokens:', tokenError);
-  }
-
-  const tokenData = tokens && tokens.length > 0 ? tokens[0] : null;
-
-  if (!tokenData) {
-    console.warn(`[Scout Pipeline] No HubSpot OAuth connection found for client ${clientId}`);
-    return [];
-  }
-
-  // 3. Decrypt the access token
-  let accessToken = decrypt(tokenData.access_token);
-  if (!accessToken) {
-    throw new Error('Failed to decrypt HubSpot access token');
-  }
-
-  // Check token expiration (refresh if expired or expiring within 5 minutes)
-  const expiresAt = tokenData.expires_at ? new Date(tokenData.expires_at).getTime() : 0;
-  const isExpired = expiresAt === 0 || expiresAt - Date.now() < 5 * 60 * 1000;
-
-  if (isExpired && tokenData.refresh_token) {
-    console.log('[HubSpot Pipeline] Access token is expired or expiring soon. Refreshing...');
-    try {
-      const decryptedRefreshToken = decrypt(tokenData.refresh_token);
-      
-      const params = new URLSearchParams();
-      params.append('grant_type', 'refresh_token');
-      params.append('client_id', process.env.HUBSPOT_CLIENT_ID || '');
-      params.append('client_secret', process.env.HUBSPOT_CLIENT_SECRET || '');
-      params.append('redirect_uri', 'https://app.churnaut.com/api/oauth/hubspot/callback');
-      params.append('refresh_token', decryptedRefreshToken);
-
-      const refreshRes = await fetch('https://api.hubapi.com/oauth/v1/token', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: params.toString(),
-      });
-
-      if (!refreshRes.ok) {
-        const errBody = await refreshRes.text();
-        console.error('[HubSpot Pipeline] Token refresh failed status:', refreshRes.status, errBody);
-      } else {
-        const refreshData = await refreshRes.json();
-        const newAccessToken = refreshData.access_token;
-        const newRefreshToken = refreshData.refresh_token;
-        const newExpiresAt = new Date(Date.now() + 1800 * 1000).toISOString();
-
-        // Encrypt new tokens
-        const encryptedAccess = encrypt(newAccessToken);
-        const encryptedRefresh = encrypt(newRefreshToken);
-
-        // Update crm_tokens table
-        const { error: updateError } = await supabaseAdmin
-          .from('crm_tokens')
-          .update({
-            access_token: encryptedAccess,
-            refresh_token: encryptedRefresh,
-            expires_at: newExpiresAt,
-            updated_at: new Date().toISOString()
-          })
-          .eq('client_id', clientId)
-          .eq('crm_type', 'hubspot');
-
-        if (updateError) {
-          console.error('[HubSpot Pipeline] Failed to update refreshed tokens in DB:', updateError.message);
-        } else {
-          console.log('[HubSpot Pipeline] Token refreshed and updated successfully.');
-          accessToken = newAccessToken;
-        }
-      }
-    } catch (refreshErr) {
-      console.error('[HubSpot Pipeline] Exception during token refresh:', refreshErr);
-    }
-  }
+  // 2. Get valid HubSpot access token (handles lookup, decrypt, refresh)
+  const accessToken = await getValidHubSpotToken(clientId);
+  if (!accessToken) return [];
 
   // 4. Fetch open deals from HubSpot CRM
   const searchUrl = 'https://api.hubapi.com/crm/v3/objects/deals/search';
@@ -486,88 +486,9 @@ export async function fetchClosedLostDeals(clientId: string): Promise<ScoutClose
     throw new Error('Missing client ID');
   }
 
-  // 1. Look up the HubSpot access token in the crm_tokens table
-  const { data: tokens, error: tokenError } = await supabaseAdmin
-    .from('crm_tokens')
-    .select('access_token, refresh_token, expires_at')
-    .eq('client_id', clientId)
-    .eq('crm_type', 'hubspot')
-    .order('updated_at', { ascending: false });
-
-  if (tokenError) {
-    console.error('[Scout Closed Lost] Error fetching HubSpot token from crm_tokens:', tokenError);
-  }
-
-  const tokenData = tokens && tokens.length > 0 ? tokens[0] : null;
-  if (!tokenData) {
-    console.warn(`[Scout Closed Lost] No HubSpot OAuth connection found for client ${clientId}`);
-    return [];
-  }
-
-  // 2. Decrypt the access token
-  let accessToken = decrypt(tokenData.access_token);
-  if (!accessToken) {
-    throw new Error('Failed to decrypt HubSpot access token');
-  }
-
-  // Check token expiration (refresh if expired or expiring within 5 minutes)
-  const expiresAt = tokenData.expires_at ? new Date(tokenData.expires_at).getTime() : 0;
-  const isExpired = expiresAt === 0 || expiresAt - Date.now() < 5 * 60 * 1000;
-
-  if (isExpired && tokenData.refresh_token) {
-    console.log('[HubSpot Closed Lost] Access token is expired or expiring soon. Refreshing...');
-    try {
-      const decryptedRefreshToken = decrypt(tokenData.refresh_token);
-      
-      const params = new URLSearchParams();
-      params.append('grant_type', 'refresh_token');
-      params.append('client_id', process.env.HUBSPOT_CLIENT_ID || '');
-      params.append('client_secret', process.env.HUBSPOT_CLIENT_SECRET || '');
-      params.append('redirect_uri', 'https://app.churnaut.com/api/oauth/hubspot/callback');
-      params.append('refresh_token', decryptedRefreshToken);
-
-      const refreshRes = await fetch('https://api.hubapi.com/oauth/v1/token', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: params.toString(),
-      });
-
-      if (!refreshRes.ok) {
-        const errBody = await refreshRes.text();
-        console.error('[HubSpot Closed Lost] Token refresh failed status:', refreshRes.status, errBody);
-      } else {
-        const refreshData = await refreshRes.json();
-        const newAccessToken = refreshData.access_token;
-        const newRefreshToken = refreshData.refresh_token;
-        const newExpiresAt = new Date(Date.now() + 1800 * 1000).toISOString();
-
-        const encryptedAccess = encrypt(newAccessToken);
-        const encryptedRefresh = encrypt(newRefreshToken);
-
-        const { error: updateError } = await supabaseAdmin
-          .from('crm_tokens')
-          .update({
-            access_token: encryptedAccess,
-            refresh_token: encryptedRefresh,
-            expires_at: newExpiresAt,
-            updated_at: new Date().toISOString()
-          })
-          .eq('client_id', clientId)
-          .eq('crm_type', 'hubspot');
-
-        if (updateError) {
-          console.error('[HubSpot Closed Lost] Failed to update refreshed tokens in DB:', updateError.message);
-        } else {
-          console.log('[HubSpot Closed Lost] Token refreshed and updated successfully.');
-          accessToken = newAccessToken;
-        }
-      }
-    } catch (refreshErr) {
-      console.error('[HubSpot Closed Lost] Exception during token refresh:', refreshErr);
-    }
-  }
+  // 1. Get valid HubSpot access token (handles lookup, decrypt, refresh)
+  const accessToken = await getValidHubSpotToken(clientId);
+  if (!accessToken) return [];
 
   // 3. Search closed lost deals from HubSpot CRM
   const searchUrl = 'https://api.hubapi.com/crm/v3/objects/deals/search';
