@@ -540,8 +540,9 @@ export default function DashboardPage() {
             const limit = (PLAN_LIMITS[plan as keyof typeof PLAN_LIMITS]?.tracked_visits) ?? 500;
             if (limit === Infinity) return null;
             const pct = Math.min((monthlyVisits / limit) * 100, 100);
-            const barColor = pct >= 90 ? '#ef4444' : pct >= 70 ? '#f59e0b' : '#6366f1';
-            const textColor = pct >= 90 ? 'text-red-400' : pct >= 70 ? 'text-amber-400' : 'text-[var(--text-muted)]';
+            const barColor = pct >= 100 ? '#ef4444' : pct >= 90 ? '#ef4444' : pct >= 70 ? '#f59e0b' : '#6366f1';
+            const textColor = pct >= 100 ? 'text-red-400' : pct >= 90 ? 'text-red-400' : pct >= 70 ? 'text-amber-400' : 'text-[var(--text-muted)]';
+            const atLimit = pct >= 100;
             return (
               <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-[12px] px-6 py-5 space-y-3">
                 <div className="flex items-center justify-between">
@@ -560,7 +561,11 @@ export default function DashboardPage() {
                 </div>
                 {pct >= 80 && plan === 'starter' && (
                   <p className="text-[10px] font-mono text-amber-400">
-                    {pct >= 100 ? 'Visit limit reached — new visitors will not be personalised.' : `You've used ${Math.round(pct)}% of your monthly limit.`}
+                    {atLimit ? (
+                      <span className="text-red-400 font-semibold">⛔ Visit limit reached — personalization is paused until the 1st of next month.</span>
+                    ) : (
+                      `You've used ${Math.round(pct)}% of your monthly limit.`
+                    )}
                     {' '}<a href="/dashboard/billing" className="underline hover:text-white transition-colors">Upgrade to Growth for 10× more visits &rarr;</a>
                   </p>
                 )}

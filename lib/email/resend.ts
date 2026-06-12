@@ -350,3 +350,63 @@ export async function sendClickNotification(
     return { success: false, error };
   }
 }
+
+export async function sendVisitLimitWarningEmail(
+  to: string,
+  companyName: string,
+  pct: number,
+  plan: string,
+  upgradeUrl: string
+) {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey || apiKey === 're_placeholder_key') return { success: false };
+
+  const isAtLimit = pct >= 100;
+  const subject = isAtLimit
+    ? `⛔ Churnaut: Your visit limit has been reached`
+    : `⚠️ Churnaut: You've used ${Math.round(pct)}% of your monthly visits`;
+
+  const html = `
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <style>
+      body { background-color: #09090f; color: #f0f0f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 40px 20px; }
+      .container { max-width: 600px; margin: 0 auto; background-color: #111118; border: 1px solid #1e1e2e; border-radius: 8px; padding: 30px; }
+      .logo { font-size: 20px; font-weight: bold; letter-spacing: 2px; color: #6366f1; text-transform: uppercase; font-family: monospace; }
+      .title { font-size: 22px; font-weight: bold; margin-top: 15px; color: #ffffff; }
+      .body { font-size: 15px; line-height: 1.6; color: #c4c4d4; margin: 20px 0; }
+      .cta { display: inline-block; background-color: #6366f1; color: #ffffff; font-family: monospace; font-size: 12px; font-weight: bold; padding: 12px 24px; border-radius: 6px; text-decoration: none; margin-top: 10px; }
+      .footer { border-top: 1px solid #1e1e2e; margin-top: 35px; padding-top: 20px; text-align: center; font-size: 11px; color: #5a5a72; font-family: monospace; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="logo">Churnaut</div>
+      <div class="title">${isAtLimit ? 'Personalization paused — visit limit reached.' : `You\'re at ${Math.round(pct)}% of your monthly visit limit.`}</div>
+      <div class="body">
+        ${isAtLimit
+          ? `Your ${plan} plan allows ${plan === 'starter' ? '500' : '5,000'} tracked visits per month. You\'ve reached that limit — new visitors will not be personalized until your counter resets on the 1st of next month.<br><br>Upgrade now to continue personalizing without interruption.`
+          : `Your ${plan} plan allows ${plan === 'starter' ? '500' : '5,000'} tracked visits per month. At your current pace, you may hit the limit before month end.<br><br>Upgrade to Growth for 10× more visits and never worry about this again.`
+        }
+      </div>
+      <a href="${upgradeUrl}" class="cta">UPGRADE YOUR PLAN →</a>
+      <div class="footer">Sent by Churnaut · <a href="https://app.churnaut.com/dashboard/billing" style="color: #5a5a72;">Manage billing</a></div>
+    </div>
+  </body>
+</html>`;
+
+  try {
+    await resend.emails.send({
+      from: 'Churnaut <noreply@churnaut.com>',
+      to,
+      subject,
+      html,
+    });
+    return { success: true };
+  } catch (err) {
+    console.error('[Resend] sendVisitLimitWarningEmail error:', err);
+    return { success: false };
+  }
+}
