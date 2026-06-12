@@ -63,3 +63,24 @@ export function canAccessFeature(plan: Plan | null, feature: keyof typeof PLAN_L
   if (Array.isArray(value)) return value.length > 0
   return false
 }
+
+export const PLAN_PRICING = {
+  starter: {
+    monthlyPrice: 199,
+    yearlyPrice: 1990,
+    monthlyVariantId: '1757564',
+    yearlyVariantId: '1757539',
+  },
+  growth: {
+    monthlyPrice: 399,
+    yearlyPrice: 3990,
+    monthlyVariantId: '1757578',
+    yearlyVariantId: '1757543',
+  },
+  pro: {
+    monthlyPrice: 799,
+    yearlyPrice: 7990,
+    monthlyVariantId: '1757573',
+    yearlyVariantId: '1757550',
+  },
+}

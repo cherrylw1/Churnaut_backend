@@ -4,6 +4,7 @@ import { waitUntil } from '@vercel/functions'
 import { supabaseAdmin } from '@/lib/supabase';
 import { ratelimit, redis } from '@/lib/redis';
 import { evaluateRules } from '@/lib/rules-engine';
+import { PLAN_LIMITS } from '@/lib/plans';
 import { Session } from '@/types/index';
 import { enrichSessionFromHubSpot } from '@/lib/integrations/hubspot';
 
@@ -93,14 +94,9 @@ export async function POST(req: NextRequest) {
 
     const client_id = clientData.id;
 
-    // Visit limit check
-    const planLimits: Record<string, number> = {
-      starter: 500,
-      growth: 5000,
-      pro: Infinity,
-    }
-    const clientPlan = clientData?.plan ?? 'starter'
-    const visitLimit = planLimits[clientPlan] ?? 500
+    // Visit limit check — sourced from lib/plans.ts
+    const clientPlan = (clientData?.plan ?? 'starter') as keyof typeof PLAN_LIMITS
+    const visitLimit = PLAN_LIMITS[clientPlan]?.tracked_visits ?? 500
     const currentVisits = clientData?.monthly_visits ?? 0
 
     if (currentVisits >= visitLimit) {

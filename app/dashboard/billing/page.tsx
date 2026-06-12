@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabaseBrowser } from '@/lib/supabase';
 import { Check, AlertTriangle } from 'lucide-react';
+import { PLAN_LIMITS, PLAN_PRICING } from '@/lib/plans';
 import Skeleton from '@/components/ui/Skeleton';
 
 interface ClientProfile {
@@ -15,10 +16,7 @@ const PLANS = [
   {
     key: 'starter',
     name: 'Starter',
-    monthlyPrice: 199,
-    yearlyPrice: 1990,
-    monthlyVariantId: '1757564',
-    yearlyVariantId: '1757539',
+    ...PLAN_PRICING.starter,
     features: [
       '1 domain',
       '500 tracked visits/mo',
@@ -33,10 +31,7 @@ const PLANS = [
   {
     key: 'growth',
     name: 'Growth',
-    monthlyPrice: 399,
-    yearlyPrice: 3990,
-    monthlyVariantId: '1757578',
-    yearlyVariantId: '1757543',
+    ...PLAN_PRICING.growth,
     features: [
       '3 domains',
       '5,000 tracked visits/mo',
@@ -53,10 +48,7 @@ const PLANS = [
   {
     key: 'pro',
     name: 'Pro',
-    monthlyPrice: 799,
-    yearlyPrice: 7990,
-    monthlyVariantId: '1757573',
-    yearlyVariantId: '1757550',
+    ...PLAN_PRICING.pro,
     features: [
       '10 domains',
       'Unlimited tracked visits',
@@ -72,7 +64,9 @@ const PLANS = [
   },
 ];
 
-const VISIT_LIMITS: Record<string, number> = { starter: 500, growth: 5000, pro: Infinity };
+const VISIT_LIMITS = Object.fromEntries(
+  Object.entries(PLAN_LIMITS).map(([k, v]) => [k, v.tracked_visits])
+) as Record<string, number>;
 
 export default function BillingPage() {
   const [client, setClient] = useState<ClientProfile | null>(null);

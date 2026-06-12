@@ -16,6 +16,7 @@ import Skeleton from '@/components/ui/Skeleton';
 import { motion } from 'framer-motion';
 import { toast } from '@/hooks/useToast';
 import ErrorState from '@/components/ui/ErrorState';
+import { PLAN_LIMITS } from '@/lib/plans';
 
 interface ScoutInboxData {
   top_red_deal: { deal_name: string; next_action: string } | null;
@@ -527,8 +528,7 @@ export default function DashboardPage() {
 
           {/* SECTION 4B: VISIT USAGE BAR */}
           {(() => {
-            const limits: Record<string, number> = { starter: 500, growth: 5000, pro: Infinity };
-            const limit = limits[plan] ?? 500;
+            const limit = (PLAN_LIMITS[plan as keyof typeof PLAN_LIMITS]?.tracked_visits) ?? 500;
             if (limit === Infinity) return null;
             const pct = Math.min((monthlyVisits / limit) * 100, 100);
             const barColor = pct >= 90 ? '#ef4444' : pct >= 70 ? '#f59e0b' : '#6366f1';
