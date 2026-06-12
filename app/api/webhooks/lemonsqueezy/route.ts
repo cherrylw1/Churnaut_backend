@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
-import { verifyWebhookSignature, getVariantId, getCustomerId, getSubscriptionId, getTrialEndsAt, getStatus } from '@/lib/lemonsqueezy'
+import { verifyWebhookSignature, getVariantId, getCustomerId, getSubscriptionId, getTrialEndsAt, getStatus, getCustomClientId } from '@/lib/lemonsqueezy'
 import { VARIANT_TO_PLAN } from '@/lib/plans'
 
 export async function POST(req: NextRequest) {
@@ -49,18 +49,33 @@ export async function POST(req: NextRequest) {
     switch (eventName) {
       case 'subscription_created': {
         const email = data?.attributes?.user_email
-        if (!email) break
+        const customClientId = getCustomClientId(body)
 
-        // Look up client by email directly from the clients table
-        const { data: clientUser, error: clientError } = await supabaseAdmin
-          .from('clients')
-          .select('id')
-          .eq('email', email.toLowerCase())
-          .maybeSingle()
+        let clientUser: { id: string } | null = null
 
-        if (clientError || !clientUser) {
-          console.error('No client profile found for email:', email, clientError)
-          break
+        // Prefer client_id from checkout custom data — reliable even if email differs
+        if (customClientId) {
+          const { data: found, error } = await supabaseAdmin
+            .from('clients')
+            .select('id')
+            .eq('id', customClientId)
+            .maybeSingle()
+          if (!error && found) clientUser = found
+        }
+
+        // Fallback: match by email
+        if (!clientUser && email) {
+          const { data: found, error } = await supabaseAdmin
+            .from('clients')
+            .select('id')
+            .eq('email', email.toLowerCase())
+            .maybeSingle()
+          if (!error && found) clientUser = found
+        }
+
+        if (!clientUser) {
+          console.error('No client profile found for subscription_created. email:', email, 'client_id:', customClientId)
+          return NextResponse.json({ error: 'Client not found — will retry' }, { status: 500 })
         }
 
         const updateData: any = {

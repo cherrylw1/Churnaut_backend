@@ -29,3 +29,7 @@ export function getTrialEndsAt(data: any): string | null {
 export function getStatus(data: any): string | null {
   return data?.attributes?.status ?? null
 }
+
+export function getCustomClientId(body: any): string | null {
+  return body?.meta?.custom_data?.client_id?.toString() ?? null
+}
