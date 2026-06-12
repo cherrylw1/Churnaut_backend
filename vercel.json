@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/check-visit-limits",
       "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/scout-digest",
+      "schedule": "0 7 * * 1"
     }
   ]
 }
