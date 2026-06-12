@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { getAuthedClientId } from '@/lib/auth'
 import { embed } from '@/lib/llm/complete'
+import { supportChatRatelimit } from '@/lib/redis'
 
 export const dynamic = 'force-dynamic'
 
@@ -205,8 +206,24 @@ async function createRule(clientId: string, intent: ReturnType<typeof parseRuleI
 export async function POST(req: NextRequest) {
   try {
     const clientId = await getAuthedClientId(req)
+
+    if (!clientId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    try {
+      const { success } = await supportChatRatelimit.limit(`support:${clientId}`)
+      if (!success) {
+        return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
+      }
+    } catch (e) {
+      console.error('[Support Chat] Ratelimit error', e)
+    }
+
     const { message, history = [] } = await req.json()
-    if (!message?.trim()) return NextResponse.json({ error: 'Message required' }, { status: 400 })
+    if (!message?.trim() || message.length > 2000) {
+      return NextResponse.json({ error: 'Message required (max 2000 chars)' }, { status: 400 })
+    }
 
     let enrichedMessage = message
     let ruleCreated = false
@@ -271,7 +288,12 @@ export async function POST(req: NextRequest) {
 
     const messages = [
       { role: 'system', content: `${SYSTEM_PROMPT}\n\nRELEVANT PRODUCT DOCUMENTATION:\n${docContext}` },
-      ...history.slice(-6).map((m: { role: string; content: string }) => ({ role: m.role, content: m.content })),
+      ...history
+        .filter((m: { role: string; content: string }) =>
+          (m?.role === 'user' || m?.role === 'assistant') && typeof m?.content === 'string'
+        )
+        .slice(-6)
+        .map((m: { role: string; content: string }) => ({ role: m.role, content: m.content })),
       { role: 'user', content: enrichedMessage },
     ]
 
