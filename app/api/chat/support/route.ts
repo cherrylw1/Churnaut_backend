@@ -252,8 +252,29 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // Rule builder
-      if (isRuleBuilderRequest(message)) {
+      // Rule builder — propose first, only create on explicit confirmation
+      const isConfirmation = /^(yes|confirm|create it|go ahead|do it|sounds good|that's right|correct|yep|yeah)[\s.!]*$/i.test(message.trim())
+      const pendingRule = history.slice(-4).find((m: { role: string; content: string }) =>
+        m.role === 'assistant' && m.content.includes('RULE_PENDING_CONFIRM:')
+      )
+
+      if (pendingRule && isConfirmation) {
+        // User confirmed a pending rule — parse intent from the assistant's pending message and create
+        const intentMatch = pendingRule.content.match(/signal_type=([\w_]+).*?action_type=([\w_]+)/)
+        const confirmedIntent = intentMatch
+          ? { signal_type: intentMatch[1], action_type: intentMatch[2] }
+          : null
+
+        if (confirmedIntent) {
+          const result = await createRule(clientId, confirmedIntent)
+          if (result.success) {
+            ruleCreated = true
+            enrichedMessage += `\n\nRULE_CREATED: Rule confirmed and created. Signal type: ${confirmedIntent.signal_type}, Action: ${confirmedIntent.action_type}. Rule is now active. Tell the user it's live and what will happen when a prospect matches it. Remind them to set the target selector in Dashboard → Routing Rules if needed.`
+          } else {
+            enrichedMessage += `\n\nRULE_CREATE_FAILED: Rule creation failed after confirmation. Tell the user to go to Dashboard → Routing Rules and create it manually.`
+          }
+        }
+      } else if (isRuleBuilderRequest(message)) {
         const intent = parseRuleIntent(message)
         const missingFields = []
         if (!intent.signal_type) missingFields.push('signal type (e.g. cold email, LinkedIn ad, Google ad)')
@@ -262,13 +283,8 @@ export async function POST(req: NextRequest) {
         if (missingFields.length > 0) {
           enrichedMessage += `\n\nRULE_CLARIFICATION_NEEDED: To create this rule I need to know: ${missingFields.join(' and ')}. Please ask the user for these details before creating.`
         } else {
-          const result = await createRule(clientId, intent)
-          if (result.success) {
-            ruleCreated = true
-            enrichedMessage += `\n\nRULE_CREATED: Successfully created a new routing rule. Signal type: ${intent.signal_type}, Condition: ${intent.condition_type ? `${intent.condition_type} = ${intent.condition_value}` : 'any visitor'}, Action: ${intent.action_type}. Rule is now active. Tell the user the rule is live and explain what will happen when a prospect matches it. Remind them to set the target selector in Dashboard → Routing Rules if needed for text changes.`
-          } else {
-            enrichedMessage += `\n\nRULE_CREATED: Rule creation failed. Tell the user to go to Dashboard → Routing Rules and create it manually.`
-          }
+          // Propose — do NOT create yet
+          enrichedMessage += `\n\nRULE_PENDING_CONFIRM: signal_type=${intent.signal_type} action_type=${intent.action_type} condition=${intent.condition_type ? `${intent.condition_type}=${intent.condition_value}` : 'none'}. Ask the user to confirm before creating: describe exactly what the rule will do (signal, condition, action) and ask "Should I create this rule?". Do not create until they say yes.`
         }
       }
     }
