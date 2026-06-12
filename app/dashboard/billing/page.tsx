@@ -74,6 +74,7 @@ export default function BillingPage() {
   const [yearly, setYearly] = useState(false);
   const [userEmail, setUserEmail] = useState('');
   const [clientId, setClientId] = useState('');
+  const [portalUrl, setPortalUrl] = useState<string | null>(null);
 
   useEffect(() => {
     const init = async () => {
@@ -85,6 +86,12 @@ export default function BillingPage() {
         if (clientRes.client) {
           setClient(clientRes.client);
           setClientId(clientRes.client.id || '');
+          if (clientRes.client.plan && clientRes.client.plan !== 'starter') {
+            fetch('/api/billing/portal')
+              .then(r => r.json())
+              .then(p => { if (p.url) setPortalUrl(p.url) })
+              .catch(() => {})
+          }
         }
         if (user?.email) setUserEmail(user.email);
       } catch {}
@@ -265,7 +272,7 @@ export default function BillingPage() {
                     </div>
                     {currentPlan !== 'starter' && (
                       <a
-                        href="https://churnaut.lemonsqueezy.com/billing"
+                        href={portalUrl || 'https://churnaut.lemonsqueezy.com/billing'}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="block w-full text-center border border-[#6366f1]/30 text-[#6366f1] hover:text-white hover:bg-[#6366f1] text-[12px] font-sans py-2.5 rounded-[8px] transition-all"
