@@ -61,8 +61,7 @@ export default function DashboardPage() {
 
   const [onboarding, setOnboarding] = useState<OnboardingStatus | null>(null);
   const [onboardingDismissed, setOnboardingDismissed] = useState(false);
-  const [demoSeededAt, setDemoSeededAt] = useState<string | null>(null);
-  const [demoLoading, setDemoLoading] = useState(false);
+
 
   const allComplete = !!(onboarding?.snippet_installed && onboarding?.first_link_created && onboarding?.first_rule_created && onboarding?.crm_connected && onboarding?.first_personalized_visit);
 
@@ -93,36 +92,7 @@ export default function DashboardPage() {
     }
   }, [allComplete, onboarding, onboardingDismissed]);
 
-  const handleLoadDemo = async () => {
-    setDemoLoading(true);
-    try {
-      const res = await fetch('/api/demo/seed', { method: 'POST' });
-      const data = await res.json();
-      if (!res.ok || data.error) {
-        console.error('Demo seed failed:', data.error);
-        return;
-      }
-      setDemoSeededAt(new Date().toISOString());
-      await fetchSummary();
-    } catch (e) {
-      console.error('Demo seed failed:', e);
-    } finally {
-      setDemoLoading(false);
-    }
-  };
 
-  const handleClearDemo = async () => {
-    setDemoLoading(true);
-    try {
-      await fetch('/api/demo/purge', { method: 'POST' });
-      setDemoSeededAt(null);
-      await fetchSummary();
-    } catch (e) {
-      console.error('Demo purge failed:', e);
-    } finally {
-      setDemoLoading(false);
-    }
-  };
 
   const fetchSummary = async () => {
     try {
@@ -188,7 +158,7 @@ export default function DashboardPage() {
           if (data.client?.plan) setPlan(data.client.plan);
           if (typeof data.client?.monthly_visits === 'number') setMonthlyVisits(data.client.monthly_visits);
           if (data.client?.plan_status) setPlanStatus(data.client.plan_status);
-          if (data.client?.demo_seeded_at) setDemoSeededAt(data.client.demo_seeded_at);
+
         }
       } catch {}
     };
@@ -270,50 +240,7 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* DEMO MODE BANNER */}
-      {demoSeededAt && (
-        <div className="flex items-center justify-between gap-4 border border-amber-500/30 bg-amber-500/5 rounded-[12px] px-5 py-3.5">
-          <div className="flex items-center gap-3">
-            <span className="text-amber-400 text-sm">🔬</span>
-            <div>
-              <p className="text-xs font-mono font-bold uppercase tracking-wider text-amber-400">
-                DEMO MODE — You&apos;re viewing sample data
-              </p>
-              <p className="text-[10px] font-mono text-amber-500/70 mt-0.5">
-                Connect your real HubSpot and create your first tracked link to get started with live data.
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={handleClearDemo}
-            disabled={demoLoading}
-            className="flex-shrink-0 text-[10px] font-mono text-amber-400 hover:text-white border border-amber-500/30 hover:border-amber-400 px-3 py-1.5 rounded transition-all disabled:opacity-50 whitespace-nowrap"
-          >
-            {demoLoading ? 'Clearing...' : 'Clear demo data →'}
-          </button>
-        </div>
-      )}
 
-      {/* Standalone demo data card — always visible when not seeded, independent of onboarding state */}
-      {!demoSeededAt && (!onboarding || (!onboarding.snippet_installed && !onboarding.first_link_created && !onboarding.first_rule_created && !onboarding.crm_connected)) && (
-        <div className="flex items-center justify-between gap-4 border border-[#6366f1]/20 bg-[#6366f1]/5 rounded-[12px] px-5 py-4">
-          <div>
-            <p className="text-xs font-mono font-bold uppercase tracking-wider text-[#6366f1]">
-              💡 See Churnaut with sample data
-            </p>
-            <p className="text-[10px] font-mono text-gray-500 mt-0.5">
-              Load 32 scored deals, tracked sessions, and analytics in one click — no setup required. Clear anytime.
-            </p>
-          </div>
-          <button
-            onClick={handleLoadDemo}
-            disabled={demoLoading}
-            className="flex-shrink-0 text-[10px] font-mono text-[#6366f1] hover:text-white border border-[#6366f1]/30 hover:border-[#6366f1] hover:bg-[#6366f1] px-4 py-2 rounded transition-all disabled:opacity-50 whitespace-nowrap"
-          >
-            {demoLoading ? 'Loading...' : 'Load demo data →'}
-          </button>
-        </div>
-      )}
 
       {onboarding && !onboardingDismissed && !allComplete && (
         <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-[12px] p-6 space-y-5">
