@@ -259,8 +259,20 @@ export default function BillingPage() {
               {/* CTA */}
               <div className="pt-2">
                 {isCurrent ? (
-                  <div className="w-full text-center text-[12px] font-mono text-[var(--text-muted)] border border-[var(--border-subtle)] rounded-[8px] py-2.5">
-                    Current Plan
+                  <div className="space-y-2 w-full">
+                    <div className="w-full text-center text-[12px] font-mono text-[var(--text-muted)] border border-[var(--border-subtle)] rounded-[8px] py-2.5">
+                      Current Plan
+                    </div>
+                    {currentPlan !== 'starter' && (
+                      <a
+                        href="https://churnaut.lemonsqueezy.com/billing"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block w-full text-center border border-[#6366f1]/30 text-[#6366f1] hover:text-white hover:bg-[#6366f1] text-[12px] font-sans py-2.5 rounded-[8px] transition-all"
+                      >
+                        Manage subscription &rarr;
+                      </a>
+                    )}
                   </div>
                 ) : isUpgrade ? (
                   <a

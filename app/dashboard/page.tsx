@@ -45,6 +45,7 @@ interface OnboardingStatus {
   first_link_created: boolean;
   first_rule_created: boolean;
   crm_connected: boolean;
+  first_personalized_visit: boolean;
 }
 
 export default function DashboardPage() {
@@ -61,7 +62,7 @@ export default function DashboardPage() {
   const [onboarding, setOnboarding] = useState<OnboardingStatus | null>(null);
   const [onboardingDismissed, setOnboardingDismissed] = useState(false);
 
-  const allComplete = !!(onboarding?.snippet_installed && onboarding?.first_link_created && onboarding?.first_rule_created && onboarding?.crm_connected);
+  const allComplete = !!(onboarding?.snippet_installed && onboarding?.first_link_created && onboarding?.first_rule_created && onboarding?.crm_connected && onboarding?.first_personalized_visit);
 
   if (planStatus === 'expired') {
     // future support for expired status banners
@@ -250,7 +251,7 @@ export default function DashboardPage() {
             <div className="flex items-center gap-4">
               {/* Progress fraction */}
               <span className="text-xs font-mono text-gray-500">
-                {[onboarding.snippet_installed, onboarding.first_link_created, onboarding.first_rule_created, onboarding.crm_connected].filter(Boolean).length} / 4 complete
+                {[onboarding.snippet_installed, onboarding.first_link_created, onboarding.first_rule_created, onboarding.crm_connected, onboarding.first_personalized_visit].filter(Boolean).length} / 5 complete
               </span>
               {/* Dismiss button */}
               <button
@@ -269,7 +270,7 @@ export default function DashboardPage() {
           <div className="h-0.5 bg-[var(--border-subtle)] rounded-full overflow-hidden">
             <div
               className="h-full bg-[#6366f1] rounded-full transition-all duration-500"
-              style={{ width: `${([onboarding.snippet_installed, onboarding.first_link_created, onboarding.first_rule_created, onboarding.crm_connected].filter(Boolean).length / 4) * 100}%` }}
+              style={{ width: `${([onboarding.snippet_installed, onboarding.first_link_created, onboarding.first_rule_created, onboarding.crm_connected, onboarding.first_personalized_visit].filter(Boolean).length / 5) * 100}%` }}
             />
           </div>
 
@@ -307,6 +308,14 @@ export default function DashboardPage() {
                 description: 'Sync HubSpot, Pipedrive, or any supported CRM.',
                 href: '/dashboard/integrations/crm',
                 cta: 'Connect CRM →',
+              },
+              {
+                key: 'first_personalized_visit',
+                done: onboarding.first_personalized_visit,
+                title: '🎉 First personalized visit',
+                description: 'A prospect clicked your link and your rule fired. You\'re live.',
+                href: '/dashboard/analytics',
+                cta: 'View Analytics →',
               },
             ].map((step) => (
               <div
