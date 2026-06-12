@@ -1,6 +1,5 @@
-import { supabaseAdmin } from '@/lib/supabase';
-import { decrypt, encrypt } from '@/lib/crypto';
 import { redis } from '@/lib/redis';
+import { getValidHubSpotToken } from '@/lib/integrations/hubspot-pipeline';
 
 export interface HubSpotEnrichment {
   contact_name: string;
@@ -42,89 +41,9 @@ export async function enrichSessionFromHubSpot(
   }
 
   try {
-    // 2. Look up the HubSpot access token in the crm_tokens table
-    const { data: tokenData, error: tokenError } = await supabaseAdmin
-      .from('crm_tokens')
-      .select('access_token, refresh_token, expires_at')
-      .eq('client_id', clientId)
-      .eq('crm_type', 'hubspot')
-      .maybeSingle();
-
-    if (tokenError || !tokenData) {
-      console.warn(
-        `[HubSpot Integration] No HubSpot OAuth connection found for client ${clientId}:`,
-        tokenError?.message || 'No row'
-      );
-      return null;
-    }
-
-    // 3. Decrypt the access token
-    let accessToken = decrypt(tokenData.access_token);
-    if (!accessToken) {
-      console.error('[HubSpot Integration] Failed to decrypt access token');
-      return null;
-    }
-
-    // Check token expiration (refresh if expired or expiring within 5 minutes)
-    const expiresAt = tokenData.expires_at ? new Date(tokenData.expires_at).getTime() : 0;
-    const isExpired = expiresAt === 0 || expiresAt - Date.now() < 5 * 60 * 1000;
-
-    if (isExpired && tokenData.refresh_token) {
-      console.log('[HubSpot Integration] Access token is expired or expiring soon. Refreshing...');
-      try {
-        const decryptedRefreshToken = decrypt(tokenData.refresh_token);
-        
-        const params = new URLSearchParams();
-        params.append('grant_type', 'refresh_token');
-        params.append('client_id', process.env.HUBSPOT_CLIENT_ID || '');
-        params.append('client_secret', process.env.HUBSPOT_CLIENT_SECRET || '');
-        params.append('redirect_uri', 'https://app.churnaut.com/api/oauth/hubspot/callback');
-        params.append('refresh_token', decryptedRefreshToken);
-
-        const refreshRes = await fetch('https://api.hubapi.com/oauth/v1/token', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: params.toString(),
-        });
-
-        if (!refreshRes.ok) {
-          const errBody = await refreshRes.text();
-          console.error('[HubSpot Integration] Token refresh failed status:', refreshRes.status, errBody);
-        } else {
-          const refreshData = await refreshRes.json();
-          const newAccessToken = refreshData.access_token;
-          const newRefreshToken = refreshData.refresh_token;
-          const newExpiresAt = new Date(Date.now() + 1800 * 1000).toISOString();
-
-          // Encrypt new tokens
-          const encryptedAccess = encrypt(newAccessToken);
-          const encryptedRefresh = encrypt(newRefreshToken);
-
-          // Update crm_tokens table
-          const { error: updateError } = await supabaseAdmin
-            .from('crm_tokens')
-            .update({
-              access_token: encryptedAccess,
-              refresh_token: encryptedRefresh,
-              expires_at: newExpiresAt,
-              updated_at: new Date().toISOString()
-            })
-            .eq('client_id', clientId)
-            .eq('crm_type', 'hubspot');
-
-          if (updateError) {
-            console.error('[HubSpot Integration] Failed to update refreshed tokens in DB:', updateError.message);
-          } else {
-            console.log('[HubSpot Integration] Token refreshed and updated successfully.');
-            accessToken = newAccessToken;
-          }
-        }
-      } catch (refreshErr) {
-        console.error('[HubSpot Integration] Exception during token refresh:', refreshErr);
-      }
-    }
+    // 2. Get valid HubSpot access token (handles lookup, decrypt, refresh)
+    const accessToken = await getValidHubSpotToken(clientId);
+    if (!accessToken) return null;
 
     // 4. Search HubSpot Contacts by email
     const searchResponse = await fetch('https://api.hubapi.com/crm/v3/objects/contacts/search', {

@@ -637,88 +637,9 @@ export async function fetchClosedWonDeals(clientId: string): Promise<ScoutClosed
     throw new Error('Missing client ID');
   }
 
-  // 1. Look up the HubSpot access token in the crm_tokens table
-  const { data: tokens, error: tokenError } = await supabaseAdmin
-    .from('crm_tokens')
-    .select('access_token, refresh_token, expires_at')
-    .eq('client_id', clientId)
-    .eq('crm_type', 'hubspot')
-    .order('updated_at', { ascending: false });
-
-  if (tokenError) {
-    console.error('[Scout Closed Won] Error fetching HubSpot token:', tokenError);
-  }
-
-  const tokenData = tokens && tokens.length > 0 ? tokens[0] : null;
-  if (!tokenData) {
-    console.warn(`[Scout Closed Won] No HubSpot OAuth connection found for client ${clientId}`);
-    return [];
-  }
-
-  // 2. Decrypt access token
-  let accessToken = decrypt(tokenData.access_token);
-  if (!accessToken) {
-    throw new Error('Failed to decrypt HubSpot access token');
-  }
-
-  // Check token expiration
-  const expiresAt = tokenData.expires_at ? new Date(tokenData.expires_at).getTime() : 0;
-  const isExpired = expiresAt === 0 || expiresAt - Date.now() < 5 * 60 * 1000;
-
-  if (isExpired && tokenData.refresh_token) {
-    console.log('[HubSpot Closed Won] Access token is expired or expiring soon. Refreshing...');
-    try {
-      const decryptedRefreshToken = decrypt(tokenData.refresh_token);
-      
-      const params = new URLSearchParams();
-      params.append('grant_type', 'refresh_token');
-      params.append('client_id', process.env.HUBSPOT_CLIENT_ID || '');
-      params.append('client_secret', process.env.HUBSPOT_CLIENT_SECRET || '');
-      params.append('redirect_uri', 'https://app.churnaut.com/api/oauth/hubspot/callback');
-      params.append('refresh_token', decryptedRefreshToken);
-
-      const refreshRes = await fetch('https://api.hubapi.com/oauth/v1/token', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: params.toString(),
-      });
-
-      if (!refreshRes.ok) {
-        const errBody = await refreshRes.text();
-        console.error('[HubSpot Closed Won] Token refresh failed status:', refreshRes.status, errBody);
-      } else {
-        const refreshData = await refreshRes.json();
-        const newAccessToken = refreshData.access_token;
-        const newRefreshToken = refreshData.refresh_token;
-        const newExpiresAt = new Date(Date.now() + 1800 * 1000).toISOString();
-
-        const encryptedAccess = encrypt(newAccessToken);
-        const encryptedRefresh = encrypt(newRefreshToken);
-
-        const { error: updateError } = await supabaseAdmin
-          .from('crm_tokens')
-          .update({
-            access_token: encryptedAccess,
-            refresh_token: encryptedRefresh,
-            expires_at: newExpiresAt,
-            updated_at: new Date().toISOString()
-          })
-          .eq('client_id', clientId)
-          .eq('crm_type', 'hubspot');
-
-        if (updateError) {
-          console.error('[HubSpot Closed Won] Failed to update refreshed tokens in DB:', updateError.message);
-        } else {
-          console.log('[HubSpot Closed Won] Token refreshed and updated successfully.');
-          accessToken = newAccessToken;
-        }
-      }
-    } catch (refreshErr) {
-      console.error('[HubSpot Closed Won] Exception during token refresh:', refreshErr);
-    }
-  }
+  // 1. Get valid HubSpot access token (handles lookup, decrypt, refresh)
+  const accessToken = await getValidHubSpotToken(clientId);
+  if (!accessToken) return [];
 
   // 3. Search closedwon deals from HubSpot CRM
   const searchUrl = 'https://api.hubapi.com/crm/v3/objects/deals/search';
