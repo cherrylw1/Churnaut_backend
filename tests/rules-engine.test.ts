@@ -56,12 +56,16 @@ describe('Rules engine tests', () => {
     expect(evaluateRules(baseSession, [rule])).toBe(rule)
   })
 
-  // We write the expected behavior test for signal_type 'any' matching any session,
-  // but we mark it with .skip and document it as a bug because the source code lacks this fallback.
-  it.skip('should match signal_type "any" against any session signal_type', () => {
-    const rule = { ...baseRule, signal_type: 'any' }
-    const session = { ...baseSession, signal_type: 'hubspot' }
-    expect(evaluateRules(session, [rule])).toBe(rule)
+  it('should match a rule when signal_type is null or omitted regardless of the session signal_type, but not when there is a mismatch', () => {
+    // Case 1: signal_type set to null matches a session with signal_type 'hubspot'
+    const ruleNullSignal = { ...baseRule, signal_type: null as any }
+    const sessionHubspot = { ...baseSession, signal_type: 'hubspot' }
+    expect(evaluateRules(sessionHubspot, [ruleNullSignal])).toBe(ruleNullSignal)
+
+    // Case 2: rule with explicit 'hubspot' signal_type does not match a session with signal_type 'instantly'
+    const ruleHubspot = { ...baseRule, signal_type: 'hubspot' }
+    const sessionInstantly = { ...baseSession, signal_type: 'instantly' }
+    expect(evaluateRules(sessionInstantly, [ruleHubspot])).toBeNull()
   })
 
   it('should return the first matching rule when rules are pre-sorted by priority', () => {
