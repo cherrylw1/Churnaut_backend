@@ -12,20 +12,20 @@
 
 @layer base {
   :root {
-    --bg-base: #09090f;
-    --bg-surface: #111118;
-    --bg-elevated: #16161f;
-    --border-subtle: #1e1e2e;
-    --border-default: #2a2a3e;
-    --text-primary: #f0f0f5;
-    --text-secondary: #9494a8;
-    --text-muted: #5a5a72;
-    --accent: #7c3aed;
-    --accent-hover: #6d28d9;
-    --accent-cyan: #06b6d4;
-    --red: #ef4444;
-    --amber: #f59e0b;
-    --green: #10b981;
+    --bg-base: #FAF6F0;
+    --bg-surface: #FFFFFF;
+    --bg-elevated: #F4EDE3;
+    --border-subtle: #ECE3D8;
+    --border-default: #DDD1C2;
+    --text-primary: #2B2420;
+    --text-secondary: #6B6259;
+    --text-muted: #9B9189;
+    --accent: #C2683D;
+    --accent-hover: #A8552F;
+    --accent-cyan: #3F8F6B;
+    --red: #C0492F;
+    --amber: #C99A3F;
+    --green: #3F8F6B;
 
     /* Map to Tailwind/shadcn variables */
     --background: var(--bg-base);
@@ -62,6 +62,13 @@
     line-height: 1.6;
     transition: background-color 150ms ease, color 150ms ease;
   }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-serif), Georgia, serif;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
 
   /* Transition on interactive elements globally */
   a, button, input, select, textarea {
