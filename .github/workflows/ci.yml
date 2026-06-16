@@ -16,6 +16,15 @@ jobs:
       NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
       NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder
       NEXT_PUBLIC_SNIPPET_CDN_URL: https://placeholder.com
+      SUPABASE_SERVICE_ROLE_KEY: ci-placeholder-not-a-real-key
+      UPSTASH_REDIS_REST_URL: https://placeholder-redis.upstash.io
+      UPSTASH_REDIS_REST_TOKEN: placeholder-token
+      CRON_SECRET: placeholder-cron-secret
+      ENCRYPTION_KEY: placeholder-encryption-key-must-be-long-32-chars
+      LEMONSQUEEZY_WEBHOOK_SECRET: placeholder-lemonsqueezy-webhook-secret
+      RESEND_API_KEY: placeholder-resend-api-key
+      TOGETHER_API_KEY: placeholder-together-api-key
+
 
     steps:
       - name: Checkout repository
