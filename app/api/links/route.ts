@@ -3,6 +3,9 @@ import crypto from 'crypto';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getAuthedClientId } from '@/lib/auth';
 
+export const dynamic = 'force-dynamic';
+
+
 // Helper to generate a random 6-character session ID
 function generateSessionId(length: number = 6): string {
   const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';

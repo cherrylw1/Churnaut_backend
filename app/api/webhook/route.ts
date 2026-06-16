@@ -3,6 +3,9 @@ import crypto from 'crypto';
 import { supabaseAdmin } from '@/lib/supabase';
 import { redis, ratelimit } from '@/lib/redis';
 
+export const dynamic = 'force-dynamic';
+
+
 // Helper to extract value from nested paths (e.g. "prospect.email")
 function getValueByPath(obj: unknown, path: string): unknown {
   if (!obj || !path) return undefined;

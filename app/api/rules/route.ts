@@ -3,6 +3,9 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { getClientPlan } from '@/lib/gate';
 import { getAuthedClientId } from '@/lib/auth';
 
+export const dynamic = 'force-dynamic';
+
+
 // GET: Retrieve all rules for the authenticated client in priority order
 export async function GET(req: NextRequest) {
   try {

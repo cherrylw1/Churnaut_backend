@@ -4,6 +4,9 @@ import { supabaseAdmin } from '@/lib/supabase'
 import { verifyWebhookSignature, getVariantId, getCustomerId, getSubscriptionId, getTrialEndsAt, getStatus, getCustomClientId } from '@/lib/lemonsqueezy'
 import { VARIANT_TO_PLAN } from '@/lib/plans'
 
+export const dynamic = 'force-dynamic';
+
+
 export async function POST(req: NextRequest) {
   try {
     const rawBody = await req.text()

@@ -8,6 +8,9 @@ import { PLAN_LIMITS } from '@/lib/plans';
 import { Session } from '@/types/index';
 import { enrichSessionFromHubSpot } from '@/lib/integrations/hubspot';
 
+export const dynamic = 'force-dynamic';
+
+
 // CORS headers configuration helper
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

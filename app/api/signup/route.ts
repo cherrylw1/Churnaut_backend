@@ -4,6 +4,9 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { getAuthedClientId } from '@/lib/auth';
 import { ratelimit } from '@/lib/redis';
 
+export const dynamic = 'force-dynamic';
+
+
 export async function POST(req: NextRequest) {
   try {
     // 1. Rate Limiting by IP
