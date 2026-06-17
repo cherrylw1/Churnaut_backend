@@ -36,9 +36,9 @@ function ToastCard({ item }: { item: ToastItem }) {
   const getIcon = () => {
     switch (item.type) {
       case 'success':
-        return <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />;
+        return <CheckCircle className="w-4 h-4 text-[var(--green)] flex-shrink-0 mt-0.5" />;
       case 'error':
-        return <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />;
+        return <AlertCircle className="w-4 h-4 text-[var(--red)] flex-shrink-0 mt-0.5" />;
       case 'warning':
         return <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />;
       case 'info':
@@ -50,7 +50,7 @@ function ToastCard({ item }: { item: ToastItem }) {
   const getBorderClass = () => {
     switch (item.type) {
       case 'success':
-        return 'border-l-4 border-l-green-500';
+        return 'border-l-4 border-l-[var(--green)]';
       case 'error':
         return 'border-l-4 border-l-red-500';
       case 'warning':
@@ -64,7 +64,7 @@ function ToastCard({ item }: { item: ToastItem }) {
   const getProgressBarClass = () => {
     switch (item.type) {
       case 'success':
-        return 'bg-green-500';
+        return 'bg-[var(--green)]';
       case 'error':
         return 'bg-red-500';
       case 'warning':
@@ -90,7 +90,7 @@ function ToastCard({ item }: { item: ToastItem }) {
       </div>
       <button
         onClick={() => toastManager.remove(item.id)}
-        className="text-gray-500 hover:text-white transition-colors focus:outline-none"
+        className="text-[var(--text-muted)] hover:text-white transition-colors focus:outline-none"
       >
         <X className="w-3.5 h-3.5" />
       </button>

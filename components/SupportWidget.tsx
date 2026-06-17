@@ -63,7 +63,7 @@ export default function SupportWidget() {
       {/* Floating button */}
       {!open && (
         <button onClick={() => setOpen(true)}
-          className="fixed bottom-6 right-6 z-50 w-12 h-12 bg-[#6366f1] hover:bg-[#5053e1] text-white rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-105 active:scale-95">
+          className="fixed bottom-6 right-6 z-50 w-12 h-12 bg-[#C2683D] hover:bg-[#A8552F] text-white rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-105 active:scale-95">
           <HelpCircle className="w-5 h-5" />
         </button>
       )}
@@ -74,8 +74,8 @@ export default function SupportWidget() {
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border-subtle)] bg-[var(--bg-elevated)] flex-shrink-0">
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-full bg-[#6366f1]/10 border border-[#6366f1]/20 flex items-center justify-center">
-                <Bot className="w-3 h-3 text-[#6366f1]" />
+              <div className="w-6 h-6 rounded-full bg-[#C2683D]/10 border border-[#C2683D]/20 flex items-center justify-center">
+                <Bot className="w-3 h-3 text-[#C2683D]" />
               </div>
               <div>
                 <p className="text-xs font-mono font-medium text-[var(--text-primary)]">Churnaut Support</p>
@@ -99,18 +99,18 @@ export default function SupportWidget() {
             {messages.map(msg => (
               <div key={msg.id} className={`flex gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 {msg.role === 'assistant' && (
-                  <div className="w-5 h-5 rounded-full bg-[#6366f1]/10 border border-[#6366f1]/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <Bot className="w-2.5 h-2.5 text-[#6366f1]" />
+                  <div className="w-5 h-5 rounded-full bg-[#C2683D]/10 border border-[#C2683D]/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <Bot className="w-2.5 h-2.5 text-[#C2683D]" />
                   </div>
                 )}
                 <div className={`max-w-[85%] rounded-[10px] px-3 py-2 text-xs font-sans leading-relaxed ${
                   msg.loading ? 'border border-[var(--border-subtle)] bg-[var(--bg-elevated)]' :
-                  msg.role === 'user' ? 'bg-[#6366f1] text-white' :
+                  msg.role === 'user' ? 'bg-[#C2683D] text-white' :
                   'border border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-primary)]'
                 }`}>
                   {msg.loading ? (
                     <div className="flex items-center gap-1.5">
-                      <Loader2 className="w-3 h-3 text-[#6366f1] animate-spin" />
+                      <Loader2 className="w-3 h-3 text-[#C2683D] animate-spin" />
                       <span className="text-[var(--text-muted)]">Thinking...</span>
                     </div>
                   ) : msg.content}
@@ -127,9 +127,9 @@ export default function SupportWidget() {
                 onKeyDown={e => e.key === 'Enter' && handleSend()}
                 placeholder="Ask a question..."
                 disabled={loading}
-                className="flex-1 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] focus:border-[#6366f1]/50 rounded-[8px] px-3 py-2 text-xs font-sans text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none transition-all disabled:opacity-50" />
+                className="flex-1 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] focus:border-[#C2683D]/50 rounded-[8px] px-3 py-2 text-xs font-sans text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none transition-all disabled:opacity-50" />
               <button onClick={handleSend} disabled={loading || !input.trim()}
-                className="bg-[#6366f1] hover:bg-[#5053e1] disabled:opacity-40 text-white p-2 rounded-[8px] transition-all flex-shrink-0">
+                className="bg-[#C2683D] hover:bg-[#A8552F] disabled:opacity-40 text-white p-2 rounded-[8px] transition-all flex-shrink-0">
                 {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
               </button>
             </div>

@@ -100,7 +100,7 @@ export default function OnboardingPage() {
         {/* Card Header & Progress Bar */}
         <div className="px-8 py-5 border-b border-[var(--border-subtle)] bg-[var(--bg-elevated)] flex items-center justify-between">
           <div>
-            <span className="text-[10px] font-mono text-[#6366f1] tracking-widest uppercase">
+            <span className="text-[10px] font-mono text-[#C2683D] tracking-widest uppercase">
               AI Setup Assistant
             </span>
             <h1 className="text-sm font-bold font-mono text-white mt-0.5">
@@ -108,7 +108,7 @@ export default function OnboardingPage() {
             </h1>
           </div>
           <div className="text-right">
-            <span className="text-xs font-mono text-gray-400">
+            <span className="text-xs font-mono text-[var(--text-secondary)]">
               {completed ? 'Complete' : `Step ${step} of 5`}
             </span>
           </div>
@@ -117,7 +117,7 @@ export default function OnboardingPage() {
         {/* Dynamic Progress Indicator bar */}
         <div className="w-full bg-[var(--border-subtle)] h-1">
           <div
-            className="bg-[#6366f1] h-full transition-all duration-300"
+            className="bg-[#C2683D] h-full transition-all duration-300"
             style={{ width: `${(step / 5) * 100}%` }}
           />
         </div>
@@ -127,21 +127,21 @@ export default function OnboardingPage() {
           {completed ? (
             /* CONFIRMATION SCREEN */
             <div className="flex-1 flex flex-col items-center justify-center space-y-6 py-8">
-              <div className="w-12 h-12 rounded-full border border-green-500 bg-green-950/20 flex items-center justify-center text-[#10b981] text-xl font-bold font-mono">
+              <div className="w-12 h-12 rounded-full border border-[var(--green)] bg-[var(--green)]/10 flex items-center justify-center text-[var(--green)] text-xl font-bold font-mono">
                 ✓
               </div>
               <div className="text-center space-y-2">
                 <h2 className="text-sm font-mono font-bold text-white uppercase tracking-wider">
                   WORKSPACE INITIALIZED
                 </h2>
-                <p className="text-xs font-mono text-gray-400 max-w-sm mx-auto leading-relaxed">
+                <p className="text-xs font-mono text-[var(--text-secondary)] max-w-sm mx-auto leading-relaxed">
                   Your AI-generated rules have been compiled and saved. Redirecting to your Routing Rules board...
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => router.push('/dashboard/rules')}
-                className="bg-[#6366f1] hover:bg-[#5053e1] text-white font-mono text-xs py-2.5 px-6 rounded transition-all active:scale-[0.98] uppercase tracking-wide"
+                className="bg-[#C2683D] hover:bg-[#A8552F] text-white font-mono text-xs py-2.5 px-6 rounded transition-all active:scale-[0.98] uppercase tracking-wide"
               >
                 Go to Dashboard
               </button>
@@ -149,11 +149,11 @@ export default function OnboardingPage() {
           ) : loading ? (
             /* LOADING SCREEN */
             <div className="flex-1 flex flex-col items-center justify-center space-y-4 py-12">
-              <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-              <p className="text-sm font-mono text-indigo-400 animate-pulse tracking-wide uppercase">
+              <div className="w-8 h-8 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
+              <p className="text-sm font-mono text-[var(--accent)] animate-pulse tracking-wide uppercase">
                 Generating personalized routing rules...
               </p>
-              <p className="text-[10px] font-mono text-gray-500 max-w-xs text-center leading-relaxed">
+              <p className="text-[10px] font-mono text-[var(--text-muted)] max-w-xs text-center leading-relaxed">
                 Churnaut AI is evaluating your customer profile to compile custom web variation templates.
               </p>
             </div>
@@ -164,10 +164,10 @@ export default function OnboardingPage() {
               {step === 1 && (
                 <div className="space-y-4">
                   <div>
-                    <h2 className="text-sm font-mono text-gray-300 uppercase tracking-wide">
+                    <h2 className="text-sm font-mono text-[var(--text-secondary)] uppercase tracking-wide">
                       1. What CRM system do you use?
                     </h2>
-                    <p className="text-[10px] font-mono text-gray-500 mt-1">
+                    <p className="text-[10px] font-mono text-[var(--text-muted)] mt-1">
                       We sync deal stages and rep reassignments to personalize layouts.
                     </p>
                   </div>
@@ -179,8 +179,8 @@ export default function OnboardingPage() {
                         onClick={() => setCrm(opt)}
                         className={`border rounded p-3 text-left font-mono text-xs transition-all ${
                           crm === opt
-                            ? 'border-[#6366f1] bg-[#6366f1]/5 text-white'
-                            : 'border-[var(--border-subtle)] bg-[#080B0F]/30 text-gray-400 hover:border-gray-500'
+                            ? 'border-[#C2683D] bg-[#C2683D]/5 text-white'
+                            : 'border-[var(--border-subtle)] bg-[#080B0F]/30 text-[var(--text-secondary)] hover:border-gray-500'
                         }`}
                       >
                         {opt}
@@ -194,15 +194,15 @@ export default function OnboardingPage() {
               {step === 2 && (
                 <div className="space-y-4">
                   <div>
-                    <h2 className="text-sm font-mono text-gray-300 uppercase tracking-wide">
+                    <h2 className="text-sm font-mono text-[var(--text-secondary)] uppercase tracking-wide">
                       2. Describe your ideal customer in one sentence.
                     </h2>
-                    <p className="text-[10px] font-mono text-gray-500 mt-1">
+                    <p className="text-[10px] font-mono text-[var(--text-muted)] mt-1">
                       Helps the AI draft tailored headline copies.
                     </p>
                   </div>
                   <div className="space-y-1">
-                    <label className="block text-[10px] font-mono text-gray-400 uppercase tracking-wider">
+                    <label className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
                       Ideal Customer Profile
                     </label>
                     <textarea
@@ -211,7 +211,7 @@ export default function OnboardingPage() {
                       value={idealCustomer}
                       onChange={(e) => setIdealCustomer(e.target.value)}
                       placeholder="e.g. B2B software companies with 100+ employees seeking marketing automation tools."
-                      className="w-full bg-[#080B0F] border border-[var(--border-subtle)] focus:border-[#6366f1] outline-none text-xs px-3 py-2.5 rounded text-white font-mono"
+                      className="w-full bg-[#080B0F] border border-[var(--border-subtle)] focus:border-[#C2683D] outline-none text-xs px-3 py-2.5 rounded text-white font-mono"
                     />
                   </div>
                 </div>
@@ -221,10 +221,10 @@ export default function OnboardingPage() {
               {step === 3 && (
                 <div className="space-y-4">
                   <div>
-                    <h2 className="text-sm font-mono text-gray-300 uppercase tracking-wide">
+                    <h2 className="text-sm font-mono text-[var(--text-secondary)] uppercase tracking-wide">
                       3. How big are the companies you sell to?
                     </h2>
-                    <p className="text-[10px] font-mono text-gray-500 mt-1">
+                    <p className="text-[10px] font-mono text-[var(--text-muted)] mt-1">
                       Sets up variations matching firmographic segments.
                     </p>
                   </div>
@@ -236,8 +236,8 @@ export default function OnboardingPage() {
                         onClick={() => setCompanySize(opt)}
                         className={`border rounded p-3 text-left font-mono text-xs transition-all ${
                           companySize === opt
-                            ? 'border-[#6366f1] bg-[#6366f1]/5 text-white'
-                            : 'border-[var(--border-subtle)] bg-[#080B0F]/30 text-gray-400 hover:border-gray-500'
+                            ? 'border-[#C2683D] bg-[#C2683D]/5 text-white'
+                            : 'border-[var(--border-subtle)] bg-[#080B0F]/30 text-[var(--text-secondary)] hover:border-gray-500'
                         }`}
                       >
                         {opt} employees
@@ -251,10 +251,10 @@ export default function OnboardingPage() {
               {step === 4 && (
                 <div className="space-y-4">
                   <div>
-                    <h2 className="text-sm font-mono text-gray-300 uppercase tracking-wide">
+                    <h2 className="text-sm font-mono text-[var(--text-secondary)] uppercase tracking-wide">
                       4. What channels does your team use?
                     </h2>
-                    <p className="text-[10px] font-mono text-gray-500 mt-1">
+                    <p className="text-[10px] font-mono text-[var(--text-muted)] mt-1">
                       Select all that apply. We create matching inbound signal handlers.
                     </p>
                   </div>
@@ -268,15 +268,15 @@ export default function OnboardingPage() {
                           onClick={() => handleChannelToggle(opt)}
                           className={`border rounded p-3 text-left font-mono text-xs transition-all flex justify-between items-center ${
                             isChecked
-                              ? 'border-[#6366f1] bg-[#6366f1]/5 text-white'
-                              : 'border-[var(--border-subtle)] bg-[#080B0F]/30 text-gray-400 hover:border-gray-500'
+                              ? 'border-[#C2683D] bg-[#C2683D]/5 text-white'
+                              : 'border-[var(--border-subtle)] bg-[#080B0F]/30 text-[var(--text-secondary)] hover:border-gray-500'
                           }`}
                         >
                           <span>{opt}</span>
                           <span
                             className={`w-3.5 h-3.5 border rounded flex items-center justify-center text-[9px] ${
                               isChecked
-                                ? 'border-[#6366f1] bg-[#6366f1] text-white'
+                                ? 'border-[#C2683D] bg-[#C2683D] text-white'
                                 : 'border-[var(--border-subtle)]'
                             }`}
                           >
@@ -293,10 +293,10 @@ export default function OnboardingPage() {
               {step === 5 && (
                 <div className="space-y-4">
                   <div>
-                    <h2 className="text-sm font-mono text-gray-300 uppercase tracking-wide">
+                    <h2 className="text-sm font-mono text-[var(--text-secondary)] uppercase tracking-wide">
                       5. What is your biggest problem with inbound leads?
                     </h2>
-                    <p className="text-[10px] font-mono text-gray-500 mt-1">
+                    <p className="text-[10px] font-mono text-[var(--text-muted)] mt-1">
                       Calibrates routing priorities and scheduling variants.
                     </p>
                   </div>
@@ -308,8 +308,8 @@ export default function OnboardingPage() {
                         onClick={() => setProblem(opt)}
                         className={`border rounded p-3 text-left font-mono text-xs transition-all ${
                           problem === opt
-                            ? 'border-[#6366f1] bg-[#6366f1]/5 text-white'
-                            : 'border-[var(--border-subtle)] bg-[#080B0F]/30 text-gray-400 hover:border-gray-500'
+                            ? 'border-[#C2683D] bg-[#C2683D]/5 text-white'
+                            : 'border-[var(--border-subtle)] bg-[#080B0F]/30 text-[var(--text-secondary)] hover:border-gray-500'
                         }`}
                       >
                         {opt}
@@ -328,7 +328,7 @@ export default function OnboardingPage() {
                 type="button"
                 disabled={step === 1}
                 onClick={handlePrev}
-                className="border border-[var(--border-subtle)] hover:border-gray-500 text-xs font-mono py-2 px-6 rounded text-gray-400 hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                className="border border-[var(--border-subtle)] hover:border-gray-500 text-xs font-mono py-2 px-6 rounded text-[var(--text-secondary)] hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 BACK
               </button>
@@ -337,7 +337,7 @@ export default function OnboardingPage() {
                 type="button"
                 disabled={step === 2 && !idealCustomer.trim()}
                 onClick={handleNext}
-                className="bg-[#6366f1] hover:bg-[#5053e1] text-white font-mono text-xs py-2 px-6 rounded transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-[#C2683D] hover:bg-[#A8552F] text-white font-mono text-xs py-2 px-6 rounded transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {step === 5 ? 'COMPLETE SETUP' : 'NEXT'}
               </button>

@@ -141,7 +141,7 @@ export default function SupportPage() {
             className="flex-1 bg-[var(--bg-surface)] border border-[var(--border-subtle)] focus:border-[var(--accent)]/50 rounded-[10px] px-4 py-3 text-sm font-sans text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none resize-none transition-all disabled:opacity-50"
             style={{ minHeight: '46px', maxHeight: '120px' }} />
           <button onClick={handleSend} disabled={loading || !input.trim()}
-            className="bg-[#6366f1] hover:bg-[#5053e1] disabled:opacity-40 disabled:cursor-not-allowed text-white p-3 rounded-[10px] transition-all active:scale-[0.97] flex-shrink-0">
+            className="bg-[#C2683D] hover:bg-[#A8552F] disabled:opacity-40 disabled:cursor-not-allowed text-white p-3 rounded-[10px] transition-all active:scale-[0.97] flex-shrink-0">
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           </button>
         </div>

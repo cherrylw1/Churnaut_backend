@@ -117,11 +117,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         {/* Sidebar Status Indicator */}
         <div className="pt-4 border-t border-[var(--border-subtle)] flex items-center space-x-3">
           <span className="relative flex h-2.5 w-2.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--green)] opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[var(--green)]"></span>
           </span>
           <span className="text-[12px] font-sans font-medium text-[var(--text-secondary)]">
-            Edge: <span className="text-green-500 font-semibold">Active</span>
+            Edge: <span className="text-[var(--green)] font-semibold">Active</span>
           </span>
         </div>
       </nav>

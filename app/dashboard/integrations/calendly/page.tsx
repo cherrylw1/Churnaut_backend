@@ -85,7 +85,7 @@ export default function CalendlySettingsPage() {
 
   if (loading) {
     return (
-      <div className="text-center py-12 text-gray-500 font-mono text-sm uppercase tracking-widest bg-[var(--bg-base)] text-[var(--text-primary)] min-h-screen">
+      <div className="text-center py-12 text-[var(--text-muted)] font-mono text-sm uppercase tracking-widest bg-[var(--bg-base)] text-[var(--text-primary)] min-h-screen">
         RETRIEVING CALENDLY STATUS...
       </div>
     );
@@ -98,24 +98,24 @@ export default function CalendlySettingsPage() {
       {/* Page Header */}
       <div className="border-b border-[var(--border-subtle)] pb-5 flex justify-between items-end">
         <div>
-          <div className="flex items-center space-x-2 text-[10px] font-mono text-gray-500 uppercase tracking-widest mb-1.5">
+          <div className="flex items-center space-x-2 text-[10px] font-mono text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
             <Link href="/dashboard/integrations" className="hover:text-white transition-colors">
               INTEGRATIONS
             </Link>
             <span>/</span>
-            <span className="text-gray-300">CALENDLY</span>
+            <span className="text-[var(--text-secondary)]">CALENDLY</span>
           </div>
           <h1 className="text-xl font-bold tracking-wider font-mono uppercase text-white">
             CALENDLY
           </h1>
-          <p className="text-xs font-mono text-gray-400 mt-1">
+          <p className="text-xs font-mono text-[var(--text-secondary)] mt-1">
             OAuth-based calendar embed — route visitors to the right rep&apos;s booking page.
           </p>
         </div>
         <div>
           <Link
             href="/dashboard/integrations"
-            className="text-xs font-mono text-gray-400 hover:text-white border border-[var(--border-subtle)] px-4 py-2 rounded transition-colors"
+            className="text-xs font-mono text-[var(--text-secondary)] hover:text-white border border-[var(--border-subtle)] px-4 py-2 rounded transition-colors"
           >
             ← BACK TO INTEGRATIONS
           </Link>
@@ -127,8 +127,8 @@ export default function CalendlySettingsPage() {
         <div
           className={`border font-mono text-xs p-4 rounded-lg flex items-start justify-between ${
             message.type === 'success'
-              ? 'border-green-900/40 bg-green-950/20 text-[#10b981]'
-              : 'border-red-900/40 bg-red-950/20 text-red-400'
+              ? 'border-[var(--green)]/30 bg-[var(--green)]/10 text-[var(--green)]'
+              : 'border-[var(--red)]/30 bg-[var(--red)]/10 text-[var(--red)]'
           }`}
         >
           <div className="space-y-1">
@@ -139,7 +139,7 @@ export default function CalendlySettingsPage() {
           </div>
           <button
             onClick={() => setMessage(null)}
-            className="text-gray-400 hover:text-white transition-colors font-bold text-xs px-2"
+            className="text-[var(--text-secondary)] hover:text-white transition-colors font-bold text-xs px-2"
           >
             [X]
           </button>
@@ -155,20 +155,20 @@ export default function CalendlySettingsPage() {
                 Calendly Integration Status
               </h3>
               {isConnected ? (
-                <div className="flex items-center space-x-2 border border-green-900/40 bg-green-950/20 text-[#10b981] px-2.5 py-0.5 rounded font-mono text-[9px] font-bold">
+                <div className="flex items-center space-x-2 border border-[var(--green)]/30 bg-[var(--green)]/10 text-[var(--green)] px-2.5 py-0.5 rounded font-mono text-[9px] font-bold">
                   <span className="relative flex h-1.5 w-1.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#10b981]"></span>
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--green)] opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[var(--green)]"></span>
                   </span>
                   <span>CONNECTED</span>
                 </div>
               ) : (
-                <span className="text-[9px] font-mono font-bold bg-[var(--border-subtle)] text-gray-500 border border-[var(--border-subtle)] px-2.5 py-0.5 rounded uppercase">
+                <span className="text-[9px] font-mono font-bold bg-[var(--border-subtle)] text-[var(--text-muted)] border border-[var(--border-subtle)] px-2.5 py-0.5 rounded uppercase">
                   DISCONNECTED
                 </span>
               )}
             </div>
-            <p className="text-xs font-mono text-gray-400 leading-relaxed max-w-xl">
+            <p className="text-xs font-mono text-[var(--text-secondary)] leading-relaxed max-w-xl">
               Authenticate Calendly via OAuth to resolve team schedules and route visitors to the appropriate rep booking page automatically.
             </p>
           </div>
@@ -178,14 +178,14 @@ export default function CalendlySettingsPage() {
               <button
                 onClick={handleDisconnect}
                 disabled={disconnecting}
-                className="w-full sm:w-auto bg-red-950/20 hover:bg-red-950/40 border border-red-900/40 hover:border-red-800/80 text-red-400 font-mono text-xs py-2.5 px-6 rounded transition-all active:scale-[0.98] disabled:opacity-55"
+                className="w-full sm:w-auto bg-[var(--red)]/10 hover:bg-[var(--red)]/10 border border-[var(--red)]/30 hover:border-red-800/80 text-[var(--red)] font-mono text-xs py-2.5 px-6 rounded transition-all active:scale-[0.98] disabled:opacity-55"
               >
                 {disconnecting ? 'DISCONNECTING...' : 'DISCONNECT CALENDLY'}
               </button>
             ) : (
               <a
                 href="/api/oauth/calendly"
-                className="inline-block text-center w-full sm:w-auto bg-[#6366f1] hover:bg-[#5053e1] text-white font-mono text-xs py-2.5 px-6 rounded transition-all active:scale-[0.98]"
+                className="inline-block text-center w-full sm:w-auto bg-[#C2683D] hover:bg-[#A8552F] text-white font-mono text-xs py-2.5 px-6 rounded transition-all active:scale-[0.98]"
               >
                 CONNECT CALENDLY
               </a>
@@ -195,19 +195,19 @@ export default function CalendlySettingsPage() {
 
         {/* Connection Connection Metadata Panel */}
         {isConnected && (
-          <div className="border border-[var(--border-subtle)]/60 bg-[#080B0F] rounded p-4 font-mono text-xs text-gray-400 space-y-2">
+          <div className="border border-[var(--border-subtle)]/60 bg-[#080B0F] rounded p-4 font-mono text-xs text-[var(--text-secondary)] space-y-2">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 leading-relaxed">
               <div>
-                <span className="text-gray-500 uppercase tracking-tight">Integration:</span>{' '}
+                <span className="text-[var(--text-muted)] uppercase tracking-tight">Integration:</span>{' '}
                 <span className="text-white uppercase font-bold">Calendly</span>
               </div>
               <div>
-                <span className="text-gray-500 uppercase tracking-tight">Connection Date:</span>{' '}
+                <span className="text-[var(--text-muted)] uppercase tracking-tight">Connection Date:</span>{' '}
                 <span className="text-white">{formatDate(status.connected_at)}</span>
               </div>
               <div>
-                <span className="text-gray-500 uppercase tracking-tight">Status:</span>{' '}
-                <span className="text-green-400 font-bold">ACTIVE</span>
+                <span className="text-[var(--text-muted)] uppercase tracking-tight">Status:</span>{' '}
+                <span className="text-[var(--green)] font-bold">ACTIVE</span>
               </div>
             </div>
           </div>

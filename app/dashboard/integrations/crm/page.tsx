@@ -75,14 +75,14 @@ export default function CrmIndexPage() {
   const crmType = status?.crm_type;
 
   const getStatusBadge = (crmName: string) => {
-    if (loading) return <span className="text-[9px] font-mono text-gray-600">...</span>;
+    if (loading) return <span className="text-[9px] font-mono text-[var(--text-muted)]">...</span>;
     return crmType === crmName ? (
-      <div className="flex items-center gap-1.5 text-green-400 text-xs font-mono">
-        <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
+      <div className="flex items-center gap-1.5 text-[var(--green)] text-xs font-mono">
+        <span className="w-1.5 h-1.5 rounded-full bg-[var(--green)] animate-pulse"></span>
         Connected
       </div>
     ) : (
-      <div className="flex items-center gap-1.5 text-gray-500 text-xs font-mono">
+      <div className="flex items-center gap-1.5 text-[var(--text-muted)] text-xs font-mono">
         <span className="w-1.5 h-1.5 rounded-full bg-gray-500"></span>
         Disconnected
       </div>
@@ -94,17 +94,17 @@ export default function CrmIndexPage() {
       {/* Page Header */}
       <div className="border-b border-[var(--border-subtle)] pb-5 flex justify-between items-end">
         <div>
-          <div className="flex items-center space-x-2 text-[10px] font-mono text-gray-500 uppercase tracking-widest mb-1.5">
+          <div className="flex items-center space-x-2 text-[10px] font-mono text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
             <Link href="/dashboard/integrations" className="hover:text-white transition-colors">
               INTEGRATIONS
             </Link>
             <span>/</span>
-            <span className="text-gray-300">CRM INTEGRATIONS</span>
+            <span className="text-[var(--text-secondary)]">CRM INTEGRATIONS</span>
           </div>
           <h1 className="text-xl font-bold tracking-wider font-mono uppercase text-white">
             CRM INTEGRATIONS
           </h1>
-          <p className="text-xs font-mono text-gray-400 mt-1">
+          <p className="text-xs font-mono text-[var(--text-secondary)] mt-1">
             Connect your customer relationship management platforms to sync lead stages and representative assignments.
           </p>
         </div>
@@ -115,8 +115,8 @@ export default function CrmIndexPage() {
         <div
           className={`border font-mono text-xs p-4 rounded-lg flex items-start justify-between ${
             message.type === 'success'
-              ? 'border-green-900/40 bg-green-950/20 text-[#10b981]'
-              : 'border-red-900/40 bg-red-950/20 text-red-400'
+              ? 'border-[var(--green)]/30 bg-[var(--green)]/10 text-[var(--green)]'
+              : 'border-[var(--red)]/30 bg-[var(--red)]/10 text-[var(--red)]'
           }`}
         >
           <div className="space-y-1">
@@ -127,7 +127,7 @@ export default function CrmIndexPage() {
           </div>
           <button
             onClick={() => setMessage(null)}
-            className="text-gray-400 hover:text-white transition-colors font-bold text-xs px-2"
+            className="text-[var(--text-secondary)] hover:text-white transition-colors font-bold text-xs px-2"
           >
             [X]
           </button>
@@ -136,26 +136,26 @@ export default function CrmIndexPage() {
 
       {/* CRM Providers Grid */}
       <div className="space-y-6">
-        <h2 className="text-xs font-mono font-bold text-[#6366f1] uppercase tracking-widest bg-[var(--border-subtle)]/40 py-1.5 px-3 rounded border border-[var(--border-subtle)] inline-block">
+        <h2 className="text-xs font-mono font-bold text-[#C2683D] uppercase tracking-widest bg-[var(--border-subtle)]/40 py-1.5 px-3 rounded border border-[var(--border-subtle)] inline-block">
           Supported CRM Suites
         </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* HubSpot */}
-          <div className={`border bg-[var(--bg-elevated)]/50 rounded-lg p-5 flex flex-col justify-between gap-4 ${crmType === 'hubspot' ? 'border-green-900/30' : 'border-[var(--border-subtle)]'}`}>
+          <div className={`border bg-[var(--bg-elevated)]/50 rounded-lg p-5 flex flex-col justify-between gap-4 ${crmType === 'hubspot' ? 'border-[var(--green)]/30' : 'border-[var(--border-subtle)]'}`}>
             <div className="space-y-3">
               <div className="flex justify-between items-center">
                 <h3 className="font-mono font-bold uppercase text-sm text-[var(--text-primary)]">HubSpot</h3>
                 {getStatusBadge('hubspot')}
               </div>
-              <p className="font-mono text-xs text-gray-400 leading-relaxed">
+              <p className="font-mono text-xs text-[var(--text-secondary)] leading-relaxed">
                 Sync deals, owners, pipeline stages, and contact enrichment.
               </p>
             </div>
             <div>
               <Link
                 href="/dashboard/integrations/crm/hubspot"
-                className="block w-full py-2 px-3 border border-[var(--border-subtle)] hover:border-[#6366f1] hover:text-white text-gray-300 font-mono text-xs rounded text-center transition-all hover:bg-[#6366f1]/5 active:scale-[0.98]"
+                className="block w-full py-2 px-3 border border-[var(--border-subtle)] hover:border-[#C2683D] hover:text-white text-[var(--text-secondary)] font-mono text-xs rounded text-center transition-all hover:bg-[#C2683D]/5 active:scale-[0.98]"
               >
                 MANAGE →
               </Link>
@@ -163,20 +163,20 @@ export default function CrmIndexPage() {
           </div>
 
           {/* Pipedrive */}
-          <div className={`border bg-[var(--bg-elevated)]/50 rounded-lg p-5 flex flex-col justify-between gap-4 ${crmType === 'pipedrive' ? 'border-green-900/30' : 'border-[var(--border-subtle)]'}`}>
+          <div className={`border bg-[var(--bg-elevated)]/50 rounded-lg p-5 flex flex-col justify-between gap-4 ${crmType === 'pipedrive' ? 'border-[var(--green)]/30' : 'border-[var(--border-subtle)]'}`}>
             <div className="space-y-3">
               <div className="flex justify-between items-center">
                 <h3 className="font-mono font-bold uppercase text-sm text-[var(--text-primary)]">Pipedrive</h3>
                 {getStatusBadge('pipedrive')}
               </div>
-              <p className="font-mono text-xs text-gray-400 leading-relaxed">
+              <p className="font-mono text-xs text-[var(--text-secondary)] leading-relaxed">
                 Sync deals, contacts, and pipeline stages from Pipedrive.
               </p>
             </div>
             <div>
               <Link
                 href="/dashboard/integrations/crm/pipedrive"
-                className="block w-full py-2 px-3 border border-[var(--border-subtle)] hover:border-[#6366f1] hover:text-white text-gray-300 font-mono text-xs rounded text-center transition-all hover:bg-[#6366f1]/5 active:scale-[0.98]"
+                className="block w-full py-2 px-3 border border-[var(--border-subtle)] hover:border-[#C2683D] hover:text-white text-[var(--text-secondary)] font-mono text-xs rounded text-center transition-all hover:bg-[#C2683D]/5 active:scale-[0.98]"
               >
                 MANAGE →
               </Link>
@@ -184,20 +184,20 @@ export default function CrmIndexPage() {
           </div>
 
           {/* Zoho CRM */}
-          <div className={`border bg-[var(--bg-elevated)]/50 rounded-lg p-5 flex flex-col justify-between gap-4 ${crmType === 'zoho' ? 'border-green-900/30' : 'border-[var(--border-subtle)]'}`}>
+          <div className={`border bg-[var(--bg-elevated)]/50 rounded-lg p-5 flex flex-col justify-between gap-4 ${crmType === 'zoho' ? 'border-[var(--green)]/30' : 'border-[var(--border-subtle)]'}`}>
             <div className="space-y-3">
               <div className="flex justify-between items-center">
                 <h3 className="font-mono font-bold uppercase text-sm text-[var(--text-primary)]">Zoho CRM</h3>
                 {getStatusBadge('zoho')}
               </div>
-              <p className="font-mono text-xs text-gray-400 leading-relaxed">
+              <p className="font-mono text-xs text-[var(--text-secondary)] leading-relaxed">
                 Sync Zoho CRM contacts, leads, and deal stages for real-time personalization.
               </p>
             </div>
             <div>
               <Link
                 href="/dashboard/integrations/crm/zoho"
-                className="block w-full py-2 px-3 border border-[var(--border-subtle)] hover:border-[#6366f1] hover:text-white text-gray-300 font-mono text-xs rounded text-center transition-all hover:bg-[#6366f1]/5 active:scale-[0.98]"
+                className="block w-full py-2 px-3 border border-[var(--border-subtle)] hover:border-[#C2683D] hover:text-white text-[var(--text-secondary)] font-mono text-xs rounded text-center transition-all hover:bg-[#C2683D]/5 active:scale-[0.98]"
               >
                 MANAGE →
               </Link>
@@ -205,20 +205,20 @@ export default function CrmIndexPage() {
           </div>
 
           {/* Close */}
-          <div className={`border bg-[var(--bg-elevated)]/50 rounded-lg p-5 flex flex-col justify-between gap-4 ${crmType === 'close' ? 'border-green-900/30' : 'border-[var(--border-subtle)]'}`}>
+          <div className={`border bg-[var(--bg-elevated)]/50 rounded-lg p-5 flex flex-col justify-between gap-4 ${crmType === 'close' ? 'border-[var(--green)]/30' : 'border-[var(--border-subtle)]'}`}>
             <div className="space-y-3">
               <div className="flex justify-between items-center">
                 <h3 className="font-mono font-bold uppercase text-sm text-[var(--text-primary)]">Close</h3>
                 {getStatusBadge('close')}
               </div>
-              <p className="font-mono text-xs text-gray-400 leading-relaxed">
+              <p className="font-mono text-xs text-[var(--text-secondary)] leading-relaxed">
                 Sync Close CRM leads, opportunities, and rep activity into personalization flows.
               </p>
             </div>
             <div>
               <Link
                 href="/dashboard/integrations/crm/close"
-                className="block w-full py-2 px-3 border border-[var(--border-subtle)] hover:border-[#6366f1] hover:text-white text-gray-300 font-mono text-xs rounded text-center transition-all hover:bg-[#6366f1]/5 active:scale-[0.98]"
+                className="block w-full py-2 px-3 border border-[var(--border-subtle)] hover:border-[#C2683D] hover:text-white text-[var(--text-secondary)] font-mono text-xs rounded text-center transition-all hover:bg-[#C2683D]/5 active:scale-[0.98]"
               >
                 MANAGE →
               </Link>
@@ -230,19 +230,19 @@ export default function CrmIndexPage() {
             <div className="space-y-3">
               <div className="flex justify-between items-center">
                 <h3 className="font-mono font-bold uppercase text-sm text-[var(--text-primary)]">Salesforce</h3>
-                <div className="flex items-center gap-1.5 text-gray-500 text-xs font-mono">
+                <div className="flex items-center gap-1.5 text-[var(--text-muted)] text-xs font-mono">
                   <span className="w-1.5 h-1.5 rounded-full bg-gray-500"></span>
                   Coming Soon
                 </div>
               </div>
-              <p className="font-mono text-xs text-gray-400 leading-relaxed">
+              <p className="font-mono text-xs text-[var(--text-secondary)] leading-relaxed">
                 Connect Salesforce Sales Cloud to map opportunity objects and lifecycle stages.
               </p>
             </div>
             <div>
               <button
                 disabled
-                className="w-full py-2 px-3 border border-[var(--border-subtle)] text-gray-500 font-mono text-xs rounded opacity-40 cursor-not-allowed text-center"
+                className="w-full py-2 px-3 border border-[var(--border-subtle)] text-[var(--text-muted)] font-mono text-xs rounded opacity-40 cursor-not-allowed text-center"
               >
                 CONNECT →
               </button>
@@ -254,19 +254,19 @@ export default function CrmIndexPage() {
             <div className="space-y-3">
               <div className="flex justify-between items-center">
                 <h3 className="font-mono font-bold uppercase text-sm text-[var(--text-primary)]">Attio</h3>
-                <div className="flex items-center gap-1.5 text-gray-500 text-xs font-mono">
+                <div className="flex items-center gap-1.5 text-[var(--text-muted)] text-xs font-mono">
                   <span className="w-1.5 h-1.5 rounded-full bg-gray-500"></span>
                   Coming Soon
                 </div>
               </div>
-              <p className="font-mono text-xs text-gray-400 leading-relaxed">
+              <p className="font-mono text-xs text-[var(--text-secondary)] leading-relaxed">
                 Sync Attio workspace records, pipelines, and contact attributes in real time.
               </p>
             </div>
             <div>
               <button
                 disabled
-                className="w-full py-2 px-3 border border-[var(--border-subtle)] text-gray-500 font-mono text-xs rounded opacity-40 cursor-not-allowed text-center"
+                className="w-full py-2 px-3 border border-[var(--border-subtle)] text-[var(--text-muted)] font-mono text-xs rounded opacity-40 cursor-not-allowed text-center"
               >
                 CONNECT →
               </button>

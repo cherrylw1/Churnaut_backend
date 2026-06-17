@@ -62,7 +62,7 @@ export default function SettingsPage() {
 
   const visitLimit = VISIT_LIMITS[plan] ?? 500;
   const visitPct = visitLimit === Infinity ? 0 : Math.min((monthlyVisits / visitLimit) * 100, 100);
-  const barColor = visitPct >= 90 ? '#ef4444' : visitPct >= 70 ? '#f59e0b' : '#6366f1';
+  const barColor = visitPct >= 90 ? '#ef4444' : visitPct >= 70 ? '#f59e0b' : '#C2683D';
 
   return (
     <div className="space-y-8 max-w-4xl font-sans">
@@ -112,12 +112,12 @@ export default function SettingsPage() {
                   value={domain}
                   onChange={(e) => setDomain(e.target.value)}
                   placeholder="https://yourwebsite.com"
-                  className="w-full bg-[var(--bg-base)] border border-[var(--border-subtle)] focus:border-[#6366f1] text-[var(--text-primary)] text-xs font-mono px-3 py-2.5 rounded-[6px] outline-none transition-colors"
+                  className="w-full bg-[var(--bg-base)] border border-[var(--border-subtle)] focus:border-[#C2683D] text-[var(--text-primary)] text-xs font-mono px-3 py-2.5 rounded-[6px] outline-none transition-colors"
                 />
               </div>
 
               {message && (
-                <p className={`text-[11px] font-mono ${message.type === 'success' ? 'text-green-400' : 'text-red-400'}`}>
+                <p className={`text-[11px] font-mono ${message.type === 'success' ? 'text-[var(--green)]' : 'text-[var(--red)]'}`}>
                   {message.text}
                 </p>
               )}
@@ -125,7 +125,7 @@ export default function SettingsPage() {
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="w-full bg-[#6366f1] hover:bg-[#5053e1] disabled:opacity-50 text-white text-xs font-semibold font-sans py-2.5 rounded-[8px] transition-all active:scale-[0.98]"
+                className="w-full bg-[#C2683D] hover:bg-[#A8552F] disabled:opacity-50 text-white text-xs font-semibold font-sans py-2.5 rounded-[8px] transition-all active:scale-[0.98]"
               >
                 {saving ? 'Saving...' : 'Save Changes'}
               </button>
@@ -151,7 +151,7 @@ export default function SettingsPage() {
               {/* Plan badge */}
               <div className="flex items-center gap-3">
                 <span className="text-[11px] font-mono uppercase tracking-widest text-[var(--text-muted)]">Current plan</span>
-                <span className="text-[11px] font-mono font-bold text-[#6366f1] border border-[#6366f1]/30 bg-[#6366f1]/10 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                <span className="text-[11px] font-mono font-bold text-[#C2683D] border border-[#C2683D]/30 bg-[#C2683D]/10 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
                   {PLAN_LABELS[plan] || 'Starter'}
                 </span>
               </div>
@@ -161,7 +161,7 @@ export default function SettingsPage() {
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
                     <span className="text-[10px] font-mono uppercase tracking-wider text-[var(--text-muted)]">Tracked visits this month</span>
-                    <span className={`text-[10px] font-mono font-bold ${visitPct >= 90 ? 'text-red-400' : visitPct >= 70 ? 'text-amber-400' : 'text-[var(--text-muted)]'}`}>
+                    <span className={`text-[10px] font-mono font-bold ${visitPct >= 90 ? 'text-[var(--red)]' : visitPct >= 70 ? 'text-[var(--amber)]' : 'text-[var(--text-muted)]'}`}>
                       {monthlyVisits.toLocaleString()} / {visitLimit.toLocaleString()}
                     </span>
                   </div>
@@ -171,12 +171,12 @@ export default function SettingsPage() {
                   <p className="text-[9px] font-mono text-[var(--text-muted)]">Resets on the 1st of each month.</p>
                 </div>
               ) : (
-                <p className="text-xs font-mono text-green-400">Unlimited tracked visits</p>
+                <p className="text-xs font-mono text-[var(--green)]">Unlimited tracked visits</p>
               )}
 
               <Link
                 href="/dashboard/billing"
-                className="block w-full text-center border border-[#6366f1]/30 hover:border-[#6366f1] hover:bg-[#6366f1]/5 text-[#6366f1] hover:text-white text-xs font-semibold font-sans py-2.5 rounded-[8px] transition-all"
+                className="block w-full text-center border border-[#C2683D]/30 hover:border-[#C2683D] hover:bg-[#C2683D]/5 text-[#C2683D] hover:text-white text-xs font-semibold font-sans py-2.5 rounded-[8px] transition-all"
               >
                 Manage Billing &rarr;
               </Link>

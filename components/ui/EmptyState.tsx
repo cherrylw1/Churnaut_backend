@@ -37,14 +37,14 @@ export default function EmptyState({
           {ctaHref ? (
             <Link
               href={ctaHref}
-              className="bg-[#6366f1] hover:bg-[#5053e1] text-white font-mono text-xs font-semibold py-2 px-4 rounded-[6px] transition-all active:scale-[0.98]"
+              className="bg-[#C2683D] hover:bg-[#A8552F] text-white font-mono text-xs font-semibold py-2 px-4 rounded-[6px] transition-all active:scale-[0.98]"
             >
               {ctaLabel}
             </Link>
           ) : onClick ? (
             <button
               onClick={onClick}
-              className="bg-[#6366f1] hover:bg-[#5053e1] text-white font-mono text-xs font-semibold py-2 px-4 rounded-[6px] transition-all active:scale-[0.98]"
+              className="bg-[#C2683D] hover:bg-[#A8552F] text-white font-mono text-xs font-semibold py-2 px-4 rounded-[6px] transition-all active:scale-[0.98]"
             >
               {ctaLabel}
             </button>

@@ -139,12 +139,12 @@ export default function AiInsightsPage() {
   // Helper for severity color mapping
   const getSeverityStyles = (severity: string) => {
     if (severity === 'critical') {
-      return 'text-red-400 bg-red-950/20 border-red-900/50';
+      return 'text-[var(--red)] bg-[var(--red)]/10 border-[var(--red)]/30';
     }
     if (severity === 'warning') {
-      return 'text-yellow-400 bg-yellow-950/20 border-yellow-900/50';
+      return 'text-[var(--amber)] bg-[var(--amber)]/10 border-[var(--amber)]/30';
     }
-    return 'text-blue-400 bg-blue-950/20 border-blue-900/50';
+    return 'text-blue-600 bg-blue-50 border-blue-200';
   };
 
   if (plan === 'starter') {
@@ -165,7 +165,7 @@ export default function AiInsightsPage() {
       <div className="flex justify-between items-center border-b border-[var(--border-subtle)] pb-5">
         <div>
           <h1 className="text-xl font-bold tracking-wider font-mono">AI REVENUE INSIGHTS</h1>
-          <p className="text-xs font-mono text-gray-400 mt-1">Autonomous performance digests and routing rule anomaly detection</p>
+          <p className="text-xs font-mono text-[var(--text-secondary)] mt-1">Autonomous performance digests and routing rule anomaly detection</p>
         </div>
       </div>
 
@@ -175,50 +175,50 @@ export default function AiInsightsPage() {
           <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/50 rounded-lg p-6 space-y-6">
             <div className="flex justify-between items-center border-b border-[var(--border-subtle)] pb-4">
               <div className="space-y-1">
-                <h2 className="text-sm font-bold tracking-wider font-mono text-[#6366f1] uppercase">WEEKLY INSIGHTS DIGEST</h2>
+                <h2 className="text-sm font-bold tracking-wider font-mono text-[var(--accent)] uppercase">WEEKLY INSIGHTS DIGEST</h2>
                 {digest && (
-                  <p className="text-[10px] font-mono text-gray-500">WEEK START: {digest.week_start}</p>
+                  <p className="text-[10px] font-mono text-[var(--text-muted)]">WEEK START: {digest.week_start}</p>
                 )}
               </div>
               <button
                 onClick={handleGenerateDigest}
                 disabled={generatingDigest}
-                className="bg-[#6366f1] hover:bg-[#5053e1] disabled:opacity-50 text-white font-mono text-xs py-2 px-4 rounded transition-all active:scale-[0.98]"
+                className="bg-[var(--accent)] hover:bg-[var(--accent-hover)] disabled:opacity-50 text-white font-mono text-xs py-2 px-4 rounded transition-all active:scale-[0.98]"
               >
                 {generatingDigest ? 'COMPILING DIGEST...' : 'GENERATE DIGEST'}
               </button>
             </div>
 
             {loadingDigest ? (
-              <div className="text-center py-16 text-gray-500 font-mono text-sm">RETRIEVING DIGEST...</div>
+              <div className="text-center py-16 text-[var(--text-muted)] font-mono text-sm">RETRIEVING DIGEST...</div>
             ) : !digest ? (
-              <div className="text-center py-16 border border-dashed border-[var(--border-subtle)] rounded-lg bg-[#080B0F]/30">
-                <p className="text-sm font-mono text-gray-400">No digest compiled for this period.</p>
-                <p className="text-xs font-mono text-gray-500 mt-1">Click the button above to run AI digest analysis.</p>
+              <div className="text-center py-16 border border-dashed border-[var(--border-subtle)] rounded-lg bg-[var(--bg-elevated)]/30">
+                <p className="text-sm font-mono text-[var(--text-secondary)]">No digest compiled for this period.</p>
+                <p className="text-xs font-mono text-[var(--text-muted)] mt-1">Click the button above to run AI digest analysis.</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* 1. Summary Card (Full span) */}
                 <div className="md:col-span-2 border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-5 rounded-lg space-y-2">
-                  <span className="text-[9px] font-mono text-[#6366f1] uppercase tracking-widest font-bold">THIS WEEK SUMMARY</span>
+                  <span className="text-[9px] font-mono text-[var(--accent)] uppercase tracking-widest font-bold">THIS WEEK SUMMARY</span>
                   <p className="text-xs font-mono leading-relaxed text-[var(--text-primary)]">{digest.summary}</p>
                 </div>
 
                 {/* 2. Top Signal Card */}
                 <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-5 rounded-lg space-y-2">
-                  <span className="text-[9px] font-mono text-indigo-400 uppercase tracking-widest font-bold">TOP SIGNAL</span>
+                  <span className="text-[9px] font-mono text-[var(--accent)] uppercase tracking-widest font-bold">TOP SIGNAL</span>
                   <p className="text-xs font-mono leading-relaxed text-[var(--text-primary)]">{digest.top_signal}</p>
                 </div>
 
                 {/* 3. Rep Spotlight Card */}
                 <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-5 rounded-lg space-y-2">
-                  <span className="text-[9px] font-mono text-green-400 uppercase tracking-widest font-bold">REP SPOTLIGHT</span>
+                  <span className="text-[9px] font-mono text-[var(--green)] uppercase tracking-widest font-bold">REP SPOTLIGHT</span>
                   <p className="text-xs font-mono leading-relaxed text-[var(--text-primary)]">{digest.rep_spotlight}</p>
                 </div>
 
                 {/* 4. Recommendation Card (Full span) */}
                 <div className="md:col-span-2 border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-5 rounded-lg space-y-2">
-                  <span className="text-[9px] font-mono text-indigo-400 uppercase tracking-widest font-bold">ACTIONABLE RECOMMENDATION</span>
+                  <span className="text-[9px] font-mono text-[var(--accent)] uppercase tracking-widest font-bold">ACTIONABLE RECOMMENDATION</span>
                   <p className="text-xs font-mono leading-relaxed text-[var(--text-primary)]">{digest.recommendation}</p>
                 </div>
               </div>
@@ -230,45 +230,45 @@ export default function AiInsightsPage() {
         <div className="space-y-4">
           <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/50 rounded-lg p-6 space-y-6">
             <div className="flex justify-between items-center border-b border-[var(--border-subtle)] pb-4">
-              <h2 className="text-sm font-bold tracking-wider font-mono text-red-500 uppercase">ANOMALY ALERTS</h2>
+              <h2 className="text-sm font-bold tracking-wider font-mono text-[var(--red)] uppercase">ANOMALY ALERTS</h2>
               <button
                 onClick={handleRunDetection}
                 disabled={runningDetection}
-                className="bg-red-950/20 border border-red-900/50 hover:bg-red-950/40 disabled:opacity-50 text-red-400 font-mono text-[10px] py-1.5 px-3 rounded transition-all"
+                className="bg-[var(--red)]/10 border border-[var(--red)]/30 hover:bg-[var(--red)]/20 disabled:opacity-50 text-[var(--red)] font-mono text-[10px] py-1.5 px-3 rounded transition-all"
               >
                 {runningDetection ? 'SCANNING...' : 'RUN DETECTION'}
               </button>
             </div>
 
             {loadingAlerts ? (
-              <div className="text-center py-12 text-gray-500 font-mono text-xs">SCANNING ALERTS...</div>
+              <div className="text-center py-12 text-[var(--text-muted)] font-mono text-xs">SCANNING ALERTS...</div>
             ) : alerts.length === 0 ? (
-              <div className="text-center py-16 border border-dashed border-[var(--border-subtle)] rounded-lg bg-[#080B0F]/30">
-                <p className="text-xs font-mono text-gray-400">All systems operational.</p>
-                <p className="text-[10px] font-mono text-gray-500 mt-1">No anomalies detected in the last 7 days.</p>
+              <div className="text-center py-16 border border-dashed border-[var(--border-subtle)] rounded-lg bg-[var(--bg-elevated)]/30">
+                <p className="text-xs font-mono text-[var(--text-secondary)]">All systems operational.</p>
+                <p className="text-[10px] font-mono text-[var(--text-muted)] mt-1">No anomalies detected in the last 7 days.</p>
               </div>
             ) : (
               <div className="space-y-3.5 max-h-[500px] overflow-y-auto pr-1">
                 {alerts.map((alert) => (
                   <div
                     key={alert.id}
-                    className="border border-[var(--border-subtle)] bg-[#080B0F]/50 p-4 rounded-lg space-y-3 flex flex-col justify-between"
+                    className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/50 p-4 rounded-lg space-y-3 flex flex-col justify-between"
                   >
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
                         <span className={`text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 border rounded ${getSeverityStyles(alert.severity)}`}>
                           {alert.severity}
                         </span>
-                        <span className="text-[8px] font-mono text-gray-500">
+                        <span className="text-[8px] font-mono text-[var(--text-muted)]">
                           {new Date(alert.created_at).toLocaleDateString()}
                         </span>
                       </div>
-                      <p className="text-xs font-mono text-gray-300 leading-normal">{alert.alert_text}</p>
+                      <p className="text-xs font-mono text-[var(--text-secondary)] leading-normal">{alert.alert_text}</p>
                     </div>
 
                     <button
                       onClick={() => handleMarkAsRead(alert.id)}
-                      className="w-full border border-[var(--border-subtle)] hover:border-gray-500 text-[10px] font-mono py-1 rounded text-gray-400 hover:text-white transition-colors"
+                      className="w-full border border-[var(--border-subtle)] hover:border-[var(--text-muted)] text-[10px] font-mono py-1 rounded text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
                     >
                       Mark as Read
                     </button>

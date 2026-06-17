@@ -42,7 +42,7 @@ const PLANS = [
       'AI copywriter',
       'Bulk CSV import',
     ],
-    accent: 'border-[#6366f1]',
+    accent: 'border-[#C2683D]',
     badge: 'Most Popular',
   },
   {
@@ -113,7 +113,7 @@ export default function BillingPage() {
   const monthlyVisits = client?.monthly_visits || 0;
   const visitLimit = VISIT_LIMITS[currentPlan] ?? 500;
   const visitPct = visitLimit === Infinity ? 0 : Math.min((monthlyVisits / visitLimit) * 100, 100);
-  const barColor = visitPct >= 90 ? '#ef4444' : visitPct >= 70 ? '#f59e0b' : '#6366f1';
+  const barColor = visitPct >= 90 ? '#ef4444' : visitPct >= 70 ? '#f59e0b' : '#C2683D';
 
   const hierarchy: Record<string, number> = { starter: 0, growth: 1, pro: 2 };
 
@@ -143,10 +143,10 @@ export default function BillingPage() {
 
       {/* Past due / cancelled warning */}
       {(planStatus === 'past_due' || planStatus === 'cancelled' || planStatus === 'expired') && (
-        <div className="flex items-start gap-3 border border-red-500/30 bg-red-500/10 rounded-[10px] px-5 py-4">
-          <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+        <div className="flex items-start gap-3 border border-[var(--red)]/30 bg-red-500/10 rounded-[10px] px-5 py-4">
+          <AlertTriangle className="w-4 h-4 text-[var(--red)] flex-shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-bold text-red-400">
+            <p className="text-sm font-bold text-[var(--red)]">
               {planStatus === 'cancelled' ? 'Subscription cancelled' : 'Payment issue — action required'}
             </p>
             <p className="text-xs text-[var(--text-secondary)] mt-0.5">
@@ -154,7 +154,7 @@ export default function BillingPage() {
                 ? 'Your subscription has been cancelled. You can resubscribe below.'
                 : 'Your last payment failed. Please update your billing details to avoid losing access.'}
               {' '}
-              <a href="mailto:support@churnaut.com" className="text-red-400 underline hover:text-white transition-colors">
+              <a href="mailto:support@churnaut.com" className="text-[var(--red)] underline hover:text-white transition-colors">
                 Contact support &rarr;
               </a>
             </p>
@@ -169,7 +169,7 @@ export default function BillingPage() {
             <span className="text-[11px] font-mono uppercase tracking-wider text-[var(--text-muted)]">
               Monthly Tracked Visits — {currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1)} Plan
             </span>
-            <span className={`text-[11px] font-mono font-bold ${visitPct >= 90 ? 'text-red-400' : visitPct >= 70 ? 'text-amber-400' : 'text-[var(--text-muted)]'}`}>
+            <span className={`text-[11px] font-mono font-bold ${visitPct >= 90 ? 'text-[var(--red)]' : visitPct >= 70 ? 'text-[var(--amber)]' : 'text-[var(--text-muted)]'}`}>
               {monthlyVisits.toLocaleString()} / {visitLimit.toLocaleString()}
             </span>
           </div>
@@ -192,14 +192,14 @@ export default function BillingPage() {
         </span>
         <button
           onClick={() => setYearly(v => !v)}
-          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none ${yearly ? 'bg-[#6366f1]' : 'bg-[var(--border-subtle)]'}`}
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none ${yearly ? 'bg-[#C2683D]' : 'bg-[var(--border-subtle)]'}`}
         >
           <span
             className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${yearly ? 'translate-x-6' : 'translate-x-1'}`}
           />
         </button>
         <span className={`text-sm font-sans ${yearly ? 'text-[var(--text-primary)] font-semibold' : 'text-[var(--text-muted)]'}`}>
-          Yearly <span className="text-[10px] font-mono text-[#6366f1] ml-1">2 MONTHS FREE</span>
+          Yearly <span className="text-[10px] font-mono text-[#C2683D] ml-1">2 MONTHS FREE</span>
         </span>
       </div>
 
@@ -220,7 +220,7 @@ export default function BillingPage() {
               {/* Badge */}
               {plan.badge && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  <span className="bg-[#6366f1] text-white text-[10px] font-mono font-bold uppercase tracking-wider px-3 py-1 rounded-full">
+                  <span className="bg-[#C2683D] text-white text-[10px] font-mono font-bold uppercase tracking-wider px-3 py-1 rounded-full">
                     {plan.badge}
                   </span>
                 </div>
@@ -229,7 +229,7 @@ export default function BillingPage() {
               {/* Current plan tag */}
               {isCurrent && (
                 <div className="absolute top-4 right-4">
-                  <span className="text-[9px] font-mono uppercase tracking-wider text-[#6366f1] border border-[#6366f1]/30 bg-[#6366f1]/10 px-2 py-0.5 rounded-full">
+                  <span className="text-[9px] font-mono uppercase tracking-wider text-[#C2683D] border border-[#C2683D]/30 bg-[#C2683D]/10 px-2 py-0.5 rounded-full">
                     Current
                   </span>
                 </div>
@@ -257,7 +257,7 @@ export default function BillingPage() {
               <ul className="space-y-2 flex-1">
                 {plan.features.map((f) => (
                   <li key={f} className="flex items-start gap-2 text-[12px] text-[var(--text-secondary)] font-sans">
-                    <Check className="w-3.5 h-3.5 text-[#6366f1] flex-shrink-0 mt-0.5" />
+                    <Check className="w-3.5 h-3.5 text-[#C2683D] flex-shrink-0 mt-0.5" />
                     {f}
                   </li>
                 ))}
@@ -275,7 +275,7 @@ export default function BillingPage() {
                         href={portalUrl || 'https://churnaut.lemonsqueezy.com/billing'}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="block w-full text-center border border-[#6366f1]/30 text-[#6366f1] hover:text-white hover:bg-[#6366f1] text-[12px] font-sans py-2.5 rounded-[8px] transition-all"
+                        className="block w-full text-center border border-[#C2683D]/30 text-[#C2683D] hover:text-white hover:bg-[#C2683D] text-[12px] font-sans py-2.5 rounded-[8px] transition-all"
                       >
                         Manage subscription &rarr;
                       </a>
@@ -286,7 +286,7 @@ export default function BillingPage() {
                     href={buildCheckoutUrl(variantId)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="block w-full text-center bg-[#6366f1] hover:bg-[#5053e1] text-white text-[13px] font-semibold font-sans py-2.5 rounded-[8px] transition-all active:scale-[0.98]"
+                    className="block w-full text-center bg-[#C2683D] hover:bg-[#A8552F] text-white text-[13px] font-semibold font-sans py-2.5 rounded-[8px] transition-all active:scale-[0.98]"
                   >
                     Upgrade to {plan.name} &rarr;
                   </a>
@@ -307,7 +307,7 @@ export default function BillingPage() {
       {/* Footer note */}
       <p className="text-center text-[11px] font-mono text-[var(--text-muted)] pb-4">
         Payments processed securely by Lemon Squeezy. Subscriptions renew automatically.{' '}
-        <a href="mailto:support@churnaut.com" className="text-[#6366f1] hover:underline">
+        <a href="mailto:support@churnaut.com" className="text-[#C2683D] hover:underline">
           Contact support
         </a>{' '}
         for billing queries.

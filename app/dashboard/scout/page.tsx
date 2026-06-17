@@ -509,7 +509,7 @@ export default function ScoutDashboard() {
   }
 
   return (
-    <div className="space-y-6 text-gray-300">
+    <div className="space-y-6 text-[var(--text-secondary)]">
       {/* 1. HEADER SECTION */}
       <div className="flex justify-between items-center border-b border-[var(--border-subtle)] pb-6 gap-4">
         <div>

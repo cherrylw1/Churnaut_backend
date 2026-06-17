@@ -247,16 +247,15 @@ export default function DashboardPage() {
           {/* Header row */}
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <h2 className="text-sm font-bold font-mono uppercase tracking-wider text-white">
-                GET STARTED WITH CHURNAUT
+              <h2 className="text-sm font-bold font-mono uppercase tracking-wider text-[var(--text-primary)]">GET STARTED WITH CHURNAUT
               </h2>
-              <p className="text-xs font-mono text-gray-400">
+              <p className="text-xs font-mono text-[var(--text-secondary)]">
                 Complete these steps to start personalizing your website.
               </p>
             </div>
             <div className="flex items-center gap-4">
               {/* Progress fraction */}
-              <span className="text-xs font-mono text-gray-500">
+              <span className="text-xs font-mono text-[var(--text-muted)]">
                 {[onboarding.snippet_installed, onboarding.first_link_created, onboarding.first_rule_created, onboarding.crm_connected, onboarding.first_personalized_visit].filter(Boolean).length} / 5 complete
               </span>
               {/* Dismiss button */}
@@ -265,7 +264,7 @@ export default function DashboardPage() {
                   localStorage.setItem('churnaut_onboarding_dismissed', 'true');
                   setOnboardingDismissed(true);
                 }}
-                className="text-gray-600 hover:text-gray-400 font-mono text-xs transition-colors"
+                className="text-[var(--text-muted)] hover:text-[var(--text-secondary)] font-mono text-xs transition-colors"
               >
                 [DISMISS]
               </button>
@@ -275,7 +274,7 @@ export default function DashboardPage() {
           {/* Progress bar */}
           <div className="h-0.5 bg-[var(--border-subtle)] rounded-full overflow-hidden">
             <div
-              className="h-full bg-[#6366f1] rounded-full transition-all duration-500"
+              className="h-full bg-[var(--accent)] rounded-full transition-all duration-500"
               style={{ width: `${([onboarding.snippet_installed, onboarding.first_link_created, onboarding.first_rule_created, onboarding.crm_connected, onboarding.first_personalized_visit].filter(Boolean).length / 5) * 100}%` }}
             />
           </div>
@@ -328,15 +327,15 @@ export default function DashboardPage() {
                 key={step.key}
                 className={`flex items-center justify-between gap-4 p-3.5 rounded-lg border transition-all ${
                   step.done
-                    ? 'border-green-900/20 bg-green-950/10 opacity-50'
-                    : 'border-[var(--border-subtle)] bg-[var(--bg-elevated)]/30 hover:border-[#6366f1]/40'
+                    ? 'border-[var(--green)]/30 bg-[var(--green)]/10 opacity-50'
+                    : 'border-[var(--border-subtle)] bg-[var(--bg-elevated)]/30 hover:border-[var(--accent)]/40'
                 }`}
               >
                 <div className="flex items-center gap-3 min-w-0">
                   {/* Completion indicator */}
                   <div className={`flex-shrink-0 w-5 h-5 rounded-full border flex items-center justify-center transition-all ${
                     step.done
-                      ? 'bg-green-500/20 border-green-500/40 text-green-400'
+                      ? 'bg-[var(--green)]/10 border-[var(--green)]/30 text-[var(--green)]'
                       : 'border-[var(--border-subtle)] text-transparent'
                   }`}>
                     {step.done && (
@@ -346,16 +345,16 @@ export default function DashboardPage() {
                     )}
                   </div>
                   <div className="min-w-0">
-                    <p className={`text-xs font-mono font-bold uppercase tracking-wide ${step.done ? 'text-gray-500 line-through' : 'text-white'}`}>
+                    <p className={`text-xs font-mono font-bold uppercase tracking-wide ${step.done ? 'text-[var(--text-muted)] line-through' : 'text-[var(--text-primary)]'}`}>
                       {step.title}
                     </p>
-                    <p className="text-[10px] font-mono text-gray-500 mt-0.5">{step.description}</p>
+                    <p className="text-[10px] font-mono text-[var(--text-muted)] mt-0.5">{step.description}</p>
                   </div>
                 </div>
                 {!step.done && (
                   <Link
                     href={step.href}
-                    className="flex-shrink-0 text-[10px] font-mono text-[#6366f1] hover:text-white border border-[#6366f1]/30 hover:border-[#6366f1] px-3 py-1.5 rounded transition-all whitespace-nowrap"
+                    className="flex-shrink-0 text-[10px] font-mono text-[var(--accent)] hover:text-white border border-[var(--accent)]/30 hover:border-[var(--accent)] px-3 py-1.5 rounded transition-all whitespace-nowrap"
                   >
                     {step.cta}
                   </Link>
@@ -367,9 +366,9 @@ export default function DashboardPage() {
       )}
 
       {onboarding && !onboardingDismissed && allComplete && (
-        <div className="border border-green-900/30 bg-green-950/10 rounded-[12px] p-4 flex items-center gap-3">
-          <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse flex-shrink-0" />
-          <p className="text-xs font-mono text-green-400 font-bold uppercase tracking-wider">
+        <div className="border border-[var(--green)]/30 bg-[var(--green)]/10 rounded-[12px] p-4 flex items-center gap-3">
+          <span className="w-2 h-2 rounded-full bg-[var(--green)] animate-pulse flex-shrink-0" />
+          <p className="text-xs font-mono text-[var(--green)] font-bold uppercase tracking-wider">
             Setup complete — Churnaut is fully configured and running.
           </p>
         </div>
@@ -546,8 +545,8 @@ export default function DashboardPage() {
             const limit = (PLAN_LIMITS[plan as keyof typeof PLAN_LIMITS]?.tracked_visits) ?? 500;
             if (limit === Infinity) return null;
             const pct = Math.min((monthlyVisits / limit) * 100, 100);
-            const barColor = pct >= 100 ? '#ef4444' : pct >= 90 ? '#ef4444' : pct >= 70 ? '#f59e0b' : '#6366f1';
-            const textColor = pct >= 100 ? 'text-red-400' : pct >= 90 ? 'text-red-400' : pct >= 70 ? 'text-amber-400' : 'text-[var(--text-muted)]';
+            const barColor = pct >= 100 ? '#ef4444' : pct >= 90 ? '#ef4444' : pct >= 70 ? '#f59e0b' : '#C2683D';
+            const textColor = pct >= 100 ? 'text-[var(--red)]' : pct >= 90 ? 'text-[var(--red)]' : pct >= 70 ? 'text-[var(--amber)]' : 'text-[var(--text-muted)]';
             const atLimit = pct >= 100;
             return (
               <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-[12px] px-6 py-5 space-y-3">
@@ -566,9 +565,9 @@ export default function DashboardPage() {
                   />
                 </div>
                 {pct >= 80 && plan === 'starter' && (
-                  <p className="text-[10px] font-mono text-amber-400">
+                  <p className="text-[10px] font-mono text-[var(--amber)]">
                     {atLimit ? (
-                      <span className="text-red-400 font-semibold">⛔ Visit limit reached — personalization is paused until the 1st of next month.</span>
+                      <span className="text-[var(--red)] font-semibold">⛔ Visit limit reached — personalization is paused until the 1st of next month.</span>
                     ) : (
                       `You've used ${Math.round(pct)}% of your monthly limit.`
                     )}
@@ -576,7 +575,7 @@ export default function DashboardPage() {
                   </p>
                 )}
                 {pct >= 80 && plan === 'growth' && (
-                  <p className="text-[10px] font-mono text-amber-400">
+                  <p className="text-[10px] font-mono text-[var(--amber)]">
                     {pct >= 100 ? 'Visit limit reached.' : `You've used ${Math.round(pct)}% of your monthly limit.`}
                     {' '}<a href="/dashboard/billing" className="underline hover:text-white transition-colors">Upgrade to Pro for unlimited visits &rarr;</a>
                   </p>
@@ -587,9 +586,9 @@ export default function DashboardPage() {
 
           {/* SECTION 4C: UPSELL NUDGE (starter only) */}
           {plan === 'starter' && (
-            <div className="border border-[#6366f1]/15 bg-[#6366f1]/5 rounded-[12px] px-6 py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="border border-[var(--accent)]/15 bg-[var(--accent)]/5 rounded-[12px] px-6 py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div className="space-y-1">
-                <p className="text-[12px] font-mono font-bold uppercase tracking-wider text-[#6366f1]">
+                <p className="text-[12px] font-mono font-bold uppercase tracking-wider text-[var(--accent)]">
                   Unlock Scout AI + Unlimited Rules
                 </p>
                 <p className="text-[11px] font-sans text-[var(--text-secondary)] max-w-md">
@@ -598,7 +597,7 @@ export default function DashboardPage() {
               </div>
               <a
                 href="/dashboard/billing"
-                className="flex-shrink-0 bg-[#6366f1] hover:bg-[#5053e1] text-white font-sans text-xs font-semibold py-2 px-5 rounded-[8px] transition-all active:scale-[0.98] whitespace-nowrap"
+                className="flex-shrink-0 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-sans text-xs font-semibold py-2 px-5 rounded-[8px] transition-all active:scale-[0.98] whitespace-nowrap"
               >
                 Upgrade to Growth &rarr;
               </a>

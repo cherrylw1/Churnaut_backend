@@ -9,7 +9,7 @@ export default function AttioSettingsPage() {
       {/* Page Header */}
       <div className="border-b border-[var(--border-subtle)] pb-5 flex justify-between items-end">
         <div>
-          <div className="flex items-center space-x-2 text-[10px] font-mono text-gray-500 uppercase tracking-widest mb-1.5">
+          <div className="flex items-center space-x-2 text-[10px] font-mono text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
             <Link href="/dashboard/integrations" className="hover:text-white transition-colors">
               INTEGRATIONS
             </Link>
@@ -18,19 +18,19 @@ export default function AttioSettingsPage() {
               CRM INTEGRATIONS
             </Link>
             <span>/</span>
-            <span className="text-gray-300">ATTIO</span>
+            <span className="text-[var(--text-secondary)]">ATTIO</span>
           </div>
           <h1 className="text-xl font-bold tracking-wider font-mono uppercase text-white">
             ATTIO CRM
           </h1>
-          <p className="text-xs font-mono text-gray-400 mt-1">
+          <p className="text-xs font-mono text-[var(--text-secondary)] mt-1">
             Connect Attio workspace records, pipelines, and custom contact attributes to build real-time personalization rules.
           </p>
         </div>
         <div>
           <Link
             href="/dashboard/integrations/crm"
-            className="text-xs font-mono text-gray-400 hover:text-white border border-[var(--border-subtle)] px-4 py-2 rounded transition-colors"
+            className="text-xs font-mono text-[var(--text-secondary)] hover:text-white border border-[var(--border-subtle)] px-4 py-2 rounded transition-colors"
           >
             ← BACK TO CRMS
           </Link>
@@ -45,11 +45,11 @@ export default function AttioSettingsPage() {
               <h3 className="text-sm font-mono font-bold text-white uppercase tracking-wider">
                 Attio CRM Connection
               </h3>
-              <span className="text-[9px] font-mono font-bold bg-[var(--border-subtle)] text-gray-500 border border-[var(--border-subtle)] px-2.5 py-0.5 rounded uppercase">
+              <span className="text-[9px] font-mono font-bold bg-[var(--border-subtle)] text-[var(--text-muted)] border border-[var(--border-subtle)] px-2.5 py-0.5 rounded uppercase">
                 COMING SOON
               </span>
             </div>
-            <p className="text-xs font-mono text-gray-400 leading-relaxed max-w-xl">
+            <p className="text-xs font-mono text-[var(--text-secondary)] leading-relaxed max-w-xl">
               Sync Attio workspace records, pipelines, and contact attributes in real time.
             </p>
           </div>
@@ -57,7 +57,7 @@ export default function AttioSettingsPage() {
           <div>
             <button
               disabled
-              className="w-full sm:w-auto border border-[var(--border-subtle)] text-gray-500 font-mono text-xs py-2.5 px-6 rounded opacity-40 cursor-not-allowed text-center"
+              className="w-full sm:w-auto border border-[var(--border-subtle)] text-[var(--text-muted)] font-mono text-xs py-2.5 px-6 rounded opacity-40 cursor-not-allowed text-center"
             >
               CONNECT ATTIO →
             </button>

@@ -98,15 +98,15 @@ export default function IcpBuilderPage() {
   const hasNotEnoughDeals = errorMsg?.includes('at least 3') || (profile === null && !loading) || (profile !== null && profile.win_count < 3);
 
   return (
-    <div className="space-y-8 max-w-4xl mx-auto text-gray-300">
+    <div className="space-y-8 max-w-4xl mx-auto text-[var(--text-secondary)]">
       {/* HEADER SECTION */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-wider font-mono text-white flex items-center gap-2.5">
-            <Target className="text-indigo-400 w-6 h-6" />
+          <h1 className="text-2xl font-bold tracking-wider font-mono text-[var(--text-primary)] flex items-center gap-2.5">
+            <Target className="text-[var(--accent)] w-6 h-6" />
             ICP BUILDER
           </h1>
-          <p className="text-xs font-mono text-gray-400 mt-1">
+          <p className="text-xs font-mono text-[var(--text-secondary)] mt-1">
             Built from your closed-won deals in HubSpot
           </p>
         </div>
@@ -114,7 +114,7 @@ export default function IcpBuilderPage() {
         <button
           onClick={handleBuildIcp}
           disabled={building}
-          className="bg-indigo-600 hover:bg-indigo-500 text-white font-mono text-xs font-bold py-2.5 px-4.5 rounded uppercase tracking-wider flex items-center gap-2 transition-all disabled:opacity-50 active:scale-[0.98]"
+          className="bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-mono text-xs font-bold py-2.5 px-4.5 rounded uppercase tracking-wider flex items-center gap-2 transition-all disabled:opacity-50 active:scale-[0.98]"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${building ? 'animate-spin' : ''}`} />
           {building ? 'ANALYZING...' : 'BUILD MY ICP'}
@@ -122,16 +122,16 @@ export default function IcpBuilderPage() {
       </div>
 
       {errorMsg && (
-        <div className="p-4 bg-red-950/20 border border-red-900/50 rounded-lg text-red-400 text-xs font-mono">
+        <div className="p-4 bg-[var(--red)]/10 border border-[var(--red)]/30 rounded-lg text-[var(--red)] text-xs font-mono">
           {errorMsg}
         </div>
       )}
 
       {rulesCreated !== null && (
-        <div className="p-4 bg-green-950/20 border border-green-900/50 rounded-lg text-green-400 text-xs font-mono flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />
+        <div className="p-4 bg-[var(--green)]/10 border border-[var(--green)]/30 rounded-lg text-[var(--green)] text-xs font-mono flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4 text-[var(--green)] flex-shrink-0" />
           <span>
-            Success! ICP profile generated and <strong className="text-white">{rulesCreated}</strong> new routing rules created.
+            Success! ICP profile generated and <strong className="text-[var(--text-primary)]">{rulesCreated}</strong> new routing rules created.
           </span>
         </div>
       )}
@@ -168,11 +168,10 @@ export default function IcpBuilderPage() {
         <div className="space-y-8">
           {/* YOUR ICP CARD */}
           <div className="border border-[var(--border-subtle)] border-l-4 border-l-amber-500 bg-[var(--bg-elevated)] rounded-lg p-5 font-mono">
-            <div className="flex items-center gap-2 text-white font-bold tracking-wider uppercase text-xs">
-              <Target className="text-amber-500 w-4 h-4" />
+            <div className="flex items-center gap-2 text-[var(--text-primary)] font-bold tracking-wider uppercase text-xs"><Target className="text-[var(--amber)] w-4 h-4" />
               YOUR ICP SUMMARY
             </div>
-            <p className="mt-4 text-sm text-gray-300 leading-relaxed font-sans">
+            <p className="mt-4 text-sm text-[var(--text-secondary)] leading-relaxed font-sans">
               {profile.icp_summary}
             </p>
           </div>
@@ -180,18 +179,18 @@ export default function IcpBuilderPage() {
           {/* WIN PATTERNS */}
           <div className="space-y-3">
             <div className="border-b border-[var(--border-subtle)] pb-1.5">
-              <h2 className="text-xs font-bold font-mono tracking-wider text-indigo-400 uppercase">
+              <h2 className="text-xs font-bold font-mono tracking-wider text-[var(--accent)] uppercase">
                 WIN PATTERNS
               </h2>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
               {/* Stat 1: Win Count */}
               <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 rounded-lg flex flex-col justify-between h-24 font-mono">
-                <div className="text-[10px] text-gray-500 uppercase tracking-wider">
+                <div className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider">
                   Win Count
                 </div>
                 <div className="mt-auto">
-                  <span className="text-3xl font-extrabold text-white">
+                  <span className="text-3xl font-extrabold text-[var(--text-primary)]">
                     {profile.win_count}
                   </span>
                 </div>
@@ -199,11 +198,11 @@ export default function IcpBuilderPage() {
 
               {/* Stat 2: Avg Deal Value */}
               <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 rounded-lg flex flex-col justify-between h-24 font-mono">
-                <div className="text-[10px] text-gray-500 uppercase tracking-wider">
+                <div className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider">
                   Avg Deal Value
                 </div>
                 <div className="mt-auto">
-                  <span className="text-3xl font-extrabold text-white">
+                  <span className="text-3xl font-extrabold text-[var(--text-primary)]">
                     {formatCurrency(profile.avg_deal_value)}
                   </span>
                 </div>
@@ -211,11 +210,11 @@ export default function IcpBuilderPage() {
 
               {/* Stat 3: Avg Days to Close */}
               <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 rounded-lg flex flex-col justify-between h-24 font-mono">
-                <div className="text-[10px] text-gray-500 uppercase tracking-wider">
+                <div className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider">
                   Avg Days to Close
                 </div>
                 <div className="mt-auto">
-                  <span className="text-3xl font-extrabold text-white">
+                  <span className="text-3xl font-extrabold text-[var(--text-primary)]">
                     {profile.avg_days_to_close}
                   </span>
                 </div>
@@ -226,7 +225,7 @@ export default function IcpBuilderPage() {
           {/* TOP JOB TITLES */}
           <div className="space-y-3">
             <div className="border-b border-[var(--border-subtle)] pb-1.5">
-              <h2 className="text-xs font-bold font-mono tracking-wider text-indigo-400 uppercase">
+              <h2 className="text-xs font-bold font-mono tracking-wider text-[var(--accent)] uppercase">
                 TOP JOB TITLES
               </h2>
             </div>
@@ -235,17 +234,17 @@ export default function IcpBuilderPage() {
                 {profile.top_job_titles.map((jt, idx) => (
                   <div
                     key={idx}
-                    className="border border-[var(--border-subtle)] bg-[#080B0F]/60 p-4 rounded-lg flex justify-between items-center font-mono hover:border-indigo-900/40 transition-colors"
+                    className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-4 rounded-lg flex justify-between items-center font-mono hover:border-[var(--accent)]/30 transition-colors"
                   >
-                    <span className="text-sm font-bold text-white">{jt.title}</span>
-                    <span className="text-xs text-gray-500 uppercase font-bold">
+                    <span className="text-sm font-bold text-[var(--text-primary)]">{jt.title}</span>
+                    <span className="text-xs text-[var(--text-muted)] uppercase font-bold">
                       {jt.count} {jt.count === 1 ? 'WIN' : 'WINS'}
                     </span>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="py-6 text-center border border-dashed border-[var(--border-subtle)] rounded bg-[#080B0F]/30 text-xs font-mono text-gray-500">
+              <div className="py-6 text-center border border-dashed border-[var(--border-subtle)] rounded bg-[var(--bg-elevated)]/30 text-xs font-mono text-[var(--text-muted)]">
                 No job titles recorded in closed-won contact profiles.
               </div>
             )}
@@ -254,16 +253,16 @@ export default function IcpBuilderPage() {
           {/* AUTO-GENERATED RULES */}
           <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/40 rounded-lg p-5 font-mono flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div className="space-y-1">
-              <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+              <h3 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider">
                 AUTO-GENERATED RULES
               </h3>
-              <p className="text-[11px] text-gray-500 leading-relaxed">
+              <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
                 Rules swap custom copy based on target job titles when prospects visit.
               </p>
             </div>
             <Link
               href="/dashboard/rules"
-              className="text-xs text-[#6366f1] hover:text-[#5053e1] font-bold uppercase tracking-wider flex items-center gap-1 transition-colors"
+              className="text-xs text-[var(--accent)] hover:text-[var(--accent-hover)] font-bold uppercase tracking-wider flex items-center gap-1 transition-colors"
             >
               View routing rules <ArrowRight className="w-3.5 h-3.5" />
             </Link>

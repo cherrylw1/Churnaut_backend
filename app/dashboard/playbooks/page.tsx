@@ -175,7 +175,7 @@ CREATE TABLE IF NOT EXISTS playbook_templates (
 
   if (loading) {
     return (
-      <div className="text-center py-12 text-gray-500 font-mono text-sm uppercase tracking-widest bg-[var(--bg-base)] text-[var(--text-primary)] min-h-screen">
+      <div className="text-center py-12 text-[var(--text-muted)] font-mono text-sm uppercase tracking-widest bg-[var(--bg-base)] text-[var(--text-primary)] min-h-screen">
         RETRIEVING PLAYBOOK TEMPLATES...
       </div>
     );
@@ -196,23 +196,23 @@ CREATE TABLE IF NOT EXISTS playbook_templates (
         <h1 className="text-xl font-bold tracking-wider font-mono uppercase text-white">
           PLAYBOOK LIBRARY
         </h1>
-        <p className="text-xs font-mono text-gray-400 mt-1">
+        <p className="text-xs font-mono text-[var(--text-secondary)] mt-1">
           Deploy pre-configured high-converting routing rules and personalization flows in one click.
         </p>
       </div>
 
       {/* Seeding Warning Alert */}
       {showSeedingWarning && (
-        <div className="border border-yellow-900/40 bg-yellow-950/20 text-[#f59e0b] p-6 rounded-lg font-mono text-xs space-y-3">
+        <div className="border border-[var(--amber)]/30 bg-[var(--amber)]/10 text-[var(--amber)] p-6 rounded-lg font-mono text-xs space-y-3">
           <span className="font-bold block uppercase tracking-wider">DATABASE SEEDING REQUIRED</span>
           <p className="leading-relaxed">
             The Playbook templates have not been seeded into the database yet. To load the 21 standard playbooks, please copy and run the SQL migration statements.
           </p>
-          <div className="relative group border border-yellow-950 bg-[#080B0F] rounded p-3 font-mono text-[10px] text-gray-300 overflow-x-auto">
+          <div className="relative group border border-yellow-950 bg-[#080B0F] rounded p-3 font-mono text-[10px] text-[var(--text-secondary)] overflow-x-auto">
             <pre>{seedSql}</pre>
             <Link
               href="file:///Users/macbook/Movie%20review%20website/TEST%20frontend%20for%20router/Churnaut_backend/supabase/playbooks.sql"
-              className="absolute top-2 right-2 text-indigo-400 hover:text-white underline font-bold"
+              className="absolute top-2 right-2 text-[var(--accent)] hover:text-white underline font-bold"
               target="_blank"
             >
               VIEW SQL FILE
@@ -227,7 +227,7 @@ CREATE TABLE IF NOT EXISTS playbook_templates (
           {/* TIER 1 */}
           {tier1.length > 0 && (
             <div className="space-y-4">
-              <h2 className="text-xs font-mono font-bold text-[#10b981] uppercase tracking-widest bg-green-950/10 py-1.5 px-3 rounded border border-green-900/20 inline-block">
+              <h2 className="text-xs font-mono font-bold text-[var(--green)] uppercase tracking-widest bg-[var(--green)]/10 py-1.5 px-3 rounded border border-[var(--green)]/30 inline-block">
                 Tier 1 Highest Value
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -241,7 +241,7 @@ CREATE TABLE IF NOT EXISTS playbook_templates (
           {/* TIER 2 */}
           {tier2.length > 0 && (
             <div className="space-y-4">
-              <h2 className="text-xs font-mono font-bold text-[#10b981] uppercase tracking-widest bg-green-950/10 py-1.5 px-3 rounded border border-green-900/20 inline-block">
+              <h2 className="text-xs font-mono font-bold text-[var(--green)] uppercase tracking-widest bg-[var(--green)]/10 py-1.5 px-3 rounded border border-[var(--green)]/30 inline-block">
                 Tier 2 High Value
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -255,7 +255,7 @@ CREATE TABLE IF NOT EXISTS playbook_templates (
           {/* TIER 3 */}
           {tier3.length > 0 && (
             <div className="space-y-4">
-              <h2 className="text-xs font-mono font-bold text-[#10b981] uppercase tracking-widest bg-green-950/10 py-1.5 px-3 rounded border border-green-900/20 inline-block">
+              <h2 className="text-xs font-mono font-bold text-[var(--green)] uppercase tracking-widest bg-[var(--green)]/10 py-1.5 px-3 rounded border border-[var(--green)]/30 inline-block">
                 Tier 3 Solid Value
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -269,7 +269,7 @@ CREATE TABLE IF NOT EXISTS playbook_templates (
           {/* TIER 4 */}
           {tier4.length > 0 && (
             <div className="space-y-4">
-              <h2 className="text-xs font-mono font-bold text-[#10b981] uppercase tracking-widest bg-green-950/10 py-1.5 px-3 rounded border border-green-900/20 inline-block">
+              <h2 className="text-xs font-mono font-bold text-[var(--green)] uppercase tracking-widest bg-[var(--green)]/10 py-1.5 px-3 rounded border border-[var(--green)]/30 inline-block">
                 Tier 4 Completeness
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -293,7 +293,7 @@ CREATE TABLE IF NOT EXISTS playbook_templates (
               </span>
               <button
                 onClick={closeInstallModal}
-                className="text-gray-400 hover:text-white transition-colors text-xs font-mono"
+                className="text-[var(--text-secondary)] hover:text-white transition-colors text-xs font-mono"
               >
                 [CLOSE]
               </button>
@@ -303,14 +303,14 @@ CREATE TABLE IF NOT EXISTS playbook_templates (
             <div className="p-6">
               {success ? (
                 <div className="space-y-6 text-center py-4">
-                  <div className="inline-flex items-center justify-center h-12 w-12 rounded-full bg-green-950/30 text-[#10b981] border border-green-900/40 mb-2">
+                  <div className="inline-flex items-center justify-center h-12 w-12 rounded-full bg-[var(--green)]/10 text-[var(--green)] border border-[var(--green)]/30 mb-2">
                     ✓
                   </div>
                   <div className="space-y-2">
                     <h3 className="font-mono text-sm font-bold text-white uppercase">
                       Playbook Installed Successfully
                     </h3>
-                    <p className="font-mono text-xs text-gray-400 max-w-xs mx-auto leading-relaxed">
+                    <p className="font-mono text-xs text-[var(--text-secondary)] max-w-xs mx-auto leading-relaxed">
                       The routing rule was successfully created and added to your routing sequence.
                     </p>
                   </div>
@@ -323,7 +323,7 @@ CREATE TABLE IF NOT EXISTS playbook_templates (
                     </button>
                     <Link
                       href="/dashboard/rules"
-                      className="flex-1 bg-[#6366f1] hover:bg-[#5053e1] text-white font-mono text-xs py-2.5 px-4 rounded text-center transition-all active:scale-[0.98]"
+                      className="flex-1 bg-[#C2683D] hover:bg-[#A8552F] text-white font-mono text-xs py-2.5 px-4 rounded text-center transition-all active:scale-[0.98]"
                     >
                       View Routing Rules &rarr;
                     </Link>
@@ -335,13 +335,13 @@ CREATE TABLE IF NOT EXISTS playbook_templates (
                     <h3 className="font-mono text-sm font-bold text-white uppercase">
                       {selectedPlaybook.name}
                     </h3>
-                    <p className="font-mono text-xs text-gray-400 leading-relaxed">
+                    <p className="font-mono text-xs text-[var(--text-secondary)] leading-relaxed">
                       {selectedPlaybook.description}
                     </p>
                   </div>
 
                   {errorMsg && (
-                    <div className="border border-red-900/40 bg-red-950/20 text-red-400 p-3 rounded font-mono text-xs">
+                    <div className="border border-[var(--red)]/30 bg-[var(--red)]/10 text-[var(--red)] p-3 rounded font-mono text-xs">
                       {errorMsg}
                     </div>
                   )}
@@ -350,7 +350,7 @@ CREATE TABLE IF NOT EXISTS playbook_templates (
                   <div className="space-y-4 max-h-[300px] overflow-y-auto pr-1">
                     {selectedPlaybook.required_inputs.map((input) => (
                       <div key={input.field_name} className="space-y-1.5">
-                        <label className="block text-[10px] font-mono text-gray-400 uppercase tracking-wider">
+                        <label className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
                           {input.label}
                         </label>
                         <input
@@ -359,7 +359,7 @@ CREATE TABLE IF NOT EXISTS playbook_templates (
                           value={formValues[input.field_name] || ''}
                           onChange={(e) => handleInputChange(input.field_name, e.target.value)}
                           placeholder={input.placeholder}
-                          className="w-full bg-[#080B0F] border border-[var(--border-subtle)] focus:border-[#6366f1] outline-none text-xs px-3 py-2.5 rounded text-white font-mono"
+                          className="w-full bg-[#080B0F] border border-[var(--border-subtle)] focus:border-[#C2683D] outline-none text-xs px-3 py-2.5 rounded text-white font-mono"
                         />
                       </div>
                     ))}
@@ -377,7 +377,7 @@ CREATE TABLE IF NOT EXISTS playbook_templates (
                     <button
                       type="submit"
                       disabled={installing}
-                      className="bg-[#6366f1] hover:bg-[#5053e1] text-white font-mono text-xs py-2.5 px-6 rounded transition-all active:scale-[0.98] disabled:opacity-55"
+                      className="bg-[#C2683D] hover:bg-[#A8552F] text-white font-mono text-xs py-2.5 px-6 rounded transition-all active:scale-[0.98] disabled:opacity-55"
                     >
                       {installing ? 'INSTALLING...' : 'INSTALL PLAYBOOK'}
                     </button>
@@ -403,13 +403,13 @@ function PlaybookCard({ playbook, onInstall }: PlaybookCardProps) {
     const base = 'border text-[9px] font-mono px-2 py-0.5 rounded uppercase font-bold select-none';
     switch (signalType) {
       case 'cold_email':
-        return `${base} bg-indigo-950/20 text-[#6366f1] border-indigo-900/40`;
+        return `${base} bg-[var(--accent)]/20 text-[#C2683D] border-[var(--accent)]/40`;
       case 'linkedin_lead_gen':
         return `${base} bg-blue-950/20 text-blue-400 border-blue-900/40`;
       case 'returning_visitor':
-        return `${base} bg-green-950/20 text-[#10b981] border-green-900/40`;
+        return `${base} bg-[var(--green)]/10 text-[var(--green)] border-[var(--green)]/30`;
       case 'google_ad':
-        return `${base} bg-yellow-950/20 text-yellow-500 border-yellow-900/40`;
+        return `${base} bg-[var(--amber)]/10 text-[var(--amber)] border-[var(--amber)]/30`;
       case 'linkedin_ad':
         return `${base} bg-sky-950/20 text-sky-400 border-sky-900/40`;
       case 'meta_ad':
@@ -423,7 +423,7 @@ function PlaybookCard({ playbook, onInstall }: PlaybookCardProps) {
       case 'partner_referral':
         return `${base} bg-rose-950/20 text-rose-400 border-rose-900/40`;
       default:
-        return `${base} bg-[var(--border-subtle)] text-gray-400 border-[var(--border-subtle)]`;
+        return `${base} bg-[var(--border-subtle)] text-[var(--text-secondary)] border-[var(--border-subtle)]`;
     }
   };
 
@@ -432,32 +432,32 @@ function PlaybookCard({ playbook, onInstall }: PlaybookCardProps) {
   };
 
   return (
-    <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-lg p-5 flex flex-col justify-between hover:border-[#6366f1]/50 hover:bg-[var(--bg-elevated)] transition-all group">
+    <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-lg p-5 flex flex-col justify-between hover:border-[#C2683D]/50 hover:bg-[var(--bg-elevated)] transition-all group">
       <div className="space-y-3.5">
         <div className="flex items-center justify-between gap-2">
           <span className={getSignalBadgeClass(playbook.signal_type)}>
             {getSignalLabel(playbook.signal_type)}
           </span>
-          <span className="text-[10px] font-mono text-gray-500">Tier {playbook.tier}</span>
+          <span className="text-[10px] font-mono text-[var(--text-muted)]">Tier {playbook.tier}</span>
         </div>
         
         <div className="space-y-1.5">
-          <h3 className="text-xs font-mono font-bold text-white uppercase group-hover:text-[#6366f1] transition-colors leading-tight">
+          <h3 className="text-xs font-mono font-bold text-white uppercase group-hover:text-[#C2683D] transition-colors leading-tight">
             {playbook.name}
           </h3>
-          <p className="text-[11px] font-mono text-gray-400 leading-relaxed min-h-[48px]">
+          <p className="text-[11px] font-mono text-[var(--text-secondary)] leading-relaxed min-h-[48px]">
             {playbook.description}
           </p>
         </div>
       </div>
       
       <div className="pt-4 border-t border-[var(--border-subtle)]/60 mt-4 flex items-center justify-between gap-2">
-        <span className="text-[10px] font-mono text-gray-500">
+        <span className="text-[10px] font-mono text-[var(--text-muted)]">
           {playbook.required_inputs.length} input{playbook.required_inputs.length !== 1 ? 's' : ''} required
         </span>
         <button
           onClick={() => onInstall(playbook)}
-          className="bg-[var(--border-subtle)] hover:bg-[#6366f1] text-white font-mono text-[10px] py-1.5 px-4 rounded transition-all active:scale-[0.98]"
+          className="bg-[var(--border-subtle)] hover:bg-[#C2683D] text-white font-mono text-[10px] py-1.5 px-4 rounded transition-all active:scale-[0.98]"
         >
           Install
         </button>

@@ -664,7 +664,7 @@ export default function RulesPage() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-[var(--border-subtle)] pb-5">
         <div>
           <h1 className="text-xl font-bold tracking-wider font-mono">ROUTING RULES</h1>
-          <p className="text-xs font-mono text-gray-400 mt-1">Configure personalized web variants based on inbound context</p>
+          <p className="text-xs font-mono text-[var(--text-secondary)] mt-1">Configure personalized web variants based on inbound context</p>
         </div>
 
         <div className="flex border-b border-[var(--border-subtle)] mt-4 md:mt-0">
@@ -672,8 +672,8 @@ export default function RulesPage() {
             onClick={() => setActiveTab('rules')}
             className={`px-5 py-2.5 text-xs font-mono font-bold uppercase tracking-wider border-b-2 transition-all ${
               activeTab === 'rules'
-                ? 'border-[#6366f1] text-[#6366f1]'
-                : 'border-transparent text-gray-500 hover:text-gray-300'
+                ? 'border-[var(--accent)] text-[var(--accent)]'
+                : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
             }`}
           >
             My Rules
@@ -682,8 +682,8 @@ export default function RulesPage() {
             onClick={() => setActiveTab('playbooks')}
             className={`px-5 py-2.5 text-xs font-mono font-bold uppercase tracking-wider border-b-2 transition-all ${
               activeTab === 'playbooks'
-                ? 'border-[#6366f1] text-[#6366f1]'
-                : 'border-transparent text-gray-500 hover:text-gray-300'
+                ? 'border-[var(--accent)] text-[var(--accent)]'
+                : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
             }`}
           >
             Playbook Library
@@ -698,13 +698,13 @@ export default function RulesPage() {
         {/* Left Side: Rule Cards Drag Area */}
         <div className={`${selectedRule ? 'w-[calc(60%-12px)]' : 'w-full'} space-y-4 flex-shrink-0 min-w-0 transition-all duration-200`}>
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-mono text-[#6366f1] tracking-widest uppercase bg-[var(--border-subtle)]/40 py-1 px-2.5 rounded border border-[var(--border-subtle)]">
+            <span className="text-[10px] font-mono text-[var(--accent)] tracking-widest uppercase bg-[var(--border-subtle)]/40 py-1 px-2.5 rounded border border-[var(--border-subtle)]">
               Priority List (Drag to Reorder)
             </span>
           </div>
 
           {loading ? (
-            <div className="text-center py-12 text-gray-500 font-mono text-sm">RETRIEVING RULES...</div>
+            <div className="text-center py-12 text-[var(--text-muted)] font-mono text-sm">RETRIEVING RULES...</div>
           ) : error ? (
             <ErrorState message={error} onRetry={fetchRules} />
           ) : rules.length === 0 ? (
@@ -731,36 +731,36 @@ export default function RulesPage() {
                     onDragEnd={() => setDraggedIndex(null)}
                     onClick={() => setSelectedRule(rule)}
                     className={`border rounded-lg p-4 bg-[var(--bg-elevated)] flex items-start gap-4 transition-all cursor-pointer hover:border-gray-500 relative select-none ${
-                      isSelected ? 'border-[#6366f1] bg-[var(--border-subtle)]/10' : 'border-[var(--border-subtle)]'
+                      isSelected ? 'border-[var(--accent)] bg-[var(--border-subtle)]/10' : 'border-[var(--border-subtle)]'
                     } ${!rule.active ? 'opacity-65' : ''}`}
                   >
                     {/* Drag Handle Indicator */}
-                    <div className="flex flex-col justify-center items-center h-full text-gray-500 hover:text-white cursor-move pt-1">
+                    <div className="flex flex-col justify-center items-center h-full text-[var(--text-muted)] hover:text-white cursor-move pt-1">
                       <span className="text-sm tracking-widest font-mono">::</span>
                     </div>
 
                     {/* Content Section */}
                     <div className="flex-1 min-w-0 space-y-2">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-mono font-bold text-gray-400">
+                        <span className="text-xs font-mono font-bold text-[var(--text-secondary)]">
                           #{rule.priority}
                         </span>
-                        <span className="text-[10px] font-mono px-2 py-0.5 bg-[var(--border-subtle)] border border-[var(--border-subtle)] text-indigo-400 rounded">
+                        <span className="text-[10px] font-mono px-2 py-0.5 bg-[var(--border-subtle)] border border-[var(--border-subtle)] text-[var(--accent)] rounded">
                           {rule.signal_type || 'Any Signal'}
                         </span>
-                        <span className="text-[10px] font-mono px-2 py-0.5 bg-green-950/20 border border-green-900/40 text-green-400 rounded">
+                        <span className="text-[10px] font-mono px-2 py-0.5 bg-[var(--green)]/10 border border-[var(--green)]/30 text-[var(--green)] rounded">
                           {getActionLabel(rule.action_type)}
                         </span>
                       </div>
 
                       {/* Conditions */}
-                      <p className="text-xs font-mono text-gray-300">
-                        <span className="text-gray-500">IF:</span> {conditionsText}
+                      <p className="text-xs font-mono text-[var(--text-secondary)]">
+                        <span className="text-[var(--text-muted)]">IF:</span> {conditionsText}
                       </p>
 
                       {/* Variant Preview */}
                       {rule.variant_content && (
-                        <div className="bg-[#080B0F] border border-[var(--border-subtle)] py-1.5 px-2.5 rounded text-xs font-mono text-gray-400 h-[30px] overflow-hidden flex items-center max-w-full min-w-0">
+                        <div className="bg-[var(--bg-elevated)] border border-[var(--border-subtle)] py-1.5 px-2.5 rounded text-xs font-mono text-[var(--text-secondary)] h-[30px] overflow-hidden flex items-center max-w-full min-w-0">
                           <div className="truncate w-full min-w-0">
                             {rule.variant_content}
                           </div>
@@ -777,7 +777,7 @@ export default function RulesPage() {
                         onClick={() => handleToggleActive(rule)}
                         className={`w-10 h-5 rounded-full p-0.5 transition-colors focus:outline-none border ${
                           rule.active
-                            ? 'bg-[#6366f1] border-[#6366f1] text-right'
+                            ? 'bg-[var(--accent)] border-[var(--accent)] text-right'
                             : 'bg-[var(--border-subtle)] border-[var(--border-subtle)] text-left'
                         }`}
                       >
@@ -797,15 +797,15 @@ export default function RulesPage() {
           {/* Add Rule Button Trigger */}
           <div className="pt-2">
             {plan === 'starter' && ruleCount >= 5 ? (
-              <div className="border border-[#6366f1]/20 bg-[#6366f1]/5 rounded-[10px] p-4 text-center space-y-1">
-                <p className="text-xs font-mono uppercase tracking-wider text-[#6366f1]">5 Rule Limit Reached</p>
+              <div className="border border-[var(--accent)]/20 bg-[var(--accent)]/5 rounded-[10px] p-4 text-center space-y-1">
+                <p className="text-xs font-mono uppercase tracking-wider text-[var(--accent)]">5 Rule Limit Reached</p>
                 <p className="text-xs text-[var(--text-secondary)] font-sans">Starter plan is limited to 5 routing rules.</p>
-                <a href="/dashboard/billing" className="text-xs text-[#6366f1] hover:underline font-sans">Upgrade to Growth for unlimited rules &rarr;</a>
+                <a href="/dashboard/billing" className="text-xs text-[var(--accent)] hover:underline font-sans">Upgrade to Growth for unlimited rules &rarr;</a>
               </div>
             ) : (
               <button
                 onClick={() => setCreateModalOpen(true)}
-                className="w-full bg-[#6366f1] hover:bg-[#5053e1] text-white font-mono text-xs py-3 px-4 rounded transition-all active:scale-[0.99]"
+                className="w-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-mono text-xs py-3 px-4 rounded transition-all active:scale-[0.99]"
               >
                 + ADD ROUTING RULE
               </button>
@@ -818,12 +818,12 @@ export default function RulesPage() {
           <div className="w-[calc(40%-12px)] flex-shrink-0 min-w-0">
             <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/50 rounded-lg p-6 space-y-6">
               <div className="flex justify-between items-center border-b border-[var(--border-subtle)] pb-4">
-                <h2 className="text-sm font-bold tracking-wider font-mono text-[#6366f1] uppercase">
+                <h2 className="text-sm font-bold tracking-wider font-mono text-[var(--accent)] uppercase">
                   Edit Rule #{selectedRule.priority}
                 </h2>
                 <button
                   onClick={() => setSelectedRule(null)}
-                  className="text-gray-400 hover:text-white transition-colors text-xs font-mono"
+                  className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors text-xs font-mono"
                 >
                   [CLOSE]
                 </button>
@@ -832,16 +832,16 @@ export default function RulesPage() {
               <form onSubmit={handleUpdateRule} className="space-y-4">
                 {/* Signal Type */}
                 <div className="space-y-1.5">
-                  <label className="block text-[10px] font-mono text-gray-400 uppercase tracking-wider">
+                  <label className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
                     Signal Type
                   </label>
                   <select
                     value={editSignalType}
                     onChange={(e) => setEditSignalType(e.target.value)}
-                    className="w-full bg-[#080B0F] border border-[var(--border-subtle)] focus:border-[#6366f1] outline-none text-xs px-3 py-2.5 rounded text-white font-mono"
+                    className="w-full bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-subtle)] focus:border-[var(--accent)] outline-none text-xs px-3 py-2.5 rounded  font-mono"
                   >
                     {SIGNAL_OPTIONS.map((opt) => (
-                      <option key={opt} value={opt} className="bg-[#080B0F]">
+                      <option key={opt} value={opt} className="bg-[var(--bg-surface)] text-[var(--text-primary)]">
                         {opt}
                       </option>
                     ))}
@@ -851,23 +851,23 @@ export default function RulesPage() {
                 {/* Conditions Row */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <label className="block text-[10px] font-mono text-gray-400 uppercase tracking-wider">
+                    <label className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
                       Condition Type
                     </label>
                     <select
                       value={editConditionType}
                       onChange={(e) => setEditConditionType(e.target.value)}
-                      className="w-full bg-[#080B0F] border border-[var(--border-subtle)] focus:border-[#6366f1] outline-none text-xs px-3 py-2.5 rounded text-white font-mono"
+                      className="w-full bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-subtle)] focus:border-[var(--accent)] outline-none text-xs px-3 py-2.5 rounded  font-mono"
                     >
                       {CONDITION_OPTIONS.map((opt) => (
-                        <option key={opt} value={opt} className="bg-[#080B0F]">
+                        <option key={opt} value={opt} className="bg-[var(--bg-surface)] text-[var(--text-primary)]">
                           {opt}
                         </option>
                       ))}
                     </select>
                   </div>
                   <div className="space-y-1.5">
-                    <label className="block text-[10px] font-mono text-gray-400 uppercase tracking-wider">
+                    <label className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
                       Condition Value
                     </label>
                     <input
@@ -876,7 +876,7 @@ export default function RulesPage() {
                       value={editConditionValue}
                       onChange={(e) => setEditConditionValue(e.target.value)}
                       placeholder="e.g. CEO, Enterprise"
-                      className="w-full bg-[#080B0F] border border-[var(--border-subtle)] focus:border-[#6366f1] outline-none text-xs px-3 py-2 rounded text-white font-mono disabled:opacity-40"
+                      className="w-full bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-subtle)] focus:border-[var(--accent)] outline-none text-xs px-3 py-2 rounded  font-mono disabled:opacity-40"
                     />
                   </div>
                 </div>
@@ -884,23 +884,23 @@ export default function RulesPage() {
                 {/* Actions Row */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <label className="block text-[10px] font-mono text-gray-400 uppercase tracking-wider">
+                    <label className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
                       Action Type
                     </label>
                     <select
                       value={editActionType}
                       onChange={(e) => setEditActionType(e.target.value)}
-                      className="w-full bg-[#080B0F] border border-[var(--border-subtle)] focus:border-[#6366f1] outline-none text-xs px-3 py-2.5 rounded text-white font-mono"
+                      className="w-full bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-subtle)] focus:border-[var(--accent)] outline-none text-xs px-3 py-2.5 rounded  font-mono"
                     >
                       {ACTION_MAPPING.map((act) => (
-                        <option key={act.value} value={act.value} className="bg-[#080B0F]">
+                        <option key={act.value} value={act.value} className="bg-[var(--bg-surface)] text-[var(--text-primary)]">
                           {act.label}
                         </option>
                       ))}
                     </select>
                   </div>
                   <div className="space-y-1.5">
-                    <label className="block text-[10px] font-mono text-gray-400 uppercase tracking-wider">
+                    <label className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
                       Action Content URL/Val
                     </label>
                     <input
@@ -908,7 +908,7 @@ export default function RulesPage() {
                       value={editActionContent}
                       onChange={(e) => setEditActionContent(e.target.value)}
                       placeholder="e.g. https://calendly.com/x"
-                      className="w-full bg-[#080B0F] border border-[var(--border-subtle)] focus:border-[#6366f1] outline-none text-xs px-3 py-2 rounded text-white font-mono"
+                      className="w-full bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-subtle)] focus:border-[var(--accent)] outline-none text-xs px-3 py-2 rounded  font-mono"
                     />
                   </div>
                 </div>
@@ -917,26 +917,26 @@ export default function RulesPage() {
                 <div className="space-y-4">
                   <div className="flex flex-col gap-1 border-b border-[var(--border-subtle)] pb-2">
                     <div className="flex justify-between items-center">
-                      <label className="block text-[10px] font-mono text-gray-400 uppercase tracking-wider font-bold">
+                      <label className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider font-bold">
                         Page Element Swaps
                       </label>
-                      <span className="text-[10px] text-[#6366f1] font-mono cursor-help bg-[var(--border-subtle)] px-1.5 rounded relative group">
+                      <span className="text-[10px] text-[var(--accent)] font-mono cursor-help bg-[var(--border-subtle)] px-1.5 rounded relative group">
                         [?]
-                        <span className="pointer-events-none absolute right-0 bottom-full mb-2 w-64 bg-[var(--bg-surface)] border border-[var(--border-subtle)] p-3 text-[10px] leading-relaxed text-gray-300 font-mono rounded shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                        <span className="pointer-events-none absolute right-0 bottom-full mb-2 w-64 bg-[var(--bg-surface)] border border-[var(--border-subtle)] p-3 text-[10px] leading-relaxed text-[var(--text-secondary)] font-mono rounded shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity z-10">
                           {"Specify CSS selectors (e.g. '#headline' or '.cta-button') and the variant HTML/Text content to inject."}
                         </span>
                       </span>
                     </div>
-                    <p className="text-[10px] font-mono text-gray-500">
+                    <p className="text-[10px] font-mono text-[var(--text-muted)]">
                       Add multiple page elements to swap. Each rule can personalize multiple parts of the page simultaneously.
                     </p>
                   </div>
 
                   <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
                     {editSwaps.map((swap, index) => (
-                      <div key={index} className="space-y-2.5 p-3 border border-[var(--border-subtle)] bg-[#080B0F]/50 rounded-lg relative">
+                      <div key={index} className="space-y-2.5 p-3 border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/50 rounded-lg relative">
                         <div className="flex justify-between items-center">
-                          <span className="text-[10px] font-mono text-indigo-400 uppercase font-bold">Swap #{index + 1}</span>
+                          <span className="text-[10px] font-mono text-[var(--accent)] uppercase font-bold">Swap #{index + 1}</span>
                           <div className="flex items-center gap-2">
                             <button
                               type="button"
@@ -946,7 +946,7 @@ export default function RulesPage() {
                                 setAiSuggestions([]);
                                 setShowAiPanel(true);
                               }}
-                              className="text-[9px] font-mono text-[#6366f1] hover:underline bg-[var(--border-subtle)]/60 px-2 py-0.5 rounded border border-[var(--border-subtle)] flex items-center gap-1 transition-colors"
+                              className="text-[9px] font-mono text-[var(--accent)] hover:underline bg-[var(--border-subtle)]/60 px-2 py-0.5 rounded border border-[var(--border-subtle)] flex items-center gap-1 transition-colors"
                             >
                               ✨ AI Copy
                             </button>
@@ -954,7 +954,7 @@ export default function RulesPage() {
                               <button
                                 type="button"
                                 onClick={() => handleRemoveEditSwap(index)}
-                                className="text-[9px] font-mono text-red-400 hover:text-red-300 hover:underline bg-red-950/20 px-2 py-0.5 rounded border border-red-900 transition-colors"
+                                className="text-[9px] font-mono text-[var(--red)] hover:opacity-80 hover:underline bg-[var(--red)]/10 px-2 py-0.5 rounded border border-[var(--red)]/30 transition-colors"
                               >
                                 Delete
                               </button>
@@ -964,24 +964,24 @@ export default function RulesPage() {
 
                         <div className="space-y-2">
                           <div className="space-y-1">
-                            <label className="block text-[9px] font-mono text-gray-500 uppercase tracking-wider">Target CSS Selector</label>
+                            <label className="block text-[9px] font-mono text-[var(--text-muted)] uppercase tracking-wider">Target CSS Selector</label>
                             <input
                               type="text"
                               required
                               value={swap.selector}
                               onChange={(e) => handleEditSwapChange(index, 'selector', e.target.value)}
                               placeholder="e.g. #headline or .sr-target"
-                              className="w-full bg-[#080B0F] border border-[var(--border-subtle)] focus:border-[#6366f1] outline-none text-xs px-2.5 py-1.5 rounded text-white font-mono"
+                              className="w-full bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-subtle)] focus:border-[var(--accent)] outline-none text-xs px-2.5 py-1.5 rounded  font-mono"
                             />
                           </div>
                           <div className="space-y-1">
-                            <label className="block text-[9px] font-mono text-gray-500 uppercase tracking-wider">Variant Content</label>
+                            <label className="block text-[9px] font-mono text-[var(--text-muted)] uppercase tracking-wider">Variant Content</label>
                             <textarea
                               rows={3}
                               value={swap.content}
                               onChange={(e) => handleEditSwapChange(index, 'content', e.target.value)}
                               placeholder="Use {{prospect_name}}, {{company_name}}, {{rep_name}}, {{job_title}}, {{deal_stage}} as dynamic variables."
-                              className="w-full bg-[#080B0F] border border-[var(--border-subtle)] focus:border-[#6366f1] outline-none text-xs px-2.5 py-1.5 rounded text-white font-mono"
+                              className="w-full bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-subtle)] focus:border-[var(--accent)] outline-none text-xs px-2.5 py-1.5 rounded  font-mono"
                             />
                           </div>
                         </div>
@@ -992,26 +992,26 @@ export default function RulesPage() {
                   <button
                     type="button"
                     onClick={handleAddEditSwap}
-                    className="w-full border border-dashed border-[var(--border-subtle)] hover:border-[#6366f1] text-[#6366f1] hover:text-[#5053e1] font-mono text-[10px] py-2 rounded transition-colors"
+                    className="w-full border border-dashed border-[var(--border-subtle)] hover:border-[var(--accent)] text-[var(--accent)] hover:text-[var(--accent-hover)] font-mono text-[10px] py-2 rounded transition-colors"
                   >
                     + ADD ELEMENT SWAP
                   </button>
 
-                  <p className="text-[9px] font-mono text-gray-500 mt-1">
+                  <p className="text-[9px] font-mono text-[var(--text-muted)] mt-1">
                     Use {"{{prospect_name}}"}, {"{{company_name}}"}, {"{{rep_name}}"}, {"{{job_title}}"}, {"{{deal_stage}}"} as dynamic variables — they will be replaced with real prospect data automatically.
                   </p>
 
                   {/* Inline AI Copywriter Panel */}
                   {showAiPanel && (
-                    <div className="mt-3 p-4 bg-[#080B0F] border border-[var(--border-subtle)] rounded-lg space-y-3 font-mono text-xs">
+                    <div className="mt-3 p-4 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-lg space-y-3 font-mono text-xs">
                       <div className="flex justify-between items-center border-b border-[var(--border-subtle)] pb-2">
-                        <span className="text-[10px] text-[#6366f1] font-bold uppercase tracking-wider">
+                        <span className="text-[10px] text-[var(--accent)] font-bold uppercase tracking-wider">
                           AI Copywriter (generating for Swap #{aiSwapIndex + 1})
                         </span>
                         <button
                           type="button"
                           onClick={() => setShowAiPanel(false)}
-                          className="text-gray-400 hover:text-white"
+                          className="text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                         >
                           [x]
                         </button>
@@ -1019,43 +1019,43 @@ export default function RulesPage() {
 
                       <div className="grid grid-cols-2 gap-2">
                         <div className="space-y-1">
-                          <label className="block text-[9px] text-gray-400 uppercase">Signal Type</label>
+                          <label className="block text-[9px] text-[var(--text-secondary)] uppercase">Signal Type</label>
                           <input
                             type="text"
                             value={aiSignalType}
                             onChange={(e) => setAiSignalType(e.target.value)}
-                            className="w-full bg-[var(--bg-surface)] border border-[var(--border-subtle)] focus:border-[#6366f1] outline-none px-2 py-1.5 rounded text-white text-[11px]"
+                            className="w-full bg-[var(--bg-surface)] border border-[var(--border-subtle)] focus:border-[var(--accent)] outline-none px-2 py-1.5 rounded text-white text-[11px]"
                           />
                         </div>
                         <div className="space-y-1">
-                          <label className="block text-[9px] text-gray-400 uppercase">Job Title</label>
+                          <label className="block text-[9px] text-[var(--text-secondary)] uppercase">Job Title</label>
                           <input
                             type="text"
                             value={aiJobTitle}
                             onChange={(e) => setAiJobTitle(e.target.value)}
                             placeholder="e.g. VP of Marketing"
-                            className="w-full bg-[var(--bg-surface)] border border-[var(--border-subtle)] focus:border-[#6366f1] outline-none px-2 py-1.5 rounded text-white text-[11px]"
+                            className="w-full bg-[var(--bg-surface)] border border-[var(--border-subtle)] focus:border-[var(--accent)] outline-none px-2 py-1.5 rounded text-white text-[11px]"
                           />
                         </div>
                       </div>
 
                       <div className="grid grid-cols-3 gap-2">
                         <div className="space-y-1">
-                          <label className="block text-[9px] text-gray-400 uppercase">Industry</label>
+                          <label className="block text-[9px] text-[var(--text-secondary)] uppercase">Industry</label>
                           <input
                             type="text"
                             value={aiIndustry}
                             onChange={(e) => setAiIndustry(e.target.value)}
                             placeholder="e.g. SaaS"
-                            className="w-full bg-[var(--bg-surface)] border border-[var(--border-subtle)] focus:border-[#6366f1] outline-none px-2 py-1.5 rounded text-white text-[11px]"
+                            className="w-full bg-[var(--bg-surface)] border border-[var(--border-subtle)] focus:border-[var(--accent)] outline-none px-2 py-1.5 rounded text-white text-[11px]"
                           />
                         </div>
                         <div className="space-y-1">
-                          <label className="block text-[9px] text-gray-400 uppercase">Size</label>
+                          <label className="block text-[9px] text-[var(--text-secondary)] uppercase">Size</label>
                           <select
                             value={aiCompanySize}
                             onChange={(e) => setAiCompanySize(e.target.value)}
-                            className="w-full bg-[var(--bg-surface)] border border-[var(--border-subtle)] focus:border-[#6366f1] outline-none px-1.5 py-1.5 rounded text-white text-[11px]"
+                            className="w-full bg-[var(--bg-surface)] border border-[var(--border-subtle)] focus:border-[var(--accent)] outline-none px-1.5 py-1.5 rounded text-white text-[11px]"
                           >
                             <option value="1-50">1-50</option>
                             <option value="50-200">50-200</option>
@@ -1065,11 +1065,11 @@ export default function RulesPage() {
                           </select>
                         </div>
                         <div className="space-y-1">
-                          <label className="block text-[9px] text-gray-400 uppercase">Tone</label>
+                          <label className="block text-[9px] text-[var(--text-secondary)] uppercase">Tone</label>
                           <select
                             value={aiTone}
                             onChange={(e) => setAiTone(e.target.value)}
-                            className="w-full bg-[var(--bg-surface)] border border-[var(--border-subtle)] focus:border-[#6366f1] outline-none px-1.5 py-1.5 rounded text-white text-[11px]"
+                            className="w-full bg-[var(--bg-surface)] border border-[var(--border-subtle)] focus:border-[var(--accent)] outline-none px-1.5 py-1.5 rounded text-white text-[11px]"
                           >
                             <option value="direct">direct</option>
                             <option value="warm">warm</option>
@@ -1084,7 +1084,7 @@ export default function RulesPage() {
                           type="button"
                           disabled={aiLoading}
                           onClick={handleGenerateCopy}
-                          className="w-full bg-[#6366f1] hover:bg-[#5053e1] disabled:opacity-50 text-white py-2 px-3 rounded text-[10px] font-bold tracking-wider"
+                          className="w-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] disabled:opacity-50 text-white py-2 px-3 rounded text-[10px] font-bold tracking-wider"
                         >
                           {aiLoading ? 'GENERATING CTAs...' : 'GENERATE OPTIONS'}
                         </button>
@@ -1092,7 +1092,7 @@ export default function RulesPage() {
 
                       {aiSuggestions.length > 0 && (
                         <div className="space-y-2 pt-2 border-t border-[var(--border-subtle)]">
-                          <label className="block text-[9px] text-gray-400 uppercase tracking-widest font-bold">Select a Variant (Click to use):</label>
+                          <label className="block text-[9px] text-[var(--text-secondary)] uppercase tracking-widest font-bold">Select a Variant (Click to use):</label>
                           <div className="space-y-1.5">
                             {aiSuggestions.map((suggestion, idx) => (
                               <button
@@ -1102,7 +1102,7 @@ export default function RulesPage() {
                                   handleEditSwapChange(aiSwapIndex, 'content', suggestion);
                                   setShowAiPanel(false);
                                 }}
-                                className="w-full text-left bg-[var(--bg-surface)] hover:bg-[var(--border-subtle)]/40 border border-[var(--border-subtle)] hover:border-[#6366f1] p-2 rounded text-[11px] text-gray-300 hover:text-white transition-colors"
+                                className="w-full text-left bg-[var(--bg-surface)] hover:bg-[var(--border-subtle)]/40 border border-[var(--border-subtle)] hover:border-[var(--accent)] p-2 rounded text-[11px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
                               >
                                 {suggestion}
                               </button>
@@ -1118,14 +1118,14 @@ export default function RulesPage() {
                   <button
                     type="button"
                     onClick={() => handleDeleteRule(selectedRule.id)}
-                    className="border border-red-900 hover:bg-red-950/20 text-red-400 font-mono text-xs py-2 px-4 rounded transition-all"
+                    className="border border-[var(--red)]/30 hover:bg-[var(--red)]/10 text-[var(--red)] font-mono text-xs py-2 px-4 rounded transition-all"
                   >
                     DELETE
                   </button>
                   <button
                     type="submit"
                     disabled={updatingRule}
-                    className="flex-1 bg-[#6366f1] hover:bg-[#5053e1] text-white font-mono text-xs py-2 px-4 rounded transition-all active:scale-[0.98] disabled:opacity-50"
+                    className="flex-1 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-mono text-xs py-2 px-4 rounded transition-all active:scale-[0.98] disabled:opacity-50"
                   >
                     {updatingRule ? 'SAVING...' : 'SAVE CHANGES'}
                   </button>
@@ -1139,15 +1139,15 @@ export default function RulesPage() {
       {/* CREATE RULE MODAL */}
       {createModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fadeIn">
-          <div className="w-full max-w-xl bg-[#080B0F] border border-[var(--border-subtle)] rounded-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+          <div className="w-full max-w-xl bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
             {/* Modal Header */}
             <div className="flex justify-between items-center px-6 py-4 border-b border-[var(--border-subtle)]">
-              <h2 className="text-sm font-bold tracking-widest font-mono text-[#6366f1] uppercase">
+              <h2 className="text-sm font-bold tracking-widest font-mono text-[var(--accent)] uppercase">
                 Add New Routing Rule
               </h2>
               <button
                 onClick={() => setCreateModalOpen(false)}
-                className="text-gray-400 hover:text-white transition-colors text-sm font-mono"
+                className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors text-sm font-mono"
               >
                 [ESC]
               </button>
@@ -1157,16 +1157,16 @@ export default function RulesPage() {
             <form onSubmit={handleCreateRule} className="p-6 space-y-4 overflow-y-auto">
               {/* Signal Type */}
               <div className="space-y-1.5">
-                <label className="block text-[10px] font-mono text-gray-400 uppercase tracking-wider">
+                <label className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
                   Signal Type
                 </label>
                 <select
                   value={newSignalType}
                   onChange={(e) => setNewSignalType(e.target.value)}
-                  className="w-full bg-[#080B0F] border border-[var(--border-subtle)] focus:border-[#6366f1] outline-none text-xs px-3 py-2.5 rounded text-white font-mono"
+                  className="w-full bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-subtle)] focus:border-[var(--accent)] outline-none text-xs px-3 py-2.5 rounded  font-mono"
                 >
                   {SIGNAL_OPTIONS.map((opt) => (
-                    <option key={opt} value={opt} className="bg-[#080B0F]">
+                    <option key={opt} value={opt} className="bg-[var(--bg-surface)] text-[var(--text-primary)]">
                       {opt}
                     </option>
                   ))}
@@ -1176,23 +1176,23 @@ export default function RulesPage() {
               {/* Conditions Row */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="block text-[10px] font-mono text-gray-400 uppercase tracking-wider">
+                  <label className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
                     Condition Type
                   </label>
                   <select
                     value={newConditionType}
                     onChange={(e) => setNewConditionType(e.target.value)}
-                    className="w-full bg-[#080B0F] border border-[var(--border-subtle)] focus:border-[#6366f1] outline-none text-xs px-3 py-2.5 rounded text-white font-mono"
+                    className="w-full bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-subtle)] focus:border-[var(--accent)] outline-none text-xs px-3 py-2.5 rounded  font-mono"
                   >
                     {CONDITION_OPTIONS.map((opt) => (
-                      <option key={opt} value={opt} className="bg-[#080B0F]">
+                      <option key={opt} value={opt} className="bg-[var(--bg-surface)] text-[var(--text-primary)]">
                         {opt}
                       </option>
                     ))}
                   </select>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="block text-[10px] font-mono text-gray-400 uppercase tracking-wider">
+                  <label className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
                     Condition Value
                   </label>
                   <input
@@ -1201,7 +1201,7 @@ export default function RulesPage() {
                     value={newConditionValue}
                     onChange={(e) => setNewConditionValue(e.target.value)}
                     placeholder="e.g. Executive, Tech"
-                    className="w-full bg-[#080B0F] border border-[var(--border-subtle)] focus:border-[#6366f1] outline-none text-xs px-3 py-2 rounded text-white font-mono disabled:opacity-40"
+                    className="w-full bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-subtle)] focus:border-[var(--accent)] outline-none text-xs px-3 py-2 rounded  font-mono disabled:opacity-40"
                   />
                 </div>
               </div>
@@ -1209,23 +1209,23 @@ export default function RulesPage() {
               {/* Actions Row */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="block text-[10px] font-mono text-gray-400 uppercase tracking-wider">
+                  <label className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
                     Action Type
                   </label>
                   <select
                     value={newActionType}
                     onChange={(e) => setNewActionType(e.target.value)}
-                    className="w-full bg-[#080B0F] border border-[var(--border-subtle)] focus:border-[#6366f1] outline-none text-xs px-3 py-2.5 rounded text-white font-mono"
+                    className="w-full bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-subtle)] focus:border-[var(--accent)] outline-none text-xs px-3 py-2.5 rounded  font-mono"
                   >
                     {ACTION_MAPPING.map((act) => (
-                      <option key={act.value} value={act.value} className="bg-[#080B0F]">
+                      <option key={act.value} value={act.value} className="bg-[var(--bg-surface)] text-[var(--text-primary)]">
                         {act.label}
                       </option>
                     ))}
                   </select>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="block text-[10px] font-mono text-gray-400 uppercase tracking-wider">
+                  <label className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
                     Action Content URL/Val
                   </label>
                   <input
@@ -1233,7 +1233,7 @@ export default function RulesPage() {
                     value={newActionContent}
                     onChange={(e) => setNewActionContent(e.target.value)}
                     placeholder="e.g. https://calendly.com/x"
-                    className="w-full bg-[#080B0F] border border-[var(--border-subtle)] focus:border-[#6366f1] outline-none text-xs px-3 py-2 rounded text-white font-mono"
+                    className="w-full bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-subtle)] focus:border-[var(--accent)] outline-none text-xs px-3 py-2 rounded  font-mono"
                   />
                 </div>
               </div>
@@ -1242,31 +1242,31 @@ export default function RulesPage() {
               <div className="space-y-4">
                 <div className="flex flex-col gap-1 border-b border-[var(--border-subtle)] pb-2">
                   <div className="flex justify-between items-center">
-                    <label className="block text-[10px] font-mono text-gray-400 uppercase tracking-wider font-bold">
+                    <label className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider font-bold">
                       Page Element Swaps
                     </label>
-                    <span className="text-[10px] text-[#6366f1] font-mono cursor-help bg-[var(--border-subtle)] px-1.5 rounded relative group">
+                    <span className="text-[10px] text-[var(--accent)] font-mono cursor-help bg-[var(--border-subtle)] px-1.5 rounded relative group">
                       [?]
-                      <span className="pointer-events-none absolute right-0 bottom-full mb-2 w-64 bg-[var(--bg-surface)] border border-[var(--border-subtle)] p-3 text-[10px] leading-relaxed text-gray-300 font-mono rounded shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity z-10 font-normal">
+                      <span className="pointer-events-none absolute right-0 bottom-full mb-2 w-64 bg-[var(--bg-surface)] border border-[var(--border-subtle)] p-3 text-[10px] leading-relaxed text-[var(--text-secondary)] font-mono rounded shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity z-10 font-normal">
                         {"Specify CSS selectors (e.g. '#headline' or '.cta-button') and the variant HTML/Text content to inject."}
                       </span>
                     </span>
                   </div>
-                  <p className="text-[10px] font-mono text-gray-500">
+                  <p className="text-[10px] font-mono text-[var(--text-muted)]">
                     Add multiple page elements to swap. Each rule can personalize multiple parts of the page simultaneously.
                   </p>
                 </div>
 
                 <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
                   {newSwaps.map((swap, index) => (
-                    <div key={index} className="space-y-2.5 p-3 border border-[var(--border-subtle)] bg-[#080B0F]/50 rounded-lg relative">
+                    <div key={index} className="space-y-2.5 p-3 border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/50 rounded-lg relative">
                       <div className="flex justify-between items-center">
-                        <span className="text-[10px] font-mono text-indigo-400 uppercase font-bold">Swap #{index + 1}</span>
+                        <span className="text-[10px] font-mono text-[var(--accent)] uppercase font-bold">Swap #{index + 1}</span>
                         {newSwaps.length > 1 && (
                           <button
                             type="button"
                             onClick={() => handleRemoveNewSwap(index)}
-                            className="text-[9px] font-mono text-red-400 hover:text-red-300 hover:underline bg-red-950/20 px-2 py-0.5 rounded border border-red-900 transition-colors"
+                            className="text-[9px] font-mono text-[var(--red)] hover:opacity-80 hover:underline bg-[var(--red)]/10 px-2 py-0.5 rounded border border-[var(--red)]/30 transition-colors"
                           >
                             Delete
                           </button>
@@ -1275,24 +1275,24 @@ export default function RulesPage() {
 
                       <div className="space-y-2">
                         <div className="space-y-1">
-                          <label className="block text-[9px] font-mono text-gray-500 uppercase tracking-wider">Target CSS Selector</label>
+                          <label className="block text-[9px] font-mono text-[var(--text-muted)] uppercase tracking-wider">Target CSS Selector</label>
                           <input
                             type="text"
                             required
                             value={swap.selector}
                             onChange={(e) => handleNewSwapChange(index, 'selector', e.target.value)}
                             placeholder="e.g. #headline or .sr-target"
-                            className="w-full bg-[#080B0F] border border-[var(--border-subtle)] focus:border-[#6366f1] outline-none text-xs px-2.5 py-1.5 rounded text-white font-mono"
+                            className="w-full bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-subtle)] focus:border-[var(--accent)] outline-none text-xs px-2.5 py-1.5 rounded  font-mono"
                           />
                         </div>
                         <div className="space-y-1">
-                          <label className="block text-[9px] font-mono text-gray-500 uppercase tracking-wider">Variant Content</label>
+                          <label className="block text-[9px] font-mono text-[var(--text-muted)] uppercase tracking-wider">Variant Content</label>
                           <textarea
                             rows={3}
                             value={swap.content}
                             onChange={(e) => handleNewSwapChange(index, 'content', e.target.value)}
                             placeholder="Use {{prospect_name}}, {{company_name}}, {{rep_name}}, {{job_title}}, {{deal_stage}} as dynamic variables."
-                            className="w-full bg-[#080B0F] border border-[var(--border-subtle)] focus:border-[#6366f1] outline-none text-xs px-2.5 py-1.5 rounded text-white font-mono"
+                            className="w-full bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-subtle)] focus:border-[var(--accent)] outline-none text-xs px-2.5 py-1.5 rounded  font-mono"
                           />
                         </div>
                       </div>
@@ -1303,12 +1303,12 @@ export default function RulesPage() {
                 <button
                   type="button"
                   onClick={handleAddNewSwap}
-                  className="w-full border border-dashed border-[var(--border-subtle)] hover:border-[#6366f1] text-[#6366f1] hover:text-[#5053e1] font-mono text-[10px] py-2 rounded transition-colors"
+                  className="w-full border border-dashed border-[var(--border-subtle)] hover:border-[var(--accent)] text-[var(--accent)] hover:text-[var(--accent-hover)] font-mono text-[10px] py-2 rounded transition-colors"
                 >
                   + ADD ELEMENT SWAP
                 </button>
 
-                <p className="text-[9px] font-mono text-gray-500 mt-1">
+                <p className="text-[9px] font-mono text-[var(--text-muted)] mt-1">
                   Use {"{{prospect_name}}"}, {"{{company_name}}"}, {"{{rep_name}}"}, {"{{job_title}}"}, {"{{deal_stage}}"} as dynamic variables — they will be replaced with real prospect data automatically.
                 </p>
               </div>
@@ -1317,14 +1317,14 @@ export default function RulesPage() {
                 <button
                   type="button"
                   onClick={() => setCreateModalOpen(false)}
-                  className="border border-[var(--border-subtle)] hover:border-gray-500 text-xs font-mono py-2 px-4 rounded text-gray-300 transition-all"
+                  className="border border-[var(--border-subtle)] hover:border-gray-500 text-xs font-mono py-2 px-4 rounded text-[var(--text-secondary)] transition-all"
                 >
                   CANCEL
                 </button>
                 <button
                   type="submit"
                   disabled={savingNewRule}
-                  className="bg-[#6366f1] hover:bg-[#5053e1] text-white font-mono text-xs py-2 px-6 rounded transition-all active:scale-[0.98] disabled:opacity-50"
+                  className="bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-mono text-xs py-2 px-6 rounded transition-all active:scale-[0.98] disabled:opacity-50"
                 >
                   {savingNewRule ? 'CREATING...' : 'CREATE RULE'}
                 </button>
@@ -1339,11 +1339,11 @@ export default function RulesPage() {
       {activeTab === 'playbooks' && (
         <div className="space-y-8">
           {playbooksLoading ? (
-            <div className="text-center py-12 text-gray-500 font-mono text-sm uppercase tracking-widest">
+            <div className="text-center py-12 text-[var(--text-muted)] font-mono text-sm uppercase tracking-widest">
               RETRIEVING PLAYBOOK TEMPLATES...
             </div>
           ) : (playbooksWarning || playbooks.length === 0) ? (
-            <div className="border border-yellow-900/40 bg-yellow-950/20 text-[#f59e0b] p-6 rounded-lg font-mono text-xs space-y-3">
+            <div className="border border-[var(--amber)]/30 bg-[var(--amber)]/10 text-[var(--amber)] p-6 rounded-lg font-mono text-xs space-y-3">
               <span className="font-bold block uppercase tracking-wider">DATABASE SEEDING REQUIRED</span>
               <p className="leading-relaxed">
                 The Playbook templates have not been seeded into the database yet. Run the SQL migration from supabase/playbooks.sql in the Supabase SQL Editor to load the 21 standard playbooks.
@@ -1362,7 +1362,7 @@ export default function RulesPage() {
                 if (tierPlaybooks.length === 0) return null;
                 return (
                   <div key={tier} className="space-y-4">
-                    <h2 className="text-xs font-mono font-bold text-[#10b981] uppercase tracking-widest bg-green-950/10 py-1.5 px-3 rounded border border-green-900/20 inline-block">
+                    <h2 className="text-xs font-mono font-bold text-[var(--green)] uppercase tracking-widest bg-[var(--green)]/10 py-1.5 px-3 rounded border border-[var(--green)]/30 inline-block">
                       {tierLabels[tier]}
                     </h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -1379,13 +1379,13 @@ export default function RulesPage() {
           {selectedPlaybook && (
             <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
               <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-lg max-w-lg w-full overflow-hidden shadow-2xl">
-                <div className="h-14 flex items-center justify-between px-6 border-b border-[var(--border-subtle)] bg-[#090d12]">
+                <div className="h-14 flex items-center justify-between px-6 border-b border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-primary)]">
                   <span className="font-mono text-xs font-bold text-white uppercase tracking-wider">
                     Install Playbook
                   </span>
                   <button
                     onClick={closeInstallModal}
-                    className="text-gray-400 hover:text-white transition-colors text-xs font-mono"
+                    className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors text-xs font-mono"
                   >
                     [CLOSE]
                   </button>
@@ -1394,14 +1394,14 @@ export default function RulesPage() {
                 <div className="p-6">
                   {installSuccess ? (
                     <div className="space-y-6 text-center py-4">
-                      <div className="inline-flex items-center justify-center h-12 w-12 rounded-full bg-green-950/30 text-[#10b981] border border-green-900/40 mb-2">
+                      <div className="inline-flex items-center justify-center h-12 w-12 rounded-full bg-[var(--green)]/10 text-[var(--green)] border border-[var(--green)]/30 mb-2">
                         ✓
                       </div>
                       <div className="space-y-2">
                         <h3 className="font-mono text-sm font-bold text-white uppercase">
                           Playbook Installed Successfully
                         </h3>
-                        <p className="font-mono text-xs text-gray-400 max-w-xs mx-auto leading-relaxed">
+                        <p className="font-mono text-xs text-[var(--text-secondary)] max-w-xs mx-auto leading-relaxed">
                           The routing rule was created and added to your routing sequence.
                         </p>
                       </div>
@@ -1414,7 +1414,7 @@ export default function RulesPage() {
                         </button>
                         <button
                           onClick={() => { closeInstallModal(); setActiveTab('rules'); }}
-                          className="flex-1 bg-[#6366f1] hover:bg-[#5053e1] text-white font-mono text-xs py-2.5 px-4 rounded transition-all"
+                          className="flex-1 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-mono text-xs py-2.5 px-4 rounded transition-all"
                         >
                           View My Rules &rarr;
                         </button>
@@ -1426,13 +1426,13 @@ export default function RulesPage() {
                         <h3 className="font-mono text-sm font-bold text-white uppercase">
                           {selectedPlaybook.name}
                         </h3>
-                        <p className="font-mono text-xs text-gray-400 leading-relaxed">
+                        <p className="font-mono text-xs text-[var(--text-secondary)] leading-relaxed">
                           {selectedPlaybook.description}
                         </p>
                       </div>
 
                       {installError && (
-                        <div className="border border-red-900/40 bg-red-950/20 text-red-400 p-3 rounded font-mono text-xs">
+                        <div className="border border-[var(--red)]/30 bg-[var(--red)]/10 text-[var(--red)] p-3 rounded font-mono text-xs">
                           {installError}
                         </div>
                       )}
@@ -1440,7 +1440,7 @@ export default function RulesPage() {
                       <div className="space-y-4 max-h-[300px] overflow-y-auto pr-1">
                         {selectedPlaybook.required_inputs.map((input) => (
                           <div key={input.field_name} className="space-y-1.5">
-                            <label className="block text-[10px] font-mono text-gray-400 uppercase tracking-wider">
+                            <label className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
                               {input.label}
                             </label>
                             <input
@@ -1451,7 +1451,7 @@ export default function RulesPage() {
                                 setPlaybookFormValues((prev) => ({ ...prev, [input.field_name]: e.target.value }))
                               }
                               placeholder={input.placeholder}
-                              className="w-full bg-[#080B0F] border border-[var(--border-subtle)] focus:border-[#6366f1] outline-none text-xs px-3 py-2.5 rounded text-white font-mono"
+                              className="w-full bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-subtle)] focus:border-[var(--accent)] outline-none text-xs px-3 py-2.5 rounded  font-mono"
                             />
                           </div>
                         ))}
@@ -1468,7 +1468,7 @@ export default function RulesPage() {
                         <button
                           type="submit"
                           disabled={installing}
-                          className="bg-[#6366f1] hover:bg-[#5053e1] text-white font-mono text-xs py-2.5 px-6 rounded transition-all active:scale-[0.98] disabled:opacity-55"
+                          className="bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-mono text-xs py-2.5 px-6 rounded transition-all active:scale-[0.98] disabled:opacity-55"
                         >
                           {installing ? 'INSTALLING...' : 'INSTALL PLAYBOOK'}
                         </button>
@@ -1496,13 +1496,13 @@ function PlaybookCard({ playbook, onInstall }: PlaybookCardProps) {
     const base = 'border text-[9px] font-mono px-2 py-0.5 rounded uppercase font-bold select-none';
     switch (signalType) {
       case 'cold_email':
-        return `${base} bg-indigo-950/20 text-[#6366f1] border-indigo-900/40`;
+        return `${base} bg-[var(--accent)]/10 text-[var(--accent)] border-[var(--accent)]/30`;
       case 'linkedin_lead_gen':
         return `${base} bg-blue-950/20 text-blue-400 border-blue-900/40`;
       case 'returning_visitor':
-        return `${base} bg-green-950/20 text-[#10b981] border-green-900/40`;
+        return `${base} bg-[var(--green)]/10 text-[var(--green)] border-[var(--green)]/30`;
       case 'google_ad':
-        return `${base} bg-yellow-950/20 text-yellow-500 border-yellow-900/40`;
+        return `${base} bg-[var(--amber)]/10 text-[var(--amber)] border-[var(--amber)]/30`;
       case 'linkedin_ad':
         return `${base} bg-sky-950/20 text-sky-400 border-sky-900/40`;
       case 'meta_ad':
@@ -1514,7 +1514,7 @@ function PlaybookCard({ playbook, onInstall }: PlaybookCardProps) {
       case 'partner_referral':
         return `${base} bg-rose-950/20 text-rose-400 border-rose-900/40`;
       default:
-        return `${base} bg-[var(--border-subtle)] text-gray-400 border-[var(--border-subtle)]`;
+        return `${base} bg-[var(--border-subtle)] text-[var(--text-secondary)] border-[var(--border-subtle)]`;
     }
   };
 
@@ -1523,32 +1523,32 @@ function PlaybookCard({ playbook, onInstall }: PlaybookCardProps) {
   };
 
   return (
-    <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-lg p-5 flex flex-col justify-between hover:border-[#6366f1]/50 hover:bg-[var(--bg-elevated)] transition-all group">
+    <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-lg p-5 flex flex-col justify-between hover:border-[var(--accent)]/50 hover:bg-[var(--bg-elevated)] transition-all group">
       <div className="space-y-3.5">
         <div className="flex items-center justify-between gap-2">
           <span className={getSignalBadgeClass(playbook.signal_type)}>
             {getSignalLabel(playbook.signal_type)}
           </span>
-          <span className="text-[10px] font-mono text-gray-500">Tier {playbook.tier}</span>
+          <span className="text-[10px] font-mono text-[var(--text-muted)]">Tier {playbook.tier}</span>
         </div>
         
         <div className="space-y-1.5">
-          <h3 className="text-xs font-mono font-bold text-white uppercase group-hover:text-[#6366f1] transition-colors leading-tight">
+          <h3 className="text-xs font-mono font-bold text-white uppercase group-hover:text-[var(--accent)] transition-colors leading-tight">
             {playbook.name}
           </h3>
-          <p className="text-[11px] font-mono text-gray-400 leading-relaxed min-h-[48px]">
+          <p className="text-[11px] font-mono text-[var(--text-secondary)] leading-relaxed min-h-[48px]">
             {playbook.description}
           </p>
         </div>
       </div>
       
       <div className="pt-4 border-t border-[var(--border-subtle)]/60 mt-4 flex items-center justify-between gap-2">
-        <span className="text-[10px] font-mono text-gray-500">
+        <span className="text-[10px] font-mono text-[var(--text-muted)]">
           {playbook.required_inputs.length} input{playbook.required_inputs.length !== 1 ? 's' : ''} required
         </span>
         <button
           onClick={() => onInstall(playbook)}
-          className="bg-[var(--border-subtle)] hover:bg-[#6366f1] text-white font-mono text-[10px] py-1.5 px-4 rounded transition-all active:scale-[0.98]"
+          className="bg-[var(--border-subtle)] hover:bg-[var(--accent)] text-white font-mono text-[10px] py-1.5 px-4 rounded transition-all active:scale-[0.98]"
         >
           Install
         </button>

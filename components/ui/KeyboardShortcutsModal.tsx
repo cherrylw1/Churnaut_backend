@@ -32,16 +32,16 @@ export default function KeyboardShortcutsModal({ isOpen, onClose }: KeyboardShor
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="w-full max-w-md bg-[#080b0f] border border-[var(--border-subtle)] rounded-lg shadow-2xl overflow-hidden flex flex-col font-sans text-xs text-gray-300"
+            className="w-full max-w-md bg-[#080b0f] border border-[var(--border-subtle)] rounded-lg shadow-2xl overflow-hidden flex flex-col font-sans text-xs text-[var(--text-secondary)]"
           >
             {/* Modal Header */}
             <div className="flex justify-between items-center px-6 py-4 border-b border-[var(--border-subtle)]">
-              <h2 className="text-xs font-bold tracking-widest font-mono text-[#6366f1] uppercase">
+              <h2 className="text-xs font-bold tracking-widest font-mono text-[#C2683D] uppercase">
                 KEYBOARD SHORTCUTS
               </h2>
               <button
                 onClick={onClose}
-                className="text-gray-400 hover:text-white transition-colors focus:outline-none"
+                className="text-[var(--text-secondary)] hover:text-white transition-colors focus:outline-none"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -52,35 +52,35 @@ export default function KeyboardShortcutsModal({ isOpen, onClose }: KeyboardShor
               <div className="grid grid-cols-2 gap-6">
                 {/* Navigation Column */}
                 <div className="space-y-3.5">
-                  <h3 className="text-indigo-400 font-bold uppercase tracking-wider text-[9px] border-b border-[var(--border-subtle)] pb-1.5 font-mono">
+                  <h3 className="text-[var(--accent)] font-bold uppercase tracking-wider text-[9px] border-b border-[var(--border-subtle)] pb-1.5 font-mono">
                     Navigation
                   </h3>
                   <div className="flex justify-between items-center font-mono">
-                    <span className="text-gray-400">Go to Home</span>
+                    <span className="text-[var(--text-secondary)]">Go to Home</span>
                     <span className="bg-[var(--bg-elevated)] border border-[var(--border-subtle)] px-2 py-0.5 rounded text-white font-bold text-[10px]">
                       G + H
                     </span>
                   </div>
                   <div className="flex justify-between items-center font-mono">
-                    <span className="text-gray-400">Go to Scout</span>
+                    <span className="text-[var(--text-secondary)]">Go to Scout</span>
                     <span className="bg-[var(--bg-elevated)] border border-[var(--border-subtle)] px-2 py-0.5 rounded text-white font-bold text-[10px]">
                       G + S
                     </span>
                   </div>
                   <div className="flex justify-between items-center font-mono">
-                    <span className="text-gray-400">Go to Links</span>
+                    <span className="text-[var(--text-secondary)]">Go to Links</span>
                     <span className="bg-[var(--bg-elevated)] border border-[var(--border-subtle)] px-2 py-0.5 rounded text-white font-bold text-[10px]">
                       G + L
                     </span>
                   </div>
                   <div className="flex justify-between items-center font-mono">
-                    <span className="text-gray-400">Go to Rules</span>
+                    <span className="text-[var(--text-secondary)]">Go to Rules</span>
                     <span className="bg-[var(--bg-elevated)] border border-[var(--border-subtle)] px-2 py-0.5 rounded text-white font-bold text-[10px]">
                       G + R
                     </span>
                   </div>
                   <div className="flex justify-between items-center font-mono">
-                    <span className="text-gray-400">Go to Analytics</span>
+                    <span className="text-[var(--text-secondary)]">Go to Analytics</span>
                     <span className="bg-[var(--bg-elevated)] border border-[var(--border-subtle)] px-2 py-0.5 rounded text-white font-bold text-[10px]">
                       G + A
                     </span>
@@ -89,17 +89,17 @@ export default function KeyboardShortcutsModal({ isOpen, onClose }: KeyboardShor
 
                 {/* System Column */}
                 <div className="space-y-3.5">
-                  <h3 className="text-indigo-400 font-bold uppercase tracking-wider text-[9px] border-b border-[var(--border-subtle)] pb-1.5 font-mono">
+                  <h3 className="text-[var(--accent)] font-bold uppercase tracking-wider text-[9px] border-b border-[var(--border-subtle)] pb-1.5 font-mono">
                     System
                   </h3>
                   <div className="flex justify-between items-center font-mono">
-                    <span className="text-gray-400">Show Keys</span>
+                    <span className="text-[var(--text-secondary)]">Show Keys</span>
                     <span className="bg-[var(--bg-elevated)] border border-[var(--border-subtle)] px-2 py-0.5 rounded text-white font-bold text-[10px]">
                       ?
                     </span>
                   </div>
                   <div className="flex justify-between items-center font-mono">
-                    <span className="text-gray-400">Close Modals</span>
+                    <span className="text-[var(--text-secondary)]">Close Modals</span>
                     <span className="bg-[var(--bg-elevated)] border border-[var(--border-subtle)] px-2 py-0.5 rounded text-white font-bold text-[10px]">
                       ESC
                     </span>

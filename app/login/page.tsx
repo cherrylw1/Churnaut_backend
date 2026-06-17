@@ -110,46 +110,46 @@ export default function LoginPage() {
       </div>
 
       {/* Right panel: Brand Panel with gradient background */}
-      <div className="hidden lg:col-span-7 lg:flex flex-col justify-center px-16 py-12 relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #1a0533 0%, #0a0a1f 50%, #001a33 100%)' }}>
+      <div className="hidden lg:col-span-7 lg:flex flex-col justify-center px-16 py-12 relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #2B2018 0%, #3D2817 50%, #2B2420 100%)' }}>
         {/* Soft abstract shapes in background for premium look */}
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-900/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-900/10 rounded-full blur-3xl" />
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#C2683D]/15 rounded-full blur-3xl" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#C2683D]/10 rounded-full blur-3xl" />
 
         <div className="relative max-w-lg space-y-8">
           <div className="space-y-4">
-            <span className="px-3 py-1 bg-white/5 border border-white/10 rounded-full text-xs font-semibold text-purple-300 tracking-wider uppercase font-sans">
+            <span className="px-3 py-1 bg-white/5 border border-white/10 rounded-full text-xs font-semibold text-[#E8A87C] tracking-wider uppercase font-sans">
               B2B Client Personalization
             </span>
             <h2 className="text-4xl font-extrabold text-white leading-tight font-sans">
               Stop leaving pipeline revenue on the table.
             </h2>
-            <p className="text-[16px] text-gray-300 leading-relaxed font-sans">
+            <p className="text-[16px] text-[#D4C4B4] leading-relaxed font-sans">
               Churnaut captures real-time web engagement signals and dynamically personalizes your website experiences for high-value prospects.
             </p>
           </div>
 
           <div className="space-y-6 pt-6 border-t border-white/10">
             <div className="flex items-start gap-4">
-              <div className="w-6 h-6 rounded-full bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-300 font-bold text-sm flex-shrink-0 mt-0.5">✓</div>
+              <div className="w-6 h-6 rounded-full bg-[#C2683D]/20 border border-[#C2683D]/40 flex items-center justify-center text-[#E8A87C] font-bold text-sm flex-shrink-0 mt-0.5">✓</div>
               <div>
                 <h4 className="text-white font-semibold font-sans">Dynamic Content Swaps</h4>
-                <p className="text-xs text-gray-400 mt-1 font-sans">Instantly personalize headlines, subtext, and CTAs by industry, job title, or UTM parameters.</p>
+                <p className="text-xs text-[#D4C4B4] mt-1 font-sans">Instantly personalize headlines, subtext, and CTAs by industry, job title, or UTM parameters.</p>
               </div>
             </div>
 
             <div className="flex items-start gap-4">
-              <div className="w-6 h-6 rounded-full bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-300 font-bold text-sm flex-shrink-0 mt-0.5">✓</div>
+              <div className="w-6 h-6 rounded-full bg-[#C2683D]/20 border border-[#C2683D]/40 flex items-center justify-center text-[#E8A87C] font-bold text-sm flex-shrink-0 mt-0.5">✓</div>
               <div>
                 <h4 className="text-white font-semibold font-sans">CRM & HubSpot Sync</h4>
-                <p className="text-xs text-gray-400 mt-1 font-sans">Auto-pull closed-won patterns to compile B2B Ideal Customer Profiles (ICP) and write Obituaries for lost deals.</p>
+                <p className="text-xs text-[#D4C4B4] mt-1 font-sans">Auto-pull closed-won patterns to compile B2B Ideal Customer Profiles (ICP) and write Obituaries for lost deals.</p>
               </div>
             </div>
 
             <div className="flex items-start gap-4">
-              <div className="w-6 h-6 rounded-full bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-300 font-bold text-sm flex-shrink-0 mt-0.5">✓</div>
+              <div className="w-6 h-6 rounded-full bg-[#C2683D]/20 border border-[#C2683D]/40 flex items-center justify-center text-[#E8A87C] font-bold text-sm flex-shrink-0 mt-0.5">✓</div>
               <div>
                 <h4 className="text-white font-semibold font-sans">Scout AI Intelligence</h4>
-                <p className="text-xs text-gray-400 mt-1 font-sans">Keep sales representatives accountable with automatic alerts, multithreading diagnostics, and inactivity detection.</p>
+                <p className="text-xs text-[#D4C4B4] mt-1 font-sans">Keep sales representatives accountable with automatic alerts, multithreading diagnostics, and inactivity detection.</p>
               </div>
             </div>
           </div>
