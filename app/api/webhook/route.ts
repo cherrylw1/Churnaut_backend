@@ -40,37 +40,20 @@ export async function POST(req: NextRequest) {
     }
 
     if (!key) {
-      return NextResponse.json({ error: 'Missing client_key or Authorization Bearer token' }, { status: 401 });
+      return NextResponse.json({ error: 'Missing webhook secret or Authorization Bearer token' }, { status: 401 });
     }
 
-    // Lookup client by webhook_secret or legacy snippet_key
-    let client = null;
-    let clientErr = null;
-
-    // First try webhook_secret
+    // Webhook authentication must use the private webhook secret. The snippet_key
+    // is intentionally embedded in public website JavaScript for browser tracking
+    // and must never be accepted as an inbound integration credential.
     const { data: clientBySecret, error: secretErr } = await supabaseAdmin
       .from('clients')
       .select('*')
       .eq('webhook_secret', key)
       .maybeSingle();
 
-    client = clientBySecret;
-    clientErr = secretErr;
-
-    if (!client && !clientErr) {
-      // Fallback to legacy snippet_key
-      const { data: clientByKey, error: keyErr } = await supabaseAdmin
-        .from('clients')
-        .select('*')
-        .eq('snippet_key', key)
-        .maybeSingle();
-
-      client = clientByKey;
-      clientErr = keyErr;
-      if (client) {
-        console.warn('[DEPRECATION WARNING] Webhook authenticated using snippet_key. Please transition to using webhook_secret.');
-      }
-    }
+    const client = clientBySecret;
+    const clientErr = secretErr;
 
     if (clientErr || !client) {
       console.error('[Webhook Auth Error] Failed client lookup:', clientErr);

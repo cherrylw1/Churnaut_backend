@@ -55,7 +55,9 @@ export default function IntegrationsPage() {
     }));
   };
 
-  const webhookUrl = client ? `${window.location.origin}/api/webhook?client_key=${client.webhook_secret || client.snippet_key}` : '';
+  const webhookUrl = client?.webhook_secret
+    ? `${window.location.origin}/api/webhook?client_key=${client.webhook_secret}`
+    : '';
 
   return (
     <div className="space-y-6">

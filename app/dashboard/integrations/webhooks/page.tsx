@@ -8,6 +8,7 @@ interface ClientProfile {
   company_name: string;
   domain: string;
   snippet_key: string;
+  webhook_secret: string;
   crm_type?: string;
   active: boolean;
 }
@@ -201,10 +202,10 @@ export default function WebhooksSettingsPage() {
   };
 
   const getWebhookUrl = () => {
-    if (typeof window !== 'undefined' && client) {
-      return `${window.location.origin}/api/webhook?client_key=${client.snippet_key}`;
+    if (typeof window !== 'undefined' && client?.webhook_secret) {
+      return `${window.location.origin}/api/webhook?client_key=${client.webhook_secret}`;
     }
-    return `/api/webhook?client_key=${client?.snippet_key || '...'}`;
+    return '';
   };
 
   return (
@@ -250,11 +251,11 @@ export default function WebhooksSettingsPage() {
                   <input
                     type="text"
                     readOnly
-                    value={client?.snippet_key || ''}
+                    value={client?.webhook_secret || ''}
                     className="flex-1 bg-[#080B0F] border border-[var(--border-subtle)] text-xs px-3 py-2.5 rounded text-white font-mono outline-none"
                   />
                   <button
-                    onClick={() => handleCopyToken(client?.snippet_key || '')}
+                    onClick={() => handleCopyToken(client?.webhook_secret || '')}
                     className="bg-[#C2683D] hover:bg-[#A8552F] text-white font-mono text-xs px-4 rounded transition-all active:scale-[0.98]"
                   >
                     {copiedToken ? 'COPIED!' : 'COPY'}
