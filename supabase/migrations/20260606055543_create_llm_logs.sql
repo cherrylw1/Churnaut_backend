@@ -1,5 +1,5 @@
 -- llm_logs: captures every LLM inference call for future fine-tuning
-CREATE TABLE llm_logs (
+CREATE TABLE IF NOT EXISTS llm_logs (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   created_at timestamptz DEFAULT now(),
 
@@ -32,10 +32,10 @@ CREATE TABLE llm_logs (
 );
 
 -- indexes
-CREATE INDEX idx_llm_logs_client_id ON llm_logs(client_id);
-CREATE INDEX idx_llm_logs_feature ON llm_logs(feature);
-CREATE INDEX idx_llm_logs_created_at ON llm_logs(created_at DESC);
-CREATE INDEX idx_llm_logs_feedback_type ON llm_logs(feedback_type)
+CREATE INDEX IF NOT EXISTS idx_llm_logs_client_id ON llm_logs(client_id);
+CREATE INDEX IF NOT EXISTS idx_llm_logs_feature ON llm_logs(feature);
+CREATE INDEX IF NOT EXISTS idx_llm_logs_created_at ON llm_logs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_llm_logs_feedback_type ON llm_logs(feedback_type)
   WHERE feedback_type IS NOT NULL;
 
 -- RLS: only service role can read/write (no client-side access)

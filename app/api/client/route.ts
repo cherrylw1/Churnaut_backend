@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getAuthedClientId } from '@/lib/auth';
+import { clientDomainRequestSchema, readJson } from '@/lib/validation';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,12 +43,9 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await req.json();
-    const { domain } = body;
-
-    if (!domain || typeof domain !== 'string') {
-      return NextResponse.json({ error: 'domain is required' }, { status: 400 });
-    }
+    const parsedBody = await readJson(req, clientDomainRequestSchema);
+    if (!parsedBody.ok) return NextResponse.json({ error: parsedBody.error }, { status: 400 });
+    const { domain } = parsedBody.data;
 
     // Normalize domain — ensure it starts with https://
     let normalizedDomain = domain.trim();

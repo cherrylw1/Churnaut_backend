@@ -14,6 +14,15 @@ export const ratelimit = new Ratelimit({
   prefix: '@upstash/ratelimit',
 });
 
+// Resolve traffic is public browser traffic. Scope the limit to a client + source
+// IP so one busy visitor cannot throttle an entire customer account.
+export const resolveRatelimit = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(100, '10 s'),
+  analytics: true,
+  prefix: 'resolve-ip',
+});
+
 // Rate limiter for support chat: 20 requests per 60 seconds per clientId
 export const supportChatRatelimit = new Ratelimit({
   redis: redis,

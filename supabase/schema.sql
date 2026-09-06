@@ -10,13 +10,58 @@ CREATE TABLE IF NOT EXISTS clients (
     company_name text NOT NULL,
     domain text NOT NULL UNIQUE,
     plan text DEFAULT 'starter',
+    plan_status text DEFAULT 'active',
+    monthly_visits integer DEFAULT 0,
     snippet_key text UNIQUE DEFAULT gen_random_uuid()::text,
+    webhook_secret uuid DEFAULT gen_random_uuid(),
+    email text,
     crm_type text,
     crm_api_key text,
     calendly_token text,
     stripe_customer_id text,
+    lemonsqueezy_customer_id text,
+    lemonsqueezy_subscription_id text,
+    lemonsqueezy_variant_id text,
+    trial_ends_at timestamptz,
+    visits_reset_at timestamptz,
     active boolean DEFAULT true
 );
+
+-- Provision the tenant row inside the same transaction as the Supabase Auth
+-- user. A profile failure aborts sign-up, preventing orphaned auth accounts.
+CREATE OR REPLACE FUNCTION public.handle_new_churnaut_user()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+    company_label text;
+    company_slug text;
+BEGIN
+    company_label := COALESCE(NULLIF(BTRIM(NEW.raw_user_meta_data->>'company_name'), ''), 'Workspace');
+    company_slug := LEFT(REGEXP_REPLACE(LOWER(company_label), '[^a-z0-9]', '', 'g'), 40);
+    IF company_slug = '' THEN company_slug := 'workspace'; END IF;
+
+    INSERT INTO public.clients (id, company_name, domain, email, plan, active)
+    VALUES (
+        NEW.id,
+        company_label,
+        company_slug || '-' || LEFT(NEW.id::text, 8) || '.com',
+        LOWER(NEW.email),
+        'starter',
+        true
+    )
+    ON CONFLICT (id) DO NOTHING;
+    RETURN NEW;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.handle_new_churnaut_user() FROM PUBLIC;
+DROP TRIGGER IF EXISTS on_auth_user_created_create_churnaut_client ON auth.users;
+CREATE TRIGGER on_auth_user_created_create_churnaut_client
+    AFTER INSERT ON auth.users
+    FOR EACH ROW EXECUTE FUNCTION public.handle_new_churnaut_user();
 
 -- ==========================================
 -- 2. SESSIONS TABLE
@@ -79,11 +124,118 @@ CREATE TABLE IF NOT EXISTS analytics_events (
 -- INDEXES FOR PERFORMANCE
 -- ==========================================
 CREATE INDEX IF NOT EXISTS idx_clients_active ON clients(active);
+CREATE INDEX IF NOT EXISTS idx_clients_lower_email ON clients (lower(email));
 CREATE INDEX IF NOT EXISTS idx_sessions_client_id ON sessions(client_id);
 CREATE INDEX IF NOT EXISTS idx_routing_rules_client_id ON routing_rules(client_id);
 CREATE INDEX IF NOT EXISTS idx_routing_rules_active_priority ON routing_rules(client_id, active, priority);
 CREATE INDEX IF NOT EXISTS idx_analytics_events_client_id ON analytics_events(client_id);
 CREATE INDEX IF NOT EXISTS idx_analytics_events_session_id ON analytics_events(session_id);
+
+-- Atomic quota consumption used by the public resolve endpoint.
+CREATE OR REPLACE FUNCTION increment_monthly_visits_if_available(
+    client_id_input UUID,
+    visit_limit_input INTEGER
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    UPDATE clients
+    SET monthly_visits = COALESCE(monthly_visits, 0) + 1
+    WHERE id = client_id_input
+      AND COALESCE(monthly_visits, 0) < visit_limit_input;
+    RETURN FOUND;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION increment_click_count(session_id_input TEXT)
+RETURNS INTEGER
+LANGUAGE plpgsql
+AS $$
+DECLARE updated_count INTEGER;
+BEGIN
+  UPDATE sessions
+  SET click_count = COALESCE(click_count, 0) + 1,
+      clicked_at = COALESCE(clicked_at, now())
+  WHERE id = session_id_input
+  RETURNING click_count INTO updated_count;
+  RETURN updated_count;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION replace_routing_rules(client_id_input UUID, rules_input JSONB)
+RETURNS INTEGER
+LANGUAGE plpgsql
+AS $$
+DECLARE inserted_count INTEGER;
+BEGIN
+  DELETE FROM routing_rules WHERE client_id = client_id_input;
+  INSERT INTO routing_rules (
+    client_id, priority, active, signal_type, conditions, action_type,
+    action_payload, target_selector, variant_content
+  )
+  SELECT
+    client_id_input, r.priority, COALESCE(r.active, true), r.signal_type,
+    COALESCE(r.conditions, '{}'::jsonb), r.action_type,
+    COALESCE(r.action_payload, '{}'::jsonb), r.target_selector, r.variant_content
+  FROM jsonb_to_recordset(rules_input) AS r(
+    priority INTEGER, active BOOLEAN, signal_type TEXT, conditions JSONB,
+    action_type TEXT, action_payload JSONB, target_selector TEXT, variant_content TEXT
+  );
+  GET DIAGNOSTICS inserted_count = ROW_COUNT;
+  RETURN inserted_count;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION increment_monthly_visits_if_available(UUID, INTEGER) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION increment_click_count(TEXT) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION replace_routing_rules(UUID, JSONB) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION increment_monthly_visits_if_available(UUID, INTEGER) TO service_role;
+GRANT EXECUTE ON FUNCTION increment_click_count(TEXT) TO service_role;
+GRANT EXECUTE ON FUNCTION replace_routing_rules(UUID, JSONB) TO service_role;
+
+-- ==========================================
+-- 4A. PROCESSED WEBHOOKS (IDEMPOTENCY)
+-- ==========================================
+CREATE TABLE IF NOT EXISTS processed_webhooks (
+    event_id text PRIMARY KEY,
+    processed_at timestamptz DEFAULT now(),
+    status text NOT NULL DEFAULT 'completed' CHECK (status IN ('processing', 'completed', 'failed')),
+    claimed_at timestamptz,
+    completed_at timestamptz,
+    attempts integer NOT NULL DEFAULT 1,
+    last_error text
+);
+
+-- ==========================================
+-- 4B. LLM LOGS (SERVICE-ROLE ONLY)
+-- ==========================================
+CREATE TABLE IF NOT EXISTS llm_logs (
+    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+    created_at timestamptz DEFAULT now(),
+    client_id uuid REFERENCES clients(id) ON DELETE SET NULL,
+    session_id text,
+    deal_id text,
+    feature text NOT NULL,
+    model_used text NOT NULL,
+    prompt_version text DEFAULT 'v1.0',
+    system_prompt text,
+    input_payload jsonb NOT NULL,
+    output_payload jsonb NOT NULL,
+    latency_ms integer,
+    input_tokens integer,
+    output_tokens integer,
+    feedback_score integer,
+    feedback_type text,
+    feedback_edited_output jsonb,
+    feedback_at timestamptz,
+    feedback_source text
+);
+
+CREATE INDEX IF NOT EXISTS idx_llm_logs_client_id ON llm_logs(client_id);
+CREATE INDEX IF NOT EXISTS idx_llm_logs_feature ON llm_logs(feature);
+CREATE INDEX IF NOT EXISTS idx_llm_logs_created_at ON llm_logs(created_at DESC);
+ALTER TABLE llm_logs ENABLE ROW LEVEL SECURITY;
 
 -- ==========================================
 -- ROW LEVEL SECURITY (RLS) POLICIES
@@ -115,16 +267,6 @@ CREATE POLICY "Clients can manage their own sessions" ON sessions
     USING (client_id = auth.uid())
     WITH CHECK (client_id = auth.uid());
 
--- PUBLIC ACCESS: Allow creation and updates of sessions from the snippet JS client matching the snippet_key
-CREATE POLICY "Snippet can create sessions" ON sessions
-    FOR INSERT TO anon, authenticated
-    WITH CHECK (true);
-
-CREATE POLICY "Snippet can update sessions" ON sessions
-    FOR UPDATE TO anon, authenticated
-    USING (true)
-    WITH CHECK (true);
-
 -- ROUTING RULES POLICIES
 CREATE POLICY "Clients can view their own routing rules" ON routing_rules
     FOR SELECT TO authenticated
@@ -135,20 +277,10 @@ CREATE POLICY "Clients can manage their own routing rules" ON routing_rules
     USING (client_id = auth.uid())
     WITH CHECK (client_id = auth.uid());
 
--- PUBLIC ACCESS: Allow snippet to read active rules
-CREATE POLICY "Snippet can view active routing rules" ON routing_rules
-    FOR SELECT TO anon, authenticated
-    USING (active = true);
-
 -- ANALYTICS EVENTS POLICIES
 CREATE POLICY "Clients can view their own analytics events" ON analytics_events
     FOR SELECT TO authenticated
     USING (client_id = auth.uid());
-
--- PUBLIC ACCESS: Allow snippet to insert analytics tracking events
-CREATE POLICY "Snippet can insert analytics events" ON analytics_events
-    FOR INSERT TO anon, authenticated
-    WITH CHECK (true);
 
 -- ==========================================
 -- 5. WEBHOOK MAPPINGS TABLE
@@ -280,10 +412,16 @@ CREATE TABLE IF NOT EXISTS weekly_digests (
     top_signal text NOT NULL,
     rep_spotlight text NOT NULL,
     recommendation text NOT NULL,
+    delivery_status text NOT NULL DEFAULT 'sent' CHECK (delivery_status IN ('processing', 'sent', 'failed')),
+    claimed_at timestamptz,
+    sent_at timestamptz,
+    attempts integer NOT NULL DEFAULT 1,
+    last_error text,
     created_at timestamptz DEFAULT now()
 );
 
 CREATE INDEX IF NOT EXISTS idx_weekly_digests_client_id ON weekly_digests(client_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_weekly_digests_client_week ON weekly_digests(client_id, week_start);
 
 ALTER TABLE weekly_digests ENABLE ROW LEVEL SECURITY;
 
@@ -483,4 +621,3 @@ CREATE POLICY "Clients can manage their own icp profiles" ON icp_profiles
     FOR ALL TO authenticated
     USING (client_id = auth.uid())
     WITH CHECK (client_id = auth.uid());
-

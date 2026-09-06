@@ -4,6 +4,7 @@ import { logLLMCall } from '@/lib/llm/logger';
 import { generateText } from '@/lib/llm/complete';
 import { getClientPlan, planGate } from '@/lib/gate';
 import { getAuthedClientId } from '@/lib/auth';
+import { copywriterRequestSchema, readJson } from '@/lib/validation';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,14 +21,9 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Parse Body Parameters
-    const body = await req.json();
-    const {
-      signal_type = 'Cold Email',
-      job_title = 'Executive',
-      industry = 'Software',
-      company_size = '50-200',
-      desired_tone = 'consultative',
-    } = body;
+    const parsedBody = await readJson(req, copywriterRequestSchema);
+    if (!parsedBody.ok) return NextResponse.json({ error: parsedBody.error }, { status: 400 });
+    const { signal_type, job_title, industry, company_size, desired_tone } = parsedBody.data;
 
     // 3. Build normalized cache key
     const normSignal = signal_type.toString().toLowerCase().trim();
@@ -77,7 +73,7 @@ export async function POST(req: NextRequest) {
     logLLMCall({
       client_id: clientId,
       feature: 'copywriter',
-      input_payload: body as unknown as Record<string, unknown>,
+      input_payload: parsedBody.data as unknown as Record<string, unknown>,
       output_payload: { variants } as unknown as Record<string, unknown>,
       latency_ms: Date.now() - llmStart,
     });

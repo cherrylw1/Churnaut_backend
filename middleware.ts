@@ -3,33 +3,23 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
-  const path = request.nextUrl.pathname;
-
-  // Protect all /dashboard routes
-  if (path.startsWith('/dashboard')) {
-    const authCookie = request.cookies.get('sb-auth-token');
-
-    if (!authCookie) {
-      const loginUrl = new URL('/login', request.url);
-      return NextResponse.redirect(loginUrl);
-    }
-
+  // Do not reject dashboard navigations based on an expired/missing cookie.
+  // Supabase may still have a refreshable session in browser storage, and the
+  // dashboard layout synchronizes it before making authenticated API calls.
+  // Every route handler remains responsible for authoritative token validation.
+  const serverCookie = request.cookies.get('churnaut-session');
+  if (serverCookie) {
     try {
-      const session = JSON.parse(decodeURIComponent(authCookie.value));
-      const expiresAt = session?.expires_at;
-
-      // Redirect to login if session has expired
-      if (!expiresAt || expiresAt * 1000 < Date.now()) {
-        const loginUrl = new URL('/login', request.url);
-        return NextResponse.redirect(loginUrl);
+      const session = JSON.parse(decodeURIComponent(serverCookie.value));
+      if (typeof session?.access_token === 'string') {
+        const requestHeaders = new Headers(request.headers);
+        requestHeaders.set('Authorization', `Bearer ${session.access_token}`);
+        return NextResponse.next({ request: { headers: requestHeaders } });
       }
-    } catch (error) {
-      console.error('[Middleware Auth Error] Failed to parse auth cookie:', error);
-      const loginUrl = new URL('/login', request.url);
-      return NextResponse.redirect(loginUrl);
+    } catch {
+      // Route-level auth will return 401 for malformed cookies.
     }
   }
-
   return NextResponse.next();
 }
 

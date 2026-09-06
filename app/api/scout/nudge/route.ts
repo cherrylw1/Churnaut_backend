@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { sendNudgeEmail } from '@/lib/email/resend';
 import { getClientPlan, planGate } from '@/lib/gate';
 import { getAuthedClientId } from '@/lib/auth';
+import { nudgeRequestSchema, readJson } from '@/lib/validation';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,7 +20,12 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Parse request payload
-    const { deal_id, deal_name, rep_email, rep_name, message } = await req.json();
+    const parsedBody = await readJson(req, nudgeRequestSchema);
+    if (!parsedBody.ok) return NextResponse.json({ error: parsedBody.error }, { status: 400 });
+    const { deal_id, deal_name, rep_email, rep_name, message } = parsedBody.data;
+    if (!rep_email) {
+      return NextResponse.json({ error: 'A verified representative email address is required' }, { status: 400 });
+    }
 
     // 3. Insert nudge record in scout_nudges table
     const { data, error } = await supabaseAdmin
@@ -31,8 +37,8 @@ export async function POST(req: NextRequest) {
         rep_email: rep_email || '',
         rep_name: rep_name || '',
         message: message || '',
-        sent: true,
-        sent_at: new Date().toISOString(),
+        sent: false,
+        sent_at: null,
       })
       .select()
       .single();
@@ -42,9 +48,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // 4. Query deal_scores for draft_email and next_action
-    if (deal_id) {
-      try {
+    // 4. Resolve the recommended content, then deliver before marking sent.
+    try {
+      let draftEmail: string | null = null;
+      let nextAction = 'No next action specified';
+      if (deal_id) {
         const { data: scoreData, error: scoreError } = await supabaseAdmin
           .from('deal_scores')
           .select('draft_email, next_action')
@@ -54,24 +62,27 @@ export async function POST(req: NextRequest) {
 
         if (scoreError) {
           console.error('[Scout Nudge POST] Error fetching deal_scores for email nudge:', scoreError);
-        } else {
-          const draftEmail = scoreData?.draft_email || null;
-          const nextAction = scoreData?.next_action || 'No next action specified';
-
-          // 5. Call sendNudgeEmail() with rep_email as the TO address
-          if (rep_email) {
-            // console.log(`[Scout Nudge POST] Sending nudge email to: ${rep_email} for deal: ${deal_name}`);
-            await sendNudgeEmail(rep_email, deal_name || 'Unnamed Deal', draftEmail, nextAction);
-          } else {
-            console.warn('[Scout Nudge POST] Skipping email nudge: rep_email is missing');
-          }
+        } else if (scoreData) {
+          draftEmail = scoreData.draft_email || null;
+          nextAction = scoreData.next_action || nextAction;
         }
-      } catch (emailErr) {
-        console.error('[Scout Nudge POST] Exception during email dispatch:', emailErr);
       }
-    }
+      const emailResult = await sendNudgeEmail(rep_email, deal_name || 'Unnamed Deal', message || draftEmail, nextAction);
+      if (!emailResult.success) throw new Error('Nudge email delivery failed');
 
-    return NextResponse.json({ success: true, nudge: data });
+      const { data: sentNudge, error: sentError } = await supabaseAdmin
+        .from('scout_nudges')
+        .update({ sent: true, sent_at: new Date().toISOString() })
+        .eq('id', data.id)
+        .eq('client_id', clientId)
+        .select()
+        .single();
+      if (sentError) throw sentError;
+      return NextResponse.json({ success: true, nudge: sentNudge });
+    } catch (emailErr) {
+      console.error('[Scout Nudge POST] Exception during email dispatch:', emailErr);
+      return NextResponse.json({ error: 'Nudge email delivery failed' }, { status: 502 });
+    }
 
   } catch (error) {
     console.error('[Scout Nudge POST Exception] Unhandled error:', error);

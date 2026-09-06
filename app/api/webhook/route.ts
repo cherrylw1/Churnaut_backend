@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { supabaseAdmin } from '@/lib/supabase';
 import { redis, ratelimit } from '@/lib/redis';
+import { readJson, webhookPayloadSchema } from '@/lib/validation';
 
 export const dynamic = 'force-dynamic';
 
@@ -73,10 +74,11 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Parse Incoming Payload
-    const payload = await req.json();
-    if (!payload || typeof payload !== 'object') {
-      return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 });
+    const parsedPayload = await readJson(req, webhookPayloadSchema);
+    if (!parsedPayload.ok) {
+      return NextResponse.json({ error: parsedPayload.error }, { status: 400 });
     }
+    const payload = parsedPayload.data;
 
     // 3. Query Webhook Field Mappings
     const { data: mappings, error: mappingsErr } = await supabaseAdmin
@@ -194,6 +196,8 @@ export async function POST(req: NextRequest) {
         updates.converted = transformed.converted;
         if (transformed.converted) {
           updates.converted_at = new Date().toISOString();
+        } else {
+          updates.converted_at = null;
         }
       }
 
@@ -279,6 +283,10 @@ export async function POST(req: NextRequest) {
       session = inserted;
     }
 
+    if (!session) {
+      return NextResponse.json({ error: 'No matching session found and no prospect email was provided' }, { status: 422 });
+    }
+
     // 8. Invalidate Upstash Redis cache for affected sessions
     if (session) {
       try {
@@ -298,11 +306,11 @@ export async function POST(req: NextRequest) {
     try {
       await supabaseAdmin.from('analytics_events').insert({
         client_id: clientId,
-        session_id: session?.id || null,
+        session_id: session.id,
         event_type: 'webhook',
         signal_type: isLinkedInLeadGen ? 'linkedin_lead_gen' : 'crm_webhook',
         metadata: {
-          webhook_action: isNewSession ? 'create_session' : session ? 'update_session' : 'no_action',
+          webhook_action: isNewSession ? 'create_session' : 'update_session',
           payload,
           transformed,
         },

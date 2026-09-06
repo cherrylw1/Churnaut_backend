@@ -2,11 +2,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { waitUntil } from '@vercel/functions'
 import { supabaseAdmin } from '@/lib/supabase';
-import { ratelimit, redis } from '@/lib/redis';
+import { resolveRatelimit, redis } from '@/lib/redis';
 import { evaluateRules } from '@/lib/rules-engine';
 import { PLAN_LIMITS } from '@/lib/plans';
 import { Session } from '@/types/index';
 import { enrichSessionFromHubSpot } from '@/lib/integrations/hubspot';
+import { readJson, resolveRequestSchema } from '@/lib/validation';
 
 export const dynamic = 'force-dynamic';
 
@@ -64,21 +65,18 @@ function replaceVariables(content: string, session: Session | null): string {
 
 export async function POST(req: NextRequest) {
   try {
-    // 1. Parse request body and get client_id, signals, cookie fields
-    const body = await req.json();
-    const { client_id: clientIdParam, signals, cookie, utms } = body;
-    const sid = signals?.sid;
-    const gclid = signals?.gclid;
-    const fbclid = signals?.fbclid;
-    const li_fat_id = signals?.li_fat_id;
-    const ttclid = signals?.ttclid;
-
-    if (!clientIdParam) {
-      return NextResponse.json(
-        { error: 'Missing client_id parameter' },
-        { status: 400, headers: corsHeaders }
-      );
+    // 1. Parse and validate request body.
+    const parsedBody = await readJson(req, resolveRequestSchema);
+    if (!parsedBody.ok) {
+      return NextResponse.json({ error: parsedBody.error }, { status: 400, headers: corsHeaders });
     }
+    const { client_id: clientIdParam, signals, cookie, utms } = parsedBody.data;
+    const signalValues = signals as Record<string, unknown>;
+    const sid = typeof signalValues.sid === 'string' ? signalValues.sid : null;
+    const gclid = typeof signalValues.gclid === 'string' ? signalValues.gclid : null;
+    const fbclid = typeof signalValues.fbclid === 'string' ? signalValues.fbclid : null;
+    const li_fat_id = typeof signalValues.li_fat_id === 'string' ? signalValues.li_fat_id : null;
+    const ttclid = typeof signalValues.ttclid === 'string' ? signalValues.ttclid : null;
 
     // 2. Look up the client in the clients table by snippet_key matching client_id
     const { data: clientData, error: clientError } = await supabaseAdmin
@@ -97,6 +95,23 @@ export async function POST(req: NextRequest) {
 
     const client_id = clientData.id;
 
+    // Rate-limit before consuming quota. The key is client + source IP so one
+    // visitor cannot exhaust the shared customer-wide bucket.
+    const forwardedFor = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
+    const sourceIp = forwardedFor || req.headers.get('x-real-ip') || 'unknown';
+    try {
+      const { success } = await resolveRatelimit.limit(`resolve:${client_id}:${sourceIp}`);
+      if (!success) {
+        return NextResponse.json(
+          { error: 'Rate limit exceeded' },
+          { status: 429, headers: corsHeaders }
+        );
+      }
+    } catch (rlError) {
+      console.error('[RateLimit Error] Failed to enforce resolve rate limiting:', rlError);
+      // Keep the public snippet available if Redis is temporarily unavailable.
+    }
+
     // Visit limit check — sourced from lib/plans.ts
     const clientPlan = (clientData?.plan ?? 'starter') as keyof typeof PLAN_LIMITS
     const visitLimit = PLAN_LIMITS[clientPlan]?.tracked_visits ?? 500
@@ -109,41 +124,30 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Increment visit counter here — before cache check and before rule evaluation
-    // so every resolve that passes the limit gate is counted (cache hits, no-matches, and rule matches alike)
-    waitUntil(
-      Promise.resolve(supabaseAdmin.rpc('increment_monthly_visits', { client_id_input: client_id }))
-        .then(() => {})
-        .catch((err: unknown) => console.error('[Visit Counter Error] Failed to increment monthly visits:', err))
-    )
-
-    // Rate limiting
-    try {
-      const { success } = await ratelimit.limit(client_id);
-      if (!success) {
+    // Atomically consume one visit for metered plans. Unlimited plans must not
+    // pass Infinity through JSON/PostgREST (it becomes null and rejects them).
+    if (visitLimit !== Infinity) {
+      const { data: quotaAvailable, error: quotaError } = await supabaseAdmin.rpc(
+        'increment_monthly_visits_if_available',
+        { client_id_input: client_id, visit_limit_input: visitLimit }
+      );
+      if (quotaError) {
+        console.error('[Visit Counter Error] Failed to consume monthly quota:', quotaError);
         return NextResponse.json(
-          { error: 'Rate limit exceeded' },
-          { status: 429, headers: corsHeaders }
+          { error: 'Visit quota service unavailable' },
+          { status: 503, headers: corsHeaders }
         );
       }
-    } catch (rlError) {
-      console.error('[RateLimit Error] Failed to enforce rate limiting:', rlError);
+      if (!quotaAvailable) {
+        return NextResponse.json(
+          { visitor_token: null, swaps: [] },
+          { headers: corsHeaders }
+        );
+      }
     }
 
     const primarySignal = sid || cookie;
-    let cacheKey = '';
-    if (primarySignal) {
-      cacheKey = `resolve:${client_id}:${primarySignal}`;
-      try {
-        const cached = await redis.get(cacheKey);
-        if (cached) {
-          const instructions = typeof cached === 'string' ? JSON.parse(cached) : cached;
-          return NextResponse.json(instructions, { headers: corsHeaders });
-        }
-      } catch (cacheError) {
-        console.error('[Cache Error] Failed cache read:', cacheError);
-      }
-    }
+    const cacheKey = primarySignal ? `resolve:${client_id}:${primarySignal}` : '';
 
     // 3. Look up the session in the sessions table by id matching sid
     let session: Session | null = null;
@@ -171,16 +175,20 @@ export async function POST(req: NextRequest) {
 
       if (session && session.id && sid) {
         waitUntil(
-          Promise.resolve(supabaseAdmin.rpc('increment_click_count', { session_id: session!.id }))
-            .then(() => {})
-            .catch((err: unknown) => console.error('[Click Count Error] Failed to increment click count:', err))
-        );
-      }
-
-      if (session && session.click_count === 0 && session.assigned_rep) {
-        waitUntil(
           (async () => {
             try {
+              const { data: newClickCount, error: clickError } = await supabaseAdmin.rpc(
+                'increment_click_count',
+                { session_id_input: session!.id }
+              );
+              if (clickError) {
+                console.error('[Click Count Error] Failed to increment click count:', clickError);
+                return;
+              }
+
+              // Only the request that atomically changes 0 -> 1 sends the first
+              // click notification. Concurrent resolves cannot duplicate it.
+              if (newClickCount !== 1 || !session!.assigned_rep) return;
               const sessionRecord = session as unknown as Record<string, unknown>;
               const repEmail = (sessionRecord.rep_email as string) || null;
               if (repEmail) {
@@ -212,6 +220,67 @@ export async function POST(req: NextRequest) {
 
       if (!error && data) {
         session = data;
+      }
+    }
+
+    if (session?.expires_at && new Date(session.expires_at).getTime() < Date.now()) {
+      return NextResponse.json({ visitor_token: null, swaps: [] }, { headers: corsHeaders });
+    }
+
+    const queueAnalyticsEvent = (
+      eventType: 'rule_triggered' | 'no_match',
+      ruleId: string | null,
+      selector: string | null = null,
+      preview: string | null = null
+    ) => {
+      const detectedSignal = session?.signal_type || (sid ? 'sid' : (cookie ? 'cookie' : null));
+      waitUntil(
+        Promise.resolve(
+          supabaseAdmin.from('analytics_events').insert({
+            client_id,
+            session_id: session?.id || null,
+            rule_id: ruleId,
+            event_type: eventType,
+            signal_type: detectedSignal,
+            created_at: new Date().toISOString(),
+            metadata: { selector, content_preview: preview },
+          })
+        )
+          .then(({ error }) => {
+            if (error) console.error('[Analytics Error] Failed to log analytics event:', error);
+          })
+          .catch((err: unknown) => console.error('[Analytics Exception] Failed to execute analytics log:', err))
+      );
+    };
+
+    // Cache only after session validation and click accounting. Cached results
+    // still emit one analytics event for every resolve request.
+    if (primarySignal && cacheKey) {
+      try {
+        const cached = await redis.get(cacheKey);
+        if (cached) {
+          const parsedCache = typeof cached === 'string' ? JSON.parse(cached) : cached;
+          const cachedRecord = parsedCache as {
+            instructions?: { visitor_token: string | null; swaps: Array<{ selector: string; content: string }> };
+            analytics?: { ruleId?: string | null; selector?: string | null; preview?: string | null };
+            visitor_token?: string | null;
+            swaps?: Array<{ selector: string; content: string }>;
+          };
+          const instructions = cachedRecord.instructions || {
+            visitor_token: cachedRecord.visitor_token || null,
+            swaps: cachedRecord.swaps || [],
+          };
+          const firstSwap = instructions.swaps[0];
+          queueAnalyticsEvent(
+            firstSwap ? 'rule_triggered' : 'no_match',
+            cachedRecord.analytics?.ruleId || null,
+            cachedRecord.analytics?.selector || firstSwap?.selector || null,
+            cachedRecord.analytics?.preview || (firstSwap?.content ? firstSwap.content.slice(0, 100) : null)
+          );
+          return NextResponse.json(instructions, { headers: corsHeaders });
+        }
+      } catch (cacheError) {
+        console.error('[Cache Error] Failed cache read:', cacheError);
       }
     }
 
@@ -289,38 +358,6 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Helper to log analytics events asynchronously
-    const logAnalyticsEvent = (
-      eventType: 'rule_triggered' | 'no_match',
-      ruleId: string | null,
-      selector: string | null = null,
-      preview: string | null = null
-    ) => {
-      const detectedSignal = session?.signal_type || (sid ? 'sid' : (cookie ? 'cookie' : null));
-      waitUntil(
-        Promise.resolve(
-          supabaseAdmin
-            .from('analytics_events')
-            .insert({
-              client_id,
-              session_id: session?.id || null,
-              rule_id: ruleId,
-              event_type: eventType,
-              signal_type: detectedSignal,
-              created_at: new Date().toISOString(),
-              metadata: {
-                selector,
-                content_preview: preview,
-              },
-            })
-        )
-        .then(({ error }) => {
-          if (error) console.error('[Analytics Error] Failed to log analytics event:', error);
-        })
-        .catch((err: unknown) => console.error('[Analytics Exception] Failed to execute analytics log:', err))
-      );
-    };
-
     // 4. Fetch all active routing rules for the client ordered by priority ascending
     const { data: rulesData, error: rulesError } = await supabaseAdmin
       .from('routing_rules')
@@ -340,7 +377,7 @@ export async function POST(req: NextRequest) {
 
     // 6. If matchedRule is null, return JSON: {visitor_token: null, swaps: []}
     if (!matchedRule) {
-      logAnalyticsEvent('no_match', null);
+      queueAnalyticsEvent('no_match', null);
       return NextResponse.json(
         { visitor_token: null, swaps: [] },
         { headers: corsHeaders }
@@ -383,7 +420,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (swapsList.length === 0) {
-      logAnalyticsEvent('no_match', null);
+      queueAnalyticsEvent('no_match', null);
       return NextResponse.json(
         { visitor_token: null, swaps: [] },
         { headers: corsHeaders }
@@ -393,7 +430,7 @@ export async function POST(req: NextRequest) {
     // Log rule triggered event using the first swap
     const firstSwap = swapsList[0];
     const contentPreview = firstSwap.content.length > 100 ? firstSwap.content.slice(0, 100) + '...' : firstSwap.content;
-    logAnalyticsEvent('rule_triggered', matchedRule.id, firstSwap.selector, contentPreview);
+    queueAnalyticsEvent('rule_triggered', matchedRule.id, firstSwap.selector, contentPreview);
 
     // 8. Cache instructions in Redis with a 300 second TTL
     const visitor_token = session?.visitor_token || null;
@@ -404,7 +441,14 @@ export async function POST(req: NextRequest) {
 
     if (primarySignal && cacheKey) {
       try {
-        await redis.setex(cacheKey, 300, JSON.stringify(instructions));
+        await redis.setex(cacheKey, 300, JSON.stringify({
+          instructions,
+          analytics: {
+            ruleId: matchedRule.id,
+            selector: firstSwap.selector,
+            preview: contentPreview,
+          },
+        }));
       } catch (cacheSetError) {
         console.error('[Cache Set Error] Failed to write to cache:', cacheSetError);
       }

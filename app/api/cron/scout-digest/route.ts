@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { generateText } from '@/lib/llm/complete'
 import { sendWeeklyDigest } from '@/lib/email/resend'
+import { getPreviousUtcWeekRange } from '@/lib/time'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
@@ -24,8 +25,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Failed to fetch clients' }, { status: 500 })
   }
 
-  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
-  const weekStartStr = sevenDaysAgo.split('T')[0]
+  // Use a stable Monday-to-Monday UTC reporting window. Manual retries later in
+  // the week must target the same digest row instead of creating a new key.
+  const { periodStart, periodEnd, weekStart: weekStartStr } = getPreviousUtcWeekRange()
 
   let sent = 0
   let skipped = 0
@@ -35,29 +37,35 @@ export async function GET(req: NextRequest) {
     if (!client.email) { skipped++; continue }
 
     try {
-      // Skip if digest already sent this week
-      const { data: existing } = await supabaseAdmin
+      // Skip completed or actively processing deliveries. Failed and stale
+      // claims remain eligible for a retry.
+      const { data: existing, error: existingError } = await supabaseAdmin
         .from('weekly_digests')
-        .select('id')
+        .select('id, delivery_status, claimed_at, attempts')
         .eq('client_id', client.id)
         .eq('week_start', weekStartStr)
         .maybeSingle()
-
-      if (existing) { skipped++; continue }
+      if (existingError) throw existingError
+      const staleBefore = Date.now() - 15 * 60 * 1000
+      const activelyProcessing = existing?.delivery_status === 'processing' &&
+        !!existing.claimed_at && new Date(existing.claimed_at).getTime() >= staleBefore
+      if (existing?.delivery_status === 'sent' || activelyProcessing) { skipped++; continue }
 
       // Fetch 7-day metrics
       const [sessionsRes, eventsRes, snapRes] = await Promise.all([
         supabaseAdmin
           .from('sessions')
-          .select('signal_type, converted, assigned_rep')
+          .select('signal_type, converted, assigned_rep, click_count')
           .eq('client_id', client.id)
-          .gte('created_at', sevenDaysAgo),
+          .gte('created_at', periodStart)
+          .lt('created_at', periodEnd),
         supabaseAdmin
           .from('analytics_events')
           .select('rule_id')
           .eq('client_id', client.id)
           .eq('event_type', 'rule_triggered')
-          .gte('created_at', sevenDaysAgo),
+          .gte('created_at', periodStart)
+          .lt('created_at', periodEnd),
         supabaseAdmin
           .from('pipeline_snapshots')
           .select('pressure_score, red_count, amber_count, green_count, total_deals')
@@ -72,7 +80,7 @@ export async function GET(req: NextRequest) {
       const snap = snapRes.data
 
       const totalLinks = sessions.length
-      const totalClicks = sessions.filter(s => s.signal_type).length
+      const totalClicks = sessions.reduce((sum, s) => sum + (s.click_count || 0), 0)
       const totalConversions = sessions.filter(s => s.converted).length
       const triggerCount = events.length
 
@@ -129,18 +137,67 @@ Return ONLY a JSON object (no markdown) with exactly these keys:
         continue
       }
 
-      // Store in weekly_digests
-      await supabaseAdmin.from('weekly_digests').insert({
-        client_id: client.id,
-        week_start: weekStartStr,
-        summary: digestJson.summary,
-        top_signal: digestJson.top_signal,
-        rep_spotlight: digestJson.rep_spotlight,
-        recommendation: digestJson.recommendation,
-      })
+      // Atomically claim this client's weekly delivery. The unique client/week
+      // index prevents concurrent cron invocations from sending duplicates.
+      const claimedAt = new Date().toISOString()
+      let savedDigest: { id: string } | null = null
+      if (existing) {
+        let claimQuery = supabaseAdmin.from('weekly_digests').update({
+          summary: digestJson.summary,
+          top_signal: digestJson.top_signal,
+          rep_spotlight: digestJson.rep_spotlight,
+          recommendation: digestJson.recommendation,
+          delivery_status: 'processing',
+          claimed_at: claimedAt,
+          sent_at: null,
+          attempts: (existing.attempts || 1) + 1,
+          last_error: null,
+        }).eq('id', existing.id).eq('delivery_status', existing.delivery_status)
+        claimQuery = existing.claimed_at
+          ? claimQuery.eq('claimed_at', existing.claimed_at)
+          : claimQuery.is('claimed_at', null)
+        const { data: reclaimed, error: reclaimError } = await claimQuery.select('id').maybeSingle()
+        if (reclaimError) throw reclaimError
+        savedDigest = reclaimed
+      } else {
+        const { data: inserted, error: digestInsertError } = await supabaseAdmin.from('weekly_digests').insert({
+          client_id: client.id,
+          week_start: weekStartStr,
+          summary: digestJson.summary,
+          top_signal: digestJson.top_signal,
+          rep_spotlight: digestJson.rep_spotlight,
+          recommendation: digestJson.recommendation,
+          delivery_status: 'processing',
+          claimed_at: claimedAt,
+          sent_at: null,
+          attempts: 1,
+          last_error: null,
+        }).select('id').single()
+        if (digestInsertError) {
+          if (digestInsertError.code === '23505') { skipped++; continue }
+          throw digestInsertError
+        }
+        savedDigest = inserted
+      }
+      if (!savedDigest) { skipped++; continue }
 
-      // Send email
-      await sendWeeklyDigest(client.email, digestJson)
+      const emailResult = await sendWeeklyDigest(client.email, digestJson)
+      if (!emailResult.success) {
+        const { error: failureError } = await supabaseAdmin.from('weekly_digests').update({
+          delivery_status: 'failed',
+          last_error: 'Email provider rejected the weekly digest',
+        }).eq('id', savedDigest.id).eq('delivery_status', 'processing')
+        if (failureError) throw failureError
+        throw new Error('Weekly digest email delivery failed')
+      }
+
+      const { data: completedDigest, error: completionError } = await supabaseAdmin.from('weekly_digests').update({
+        delivery_status: 'sent',
+        sent_at: new Date().toISOString(),
+        last_error: null,
+      }).eq('id', savedDigest.id).eq('delivery_status', 'processing').select('id').maybeSingle()
+      if (completionError) throw completionError
+      if (!completedDigest) throw new Error('Weekly digest claim was lost before completion')
       sent++
 
     } catch (e) {

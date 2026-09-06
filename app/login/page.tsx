@@ -17,7 +17,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const { error } = await supabaseBrowser.auth.signInWithPassword({
+      const { data, error } = await supabaseBrowser.auth.signInWithPassword({
         email,
         password,
       });
@@ -25,6 +25,19 @@ export default function LoginPage() {
       if (error) {
         setErrorMsg(error.message);
       } else {
+        if (data.session) {
+          const sessionResponse = await fetch('/api/auth/session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ access_token: data.session.access_token, expires_at: data.session.expires_at }),
+          });
+          if (!sessionResponse.ok) {
+            await supabaseBrowser.auth.signOut();
+            throw new Error('Unable to establish a secure server session. Please try again.');
+          }
+        } else {
+          throw new Error('Login succeeded but no session was returned. Please try again.');
+        }
         router.push('/dashboard');
         router.refresh();
       }

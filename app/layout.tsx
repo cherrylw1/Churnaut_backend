@@ -1,19 +1,6 @@
 import type { Metadata } from "next";
-import { Inter, Fraunces } from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-sans",
-});
-
-const fraunces = Fraunces({
-  subsets: ["latin"],
-  variable: "--font-serif",
-  display: "swap",
-  weight: ["400", "500", "600", "700"],
-});
 
 const geistMono = localFont({
   src: "./fonts/GeistMonoVF.woff",
@@ -32,7 +19,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${geistMono.variable} ${fraunces.variable}`}>
+    <html lang="en" className={geistMono.variable}>
       <head />
       <body className="antialiased">
         {children}

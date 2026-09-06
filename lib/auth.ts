@@ -27,19 +27,22 @@ export async function getAuthedClientId(req: NextRequest): Promise<string | null
     }
   }
 
-  // 2. Fall back to cookie-based validation
-  const cookie = req.cookies.get('sb-auth-token');
-  if (!cookie) return null;
-  try {
-    const session = JSON.parse(decodeURIComponent(cookie.value));
-    const token = session?.access_token;
-    if (!token || typeof token !== 'string') return null;
-    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
-    if (error || !user) return null;
-    return user.id;
-  } catch {
-    return null;
+  // 2. Prefer the HttpOnly server session cookie. The legacy Supabase cookie
+  // remains as a migration fallback for already-signed-in browsers.
+  for (const cookieName of ['churnaut-session', 'sb-auth-token']) {
+    const cookie = req.cookies.get(cookieName);
+    if (!cookie) continue;
+    try {
+      const session = JSON.parse(decodeURIComponent(cookie.value));
+      const token = session?.access_token;
+      if (!token || typeof token !== 'string') continue;
+      const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+      if (!error && user) return user.id;
+    } catch {
+      // Try the legacy cookie if the new cookie is malformed or stale.
+    }
   }
+  return null;
 }
 
 // Deprecated wrapper for legacy references (will be removed once all routes migrate)

@@ -25,42 +25,13 @@ const safeUrl = supabaseUrl || 'https://placeholder-project.supabase.co';
 const safeAnonKey = supabaseAnonKey || 'placeholder-anon-key-to-prevent-crash';
 const safeServiceKey = supabaseServiceKey || 'placeholder-service-key-to-prevent-crash';
 
-// Custom cookie-based storage for Supabase auth persistence
-const cookieStorage = {
-  getItem: (key: string): string | null => {
-    if (typeof document === 'undefined') return null;
-    const name = key + "=";
-    const decodedCookie = decodeURIComponent(document.cookie);
-    const ca = decodedCookie.split(';');
-    for (let i = 0; i < ca.length; i++) {
-      let c = ca[i];
-      while (c.charAt(0) === ' ') {
-        c = c.substring(1);
-      }
-      if (c.indexOf(name) === 0) {
-        return c.substring(name.length, c.length);
-      }
-    }
-    return null;
-  },
-  setItem: (key: string, value: string): void => {
-    if (typeof document === 'undefined') return;
-    const d = new Date();
-    d.setTime(d.getTime() + (7 * 24 * 60 * 60 * 1000)); // 7 days TTL
-    document.cookie = `${key}=${encodeURIComponent(value)};expires=${d.toUTCString()};path=/;SameSite=Lax`;
-  },
-  removeItem: (key: string): void => {
-    if (typeof document === 'undefined') return;
-    document.cookie = `${key}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;`;
-  }
-};
-
-// Browser client using the public anonymous key (honors Row Level Security)
+// Browser client uses Supabase's default localStorage adapter. Authentication
+// for server routes is established separately in the HttpOnly `churnaut-session`
+// cookie, so access tokens are no longer written to a script-readable cookie.
 export const supabaseBrowser: SupabaseClient = createClient(safeUrl, safeAnonKey, {
   auth: {
     persistSession: true,
     storageKey: 'sb-auth-token',
-    storage: cookieStorage,
   }
 });
 

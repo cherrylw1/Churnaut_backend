@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getAuthedClientId } from '@/lib/auth'
+import { founderChatCreateSchema, founderChatUpdateSchema, readJson } from '@/lib/validation'
 
 export const dynamic = 'force-dynamic'
 
@@ -30,7 +31,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { title, messages } = await req.json()
+  const parsedBody = await readJson(req, founderChatCreateSchema)
+  if (!parsedBody.ok) return NextResponse.json({ error: parsedBody.error }, { status: 400 })
+  const { title, messages } = parsedBody.data
   const { data, error } = await supabase
     .from('founder_chats')
     .insert({ title, messages })
@@ -46,7 +49,9 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { id, messages } = await req.json()
+  const parsedBody = await readJson(req, founderChatUpdateSchema)
+  if (!parsedBody.ok) return NextResponse.json({ error: parsedBody.error }, { status: 400 })
+  const { id, messages } = parsedBody.data
   const { error } = await supabase
     .from('founder_chats')
     .update({ messages, updated_at: new Date().toISOString() })

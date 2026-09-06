@@ -44,18 +44,56 @@
   }
 
   /**
-   * Helper function to sanitize HTML content from script tags, event handlers, and javascript URIs.
+   * Sanitize personalized markup with a constrained DOM allowlist. Regex-only
+   * sanitization can be bypassed with malformed HTML or less-common URL schemes.
    * @param {string} html - HTML string to sanitize.
    * @returns {string} - Sanitized HTML string.
    */
   function sanitizeHtml(html) {
     if (typeof html !== 'string') return '';
-    var clean = html;
-    clean = clean.replace(/<script[^>]*>([\s\S]*?)<\/script>/gi, '');
-    clean = clean.replace(/<script[^>]*\/>/gi, '');
-    clean = clean.replace(/\s+on[a-z]+\s*=\s*(['"][^'"]*['"]|[^\s>]+)/gi, '');
-    clean = clean.replace(/\s+(href|src)\s*=\s*(['"]\s*javascript:[^'"]*['"]|javascript:[^\s>]+)/gi, '');
-    return clean;
+    var template = document.createElement('template');
+    template.innerHTML = html;
+    var allowedTags = {
+      A: true, B: true, BR: true, BUTTON: true, DIV: true, EM: true,
+      I: true, IMG: true, LI: true, P: true, SPAN: true, STRONG: true,
+      U: true, UL: true, OL: true, H1: true, H2: true, H3: true, H4: true,
+      SMALL: true, IFRAME: true
+    };
+    var allowedAttrs = {
+      A: { href: true, target: true, rel: true, title: true, class: true, id: true },
+      IMG: { src: true, alt: true, width: true, height: true, class: true, id: true },
+      IFRAME: { src: true, width: true, height: true, title: true, class: true, id: true, frameborder: true, allow: true },
+      '*': { class: true, id: true, title: true }
+    };
+    var nodes = template.content.querySelectorAll('*');
+    for (var i = nodes.length - 1; i >= 0; i--) {
+      var node = nodes[i];
+      if (!allowedTags[node.tagName]) {
+        node.remove();
+        continue;
+      }
+      var attrs = Array.prototype.slice.call(node.attributes);
+      var tagAttrs = allowedAttrs[node.tagName] || {};
+      for (var j = 0; j < attrs.length; j++) {
+        var attr = attrs[j];
+        var name = attr.name.toLowerCase();
+        var value = attr.value.trim();
+        var allowed = !!(tagAttrs[name] || allowedAttrs['*'][name]);
+        if (!allowed || name.indexOf('on') === 0 || /^(javascript|data|vbscript):/i.test(value)) {
+          node.removeAttribute(attr.name);
+        }
+      }
+      if ((node.tagName === 'A' || node.tagName === 'IMG' || node.tagName === 'IFRAME') && node.hasAttribute('href')) {
+        if (!/^https?:\/\//i.test(node.getAttribute('href'))) node.removeAttribute('href');
+      }
+      if ((node.tagName === 'IMG' || node.tagName === 'IFRAME') && node.hasAttribute('src')) {
+        if (!/^https:\/\//i.test(node.getAttribute('src'))) node.removeAttribute('src');
+      }
+      if (node.tagName === 'A' && node.getAttribute('target') === '_blank') {
+        node.setAttribute('rel', 'noopener noreferrer');
+      }
+    }
+    return template.innerHTML;
   }
 
   // 1. Check if the global client ID variable is defined

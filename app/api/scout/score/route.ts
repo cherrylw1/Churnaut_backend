@@ -31,6 +31,12 @@ export async function POST(req: NextRequest) {
         .eq('client_id', clientId)
         .not('deal_id', 'in', `(${currentDealIds.map((id) => `"${id}"`).join(',')})`);
       if (deleteError) { console.error('[Scout Score POST] Stale cleanup error:', deleteError); throw deleteError; }
+    } else {
+      const { error: deleteError } = await supabaseAdmin
+        .from('deal_scores')
+        .delete()
+        .eq('client_id', clientId);
+      if (deleteError) { console.error('[Scout Score POST] Empty-pipeline cleanup error:', deleteError); throw deleteError; }
     }
 
     // 3. Analyze with the new Scout engine

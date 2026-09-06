@@ -4,6 +4,7 @@ import { redis } from '@/lib/redis';
 import { generateJSON } from '@/lib/llm/complete';
 import { getClientPlan, planGate } from '@/lib/gate';
 import { getAuthedClientId } from '@/lib/auth';
+import { alertPatchRequestSchema, readJson } from '@/lib/validation';
 
 export const dynamic = 'force-dynamic';
 
@@ -266,12 +267,9 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await req.json();
-    const { id } = body;
-
-    if (!id) {
-      return NextResponse.json({ error: 'Missing alert ID' }, { status: 400 });
-    }
+    const parsedBody = await readJson(req, alertPatchRequestSchema);
+    if (!parsedBody.ok) return NextResponse.json({ error: parsedBody.error }, { status: 400 });
+    const { id } = parsedBody.data;
 
     const { data, error } = await supabaseAdmin
       .from('anomaly_alerts')

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getAuthedClientId } from '@/lib/auth';
+import { readJson, webhookMappingRequestSchema } from '@/lib/validation';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,12 +40,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await req.json();
-    const { external_field, internal_field } = body;
-
-    if (!external_field || !internal_field) {
-      return NextResponse.json({ error: 'external_field and internal_field are required' }, { status: 400 });
-    }
+    const parsedBody = await readJson(req, webhookMappingRequestSchema);
+    if (!parsedBody.ok) return NextResponse.json({ error: parsedBody.error }, { status: 400 });
+    const { external_field, internal_field } = parsedBody.data;
 
     // Insert new mapping
     const { data: mapping, error: insertError } = await supabaseAdmin

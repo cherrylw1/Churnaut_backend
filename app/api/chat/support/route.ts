@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase'
 import { getAuthedClientId } from '@/lib/auth'
 import { embed } from '@/lib/llm/complete'
 import { supportChatRatelimit } from '@/lib/redis'
+import { chatRequestSchema, readJson } from '@/lib/validation'
 
 export const dynamic = 'force-dynamic'
 
@@ -220,10 +221,9 @@ export async function POST(req: NextRequest) {
       console.error('[Support Chat] Ratelimit error', e)
     }
 
-    const { message, history = [] } = await req.json()
-    if (!message?.trim() || message.length > 2000) {
-      return NextResponse.json({ error: 'Message required (max 2000 chars)' }, { status: 400 })
-    }
+    const parsedBody = await readJson(req, chatRequestSchema)
+    if (!parsedBody.ok) return NextResponse.json({ error: parsedBody.error }, { status: 400 })
+    const { message, history } = parsedBody.data
 
     let enrichedMessage = message
     let ruleCreated = false

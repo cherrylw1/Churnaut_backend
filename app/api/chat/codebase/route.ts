@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { getAuthedClientId } from '@/lib/auth'
 import { embed } from '@/lib/llm/complete'
+import { chatRequestSchema, readJson } from '@/lib/validation'
 
 export const dynamic = 'force-dynamic'
 
@@ -33,12 +34,9 @@ export async function POST(req: NextRequest) {
     if (!clientId || clientId !== 'founder') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    const body = await req.json()
-    const { message, history = [] } = body
-
-    if (!message?.trim()) {
-      return NextResponse.json({ error: 'Message is required' }, { status: 400 })
-    }
+    const parsedBody = await readJson(req, chatRequestSchema)
+    if (!parsedBody.ok) return NextResponse.json({ error: parsedBody.error }, { status: 400 })
+    const { message, history } = parsedBody.data
 
     let chunks: Array<{ file_path: string; content: string; similarity: number }> = [];
     try {

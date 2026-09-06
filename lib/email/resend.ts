@@ -2,6 +2,13 @@ import { Resend } from 'resend';
 
 const resend = new Resend(process.env.RESEND_API_KEY || 're_placeholder_key');
 
+const escapeHtml = (value: string) => value
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#39;');
+
 /**
  * Sends a dark-themed HTML sales nudge email to a representative via Resend.
  */
@@ -100,16 +107,16 @@ export async function sendNudgeEmail(
       </div>
       <div class="section">
         <div class="label">Deal Name</div>
-        <div style="font-size: 16px; font-weight: bold; color: #ffffff;">${dealName}</div>
+        <div style="font-size: 16px; font-weight: bold; color: #ffffff;">${escapeHtml(dealName)}</div>
       </div>
       <div class="section">
         <div class="label">Recommended Next Action</div>
-        <div class="content-box" style="border-left: 3px solid #7c3aed;">${nextAction}</div>
+        <div class="content-box" style="border-left: 3px solid #7c3aed;">${escapeHtml(nextAction)}</div>
       </div>
       ${draftEmail ? `
       <div class="section">
         <div class="label">Draft Outreach Email</div>
-        <div class="content-box">${draftEmail}</div>
+      <div class="content-box">${escapeHtml(draftEmail)}</div>
       </div>
       ` : ''}
       <div class="footer">
@@ -127,6 +134,10 @@ export async function sendNudgeEmail(
       subject,
       html,
     });
+    if (data.error) {
+      console.error(`[Resend nudge] API rejected email to ${to}:`, data.error);
+      return { success: false, error: data.error };
+    }
     console.log(`[Resend nudge] Email sent successfully to ${to}:`, data);
     return { success: true, data };
   } catch (error) {
@@ -243,22 +254,22 @@ export async function sendWeeklyDigest(
       
       <div class="section">
         <div class="label">📊 Pipeline Summary</div>
-        <div class="content-box">${digestData.summary}</div>
+        <div class="content-box">${escapeHtml(digestData.summary)}</div>
       </div>
       
       <div class="section">
         <div class="label">🔥 Top Conversion Signal</div>
-        <div class="content-box" style="border-left: 3px solid #7c3aed;">${digestData.top_signal}</div>
+        <div class="content-box" style="border-left: 3px solid #7c3aed;">${escapeHtml(digestData.top_signal)}</div>
       </div>
       
       <div class="section">
         <div class="label">👤 Representative Spotlight</div>
-        <div class="content-box">${digestData.rep_spotlight}</div>
+        <div class="content-box">${escapeHtml(digestData.rep_spotlight)}</div>
       </div>
       
       <div class="section">
         <div class="label">💡 Strategic Recommendation</div>
-        <div class="content-box" style="border-left: 3px solid #06b6d4;">${digestData.recommendation}</div>
+        <div class="content-box" style="border-left: 3px solid #06b6d4;">${escapeHtml(digestData.recommendation)}</div>
       </div>
       
       <div class="footer">
@@ -276,6 +287,10 @@ export async function sendWeeklyDigest(
       subject,
       html,
     });
+    if (data.error) {
+      console.error(`[Resend digest] API rejected digest to ${to}:`, data.error);
+      return { success: false, error: data.error };
+    }
     console.log(`[Resend digest] Weekly digest sent successfully to ${to}:`, data);
     return { success: true, data };
   } catch (error) {
@@ -323,10 +338,10 @@ export async function sendClickNotification(
         <div class="title">Your prospect just clicked.</div>
       </div>
       <div class="label">Prospect</div>
-      <div class="value">${prospectName}${companyName ? ` — ${companyName}` : ''}</div>
-      ${signalType ? `<div class="label">Signal</div><div style="margin-bottom: 20px;"><span class="badge">${signalType}</span></div>` : ''}
+      <div class="value">${escapeHtml(prospectName)}${companyName ? ` — ${escapeHtml(companyName)}` : ''}</div>
+      ${signalType ? `<div class="label">Signal</div><div style="margin-bottom: 20px;"><span class="badge">${escapeHtml(signalType)}</span></div>` : ''}
       <div class="label">Session ID</div>
-      <div class="value" style="font-family: monospace; font-size: 13px; color: #9494a8;">${sessionId}</div>
+      <div class="value" style="font-family: monospace; font-size: 13px; color: #9494a8;">${escapeHtml(sessionId)}</div>
       <div style="margin-top: 10px;">
         <a href="https://app.churnaut.com/dashboard/links" class="cta">VIEW IN CHURNAUT →</a>
       </div>
@@ -343,6 +358,10 @@ export async function sendClickNotification(
       subject,
       html,
     });
+    if (data.error) {
+      console.error(`[Resend click] API rejected notification to ${to}:`, data.error);
+      return { success: false, error: data.error };
+    }
     console.log(`[Resend click] Notification sent to ${to} for session ${sessionId}`);
     return { success: true, data };
   } catch (error) {
@@ -398,12 +417,16 @@ export async function sendVisitLimitWarningEmail(
 </html>`;
 
   try {
-    await resend.emails.send({
+    const result = await resend.emails.send({
       from: 'Churnaut <noreply@churnaut.com>',
       to,
       subject,
       html,
     });
+    if (result.error) {
+      console.error('[Resend] sendVisitLimitWarningEmail rejected:', result.error);
+      return { success: false, error: result.error };
+    }
     return { success: true };
   } catch (err) {
     console.error('[Resend] sendVisitLimitWarningEmail error:', err);

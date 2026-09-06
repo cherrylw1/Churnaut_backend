@@ -47,7 +47,9 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: eventsErr.message }, { status: 500 });
     }
 
-    const resolveEvents = events?.filter(e => e.event_type === 'resolve') || [];
+    // Resolve currently records rule_triggered/no_match events. Treat the
+    // personalization events as the trigger series used by these reports.
+    const resolveEvents = events?.filter(e => e.event_type === 'rule_triggered') || [];
 
     // 3. Fetch routing rules for mappings
     const { data: rules } = await supabaseAdmin

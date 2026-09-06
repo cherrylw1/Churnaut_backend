@@ -26,6 +26,7 @@ export default function SignupPage() {
         options: {
           data: {
             full_name: fullName,
+            company_name: companyName,
           },
         },
       });
@@ -41,6 +42,18 @@ export default function SignupPage() {
         setErrorMsg('Sign up succeeded but user data was not returned.');
         setLoading(false);
         return;
+      }
+
+      if (data.session) {
+        const sessionResponse = await fetch('/api/auth/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ access_token: data.session.access_token, expires_at: data.session.expires_at }),
+        });
+        if (!sessionResponse.ok) {
+          await supabaseBrowser.auth.signOut();
+          throw new Error('Unable to establish a secure server session. Please try again.');
+        }
       }
 
       // 2. Call the backend API to create the client profile row

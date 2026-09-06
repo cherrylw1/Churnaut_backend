@@ -6,8 +6,76 @@ import { VARIANT_TO_PLAN } from '@/lib/plans'
 
 export const dynamic = 'force-dynamic';
 
+const CLAIM_TIMEOUT_MS = 5 * 60 * 1000
+
+async function claimWebhookEvent(eventId: string): Promise<'claimed' | 'completed' | 'busy'> {
+  const claimedAt = new Date().toISOString()
+  const { error: insertError } = await supabaseAdmin
+    .from('processed_webhooks')
+    .insert({
+      event_id: eventId,
+      status: 'processing',
+      claimed_at: claimedAt,
+      completed_at: null,
+      attempts: 1,
+      last_error: null,
+    })
+
+  if (!insertError) return 'claimed'
+  if (insertError.code !== '23505') throw insertError
+
+  const { data: existing, error: readError } = await supabaseAdmin
+    .from('processed_webhooks')
+    .select('status, claimed_at, attempts')
+    .eq('event_id', eventId)
+    .single()
+  if (readError) throw readError
+  if (existing.status === 'completed') return 'completed'
+
+  const staleBefore = new Date(Date.now() - CLAIM_TIMEOUT_MS).toISOString()
+  const canRetry = existing.status === 'failed' ||
+    (existing.status === 'processing' && (!existing.claimed_at || existing.claimed_at < staleBefore))
+  if (!canRetry) return 'busy'
+
+  let retryQuery = supabaseAdmin
+    .from('processed_webhooks')
+    .update({
+      status: 'processing',
+      claimed_at: claimedAt,
+      completed_at: null,
+      attempts: (existing.attempts || 1) + 1,
+      last_error: null,
+    })
+    .eq('event_id', eventId)
+    .eq('status', existing.status)
+
+  retryQuery = existing.claimed_at
+    ? retryQuery.eq('claimed_at', existing.claimed_at)
+    : retryQuery.is('claimed_at', null)
+
+  const { data: reclaimed, error: reclaimError } = await retryQuery.select('event_id').maybeSingle()
+  if (reclaimError) throw reclaimError
+  return reclaimed ? 'claimed' : 'busy'
+}
+
+async function requireUpdatedClient(
+  subscriptionId: string | null,
+  updates: Record<string, unknown>
+) {
+  if (!subscriptionId) throw new Error('Webhook is missing a subscription ID')
+  const { data, error } = await supabaseAdmin
+    .from('clients')
+    .update(updates)
+    .eq('lemonsqueezy_subscription_id', subscriptionId)
+    .select('id')
+    .maybeSingle()
+  if (error) throw error
+  if (!data) throw new Error(`No client found for Lemon Squeezy subscription ${subscriptionId}`)
+}
 
 export async function POST(req: NextRequest) {
+  let claimedEventId: string | null = null
+  let ownsClaim = false
   try {
     const rawBody = await req.text()
     const signature = req.headers.get('x-signature') ?? ''
@@ -32,19 +100,20 @@ export async function POST(req: NextRequest) {
     const trialEndsAt = getTrialEndsAt(data)
     const status = getStatus(data)
 
-    const eventId = signature || `${eventName}_${data.id}_${Date.now()}`
+    const eventId = signature || `${eventName}_${data.id}`
+    claimedEventId = eventId
 
-    // Idempotency check
-    const { data: alreadyProcessed } = await supabaseAdmin
-      .from('processed_webhooks')
-      .select('event_id')
-      .eq('event_id', eventId)
-      .maybeSingle()
-
-    if (alreadyProcessed) {
+    // Claims are recoverable after failures and stale after five minutes, so a
+    // server crash cannot cause a webhook to be discarded forever.
+    const claimState = await claimWebhookEvent(eventId)
+    if (claimState === 'completed') {
       console.log(`Webhook already processed: ${eventId}`)
       return NextResponse.json({ received: true, alreadyProcessed: true }, { status: 200 })
     }
+    if (claimState === 'busy') {
+      return NextResponse.json({ error: 'Webhook processing is already in progress' }, { status: 503 })
+    }
+    ownsClaim = true
 
     // Process event
     console.log(`Webhook received: ${eventName}`, { subscriptionId, customerId, variantId, status })
@@ -78,7 +147,7 @@ export async function POST(req: NextRequest) {
 
         if (!clientUser) {
           console.error('No client profile found for subscription_created. email:', email, 'client_id:', customClientId)
-          return NextResponse.json({ error: 'Client not found — will retry' }, { status: 500 })
+          throw new Error('Client not found for subscription_created')
         }
 
         const updateData: any = {
@@ -98,14 +167,15 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        const { error: updateError } = await supabaseAdmin
+        const { data: updatedClient, error: updateError } = await supabaseAdmin
           .from('clients')
           .update(updateData)
           .eq('id', clientUser.id)
+          .select('id')
+          .maybeSingle()
 
-        if (updateError) {
-          console.error('Failed to update client subscription:', updateError)
-        }
+        if (updateError) throw updateError
+        if (!updatedClient) throw new Error(`Client ${clientUser.id} disappeared during subscription creation`)
 
         break
       }
@@ -126,46 +196,27 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        const { error: updateError } = await supabaseAdmin
-          .from('clients')
-          .update(updateData)
-          .eq('lemonsqueezy_subscription_id', subscriptionId)
-
-        if (updateError) {
-          console.error('Failed to update client subscription:', updateError)
-        }
+        await requireUpdatedClient(subscriptionId, updateData)
         break
       }
 
       case 'subscription_cancelled': {
-        await supabaseAdmin
-          .from('clients')
-          .update({ plan_status: 'cancelled' })
-          .eq('lemonsqueezy_subscription_id', subscriptionId)
+        await requireUpdatedClient(subscriptionId, { plan_status: 'cancelled' })
         break
       }
 
       case 'subscription_resumed': {
-        await supabaseAdmin
-          .from('clients')
-          .update({ plan_status: 'active' })
-          .eq('lemonsqueezy_subscription_id', subscriptionId)
+        await requireUpdatedClient(subscriptionId, { plan_status: 'active' })
         break
       }
 
       case 'subscription_expired': {
-        await supabaseAdmin
-          .from('clients')
-          .update({ plan: 'starter', plan_status: 'expired' })
-          .eq('lemonsqueezy_subscription_id', subscriptionId)
+        await requireUpdatedClient(subscriptionId, { plan: 'starter', plan_status: 'expired' })
         break
       }
 
       case 'subscription_payment_failed': {
-        await supabaseAdmin
-          .from('clients')
-          .update({ plan_status: 'past_due' })
-          .eq('lemonsqueezy_subscription_id', subscriptionId)
+        await requireUpdatedClient(subscriptionId, { plan_status: 'past_due' })
         break
       }
 
@@ -173,21 +224,38 @@ export async function POST(req: NextRequest) {
         console.log(`Unhandled event: ${eventName}`)
     }
 
-    // Insert into processed_webhooks to ensure idempotency
-    const { error: insertError } = await supabaseAdmin
+    const { data: completedClaim, error: completionError } = await supabaseAdmin
       .from('processed_webhooks')
-      .insert({ event_id: eventId })
-
-    if (insertError) {
-      if (insertError.code !== '23505') { // Do not print normal duplicate violations
-        console.error('Failed to record processed webhook event_id:', insertError)
-      }
-    }
+      .update({
+        status: 'completed',
+        completed_at: new Date().toISOString(),
+        last_error: null,
+      })
+      .eq('event_id', eventId)
+      .eq('status', 'processing')
+      .select('event_id')
+      .maybeSingle()
+    if (completionError) throw completionError
+    if (!completedClaim) throw new Error('Webhook claim was lost before completion')
 
     return NextResponse.json({ received: true }, { status: 200 })
 
   } catch (err) {
     console.error('Webhook error:', err)
+    // Keep a recoverable failure record. The next delivery may reclaim it
+    // immediately; stale in-progress claims can be reclaimed after a crash.
+    try {
+      if (claimedEventId && ownsClaim) {
+        await supabaseAdmin
+          .from('processed_webhooks')
+          .update({
+            status: 'failed',
+            last_error: err instanceof Error ? err.message.slice(0, 2000) : 'Unknown webhook processing error',
+          })
+          .eq('event_id', claimedEventId)
+          .eq('status', 'processing')
+      }
+    } catch {}
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

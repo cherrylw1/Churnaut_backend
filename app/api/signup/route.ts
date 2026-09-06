@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getAuthedClientId } from '@/lib/auth';
 import { ratelimit } from '@/lib/redis';
+import { readJson, signupRequestSchema } from '@/lib/validation';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,26 +22,45 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Authenticate Client
-    const authedUserId = await getAuthedClientId(req);
-    const body = await req.json();
-    const { userId, companyName, email } = body;
-
-    if (!userId || !companyName) {
-      return NextResponse.json({ error: 'Missing userId or companyName' }, { status: 400 });
+    const parsedBody = await readJson(req, signupRequestSchema);
+    if (!parsedBody.ok) {
+      return NextResponse.json({ error: parsedBody.error }, { status: 400 });
     }
+    const { userId, companyName, email } = parsedBody.data;
 
-    if (!authedUserId || authedUserId !== userId) {
+    let authedUserId = await getAuthedClientId(req);
+    if (!authedUserId) {
+      // Supabase may require email confirmation and therefore return no
+      // session from signUp. Validate the just-created user and metadata
+      // before provisioning the profile in that case.
+      const { data: adminUser, error: adminUserError } = await supabaseAdmin.auth.admin.getUserById(userId);
+      const metadataCompany = adminUser?.user?.user_metadata?.company_name;
+      if (
+        adminUserError ||
+        !adminUser?.user ||
+        !email ||
+        adminUser.user.email?.toLowerCase() !== email.toLowerCase() ||
+        metadataCompany !== companyName
+      ) {
+        return NextResponse.json({ error: 'Email confirmation is required before workspace setup.' }, { status: 403 });
+      }
+      authedUserId = adminUser.user.id;
+    }
+    if (authedUserId !== userId) {
       return NextResponse.json({ error: 'Forbidden: Authenticated user ID mismatch' }, { status: 403 });
     }
 
     const snippetKey = crypto.randomUUID();
     const webhookSecret = crypto.randomUUID();
-    const domainFallback = `${companyName.toLowerCase().replace(/[^a-z0-9]/g, '')}.com`;
+    const companySlug = companyName.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 40) || 'workspace';
+    const domainFallback = `${companySlug}-${userId.slice(0, 8)}.com`;
 
-    // Insert the new client profile using the service role client
+    // The database auth-user trigger provisions this row in the same transaction
+    // as sign-up. Keep this idempotent write as a compatibility fallback for
+    // environments where the trigger has not yet been installed.
     const { error } = await supabaseAdmin
       .from('clients')
-      .insert({
+      .upsert({
         id: userId, // Match Auth User ID for RLS
         company_name: companyName,
         domain: domainFallback,
@@ -49,7 +69,7 @@ export async function POST(req: NextRequest) {
         email: email ? email.toLowerCase() : null,
         plan: 'starter',
         active: true,
-      });
+      }, { onConflict: 'id', ignoreDuplicates: true });
 
     if (error) {
       console.error('[DB Signup Error] Failed to insert client profile:', error);

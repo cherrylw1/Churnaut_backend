@@ -65,7 +65,7 @@ export async function GET(req: NextRequest) {
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
     const { count: sessionsThisWeek } = await supabaseAdmin
-      .from('analytics_events')
+      .from('sessions')
       .select('*', { count: 'exact', head: true })
       .eq('client_id', clientId)
       .gte('created_at', sevenDaysAgo.toISOString());

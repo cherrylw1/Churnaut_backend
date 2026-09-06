@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getAuthedClientId } from '@/lib/auth';
+import { linksRequestSchema, readJson } from '@/lib/validation';
 
 export const dynamic = 'force-dynamic';
 
@@ -76,7 +77,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await req.json();
+    const parsedBody = await readJson(req, linksRequestSchema);
+    if (!parsedBody.ok) return NextResponse.json({ error: parsedBody.error }, { status: 400 });
     const {
       prospect_name,
       prospect_email,
@@ -87,11 +89,7 @@ export async function POST(req: NextRequest) {
       calendar_url,
       destination_url,
       expires_in_days,
-    } = body;
-
-    if (!destination_url) {
-      return NextResponse.json({ error: 'destination_url is required' }, { status: 400 });
-    }
+    } = parsedBody.data;
 
     // 1. Generate unique 6-character session ID
     let sessionId = generateSessionId();

@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { 
   Home as HomeIcon, 
   Target, 
@@ -23,6 +23,7 @@ import { ToastContainer } from '@/components/ui/Toast';
 import KeyboardShortcutsModal from '@/components/ui/KeyboardShortcutsModal';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import SupportWidget from '@/components/SupportWidget';
+import { supabaseBrowser } from '@/lib/supabase';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -30,8 +31,67 @@ interface DashboardLayoutProps {
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [authReady, setAuthReady] = useState(false);
+
+  // Keep the server-side HttpOnly session cookie aligned when Supabase refreshes
+  // the browser session in localStorage.
+  React.useEffect(() => {
+    let mounted = true;
+
+    const syncSession = async () => {
+      try {
+        const { data: { session }, error } = await supabaseBrowser.auth.getSession();
+        if (error || !session) {
+          await fetch('/api/auth/session', { method: 'DELETE' });
+          if (mounted) router.replace('/login');
+          return;
+        }
+
+        const response = await fetch('/api/auth/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ access_token: session.access_token, expires_at: session.expires_at }),
+        });
+        if (!response.ok) {
+          await supabaseBrowser.auth.signOut();
+          await fetch('/api/auth/session', { method: 'DELETE' });
+          if (mounted) router.replace('/login');
+          return;
+        }
+        if (mounted) setAuthReady(true);
+      } catch (error) {
+        console.error('[Auth] Failed to establish the dashboard session:', error);
+        if (mounted) router.replace('/login');
+      }
+    };
+    void syncSession();
+
+    const { data: authListener } = supabaseBrowser.auth.onAuthStateChange((event, session) => {
+      if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session) {
+        void fetch('/api/auth/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ access_token: session.access_token, expires_at: session.expires_at }),
+        }).then((response) => {
+          if (!response.ok) {
+            setAuthReady(false);
+            router.replace('/login');
+          }
+        });
+      } else if (event === 'SIGNED_OUT') {
+        setAuthReady(false);
+        void fetch('/api/auth/session', { method: 'DELETE' });
+        router.replace('/login');
+      }
+    });
+    return () => {
+      mounted = false;
+      authListener.subscription.unsubscribe();
+    };
+  }, [router]);
 
   // Bind keyboard shortcuts hook
   useKeyboardShortcuts(() => setShortcutsOpen(true));
@@ -128,6 +188,17 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     </div>
   );
 
+  // Do not mount dashboard pages until the refreshed access token has been
+  // validated and copied into the HttpOnly server cookie. This prevents child
+  // effects from racing the cookie refresh and failing with a transient 401.
+  if (!authReady) {
+    return (
+      <div className="min-h-screen bg-[var(--bg-base)] text-[var(--text-secondary)] flex items-center justify-center font-sans">
+        Securing your workspace…
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[var(--bg-base)] text-[var(--text-primary)] flex">
       {/* Sidebar Panel - Desktop */}
@@ -184,12 +255,18 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </div>
           </div>
           <div>
-            <Link
-              href="/login"
+            <button
+              type="button"
+              onClick={async () => {
+                await supabaseBrowser.auth.signOut();
+                await fetch('/api/auth/session', { method: 'DELETE' });
+                router.push('/login');
+                router.refresh();
+              }}
               className="text-[14px] font-sans font-normal text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all"
             >
               Sign Out
-            </Link>
+            </button>
           </div>
         </header>
 
@@ -223,4 +300,3 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     </div>
   );
 }
-

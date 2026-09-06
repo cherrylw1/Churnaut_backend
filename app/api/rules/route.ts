@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getClientPlan } from '@/lib/gate';
 import { getAuthedClientId } from '@/lib/auth';
+import { readJson, createRuleRequestSchema, reorderRulesRequestSchema, updateRuleRequestSchema } from '@/lib/validation';
 
 export const dynamic = 'force-dynamic';
 
@@ -56,19 +57,9 @@ export async function POST(req: NextRequest) {
     }
 
     // action_payload can contain a swaps array: { swaps: Array<{selector: string, content: string}> }
-    const body = await req.json();
-    const {
-      signal_type,
-      conditions,
-      action_type,
-      action_payload,
-      target_selector,
-      variant_content,
-    } = body;
-
-    if (!action_type) {
-      return NextResponse.json({ error: 'action_type is required' }, { status: 400 });
-    }
+    const parsedBody = await readJson(req, createRuleRequestSchema);
+    if (!parsedBody.ok) return NextResponse.json({ error: parsedBody.error }, { status: 400 });
+    const { signal_type, conditions, action_type, action_payload, target_selector, variant_content } = parsedBody.data;
 
     // Determine the next priority number
     const { count, error: countError } = await supabaseAdmin
@@ -121,10 +112,12 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await req.json();
+    const parsedBody = await readJson(req, reorderRulesRequestSchema.or(updateRuleRequestSchema));
+    if (!parsedBody.ok) return NextResponse.json({ error: parsedBody.error }, { status: 400 });
+    const body = parsedBody.data;
 
     // Case 1: Bulk Priority Reorder
-    if (body.rules && Array.isArray(body.rules)) {
+    if ('rules' in body && Array.isArray(body.rules)) {
       for (const ruleItem of body.rules) {
         const { error: updateError } = await supabaseAdmin
           .from('routing_rules')
@@ -141,6 +134,9 @@ export async function PATCH(req: NextRequest) {
     }
 
     // Case 2: Individual Rule Edit
+    if (!('id' in body)) {
+      return NextResponse.json({ error: 'Rule id is required for updates' }, { status: 400 });
+    }
     const {
       id,
       active,
@@ -151,10 +147,6 @@ export async function PATCH(req: NextRequest) {
       target_selector,
       variant_content,
     } = body;
-
-    if (!id) {
-      return NextResponse.json({ error: 'Rule id is required for updates' }, { status: 400 });
-    }
 
     // Construct dynamic updates object
     const updates: Record<string, unknown> = {};

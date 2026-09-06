@@ -85,8 +85,8 @@ export async function GET(req: NextRequest) {
       for (const s of sessionsData) {
         if (s.crm_deal_id) {
           const rep_name = s.assigned_rep || 'Unknown Rep';
-          const cleanRepName = rep_name.toLowerCase().replace(/\s+/g, '.');
-          const rep_email = cleanRepName !== 'unknown.rep' ? `${cleanRepName}@company.com` : 'sales@company.com';
+          // Never invent an address: nudges must only go to CRM-provided mailboxes.
+          const rep_email = '';
           dealRepMap.set(s.crm_deal_id, { rep_name, rep_email });
         }
       }
@@ -191,8 +191,7 @@ export async function GET(req: NextRequest) {
             if (!deal) return null;
 
             const rep_name = deal.rep_name || s.assigned_rep || 'Unknown Rep';
-            const cleanRepName = rep_name.toLowerCase().replace(/\s+/g, '.');
-            const rep_email = deal.rep_email || (cleanRepName !== 'unknown.rep' ? `${cleanRepName}@company.com` : 'sales@company.com');
+            const rep_email = deal.rep_email || '';
 
             return {
               prospect_name: s.prospect_name || 'Unknown Prospect',

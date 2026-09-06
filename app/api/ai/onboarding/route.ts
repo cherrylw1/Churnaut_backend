@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getAuthedClientId } from '@/lib/auth';
 import { generateText } from '@/lib/llm/complete';
+import { generatedRuleSchema, onboardingRequestSchema, readJson } from '@/lib/validation';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,11 +11,11 @@ interface IncomingRule {
   priority: number;
   active?: boolean;
   signal_type?: string | null;
-  conditions?: Record<string, string>;
+  conditions?: Record<string, unknown>;
   action_type: string;
   action_payload?: Record<string, unknown>;
-  target_selector?: string;
-  variant_content?: string;
+  target_selector?: string | null;
+  variant_content?: string | null;
 }
 
 export async function POST(req: NextRequest) {
@@ -26,8 +27,9 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Parse Answers
-    const body = await req.json();
-    const { crm, ideal_customer, company_size, channels, problem } = body;
+    const parsedBody = await readJson(req, onboardingRequestSchema);
+    if (!parsedBody.ok) return NextResponse.json({ error: parsedBody.error }, { status: 400 });
+    const { crm, ideal_customer, company_size, channels, problem } = parsedBody.data;
 
     // 3. Call Together AI to Generate Routing Rules
     const prompt = `You are Churnaut's AI Assistant. Generate a set of routing rules (JSON array of objects) for a B2B client based on their onboarding profile.
@@ -67,26 +69,19 @@ export async function POST(req: NextRequest) {
     let rules: IncomingRule[] = [];
     try {
       rules = JSON.parse(cleanedText);
-      if (!Array.isArray(rules)) {
+      if (!Array.isArray(rules) || rules.length === 0 || rules.length > 50) {
         throw new Error('Parsed result is not an array');
       }
+      rules = rules.map((rule) => generatedRuleSchema.parse(rule));
+      const priorities = rules.map((rule) => rule.priority);
+      if (new Set(priorities).size !== priorities.length) throw new Error('Rule priorities must be unique');
     } catch (parseErr) {
       console.error('[Onboarding Rule Parse Error] Failed to parse JSON list:', cleanedText, parseErr);
       return NextResponse.json({ error: 'AI generated invalid routing rule structure' }, { status: 502 });
     }
 
-    // 5. Delete existing rules for this client to start clean
-    const { error: deleteErr } = await supabaseAdmin
-      .from('routing_rules')
-      .delete()
-      .eq('client_id', clientId);
-
-    if (deleteErr) {
-      console.error('[Onboarding DB Error] Failed to clear existing rules:', deleteErr);
-      return NextResponse.json({ error: `Database clear failed: ${deleteErr.message}` }, { status: 500 });
-    }
-
-    // 6. Map and Insert generated rules
+    // 5. Replace rules transactionally inside Postgres so a failed insert
+    // cannot leave the customer with an empty rule set.
     const insertPayload = rules.map((r, index) => ({
       client_id: clientId,
       priority: r.priority || (index + 1),
@@ -99,16 +94,17 @@ export async function POST(req: NextRequest) {
       variant_content: r.variant_content || '',
     }));
 
-    const { error: insertErr } = await supabaseAdmin
-      .from('routing_rules')
-      .insert(insertPayload);
+    const { data: replacedCount, error: insertErr } = await supabaseAdmin.rpc('replace_routing_rules', {
+      client_id_input: clientId,
+      rules_input: insertPayload,
+    });
 
     if (insertErr) {
       console.error('[Onboarding DB Error] Failed to insert rules:', insertErr);
       return NextResponse.json({ error: `Database save failed: ${insertErr.message}` }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, count: insertPayload.length });
+    return NextResponse.json({ success: true, count: replacedCount ?? insertPayload.length });
 
   } catch (err) {
     console.error('[Onboarding Exception] Unhandled error:', err);
