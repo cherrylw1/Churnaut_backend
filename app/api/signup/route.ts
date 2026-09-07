@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
+import { ipAddress } from '@vercel/functions';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getAuthedClientId } from '@/lib/auth';
 import { ratelimit } from '@/lib/redis';
@@ -11,7 +12,8 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: NextRequest) {
   try {
     // 1. Rate Limiting by IP
-    const ip = req.headers.get('x-forwarded-for') || req.ip || '127.0.0.1';
+    const forwardedIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
+    const ip = ipAddress(req) || forwardedIp || req.headers.get('x-real-ip') || 'unknown';
     try {
       const { success } = await ratelimit.limit(`signup:${ip}`);
       if (!success) {

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { supabaseAdmin } from '@/lib/supabase';
 import type { Priors, LossPattern, ScoreTrajectoryPoint, ScoutScore } from './types';
 

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import crypto from 'crypto'
 
 export function verifyWebhookSignature(payload: string, signature: string, secret: string): boolean {

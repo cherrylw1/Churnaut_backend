@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { supabaseAdmin } from '@/lib/supabase';
 import type { UniversalSignals, WebsiteVisit, EntrySource } from './types';
 

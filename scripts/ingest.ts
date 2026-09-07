@@ -77,7 +77,7 @@ const TARGET_FILES = [
   'lib/redis.ts',
   'lib/crypto.ts',
   'lib/utils.ts',
-  'middleware.ts',
+  'proxy.ts',
   'public/snippet.js',
   'types/index.ts',
   'hooks/useToast.ts',

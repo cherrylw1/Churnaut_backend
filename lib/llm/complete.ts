@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 const TOGETHER_API_URL = 'https://api.together.xyz/v1/chat/completions';
 
 // Model is configurable via env so we can swap/upgrade without code changes.

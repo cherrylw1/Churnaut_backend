@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { verifyWebhookSignature, getVariantId, getCustomerId, getSubscriptionId, getTrialEndsAt, getStatus, getCustomClientId } from '@/lib/lemonsqueezy'

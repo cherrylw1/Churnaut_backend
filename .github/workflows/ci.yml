@@ -39,7 +39,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build Next.js application (runs typecheck and lint)
+      - name: Lint
+        run: npm run lint
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Build Next.js application
         run: npm run build
 
       - name: Run Vitest unit tests

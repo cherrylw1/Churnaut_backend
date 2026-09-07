@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { generateJSON } from '@/lib/llm/complete';
 import type { NormalizedDeal, ScoutBrief, ScoutScore, Confidence } from './types';
 

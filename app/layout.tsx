@@ -19,7 +19,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={geistMono.variable}>
+    <html lang="en" className={geistMono.variable} data-scroll-behavior="smooth">
       <head />
       <body className="antialiased">
         {children}
