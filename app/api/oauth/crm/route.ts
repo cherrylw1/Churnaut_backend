@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getAuthedClientId } from '@/lib/auth';
+import { hasScoutAdapter } from '@/lib/scout/crm-adapters';
+import { redis } from '@/lib/redis';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,17 +30,21 @@ export async function GET(req: NextRequest) {
     // Retrieve the connection date from the crm_tokens table
     const { data: tokenData } = await supabaseAdmin
       .from('crm_tokens')
-      .select('updated_at, created_at')
+      .select('access_token, refresh_token, connection_status, last_error, updated_at, created_at')
       .eq('client_id', clientId)
       .eq('crm_type', client.crm_type)
       .maybeSingle();
 
     const connectedAt = tokenData ? (tokenData.updated_at || tokenData.created_at || null) : null;
 
+    const supported = hasScoutAdapter(client.crm_type);
+    const hasUsableToken = !!tokenData?.access_token && tokenData.connection_status !== 'unhealthy';
     return NextResponse.json({
-      connected: true,
+      connected: hasUsableToken && supported,
+      supported,
       crm_type: client.crm_type,
       connected_at: connectedAt,
+      reason: !tokenData ? 'missing_token' : tokenData.connection_status === 'unhealthy' ? 'refresh_failed' : !hasUsableToken ? 'invalid_token' : !supported ? 'unsupported_provider' : null,
     });
   } catch (err) {
     console.error('[CRM Status GET Error] Exception:', err);
@@ -53,30 +59,22 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // 1. Reset CRM columns in clients table
-    const { error: clientUpdateError } = await supabaseAdmin
-      .from('clients')
-      .update({
-        crm_type: null,
-        crm_api_key: null,
-      })
-      .eq('id', clientId);
+    const { data: currentClient } = await supabaseAdmin.from('clients').select('crm_type').eq('id', clientId).maybeSingle();
+    const crmType = currentClient?.crm_type;
 
-    if (clientUpdateError) {
-      console.error('[CRM Disconnect Error] Client update failed:', clientUpdateError);
-      return NextResponse.json({ error: 'Failed to disconnect CRM from client profile' }, { status: 500 });
+    if (!crmType) return NextResponse.json({ success: true });
+    const { error: disconnectError } = await supabaseAdmin.rpc('disconnect_crm', {
+      client_id_input: clientId,
+      crm_type_input: crmType,
+    });
+    if (disconnectError) {
+      console.error('[CRM Disconnect Error] Transaction failed:', disconnectError);
+      return NextResponse.json({ error: 'Failed to disconnect CRM' }, { status: 500 });
     }
-
-    // 2. Clear token storage from crm_tokens
-    const { error: tokenDeleteError } = await supabaseAdmin
-      .from('crm_tokens')
-      .delete()
-      .eq('client_id', clientId);
-
-    if (tokenDeleteError) {
-      console.warn('[CRM Disconnect Warning] Token delete failed:', tokenDeleteError);
-      // We don't return an error here since the client profile's crm_type was reset successfully
-    }
+    await Promise.all([
+      redis.del(`scout:pipeline:${clientId}`),
+      redis.del(`scout:pipeline_api:${clientId}`),
+    ]).catch((error) => console.warn('[CRM Disconnect Warning] Cache clear failed:', error));
 
     return NextResponse.json({ success: true });
   } catch (err) {

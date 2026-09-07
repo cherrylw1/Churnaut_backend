@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase'
 import { getAuthedClientId } from '@/lib/auth'
 import { embed } from '@/lib/llm/complete'
 import { supportChatRatelimit } from '@/lib/redis'
+import { normalizeEmail } from '@/lib/email-normalization'
 import { chatRequestSchema, readJson } from '@/lib/validation'
 
 export const dynamic = 'force-dynamic'
@@ -143,9 +144,6 @@ function parseRuleIntent(message: string): { signal_type?: string; condition_typ
 
   // Action detection
   if (/calendar|book|meeting|calendly/i.test(message)) intent.action_type = 'show_calendar'
-  else if (/form|demo request|lead form/i.test(message)) intent.action_type = 'show_short_form'
-  else if (/case study/i.test(message)) intent.action_type = 'show_case_study'
-  else if (/redirect|send to|different page/i.test(message)) intent.action_type = 'redirect'
   else if (/text|headline|copy|message/i.test(message)) intent.action_type = 'inject_copy'
 
   return intent
@@ -170,7 +168,9 @@ async function debugSession(clientId: string, prospectQuery: string) {
   // Try to find session by email first
   let sessionQuery = supabaseAdmin.from('sessions').select('id, prospect_name, prospect_email, company_name, job_title, signal_type, click_count, converted, expires_at, deal_stage').eq('client_id', clientId)
   if (prospectQuery.includes('@')) {
-    sessionQuery = sessionQuery.ilike('prospect_email', `%${prospectQuery}%`)
+    const email = normalizeEmail(prospectQuery)
+    if (!email) return { sessions: [], rules: [], recentEvents: [] }
+    sessionQuery = sessionQuery.eq('prospect_email', email)
   } else {
     sessionQuery = sessionQuery.ilike('prospect_name', `%${prospectQuery}%`)
   }
@@ -182,21 +182,26 @@ async function debugSession(clientId: string, prospectQuery: string) {
 }
 
 async function createRule(clientId: string, intent: ReturnType<typeof parseRuleIntent>) {
+  // Chat can safely create only a session-calendar rule because copy rules need
+  // explicit selector/content fields that this conversational intent does not capture.
+  if (intent.action_type !== 'show_calendar') {
+    return { success: false, id: undefined, error: 'Complete copy rules in the rule editor' }
+  }
   const { data: existing } = await supabaseAdmin.from('routing_rules').select('priority').eq('client_id', clientId).order('priority', { ascending: false }).limit(1)
   const nextPriority = existing && existing.length > 0 ? existing[0].priority + 1 : 1
 
   const conditions = intent.condition_type && intent.condition_value
-    ? [{ type: intent.condition_type, value: intent.condition_value }]
-    : []
+    ? { [intent.condition_type]: intent.condition_value.trim() }
+    : {}
 
   const { data, error } = await supabaseAdmin.from('routing_rules').insert({
     client_id: clientId,
-    signal_type: intent.signal_type || 'any',
+    signal_type: !intent.signal_type || intent.signal_type === 'any' ? null : intent.signal_type,
     conditions,
     action_type: intent.action_type || 'show_calendar',
-    action_payload: { swaps: [] },
-    target_selector: '',
-    variant_content: '',
+    action_payload: { use_session_calendar: true },
+    target_selector: '.sr-target',
+    variant_content: null,
     priority: nextPriority,
     active: true,
   }).select('id').single()
@@ -278,7 +283,7 @@ export async function POST(req: NextRequest) {
         const intent = parseRuleIntent(message)
         const missingFields = []
         if (!intent.signal_type) missingFields.push('signal type (e.g. cold email, LinkedIn ad, Google ad)')
-        if (!intent.action_type) missingFields.push('action (e.g. show calendar, show form, change text)')
+        if (!intent.action_type) missingFields.push('supported action (show calendar, or configure page text in the rule editor)')
 
         if (missingFields.length > 0) {
           enrichedMessage += `\n\nRULE_CLARIFICATION_NEEDED: To create this rule I need to know: ${missingFields.join(' and ')}. Please ask the user for these details before creating.`

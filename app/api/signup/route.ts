@@ -5,6 +5,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { getAuthedClientId } from '@/lib/auth';
 import { ratelimit } from '@/lib/redis';
 import { readJson, signupRequestSchema } from '@/lib/validation';
+import { normalizeEmail } from '@/lib/email-normalization';
 
 export const dynamic = 'force-dynamic';
 
@@ -55,7 +56,7 @@ export async function POST(req: NextRequest) {
     const snippetKey = crypto.randomUUID();
     const webhookSecret = crypto.randomUUID();
     const companySlug = companyName.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 40) || 'workspace';
-    const domainFallback = `${companySlug}-${userId.slice(0, 8)}.com`;
+    const domainFallback = `https://${companySlug}-${userId.slice(0, 8)}.com`;
 
     // The database auth-user trigger provisions this row in the same transaction
     // as sign-up. Keep this idempotent write as a compatibility fallback for
@@ -68,7 +69,7 @@ export async function POST(req: NextRequest) {
         domain: domainFallback,
         snippet_key: snippetKey,
         webhook_secret: webhookSecret,
-        email: email ? email.toLowerCase() : null,
+        email: normalizeEmail(email),
         plan: 'starter',
         active: true,
       }, { onConflict: 'id', ignoreDuplicates: true });

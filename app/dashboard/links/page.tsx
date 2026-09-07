@@ -41,22 +41,27 @@ export default function LinksPage() {
   const [generating, setGenerating] = useState(false);
   const [generatedUrl, setGeneratedUrl] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [plan, setPlan] = useState('starter');
 
   // Bulk upload states
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [bulkProcessing, setBulkProcessing] = useState(false);
   const [bulkResults, setBulkResults] = useState<Record<string, string>[] | null>(null);
   const [bulkError, setBulkError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   // Fetch all sessions/links for the client
-  const fetchLinks = async () => {
+  const fetchLinks = async (requestedPage = 1) => {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch('/api/links');
+      const res = await fetch(`/api/links?page=${requestedPage}&limit=50`);
       if (res.ok) {
         const data = await res.json();
         setLinks(data.sessions || []);
+        setPage(data.page || requestedPage);
+        setTotalPages(data.totalPages || 1);
       } else {
         const errData = await res.json();
         setError(errData.error || 'Failed to retrieve tracked links.');
@@ -71,6 +76,7 @@ export default function LinksPage() {
 
   useEffect(() => {
     fetchLinks();
+    fetch('/api/client').then((res) => res.ok ? res.json() : null).then((data) => data?.client?.plan && setPlan(data.client.plan)).catch(() => {});
   }, []);
 
   const handleCopy = (url: string, id: string) => {
@@ -157,6 +163,10 @@ export default function LinksPage() {
   // Process bulk CSV upload
   const handleBulkUpload = async () => {
     if (!csvFile) return;
+    if (plan === 'starter') {
+      setBulkError('Bulk CSV link generation requires the Growth plan.');
+      return;
+    }
 
     setBulkProcessing(true);
     setBulkError(null);
@@ -183,54 +193,14 @@ export default function LinksPage() {
         return;
       }
 
-      const results = [];
-      for (const row of parsedRows) {
-        if (!row.destination_url) continue;
-
-        try {
-          const res = await fetch('/api/links', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              prospect_name: row.prospect_name,
-              prospect_email: row.prospect_email,
-              company_name: row.company_name,
-              job_title: row.job_title,
-              signal_type: row.signal_type || 'Other',
-              assigned_rep: row.assigned_rep,
-              destination_url: row.destination_url,
-              expires_in_days: 30, // default expiry
-            }),
-          });
-
-          if (res.ok) {
-            const data = await res.json();
-            results.push({
-              ...row,
-              tracked_url: data.trackedUrl,
-              session_id: data.sessionId,
-              status: 'Success',
-            });
-          } else {
-            const data = await res.json();
-            results.push({
-              ...row,
-              tracked_url: '',
-              session_id: '',
-              status: `Error: ${data.error || 'Server error'}`,
-            });
-          }
-        } catch {
-          results.push({
-            ...row,
-            tracked_url: '',
-            session_id: '',
-            status: 'Network Error',
-          });
-        }
-      }
-
-      setBulkResults(results);
+      const res = await fetch('/api/links/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rows: parsedRows.filter((row) => row.destination_url).map((row) => ({ ...row, expires_in_days: 30 })) }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Bulk link generation failed');
+      setBulkResults(data.results || []);
       fetchLinks(); // Refresh link list
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : 'An error occurred during file parsing.';
@@ -275,20 +245,13 @@ export default function LinksPage() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const getStatus = (expiresAt: string | undefined) => {
     if (!expiresAt) return 'Permanent';
     const isExpired = new Date(expiresAt).getTime() < Date.now();
     return isExpired ? 'Expired' : 'Active';
-  };
-
-  const buildBaseTrackedUrl = (sid: string) => {
-    if (typeof window !== 'undefined') {
-      // Formats URL to fit the window host name
-      return `${window.location.origin}/?sid=${sid}`;
-    }
-    return `/?sid=${sid}`;
   };
 
   return (
@@ -349,7 +312,7 @@ export default function LinksPage() {
               <tbody className="divide-y divide-[var(--border-subtle)] text-sm">
                 {links.map((link) => {
                   const status = getStatus(link.expires_at);
-                  const displayUrl = buildBaseTrackedUrl(link.id);
+                  const displayUrl = link.tracked_url || '';
 
                   return (
                     <tr key={link.id} className="hover:bg-[var(--border-subtle)]/10 transition-colors">
@@ -380,11 +343,13 @@ export default function LinksPage() {
                       </td>
                       <td className="py-3 px-4 text-right">
                         <button
-                          onClick={() => handleCopy(displayUrl, link.id)}
+                          onClick={() => displayUrl && handleCopy(displayUrl, link.id)}
+                          disabled={!displayUrl}
                           className="border border-[var(--border-subtle)] hover:border-[var(--accent)] hover:text-[var(--accent)] text-xs font-mono py-1 px-2.5 rounded transition-all active:scale-[0.97]"
                         >
                           {copiedId === link.id ? 'COPIED!' : 'COPY'}
                         </button>
+                        {link.legacy_destination_fallback && <div className="text-[9px] text-amber-400 mt-1">LEGACY DOMAIN FALLBACK</div>}
                       </td>
                     </tr>
                   );
@@ -392,6 +357,13 @@ export default function LinksPage() {
               </tbody>
             </table>
           </div>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-end gap-3 border-t border-[var(--border-subtle)] px-4 py-3 font-mono text-xs">
+              <button disabled={page <= 1} onClick={() => fetchLinks(page - 1)} className="disabled:opacity-40">← PREVIOUS</button>
+              <span>{page} / {totalPages}</span>
+              <button disabled={page >= totalPages} onClick={() => fetchLinks(page + 1)} className="disabled:opacity-40">NEXT →</button>
+            </div>
+          )}
         </div>
       )}
 
@@ -428,18 +400,19 @@ export default function LinksPage() {
                 Single Link
               </button>
               <button
+                disabled={plan === 'starter'}
                 onClick={() => {
                   setBulkResults(null);
                   setBulkError(null);
                   setActiveTab('bulk');
                 }}
-                className={`flex-1 py-3 font-mono text-xs tracking-wider uppercase border-b-2 text-center transition-all ${
+                className={`flex-1 py-3 font-mono text-xs tracking-wider uppercase border-b-2 text-center transition-all disabled:opacity-40 ${
                   activeTab === 'bulk'
                     ? 'border-[var(--accent)] text-[var(--accent)] bg-[var(--bg-elevated)]'
                     : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                 }`}
               >
-                Bulk Upload (CSV)
+                {plan === 'starter' ? 'Bulk Upload — Growth' : 'Bulk Upload (CSV)'}
               </button>
             </div>
 

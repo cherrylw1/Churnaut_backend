@@ -3,18 +3,15 @@ import crypto from 'crypto';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getAuthedClientId } from '@/lib/auth';
 import { linksRequestSchema, readJson } from '@/lib/validation';
+import { normalizeDestinationUrl } from '@/lib/url';
+import { normalizeEmail } from '@/lib/email-normalization';
 
 export const dynamic = 'force-dynamic';
 
 
-// Helper to generate a random 6-character session ID
+// Helper to generate a cryptographically random, URL-safe session ID.
 function generateSessionId(length: number = 6): string {
-  const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let result = '';
-  for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
+  return crypto.randomBytes(Math.ceil(length * 0.75) + 2).toString('base64url').slice(0, length);
 }
 
 // Helper to append sid correctly to any destination URL
@@ -38,14 +35,19 @@ export async function GET(req: NextRequest) {
     }
 
     const url = new URL(req.url);
-    const page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10));
-    const limit = Math.min(200, Math.max(1, parseInt(url.searchParams.get('limit') || '50', 10)));
+    const pageRaw = url.searchParams.get('page') || '1';
+    const limitRaw = url.searchParams.get('limit') || '50';
+    if (!/^\d+$/.test(pageRaw) || !/^\d+$/.test(limitRaw)) return NextResponse.json({ error: 'page and limit must be positive integers' }, { status: 400 });
+    const page = Number(pageRaw);
+    const limit = Number(limitRaw);
+    if (page < 1 || limit < 1 || limit > 200) return NextResponse.json({ error: 'page must be at least 1 and limit must be between 1 and 200' }, { status: 400 });
     const offset = (page - 1) * limit;
 
     const { data: sessions, error, count } = await supabaseAdmin
       .from('sessions')
       .select('*', { count: 'exact' })
       .eq('client_id', clientId)
+      .or('session_kind.eq.tracked_link,session_kind.is.null')
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
@@ -55,12 +57,27 @@ export async function GET(req: NextRequest) {
     }
 
     const total = count ?? 0;
+    const [{ data: primaryDomain }, { data: client }] = await Promise.all([
+      supabaseAdmin.from('client_domains').select('origin').eq('client_id', clientId).eq('is_primary', true).eq('active', true).maybeSingle(),
+      supabaseAdmin.from('clients').select('domain').eq('id', clientId).maybeSingle(),
+    ]);
+    const hydratedSessions = (sessions || []).map((session) => {
+      let destination = session.destination_url || primaryDomain?.origin || client?.domain || null;
+      try { destination = destination ? normalizeDestinationUrl(destination) : null; } catch { destination = null; }
+      return {
+        ...session,
+        destination_url: destination,
+        tracked_url: destination ? buildTrackedUrl(destination, session.id) : null,
+        legacy_destination_fallback: !session.destination_url,
+      };
+    });
     return NextResponse.json({
-      sessions: sessions || [],
+      sessions: hydratedSessions,
       total,
       page,
       limit,
       hasMore: offset + limit < total,
+      totalPages: Math.ceil(total / limit),
     });
   } catch (err) {
     console.error('[GET Links Exception] Unhandled exception:', err);
@@ -126,6 +143,7 @@ export async function POST(req: NextRequest) {
     const visitorToken = crypto.randomUUID();
 
     // 4. Insert row into sessions table
+    const safeDestination = normalizeDestinationUrl(destination_url);
     const { error } = await supabaseAdmin
       .from('sessions')
       .insert({
@@ -133,13 +151,16 @@ export async function POST(req: NextRequest) {
         client_id: clientId,
         expires_at: expiresAt,
         prospect_name: prospect_name || null,
-        prospect_email: prospect_email || null,
+        prospect_email: normalizeEmail(prospect_email),
         company_name: company_name || null,
         job_title: job_title || null,
         signal_type: signal_type || null,
         assigned_rep: assigned_rep || null,
         calendar_url: calendar_url || null,
         visitor_token: visitorToken,
+        destination_url: safeDestination,
+        session_kind: 'tracked_link',
+        metadata: { legacy_destination: false },
         click_count: 0,
         converted: false,
       });
@@ -150,7 +171,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 5. Generate and return the tracked URL
-    const trackedUrl = buildTrackedUrl(destination_url, sessionId);
+    const trackedUrl = buildTrackedUrl(safeDestination, sessionId);
     return NextResponse.json({
       success: true,
       sessionId,

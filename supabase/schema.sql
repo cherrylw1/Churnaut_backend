@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS clients (
     lemonsqueezy_variant_id text,
     trial_ends_at timestamptz,
     visits_reset_at timestamptz,
+    last_snippet_ping_at timestamptz,
     active boolean DEFAULT true
 );
 
@@ -47,7 +48,7 @@ BEGIN
     VALUES (
         NEW.id,
         company_label,
-        company_slug || '-' || LEFT(NEW.id::text, 8) || '.com',
+        'https://' || company_slug || '-' || LEFT(NEW.id::text, 8) || '.com',
         LOWER(NEW.email),
         'starter',
         true
@@ -86,7 +87,28 @@ CREATE TABLE IF NOT EXISTS sessions (
     converted boolean DEFAULT false,
     converted_at timestamptz,
     visitor_token text UNIQUE
+    ,destination_url text
+    ,session_kind text NOT NULL DEFAULT 'tracked_link'
+    ,metadata jsonb NOT NULL DEFAULT '{}'
+    ,CONSTRAINT sessions_session_kind_check CHECK (session_kind IN ('tracked_link', 'anonymous_visit', 'webhook'))
 );
+
+CREATE TABLE IF NOT EXISTS client_domains (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    client_id uuid NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+    domain text NOT NULL,
+    origin text NOT NULL,
+    hostname text NOT NULL,
+    is_primary boolean NOT NULL DEFAULT false,
+    active boolean NOT NULL DEFAULT true,
+    verified_at timestamptz,
+    updated_at timestamptz NOT NULL DEFAULT now(),
+    created_at timestamptz NOT NULL DEFAULT now(),
+    UNIQUE(client_id, domain)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_client_domains_one_primary
+  ON client_domains(client_id) WHERE is_primary AND active;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_client_domains_origin ON client_domains(client_id, origin);
 
 -- ==========================================
 -- 3. ROUTING RULES TABLE
@@ -130,6 +152,12 @@ CREATE INDEX IF NOT EXISTS idx_routing_rules_client_id ON routing_rules(client_i
 CREATE INDEX IF NOT EXISTS idx_routing_rules_active_priority ON routing_rules(client_id, active, priority);
 CREATE INDEX IF NOT EXISTS idx_analytics_events_client_id ON analytics_events(client_id);
 CREATE INDEX IF NOT EXISTS idx_analytics_events_session_id ON analytics_events(session_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_client_created ON sessions(client_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_sessions_email_lower ON sessions(client_id, lower(prospect_email));
+CREATE INDEX IF NOT EXISTS idx_events_client_type_created ON analytics_events(client_id, event_type, created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_analytics_one_conversion
+    ON analytics_events(client_id, session_id)
+    WHERE event_type = 'conversion' AND session_id IS NOT NULL;
 
 -- Atomic quota consumption used by the public resolve endpoint.
 CREATE OR REPLACE FUNCTION increment_monthly_visits_if_available(
@@ -163,6 +191,129 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION record_snippet_ping(client_id_input uuid)
+RETURNS void LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$
+  UPDATE clients SET last_snippet_ping_at = now() WHERE id = client_id_input;
+$$;
+
+CREATE OR REPLACE FUNCTION set_session_conversion(client_id_input uuid, session_id_input text, converted_input boolean)
+RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE transitioned boolean := false;
+BEGIN
+  IF converted_input THEN
+    UPDATE sessions SET converted = true, converted_at = COALESCE(converted_at, now())
+    WHERE id = session_id_input AND client_id = client_id_input AND converted IS DISTINCT FROM true;
+    transitioned := FOUND;
+    INSERT INTO analytics_events (client_id, session_id, event_type, signal_type, metadata)
+    SELECT client_id_input, id, 'conversion', COALESCE(signal_type, 'crm_webhook'), '{"schema_version":2}'::jsonb
+    FROM sessions WHERE id = session_id_input AND client_id = client_id_input AND converted = true
+    ON CONFLICT (client_id, session_id) WHERE event_type = 'conversion' AND session_id IS NOT NULL DO NOTHING;
+  ELSE
+    UPDATE sessions SET converted = false, converted_at = NULL WHERE id = session_id_input AND client_id = client_id_input;
+  END IF;
+  RETURN transitioned;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION add_client_domain(client_id_input uuid, origin_input text, hostname_input text)
+RETURNS client_domains LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE result client_domains; limit_count integer; active_count integer;
+BEGIN
+  SELECT CASE plan WHEN 'pro' THEN 10 WHEN 'growth' THEN 3 ELSE 1 END INTO limit_count
+  FROM clients WHERE id = client_id_input FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'client not found'; END IF;
+  SELECT * INTO result FROM client_domains
+  WHERE client_id = client_id_input AND origin = origin_input AND active;
+  IF FOUND THEN RETURN result; END IF;
+  DELETE FROM client_domains
+  WHERE client_id = client_id_input
+    AND is_primary
+    AND origin = (SELECT domain FROM clients WHERE id = client_id_input)
+    AND origin ~ ('-' || left(client_id_input::text, 8) || '\\.com$');
+  SELECT count(*) INTO active_count FROM client_domains WHERE client_id = client_id_input AND active;
+  IF active_count >= limit_count THEN RAISE EXCEPTION 'domain limit reached'; END IF;
+  INSERT INTO client_domains (client_id, domain, origin, hostname, is_primary, active)
+  VALUES (client_id_input, origin_input, origin_input, hostname_input, active_count = 0, true)
+  RETURNING * INTO result;
+  IF active_count = 0 THEN UPDATE clients SET domain = origin_input WHERE id = client_id_input; END IF;
+  RETURN result;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION remove_client_domain(client_id_input uuid, domain_id_input uuid)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE was_primary boolean;
+BEGIN
+  PERFORM 1 FROM clients WHERE id = client_id_input FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'client not found'; END IF;
+  SELECT is_primary INTO was_primary FROM client_domains
+  WHERE id = domain_id_input AND client_id = client_id_input FOR UPDATE;
+  IF NOT FOUND THEN RETURN; END IF;
+  IF (SELECT count(*) FROM client_domains WHERE client_id = client_id_input AND active) <= 1 THEN
+    RAISE EXCEPTION 'cannot remove final domain';
+  END IF;
+  DELETE FROM client_domains WHERE id = domain_id_input AND client_id = client_id_input;
+  IF was_primary THEN
+    UPDATE client_domains SET is_primary = true, updated_at = now()
+    WHERE id = (SELECT id FROM client_domains WHERE client_id = client_id_input AND active ORDER BY created_at LIMIT 1);
+    UPDATE clients SET domain = (SELECT origin FROM client_domains WHERE client_id = client_id_input AND is_primary AND active LIMIT 1)
+    WHERE id = client_id_input;
+  END IF;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION set_primary_client_domain(client_id_input uuid, origin_input text)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  PERFORM 1 FROM clients WHERE id = client_id_input FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'client not found'; END IF;
+  IF NOT EXISTS (SELECT 1 FROM client_domains WHERE client_id = client_id_input AND origin = origin_input AND active) THEN
+    RAISE EXCEPTION 'registered domain not found';
+  END IF;
+  UPDATE client_domains SET is_primary = false, updated_at = now()
+  WHERE client_id = client_id_input AND is_primary;
+  UPDATE client_domains SET is_primary = true, updated_at = now()
+  WHERE client_id = client_id_input AND origin = origin_input AND active;
+  UPDATE clients SET domain = origin_input WHERE id = client_id_input;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION analytics_v2_aggregate(client_id_input uuid, from_date_input timestamptz, month_start_input timestamptz)
+RETURNS jsonb LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+WITH
+  client_sessions AS (SELECT * FROM sessions WHERE client_id = client_id_input AND session_kind <> 'webhook'),
+  window_sessions AS (SELECT * FROM client_sessions WHERE created_at >= from_date_input),
+  window_events AS (SELECT * FROM analytics_events WHERE client_id = client_id_input AND created_at >= from_date_input),
+  page_sessions AS (SELECT DISTINCT session_id FROM window_events WHERE event_type = 'page_view' AND session_id IS NOT NULL),
+  personalized_sessions AS (SELECT DISTINCT event.session_id FROM window_events event JOIN page_sessions page USING (session_id) WHERE event.event_type = 'rule_triggered'),
+  converted_sessions AS (SELECT session_id, min(created_at) converted_at FROM window_events WHERE event_type = 'conversion' AND session_id IS NOT NULL GROUP BY session_id),
+  attributed AS (
+    SELECT conversion.session_id, trigger.rule_id FROM converted_sessions conversion
+    JOIN LATERAL (SELECT rule_id FROM analytics_events WHERE client_id = client_id_input AND session_id = conversion.session_id AND event_type = 'rule_triggered' AND rule_id IS NOT NULL AND created_at <= conversion.converted_at ORDER BY created_at DESC LIMIT 1) trigger ON true
+  ),
+  link_counts AS (SELECT COALESCE(signal_type, 'Outbound Link') signal, count(*)::int links FROM window_sessions WHERE session_kind = 'tracked_link' GROUP BY 1),
+  click_counts AS (SELECT COALESCE(signal_type, 'Outbound Link') signal, count(*)::int clicks FROM window_events WHERE event_type = 'link_clicked' GROUP BY 1),
+  conversion_counts AS (SELECT COALESCE(event.signal_type, session.signal_type, 'Outbound Link') signal, count(DISTINCT event.session_id)::int conversions FROM window_events event LEFT JOIN client_sessions session ON session.id = event.session_id WHERE event.event_type = 'conversion' GROUP BY 1),
+  signals AS (SELECT COALESCE(link.signal, click.signal, conversion.signal) signal, COALESCE(link.links, 0) links, COALESCE(click.clicks, 0) clicks, COALESCE(conversion.conversions, 0) conversions FROM link_counts link FULL JOIN click_counts click USING (signal) FULL JOIN conversion_counts conversion ON conversion.signal = COALESCE(link.signal, click.signal)),
+  rep_links AS (SELECT assigned_rep rep, count(*)::int links FROM window_sessions WHERE assigned_rep IS NOT NULL AND session_kind = 'tracked_link' GROUP BY assigned_rep),
+  rep_conversions AS (SELECT session.assigned_rep rep, count(DISTINCT conversion.session_id)::int conversions FROM converted_sessions conversion JOIN client_sessions session ON session.id = conversion.session_id WHERE session.assigned_rep IS NOT NULL GROUP BY session.assigned_rep),
+  reps AS (SELECT COALESCE(link.rep, conversion.rep) rep, COALESCE(link.links, 0) links, COALESCE(conversion.conversions, 0) conversions FROM rep_links link FULL JOIN rep_conversions conversion USING (rep)),
+  rule_triggers AS (SELECT rule_id, count(*)::int triggers FROM (SELECT DISTINCT rule_id, session_id FROM window_events WHERE event_type = 'rule_triggered' AND rule_id IS NOT NULL AND session_id IS NOT NULL) x GROUP BY rule_id),
+  rule_conversions AS (SELECT rule_id, count(*)::int conversions FROM attributed GROUP BY rule_id),
+  rule_metrics AS (SELECT COALESCE(trigger.rule_id, conversion.rule_id) rule_id, COALESCE(trigger.triggers, 0) triggers, COALESCE(conversion.conversions, 0) conversions FROM rule_triggers trigger FULL JOIN rule_conversions conversion USING (rule_id)),
+  daily AS (SELECT created_at::date day, count(*)::int count FROM window_events WHERE event_type = 'page_view' GROUP BY created_at::date ORDER BY day),
+  controls AS (SELECT (SELECT count(*) FROM personalized_sessions)::int personalized, (SELECT count(*) FROM page_sessions page WHERE NOT EXISTS (SELECT 1 FROM personalized_sessions personalized WHERE personalized.session_id = page.session_id))::int unpersonalized, (SELECT count(*) FROM converted_sessions conversion WHERE EXISTS (SELECT 1 FROM personalized_sessions personalized WHERE personalized.session_id = conversion.session_id))::int personalized_converted, (SELECT count(*) FROM converted_sessions conversion WHERE EXISTS (SELECT 1 FROM page_sessions page WHERE page.session_id = conversion.session_id) AND NOT EXISTS (SELECT 1 FROM personalized_sessions personalized WHERE personalized.session_id = conversion.session_id))::int unpersonalized_converted),
+  rule_lift AS (SELECT trigger.rule_id, count(*)::int personalized_sessions, count(*) FILTER (WHERE conversion.session_id IS NOT NULL)::int conversions FROM (SELECT DISTINCT rule_id, session_id FROM window_events WHERE event_type = 'rule_triggered' AND rule_id IS NOT NULL AND session_id IS NOT NULL) trigger LEFT JOIN converted_sessions conversion USING (session_id) GROUP BY trigger.rule_id)
+SELECT jsonb_build_object(
+  'summaryStats', jsonb_build_object('totalLinksCreatedThisMonth', (SELECT count(*) FROM client_sessions WHERE session_kind = 'tracked_link' AND created_at >= month_start_input), 'totalClicksThisMonth', (SELECT count(*) FROM analytics_events WHERE client_id = client_id_input AND event_type = 'link_clicked' AND created_at >= month_start_input), 'personalizationTriggerRate', CASE WHEN (SELECT count(*) FROM page_sessions) = 0 THEN 0 ELSE round(100.0 * (SELECT count(*) FROM personalized_sessions) / (SELECT count(*) FROM page_sessions)) END, 'overallConversionRate', CASE WHEN (SELECT count(*) FROM page_sessions) = 0 THEN 0 ELSE round(100.0 * (SELECT count(*) FROM converted_sessions conversion WHERE EXISTS (SELECT 1 FROM page_sessions page WHERE page.session_id = conversion.session_id)) / (SELECT count(*) FROM page_sessions)) END),
+  'signalBreakdown', COALESCE((SELECT jsonb_agg(jsonb_build_object('signal', signal, 'links', links, 'clicks', clicks, 'conversions', conversions, 'conversion_rate', CASE WHEN links = 0 THEN 0 ELSE round(100.0 * conversions / links) END) ORDER BY signal) FROM signals), '[]'::jsonb),
+  'repPerformance', COALESCE((SELECT jsonb_agg(jsonb_build_object('rep', rep, 'links', links, 'conversions', conversions, 'conversion_rate', CASE WHEN links = 0 THEN 0 ELSE round(100.0 * conversions / links) END) ORDER BY rep) FROM reps), '[]'::jsonb),
+  'rulePerformance', COALESCE((SELECT jsonb_agg(jsonb_build_object('rule_id', rule_id, 'triggers', triggers, 'conversions', conversions, 'conversion_rate', CASE WHEN triggers = 0 THEN 0 ELSE round(100.0 * conversions / triggers) END)) FROM rule_metrics), '[]'::jsonb),
+  'dailyVolume', COALESCE((SELECT jsonb_agg(jsonb_build_object('rawDate', day::text, 'count', count) ORDER BY day) FROM daily), '[]'::jsonb),
+  'liftReport', (SELECT jsonb_build_object('personalized_sessions', personalized, 'unpersonalized_sessions', unpersonalized, 'personalized_rate', CASE WHEN personalized = 0 THEN 0 ELSE round(100.0 * personalized_converted / personalized) END, 'baseline_rate', CASE WHEN unpersonalized = 0 THEN 0 ELSE round(100.0 * unpersonalized_converted / unpersonalized) END, 'overall_lift_pp', (CASE WHEN personalized = 0 THEN 0 ELSE round(100.0 * personalized_converted / personalized) END) - (CASE WHEN unpersonalized = 0 THEN 0 ELSE round(100.0 * unpersonalized_converted / unpersonalized) END), 'rules', COALESCE((SELECT jsonb_agg(jsonb_build_object('rule_id', rule_id, 'personalized_sessions', personalized_sessions, 'personalized_rate', CASE WHEN personalized_sessions = 0 THEN 0 ELSE round(100.0 * conversions / personalized_sessions) END)) FROM rule_lift), '[]'::jsonb)) FROM controls)
+);
+$$;
+
 CREATE OR REPLACE FUNCTION replace_routing_rules(client_id_input UUID, rules_input JSONB)
 RETURNS INTEGER
 LANGUAGE plpgsql
@@ -189,9 +340,21 @@ $$;
 
 REVOKE ALL ON FUNCTION increment_monthly_visits_if_available(UUID, INTEGER) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION increment_click_count(TEXT) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION record_snippet_ping(UUID) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION set_session_conversion(UUID, TEXT, BOOLEAN) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION add_client_domain(UUID, TEXT, TEXT) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION remove_client_domain(UUID, UUID) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION set_primary_client_domain(UUID, TEXT) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION analytics_v2_aggregate(UUID, TIMESTAMPTZ, TIMESTAMPTZ) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION replace_routing_rules(UUID, JSONB) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION increment_monthly_visits_if_available(UUID, INTEGER) TO service_role;
 GRANT EXECUTE ON FUNCTION increment_click_count(TEXT) TO service_role;
+GRANT EXECUTE ON FUNCTION record_snippet_ping(UUID) TO service_role;
+GRANT EXECUTE ON FUNCTION set_session_conversion(UUID, TEXT, BOOLEAN) TO service_role;
+GRANT EXECUTE ON FUNCTION add_client_domain(UUID, TEXT, TEXT) TO service_role;
+GRANT EXECUTE ON FUNCTION remove_client_domain(UUID, UUID) TO service_role;
+GRANT EXECUTE ON FUNCTION set_primary_client_domain(UUID, TEXT) TO service_role;
+GRANT EXECUTE ON FUNCTION analytics_v2_aggregate(UUID, TIMESTAMPTZ, TIMESTAMPTZ) TO service_role;
 GRANT EXECUTE ON FUNCTION replace_routing_rules(UUID, JSONB) TO service_role;
 
 -- ==========================================
@@ -244,6 +407,7 @@ ALTER TABLE clients ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE routing_rules ENABLE ROW LEVEL SECURITY;
 ALTER TABLE analytics_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE client_domains ENABLE ROW LEVEL SECURITY;
 
 -- CLIENTS POLICIES
 -- Dashboard user can manage their own client profile.
@@ -282,6 +446,11 @@ CREATE POLICY "Clients can view their own analytics events" ON analytics_events
     FOR SELECT TO authenticated
     USING (client_id = auth.uid());
 
+CREATE POLICY "Clients manage own domains" ON client_domains
+    FOR ALL TO authenticated
+    USING (client_id = auth.uid())
+    WITH CHECK (client_id = auth.uid());
+
 -- ==========================================
 -- 5. WEBHOOK MAPPINGS TABLE
 -- ==========================================
@@ -318,12 +487,80 @@ CREATE TABLE IF NOT EXISTS crm_tokens (
     access_token text NOT NULL,
     refresh_token text NOT NULL,
     expires_at timestamptz,
+    connection_status text NOT NULL DEFAULT 'healthy' CHECK (connection_status IN ('healthy', 'unhealthy')),
+    last_error text,
     created_at timestamptz DEFAULT now(),
     updated_at timestamptz DEFAULT now()
 );
 
 -- INDEX FOR PERFORMANCE
-CREATE INDEX IF NOT EXISTS idx_crm_tokens_client_id_crm_type ON crm_tokens(client_id, crm_type);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_crm_tokens_client_id_crm_type ON crm_tokens(client_id, crm_type);
+
+CREATE OR REPLACE FUNCTION complete_crm_oauth(
+  client_id_input uuid, crm_type_input text, access_token_input text,
+  refresh_token_input text, expires_at_input timestamptz
+) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  IF client_id_input IS NULL OR btrim(crm_type_input) = '' OR btrim(access_token_input) = '' THEN
+    RAISE EXCEPTION 'invalid oauth connection data';
+  END IF;
+  INSERT INTO crm_tokens (client_id, crm_type, access_token, refresh_token, expires_at, connection_status, last_error, updated_at)
+  VALUES (client_id_input, crm_type_input, access_token_input, COALESCE(refresh_token_input, ''), expires_at_input, 'healthy', NULL, now())
+  ON CONFLICT (client_id, crm_type) DO UPDATE SET
+    access_token = EXCLUDED.access_token,
+    refresh_token = CASE WHEN EXCLUDED.refresh_token = '' THEN crm_tokens.refresh_token ELSE EXCLUDED.refresh_token END,
+    expires_at = EXCLUDED.expires_at,
+    connection_status = 'healthy',
+    last_error = NULL,
+    updated_at = now();
+  UPDATE clients SET crm_type = crm_type_input, crm_api_key = NULL WHERE id = client_id_input;
+  IF NOT FOUND THEN RAISE EXCEPTION 'client not found'; END IF;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION disconnect_crm(client_id_input uuid, crm_type_input text)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE current_type text;
+BEGIN
+  SELECT crm_type INTO current_type FROM clients WHERE id = client_id_input FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'client not found'; END IF;
+  IF current_type IS NULL THEN RETURN; END IF;
+  IF current_type <> crm_type_input THEN RAISE EXCEPTION 'crm mismatch'; END IF;
+  DELETE FROM crm_tokens WHERE client_id = client_id_input AND crm_type = crm_type_input;
+  UPDATE clients SET crm_type = NULL, crm_api_key = NULL WHERE id = client_id_input;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION complete_calendly_oauth(client_id_input uuid, access_token_input text, refresh_token_input text, expires_at_input timestamptz)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  IF client_id_input IS NULL OR btrim(access_token_input) = '' OR btrim(refresh_token_input) = '' THEN RAISE EXCEPTION 'invalid oauth connection data'; END IF;
+  INSERT INTO crm_tokens (client_id, crm_type, access_token, refresh_token, expires_at, connection_status, last_error, updated_at)
+  VALUES (client_id_input, 'calendly', access_token_input, refresh_token_input, expires_at_input, 'healthy', NULL, now())
+  ON CONFLICT (client_id, crm_type) DO UPDATE SET access_token = EXCLUDED.access_token, refresh_token = EXCLUDED.refresh_token, expires_at = EXCLUDED.expires_at, connection_status = 'healthy', last_error = NULL, updated_at = now();
+  UPDATE clients SET calendly_token = access_token_input WHERE id = client_id_input;
+  IF NOT FOUND THEN RAISE EXCEPTION 'client not found'; END IF;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION disconnect_calendly(client_id_input uuid)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  PERFORM 1 FROM clients WHERE id = client_id_input FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'client not found'; END IF;
+  DELETE FROM crm_tokens WHERE client_id = client_id_input AND crm_type = 'calendly';
+  UPDATE clients SET calendly_token = NULL WHERE id = client_id_input;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION complete_crm_oauth(uuid,text,text,text,timestamptz) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION disconnect_crm(uuid,text) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION complete_calendly_oauth(uuid,text,text,timestamptz) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION disconnect_calendly(uuid) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION complete_crm_oauth(uuid,text,text,text,timestamptz) TO service_role;
+GRANT EXECUTE ON FUNCTION disconnect_crm(uuid,text) TO service_role;
+GRANT EXECUTE ON FUNCTION complete_calendly_oauth(uuid,text,text,timestamptz) TO service_role;
+GRANT EXECUTE ON FUNCTION disconnect_calendly(uuid) TO service_role;
 
 -- RLS POLICIES FOR CRM TOKENS
 ALTER TABLE crm_tokens ENABLE ROW LEVEL SECURITY;

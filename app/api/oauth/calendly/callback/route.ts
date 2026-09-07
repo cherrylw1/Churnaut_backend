@@ -17,12 +17,11 @@ export async function GET(req: NextRequest) {
 
   // 1. Verify and consume the state nonce from Redis
   const redisKey = `oauth_state:${state}`;
-  const clientId = await redis.get(redisKey);
+  const clientId = await redis.getdel<string>(redisKey);
   if (!clientId) {
     console.error('[Calendly OAuth Callback Error] Invalid or expired state nonce');
     return NextResponse.redirect(new URL('/dashboard/integrations?error=invalid_state', req.url));
   }
-  await redis.del(redisKey); // Consume it immediately
 
   try {
     const calendlyClientId = process.env.CALENDLY_CLIENT_ID;
@@ -52,8 +51,7 @@ export async function GET(req: NextRequest) {
     });
 
     if (!tokenResponse.ok) {
-      const errorData = await tokenResponse.json().catch(() => ({}));
-      console.error('[Calendly OAuth Callback Error] Token exchange failed:', errorData);
+      console.error('[Calendly OAuth Callback Error] Token exchange failed with status:', tokenResponse.status);
       return NextResponse.redirect(
         new URL('/dashboard/integrations?error=token_exchange_failed', req.url)
       );
@@ -71,63 +69,16 @@ export async function GET(req: NextRequest) {
     const encryptedAccessToken = encrypt(access_token);
     const encryptedRefreshToken = encrypt(refresh_token);
 
-    // 4. Update the clients table row setting the calendly_token field
-    const { error: updateClientError } = await supabaseAdmin
-      .from('clients')
-      .update({
-        calendly_token: encryptedAccessToken,
-      })
-      .eq('id', clientId);
-
-    if (updateClientError) {
-      console.error('[Calendly OAuth Callback Error] Failed to update client record:', updateClientError);
-      return NextResponse.redirect(new URL('/dashboard/integrations?error=database_update_failed', req.url));
-    }
-
-    // 5. Store/upsert the tokens in crm_tokens table with crm_type: 'calendly'
     const expiresAt = expires_in ? new Date(Date.now() + expires_in * 1000).toISOString() : null;
-
-    const { data: existingToken, error: tokenSelectError } = await supabaseAdmin
-      .from('crm_tokens')
-      .select('id')
-      .eq('client_id', clientId)
-      .eq('crm_type', 'calendly')
-      .maybeSingle();
-
-    if (!tokenSelectError) {
-      if (existingToken) {
-        // Update existing record
-        const { error: updateTokenError } = await supabaseAdmin
-          .from('crm_tokens')
-          .update({
-            access_token: encryptedAccessToken,
-            refresh_token: encryptedRefreshToken,
-            expires_at: expiresAt,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', existingToken.id);
-        
-        if (updateTokenError) {
-          console.error('[Calendly OAuth Callback Warning] Failed to update crm_tokens row:', updateTokenError);
-        }
-      } else {
-        // Insert new record
-        const { error: insertTokenError } = await supabaseAdmin
-          .from('crm_tokens')
-          .insert({
-            client_id: clientId,
-            crm_type: 'calendly',
-            access_token: encryptedAccessToken,
-            refresh_token: encryptedRefreshToken,
-            expires_at: expiresAt,
-          });
-
-        if (insertTokenError) {
-          console.error('[Calendly OAuth Callback Warning] Failed to insert crm_tokens row:', insertTokenError);
-        }
-      }
-    } else {
-      console.error('[Calendly OAuth Callback Warning] Error checking existing token row in crm_tokens:', tokenSelectError);
+    const { error: oauthError } = await supabaseAdmin.rpc('complete_calendly_oauth', {
+      client_id_input: clientId,
+      access_token_input: encryptedAccessToken,
+      refresh_token_input: encryptedRefreshToken,
+      expires_at_input: expiresAt,
+    });
+    if (oauthError) {
+      console.error('[Calendly OAuth Callback Error] Transaction failed:', oauthError);
+      return NextResponse.redirect(new URL('/dashboard/integrations?error=token_storage_failed', req.url));
     }
 
     console.log('[Calendly OAuth Callback Success] Successfully authenticated and stored tokens');

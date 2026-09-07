@@ -2,6 +2,7 @@ import { buildHubSpotCrmSignals } from '@/lib/scout/hubspot';
 import { buildUniversalSignals } from '@/lib/scout/universal';
 import { buildPriors, getScoreTrajectory } from '@/lib/scout/priors';
 import type { NormalizedDeal, Priors, SignalCompleteness, Availability } from '@/lib/scout/types';
+import { getScoutConnectionStatus } from '@/lib/scout/crm-adapters';
 
 // Until CRM contacts are enriched with real emails (next phase), there is no key to join a deal
 // to its website sessions, so universal signals resolve empty. Passing a non-matching sentinel
@@ -17,6 +18,10 @@ function priorsAvailability(p: Priors): Availability {
 }
 
 export async function buildNormalizedDeals(clientId: string): Promise<NormalizedDeal[]> {
+  // Never turn a missing, unhealthy, or unsupported connection into an empty
+  // pipeline: callers may use an empty result to remove stale scores.
+  const connection = await getScoutConnectionStatus(clientId);
+  if (!connection.ready) throw new Error(`Scout CRM unavailable: ${connection.reason}`);
   const [crmDeals, basePriors] = await Promise.all([
     buildHubSpotCrmSignals(clientId),
     buildPriors(clientId),

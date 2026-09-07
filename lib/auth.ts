@@ -1,12 +1,14 @@
 import { NextRequest } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 
+const requestAuthCache = new WeakMap<Request, Promise<string | null>>();
+
 /**
  * Authoritative server-side auth. Verifies the Supabase access token's
  * signature + expiry via supabaseAdmin.auth.getUser(). Returns the verified
  * client/user id, or null. NEVER trust the cookie JSON directly.
  */
-export async function getAuthedClientId(req: NextRequest): Promise<string | null> {
+async function verifyClientId(req: NextRequest): Promise<string | null> {
   // 1. Check Authorization header first
   const authHeader = req.headers.get('Authorization');
   if (authHeader && authHeader.toLowerCase().startsWith('bearer ')) {
@@ -43,6 +45,14 @@ export async function getAuthedClientId(req: NextRequest): Promise<string | null
     }
   }
   return null;
+}
+
+export function getAuthedClientId(req: NextRequest): Promise<string | null> {
+  const cached = requestAuthCache.get(req);
+  if (cached) return cached;
+  const result = verifyClientId(req);
+  requestAuthCache.set(req, result);
+  return result;
 }
 
 // Deprecated wrapper for legacy references (will be removed once all routes migrate)

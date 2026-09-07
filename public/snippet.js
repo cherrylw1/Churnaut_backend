@@ -10,7 +10,9 @@
     for (var i = 0; i < ca.length; i++) {
       var c = ca[i];
       while (c.charAt(0) == " ") c = c.substring(1, c.length);
-      if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length, c.length);
+      if (c.indexOf(nameEQ) == 0) {
+        try { return decodeURIComponent(c.substring(nameEQ.length, c.length)); } catch { return null; }
+      }
     }
     return null;
   }
@@ -28,7 +30,7 @@
       date.setTime(date.getTime() + days * 24 * 60 * 60 * 1000);
       expires = "; expires=" + date.toUTCString();
     }
-    document.cookie = name + "=" + (value || "") + expires + "; path=/; SameSite=Lax";
+    document.cookie = name + "=" + encodeURIComponent(value || "") + expires + "; path=/; SameSite=Lax" + (location.protocol === "https:" ? "; Secure" : "");
   }
 
   /**
@@ -62,7 +64,7 @@
     var allowedAttrs = {
       A: { href: true, target: true, rel: true, title: true, class: true, id: true },
       IMG: { src: true, alt: true, width: true, height: true, class: true, id: true },
-      IFRAME: { src: true, width: true, height: true, title: true, class: true, id: true, frameborder: true, allow: true },
+      IFRAME: { src: true, width: true, height: true, title: true, class: true, id: true, frameborder: true, allow: true, referrerpolicy: true },
       '*': { class: true, id: true, title: true }
     };
     var nodes = template.content.querySelectorAll('*');
@@ -118,6 +120,18 @@
   // 3. Read first-party tracking cookie
   var visitorCookie = getCookie("_sr_visitor");
 
+  // A lightweight installation heartbeat is separate from analytics events.
+  // It is throttled per browser and never consumes visit quota.
+  try {
+    var pingKey = "_sr_ping_" + clientId;
+    var lastPing = Number(localStorage.getItem(pingKey) || 0);
+    if (!lastPing || Date.now() - lastPing > 86400000) {
+      fetch("https://app.churnaut.com/api/snippet-ping", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ client_id: clientId }), keepalive: true })
+        .then(function (response) { if (response.ok) localStorage.setItem(pingKey, String(Date.now())); })
+        .catch(function () {});
+    }
+  } catch (pingError) { void pingError; }
+
   // 4. Exit immediately if no tracking signals or active cookie exists
   if (!sid && !gclid && !fbclid && !liFatId && !ttclid && !utmSource && !utmMedium && !utmCampaign && !utmContent && !utmTerm && !visitorCookie) {
     return;
@@ -147,6 +161,7 @@
       utm_content: utmContent,
       utm_term: utmTerm,
     },
+    page_url: window.location.href,
   };
 
   var controller = new AbortController();
@@ -177,9 +192,11 @@
         for (var j = 0; j < data.swaps.length; j++) {
           var swap = data.swaps[j];
           if (swap.selector && typeof swap.content === "string") {
-            var element = document.querySelector(swap.selector);
-            if (element) {
-              element.innerHTML = sanitizeHtml(swap.content);
+            try {
+              var element = document.querySelector(swap.selector);
+              if (element) element.innerHTML = sanitizeHtml(swap.content);
+            } catch (selectorError) {
+              console.warn("[Churnaut] Ignoring invalid personalization selector:", selectorError);
             }
           }
         }

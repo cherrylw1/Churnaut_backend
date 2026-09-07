@@ -17,12 +17,11 @@ export async function GET(req: NextRequest) {
 
   // 1. Verify and consume the state nonce from Redis
   const redisKey = `oauth_state:${state}`;
-  const clientId = await redis.get(redisKey);
+  const clientId = await redis.getdel<string>(redisKey);
   if (!clientId) {
     console.error('[Hubspot OAuth Callback Error] Invalid or expired state nonce');
     return NextResponse.redirect(new URL('/dashboard/integrations/crm?error=invalid_state', req.url));
   }
-  await redis.del(redisKey); // Consume it immediately
 
   try {
     const hubspotClientId = process.env.HUBSPOT_CLIENT_ID;
@@ -52,8 +51,7 @@ export async function GET(req: NextRequest) {
     });
 
     if (!tokenResponse.ok) {
-      const errorData = await tokenResponse.json().catch(() => ({}));
-      console.error('[Hubspot OAuth Callback Error] Token exchange failed:', errorData);
+      console.error('[Hubspot OAuth Callback Error] Token exchange failed with status:', tokenResponse.status);
       return NextResponse.redirect(
         new URL('/dashboard/integrations/crm?error=token_exchange_failed', req.url)
       );
@@ -71,69 +69,17 @@ export async function GET(req: NextRequest) {
     const encryptedAccessToken = encrypt(access_token);
     const encryptedRefreshToken = encrypt(refresh_token);
 
-    // 4. Update the clients table row using clientId retrieved from Redis
-    const crmApiKeyJson = JSON.stringify({
-      access_token: encryptedAccessToken,
-      refresh_token: encryptedRefreshToken,
-    });
-
-    const { error: updateClientError } = await supabaseAdmin
-      .from('clients')
-      .update({
-        crm_type: 'hubspot',
-        crm_api_key: crmApiKeyJson,
-      })
-      .eq('id', clientId);
-
-    if (updateClientError) {
-      console.error('[Hubspot OAuth Callback Error] Failed to update client record:', updateClientError);
-      return NextResponse.redirect(new URL('/dashboard/integrations/crm?error=database_update_failed', req.url));
-    }
-
-    // 5. Store/upsert the tokens in crm_tokens table
     const expiresAt = expires_in ? new Date(Date.now() + expires_in * 1000).toISOString() : null;
-
-    const { data: existingToken, error: tokenSelectError } = await supabaseAdmin
-      .from('crm_tokens')
-      .select('id')
-      .eq('client_id', clientId)
-      .eq('crm_type', 'hubspot')
-      .maybeSingle();
-
-    if (!tokenSelectError) {
-      if (existingToken) {
-        // Update existing record
-        const { error: updateTokenError } = await supabaseAdmin
-          .from('crm_tokens')
-          .update({
-            access_token: encryptedAccessToken,
-            refresh_token: encryptedRefreshToken,
-            expires_at: expiresAt,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', existingToken.id);
-        
-        if (updateTokenError) {
-          console.error('[Hubspot OAuth Callback Warning] Failed to update crm_tokens row:', updateTokenError);
-        }
-      } else {
-        // Insert new record
-        const { error: insertTokenError } = await supabaseAdmin
-          .from('crm_tokens')
-          .insert({
-            client_id: clientId,
-            crm_type: 'hubspot',
-            access_token: encryptedAccessToken,
-            refresh_token: encryptedRefreshToken,
-            expires_at: expiresAt,
-          });
-
-        if (insertTokenError) {
-          console.error('[Hubspot OAuth Callback Warning] Failed to insert crm_tokens row:', insertTokenError);
-        }
-      }
-    } else {
-      console.error('[Hubspot OAuth Callback Warning] Error checking existing token row in crm_tokens:', tokenSelectError);
+    const { error: oauthError } = await supabaseAdmin.rpc('complete_crm_oauth', {
+      client_id_input: clientId,
+      crm_type_input: 'hubspot',
+      access_token_input: encryptedAccessToken,
+      refresh_token_input: encryptedRefreshToken,
+      expires_at_input: expiresAt,
+    });
+    if (oauthError) {
+      console.error('[Hubspot OAuth Callback Error] Transaction failed:', oauthError);
+      return NextResponse.redirect(new URL('/dashboard/integrations/crm?error=token_storage_failed', req.url));
     }
 
     // 6. Redirect to settings page with connected flag

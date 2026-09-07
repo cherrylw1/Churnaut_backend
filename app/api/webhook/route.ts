@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { supabaseAdmin } from '@/lib/supabase';
-import { redis, ratelimit } from '@/lib/redis';
+import { ratelimit } from '@/lib/redis';
 import { readJson, webhookPayloadSchema } from '@/lib/validation';
+import { normalizeEmail } from '@/lib/email-normalization';
+import { normalizeEmbedUrl } from '@/lib/url';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,12 +22,7 @@ function getValueByPath(obj: unknown, path: string): unknown {
 
 // Helper to generate a unique 6-character session ID
 function generateSessionId(length: number = 6): string {
-  const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let result = '';
-  for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
+  return crypto.randomBytes(Math.ceil(length * 0.75) + 2).toString('base64url').slice(0, length);
 }
 
 export async function POST(req: NextRequest) {
@@ -74,6 +71,10 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Parse Incoming Payload
+    const contentLength = Number(req.headers.get('content-length') || '0');
+    if (Number.isFinite(contentLength) && contentLength > 1_000_000) {
+      return NextResponse.json({ error: 'Webhook payload is too large' }, { status: 413 });
+    }
     const parsedPayload = await readJson(req, webhookPayloadSchema);
     if (!parsedPayload.ok) {
       return NextResponse.json({ error: parsedPayload.error }, { status: 400 });
@@ -148,7 +149,27 @@ export async function POST(req: NextRequest) {
     // 5. Look up matching Session
     let session: Record<string, unknown> | null = null;
     const sessionId = transformed.session_id as string | undefined;
-    const email = (transformed.visitor_email || transformed.prospect_email) as string | undefined;
+    const rawVisitorEmail = transformed.visitor_email;
+    const rawProspectEmail = transformed.prospect_email;
+    const visitorEmail = normalizeEmail(rawVisitorEmail);
+    const prospectEmail = normalizeEmail(rawProspectEmail);
+    if ((rawVisitorEmail && !visitorEmail) || (rawProspectEmail && !prospectEmail)) {
+      return NextResponse.json({ error: 'Invalid prospect email' }, { status: 422 });
+    }
+    const email = visitorEmail || prospectEmail;
+    let calendarUrl: string | null | undefined;
+    if (transformed.calendar_url !== undefined && transformed.calendar_url !== null && transformed.calendar_url !== '') {
+      if (typeof transformed.calendar_url !== 'string') {
+        return NextResponse.json({ error: 'Invalid calendar URL' }, { status: 422 });
+      }
+      try {
+        calendarUrl = normalizeEmbedUrl(transformed.calendar_url);
+      } catch {
+        return NextResponse.json({ error: 'Calendar URL must be a valid HTTPS URL' }, { status: 422 });
+      }
+    } else if (transformed.calendar_url !== undefined) {
+      calendarUrl = null;
+    }
 
     if (!isLinkedInLeadGen) {
       if (sessionId) {
@@ -183,33 +204,46 @@ export async function POST(req: NextRequest) {
       const updates: Record<string, unknown> = {};
 
       if (transformed.prospect_name !== undefined) updates.prospect_name = transformed.prospect_name;
-      if (transformed.prospect_email !== undefined) updates.prospect_email = transformed.prospect_email;
+      if (transformed.prospect_email !== undefined) updates.prospect_email = prospectEmail;
       if (transformed.company_name !== undefined) updates.company_name = transformed.company_name;
       if (transformed.job_title !== undefined) updates.job_title = transformed.job_title;
       if (transformed.assigned_rep !== undefined) updates.assigned_rep = transformed.assigned_rep;
-      if (transformed.calendar_url !== undefined) updates.calendar_url = transformed.calendar_url;
+      if (calendarUrl !== undefined) updates.calendar_url = calendarUrl;
       if (transformed.crm_deal_id !== undefined) updates.crm_deal_id = transformed.crm_deal_id;
       if (transformed.deal_stage !== undefined) updates.deal_stage = transformed.deal_stage;
       if (transformed.visitor_type !== undefined) updates.visitor_type = transformed.visitor_type;
       
       if (transformed.converted !== undefined) {
-        updates.converted = transformed.converted;
-        if (transformed.converted) {
-          updates.converted_at = new Date().toISOString();
-        } else {
+        if (transformed.converted === false) {
+          updates.converted = false;
           updates.converted_at = null;
         }
       }
 
-      const { error: updateErr } = await supabaseAdmin
-        .from('sessions')
-        .update(updates)
-        .eq('id', finalSessionId)
-        .eq('client_id', clientId);
+      if (Object.keys(updates).length > 0) {
+        const { error: updateErr } = await supabaseAdmin
+          .from('sessions')
+          .update(updates)
+          .eq('id', finalSessionId)
+          .eq('client_id', clientId);
 
-      if (updateErr) {
-        console.error('[Webhook Session Update Error] Failed to update session:', updateErr);
-        return NextResponse.json({ error: `Update failed: ${updateErr.message}` }, { status: 500 });
+        if (updateErr) {
+          console.error('[Webhook Session Update Error] Failed to update session:', updateErr);
+          return NextResponse.json({ error: `Update failed: ${updateErr.message}` }, { status: 500 });
+        }
+      }
+
+      if (transformed.converted === true) {
+        const { data: transitioned, error: conversionError } = await supabaseAdmin.rpc('set_session_conversion', {
+          client_id_input: clientId,
+          session_id_input: finalSessionId,
+          converted_input: true,
+        });
+        if (conversionError) {
+          console.error('[Webhook Conversion Error] Atomic transition failed:', conversionError);
+          return NextResponse.json({ error: 'Conversion update failed' }, { status: 500 });
+        }
+        void transitioned;
       }
 
       // Fetch the updated row to get visitor_token for cache invalidation
@@ -217,6 +251,7 @@ export async function POST(req: NextRequest) {
         .from('sessions')
         .select('*')
         .eq('id', finalSessionId)
+        .eq('client_id', clientId)
         .single();
       if (updatedSession) {
         session = updatedSession;
@@ -256,13 +291,15 @@ export async function POST(req: NextRequest) {
         company_name: transformed.company_name || null,
         job_title: transformed.job_title || null,
         assigned_rep: transformed.assigned_rep || null,
-        calendar_url: transformed.calendar_url || null,
+        calendar_url: calendarUrl || null,
         crm_deal_id: transformed.crm_deal_id || null,
         deal_stage: transformed.deal_stage || null,
         visitor_type: transformed.visitor_type || null,
         visitor_token: visitorToken,
         click_count: 0,
         converted: transformed.converted || false,
+        session_kind: 'webhook',
+        metadata: { source: 'webhook' },
       };
 
       if (transformed.converted) {
@@ -281,42 +318,40 @@ export async function POST(req: NextRequest) {
       }
 
       session = inserted;
+      if (transformed.converted === true) {
+        const { error: conversionError } = await supabaseAdmin.rpc('set_session_conversion', {
+          client_id_input: clientId,
+          session_id_input: finalSessionId,
+          converted_input: true,
+        });
+        if (conversionError) {
+          console.error('[Webhook Conversion Error] Failed to record new-session conversion:', conversionError);
+          return NextResponse.json({ error: 'Conversion event update failed' }, { status: 500 });
+        }
+      }
     }
 
     if (!session) {
       return NextResponse.json({ error: 'No matching session found and no prospect email was provided' }, { status: 422 });
     }
 
-    // 8. Invalidate Upstash Redis cache for affected sessions
-    if (session) {
-      try {
-        const sidCacheKey = `resolve:${clientId}:${session.id}`;
-        await redis.del(sidCacheKey);
-
-        if (session.visitor_token) {
-          const tokenCacheKey = `resolve:${clientId}:${session.visitor_token}`;
-          await redis.del(tokenCacheKey);
-        }
-      } catch (cacheErr) {
-        console.error('[Webhook Invalidation Error] Failed to clear Redis cache:', cacheErr);
-      }
-    }
-
-    // 9. Log Webhook Ingestion into analytics_events
-    try {
-      await supabaseAdmin.from('analytics_events').insert({
+    // 8. Log webhook receipt. Conversion events are created atomically by the
+    // set_session_conversion RPC and deduplicated per session.
+    const { error: webhookEventError } = await supabaseAdmin.from('analytics_events').insert({
         client_id: clientId,
         session_id: session.id,
-        event_type: 'webhook',
+        event_type: 'webhook_received',
         signal_type: isLinkedInLeadGen ? 'linkedin_lead_gen' : 'crm_webhook',
         metadata: {
+          schema_version: 2,
           webhook_action: isNewSession ? 'create_session' : 'update_session',
           payload,
           transformed,
         },
       });
-    } catch (logErr) {
-      console.error('[Webhook Ingestion Error] Failed to log event:', logErr);
+    if (webhookEventError) {
+      console.error('[Webhook Ingestion Error] Failed to log webhook event:', webhookEventError);
+      return NextResponse.json({ error: 'Webhook event logging failed' }, { status: 503 });
     }
 
     let trackedUrl = '';

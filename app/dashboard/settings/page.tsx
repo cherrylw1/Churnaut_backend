@@ -5,6 +5,8 @@ import Link from 'next/link';
 
 const VISIT_LIMITS: Record<string, number> = { starter: 500, growth: 5000, pro: Infinity };
 const PLAN_LABELS: Record<string, string> = { starter: 'Starter', growth: 'Growth', pro: 'Pro' };
+const DOMAIN_LIMITS: Record<string, number> = { starter: 1, growth: 3, pro: 10 };
+type ClientDomain = { id: string; origin: string | null; domain: string; is_primary: boolean; active: boolean };
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
@@ -14,11 +16,13 @@ export default function SettingsPage() {
   const [monthlyVisits, setMonthlyVisits] = useState(0);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [domains, setDomains] = useState<ClientDomain[]>([]);
+  const [newDomain, setNewDomain] = useState('');
 
   useEffect(() => {
     async function loadClient() {
       try {
-        const res = await fetch('/api/client');
+        const [res, domainsRes] = await Promise.all([fetch('/api/client'), fetch('/api/client/domains')]);
         if (res.ok) {
           const data = await res.json();
           if (data.client) {
@@ -27,6 +31,10 @@ export default function SettingsPage() {
             setPlan(data.client.plan || 'starter');
             setMonthlyVisits(data.client.monthly_visits || 0);
           }
+        }
+        if (domainsRes.ok) {
+          const domainData = await domainsRes.json();
+          setDomains(domainData.domains || []);
         }
       } catch (err) {
         console.error('Failed to load client profile:', err);
@@ -58,6 +66,47 @@ export default function SettingsPage() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const refreshDomains = async () => {
+    const res = await fetch('/api/client/domains');
+    if (!res.ok) return;
+    const data = await res.json();
+    setDomains(data.domains || []);
+    const primary = (data.domains || []).find((item: ClientDomain) => item.is_primary && item.active);
+    if (primary) setDomain(primary.origin || primary.domain);
+  };
+
+  const handleAddDomain = async () => {
+    if (!newDomain.trim()) return;
+    setSaving(true);
+    setMessage(null);
+    try {
+      const res = await fetch('/api/client/domains', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ domain: newDomain }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to add domain');
+      setNewDomain('');
+      await refreshDomains();
+      setMessage({ type: 'success', text: 'Domain added.' });
+    } catch (error) {
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Failed to add domain.' });
+    } finally { setSaving(false); }
+  };
+
+  const handleRemoveDomain = async (id: string) => {
+    setSaving(true);
+    setMessage(null);
+    try {
+      const res = await fetch(`/api/client/domains?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to remove domain');
+      await refreshDomains();
+      setMessage({ type: 'success', text: 'Domain removed.' });
+    } catch (error) {
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Failed to remove domain.' });
+    } finally { setSaving(false); }
   };
 
   const visitLimit = VISIT_LIMITS[plan] ?? 500;
@@ -102,18 +151,26 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              {/* Domain — editable */}
+              {/* Registered domains */}
               <div className="space-y-1.5">
                 <label className="text-[10px] font-mono uppercase tracking-wider text-[var(--text-muted)]">
-                  Tracked Domain
+                  Primary Tracked Domain
                 </label>
-                <input
-                  type="text"
-                  value={domain}
-                  onChange={(e) => setDomain(e.target.value)}
-                  placeholder="https://yourwebsite.com"
-                  className="w-full bg-[var(--bg-base)] border border-[var(--border-subtle)] focus:border-[#C2683D] text-[var(--text-primary)] text-xs font-mono px-3 py-2.5 rounded-[6px] outline-none transition-colors"
-                />
+                <div className="space-y-2">
+                  {domains.map((item) => {
+                    const value = item.origin || item.domain;
+                    return <div key={item.id} className="flex items-center gap-2 rounded-[6px] border border-[var(--border-subtle)] p-2">
+                      <input type="radio" name="primary-domain" checked={domain === value} onChange={() => setDomain(value)} aria-label={`Make ${value} primary`} />
+                      <span className="min-w-0 flex-1 truncate text-[11px] font-mono text-[var(--text-primary)]">{value}</span>
+                      {domains.length > 1 && <button type="button" disabled={saving} onClick={() => handleRemoveDomain(item.id)} className="text-[10px] text-[var(--red)] disabled:opacity-50">Remove</button>}
+                    </div>;
+                  })}
+                </div>
+                <p className="text-[9px] font-mono text-[var(--text-muted)]">{domains.filter((item) => item.active).length} / {DOMAIN_LIMITS[plan] || 1} domains used</p>
+                <div className="flex gap-2 pt-2">
+                  <input type="url" value={newDomain} onChange={(event) => setNewDomain(event.target.value)} placeholder="https://yourwebsite.com" className="min-w-0 flex-1 bg-[var(--bg-base)] border border-[var(--border-subtle)] focus:border-[#C2683D] text-[var(--text-primary)] text-xs font-mono px-3 py-2.5 rounded-[6px] outline-none" />
+                  <button type="button" disabled={saving || !newDomain.trim() || domains.filter((item) => item.active).length >= (DOMAIN_LIMITS[plan] || 1)} onClick={handleAddDomain} className="border border-[#C2683D]/40 px-3 rounded-[6px] text-[11px] text-[#C2683D] disabled:opacity-40">Add</button>
+                </div>
               </div>
 
               {message && (
@@ -127,7 +184,7 @@ export default function SettingsPage() {
                 disabled={saving}
                 className="w-full bg-[#C2683D] hover:bg-[#A8552F] disabled:opacity-50 text-white text-xs font-semibold font-sans py-2.5 rounded-[8px] transition-all active:scale-[0.98]"
               >
-                {saving ? 'Saving...' : 'Save Changes'}
+                {saving ? 'Saving...' : 'Save Primary Domain'}
               </button>
             </div>
           )}

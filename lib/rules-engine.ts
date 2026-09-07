@@ -1,4 +1,6 @@
 import { RoutingRule, Session } from '../types/index';
+import { RULE_ACTIONS } from './rule-actions';
+import { isCanonicalRuleConfiguration } from './validation';
 
 /**
  * Iterates through routing rules in order and returns the first rule where all conditions match the session data.
@@ -17,6 +19,8 @@ export function evaluateRules(
   const session = sessionData || ({} as Session);
 
   for (const rule of rules) {
+    if (!(RULE_ACTIONS as readonly string[]).includes(rule.action_type)) continue;
+    if (!isCanonicalRuleConfiguration(rule)) continue;
     // 1. Check signal_type match if the rule specifies it
     if (rule.signal_type) {
       const normalize = (val: string | null | undefined) => {
@@ -35,7 +39,22 @@ export function evaluateRules(
     let isMatch = true;
     const conditions = rule.conditions;
 
-    if (conditions && typeof conditions === 'object' && !Array.isArray(conditions)) {
+    if (conditions !== null && conditions !== undefined && (typeof conditions !== 'object' || Array.isArray(conditions))) {
+      continue;
+    }
+
+    if (conditions && typeof conditions === 'object') {
+      const allowed = new Set([
+        'job_title_contains', 'company_name_equals', 'deal_stage_equals',
+        'visitor_type_equals', 'utm_campaign_contains', 'utm_source_equals',
+        'utm_medium_equals', 'utm_content_contains',
+      ]);
+      const keys = Object.keys(conditions);
+      // Unknown or malformed conditions fail closed. A blank value is never a
+      // wildcard (the old `includes('')` behavior matched every visitor).
+      if (keys.some((key) => !allowed.has(key) || typeof (conditions as Record<string, unknown>)[key] !== 'string' || !(conditions as Record<string, string>)[key].trim())) {
+        continue;
+      }
       // Evaluate job_title_contains (case-insensitive substring match)
       if ('job_title_contains' in conditions) {
         const targetJob = (conditions.job_title_contains ?? '').toString().toLowerCase().trim();

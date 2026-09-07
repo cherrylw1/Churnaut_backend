@@ -2,12 +2,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { waitUntil } from '@vercel/functions'
 import { supabaseAdmin } from '@/lib/supabase';
-import { resolveRatelimit, redis } from '@/lib/redis';
+import { resolveRatelimit } from '@/lib/redis';
 import { evaluateRules } from '@/lib/rules-engine';
 import { PLAN_LIMITS } from '@/lib/plans';
 import { Session } from '@/types/index';
 import { enrichSessionFromHubSpot } from '@/lib/integrations/hubspot';
 import { readJson, resolveRequestSchema } from '@/lib/validation';
+import crypto from 'crypto';
+import { normalizeEmbedUrl } from '@/lib/url';
+import { isRegisteredClientOrigin } from '@/lib/domain-access';
 
 export const dynamic = 'force-dynamic';
 
@@ -70,13 +73,19 @@ export async function POST(req: NextRequest) {
     if (!parsedBody.ok) {
       return NextResponse.json({ error: parsedBody.error }, { status: 400, headers: corsHeaders });
     }
-    const { client_id: clientIdParam, signals, cookie, utms } = parsedBody.data;
+    const { client_id: clientIdParam, signals, cookie, utms, page_url } = parsedBody.data;
     const signalValues = signals as Record<string, unknown>;
     const sid = typeof signalValues.sid === 'string' ? signalValues.sid : null;
     const gclid = typeof signalValues.gclid === 'string' ? signalValues.gclid : null;
     const fbclid = typeof signalValues.fbclid === 'string' ? signalValues.fbclid : null;
     const li_fat_id = typeof signalValues.li_fat_id === 'string' ? signalValues.li_fat_id : null;
     const ttclid = typeof signalValues.ttclid === 'string' ? signalValues.ttclid : null;
+    const hasUtmSignal = Object.values(utms as Record<string, unknown>).some(Boolean);
+    let resolvedSignalType: string | undefined;
+    if (ttclid) resolvedSignalType = 'tiktok_ad';
+    else if (gclid) resolvedSignalType = 'google_ad';
+    else if (fbclid) resolvedSignalType = 'meta_ad';
+    else if (li_fat_id) resolvedSignalType = 'linkedin_ad';
 
     // 2. Look up the client in the clients table by snippet_key matching client_id
     const { data: clientData, error: clientError } = await supabaseAdmin
@@ -94,6 +103,9 @@ export async function POST(req: NextRequest) {
     }
 
     const client_id = clientData.id;
+    if (!(await isRegisteredClientOrigin(client_id, req.headers.get('origin')))) {
+      return NextResponse.json({ error: 'Unregistered website origin' }, { status: 403, headers: corsHeaders });
+    }
 
     // Rate-limit before consuming quota. The key is client + source IP so one
     // visitor cannot exhaust the shared customer-wide bucket.
@@ -112,45 +124,9 @@ export async function POST(req: NextRequest) {
       // Keep the public snippet available if Redis is temporarily unavailable.
     }
 
-    // Visit limit check — sourced from lib/plans.ts
-    const clientPlan = (clientData?.plan ?? 'starter') as keyof typeof PLAN_LIMITS
-    const visitLimit = PLAN_LIMITS[clientPlan]?.tracked_visits ?? 500
-    const currentVisits = clientData?.monthly_visits ?? 0
-
-    if (currentVisits >= visitLimit) {
-      return NextResponse.json(
-        { visitor_token: null, swaps: [] },
-        { headers: corsHeaders }
-      )
-    }
-
-    // Atomically consume one visit for metered plans. Unlimited plans must not
-    // pass Infinity through JSON/PostgREST (it becomes null and rejects them).
-    if (visitLimit !== Infinity) {
-      const { data: quotaAvailable, error: quotaError } = await supabaseAdmin.rpc(
-        'increment_monthly_visits_if_available',
-        { client_id_input: client_id, visit_limit_input: visitLimit }
-      );
-      if (quotaError) {
-        console.error('[Visit Counter Error] Failed to consume monthly quota:', quotaError);
-        return NextResponse.json(
-          { error: 'Visit quota service unavailable' },
-          { status: 503, headers: corsHeaders }
-        );
-      }
-      if (!quotaAvailable) {
-        return NextResponse.json(
-          { visitor_token: null, swaps: [] },
-          { headers: corsHeaders }
-        );
-      }
-    }
-
-    const primarySignal = sid || cookie;
-    const cacheKey = primarySignal ? `resolve:${client_id}:${primarySignal}` : '';
-
     // 3. Look up the session in the sessions table by id matching sid
     let session: Session | null = null;
+    let matchedTrackedLink = false;
     if (sid) {
       const { data, error } = await supabaseAdmin
         .from('sessions')
@@ -161,6 +137,7 @@ export async function POST(req: NextRequest) {
 
       if (!error) {
         session = data;
+        matchedTrackedLink = !!data;
       }
 
       if (session && session.expires_at) {
@@ -185,6 +162,16 @@ export async function POST(req: NextRequest) {
                 console.error('[Click Count Error] Failed to increment click count:', clickError);
                 return;
               }
+
+              const { error: clickEventError } = await supabaseAdmin.from('analytics_events').insert({
+                client_id,
+                session_id: session!.id,
+                event_type: 'link_clicked',
+                signal_type: session!.signal_type || null,
+                created_at: new Date().toISOString(),
+                metadata: { schema_version: 2 },
+              });
+              if (clickEventError) console.error('[Analytics Error] Failed to log link click:', clickEventError);
 
               // Only the request that atomically changes 0 -> 1 sends the first
               // click notification. Concurrent resolves cannot duplicate it.
@@ -227,13 +214,42 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ visitor_token: null, swaps: [] }, { headers: corsHeaders });
     }
 
+    // A real tracked-link session takes precedence over unrelated ad query
+    // parameters. Invalid or cross-tenant identifiers are ignored entirely.
+    if (matchedTrackedLink) resolvedSignalType = undefined;
+    if (!session && !resolvedSignalType && !hasUtmSignal) {
+      return NextResponse.json({ visitor_token: null, swaps: [] }, { headers: corsHeaders });
+    }
+
+    // Count only requests that resolved to a real session or carry a supported
+    // acquisition signal. Rate limiting has already happened above.
+    const clientPlan = (clientData?.plan ?? 'starter') as keyof typeof PLAN_LIMITS;
+    const visitLimit = PLAN_LIMITS[clientPlan]?.tracked_visits ?? 500;
+    const currentVisits = clientData?.monthly_visits ?? 0;
+    if (currentVisits >= visitLimit) {
+      return NextResponse.json({ visitor_token: null, swaps: [] }, { headers: corsHeaders });
+    }
+    if (visitLimit !== Infinity) {
+      const { data: quotaAvailable, error: quotaError } = await supabaseAdmin.rpc(
+        'increment_monthly_visits_if_available',
+        { client_id_input: client_id, visit_limit_input: visitLimit }
+      );
+      if (quotaError) {
+        console.error('[Visit Counter Error] Failed to consume monthly quota:', quotaError);
+        return NextResponse.json({ error: 'Visit quota service unavailable' }, { status: 503, headers: corsHeaders });
+      }
+      if (!quotaAvailable) {
+        return NextResponse.json({ visitor_token: null, swaps: [] }, { headers: corsHeaders });
+      }
+    }
+
     const queueAnalyticsEvent = (
       eventType: 'rule_triggered' | 'no_match',
       ruleId: string | null,
       selector: string | null = null,
       preview: string | null = null
     ) => {
-      const detectedSignal = session?.signal_type || (sid ? 'sid' : (cookie ? 'cookie' : null));
+      const detectedSignal = session?.signal_type || (matchedTrackedLink ? 'sid' : (cookie ? 'cookie' : null));
       waitUntil(
         Promise.resolve(
           supabaseAdmin.from('analytics_events').insert({
@@ -243,7 +259,7 @@ export async function POST(req: NextRequest) {
             event_type: eventType,
             signal_type: detectedSignal,
             created_at: new Date().toISOString(),
-            metadata: { selector, content_preview: preview },
+            metadata: { schema_version: 2, selector, content_preview: preview },
           })
         )
           .then(({ error }) => {
@@ -253,62 +269,41 @@ export async function POST(req: NextRequest) {
       );
     };
 
-    // Cache only after session validation and click accounting. Cached results
-    // still emit one analytics event for every resolve request.
-    if (primarySignal && cacheKey) {
-      try {
-        const cached = await redis.get(cacheKey);
-        if (cached) {
-          const parsedCache = typeof cached === 'string' ? JSON.parse(cached) : cached;
-          const cachedRecord = parsedCache as {
-            instructions?: { visitor_token: string | null; swaps: Array<{ selector: string; content: string }> };
-            analytics?: { ruleId?: string | null; selector?: string | null; preview?: string | null };
-            visitor_token?: string | null;
-            swaps?: Array<{ selector: string; content: string }>;
-          };
-          const instructions = cachedRecord.instructions || {
-            visitor_token: cachedRecord.visitor_token || null,
-            swaps: cachedRecord.swaps || [],
-          };
-          const firstSwap = instructions.swaps[0];
-          queueAnalyticsEvent(
-            firstSwap ? 'rule_triggered' : 'no_match',
-            cachedRecord.analytics?.ruleId || null,
-            cachedRecord.analytics?.selector || firstSwap?.selector || null,
-            cachedRecord.analytics?.preview || (firstSwap?.content ? firstSwap.content.slice(0, 100) : null)
-          );
-          return NextResponse.json(instructions, { headers: corsHeaders });
-        }
-      } catch (cacheError) {
-        console.error('[Cache Error] Failed cache read:', cacheError);
-      }
-    }
-
-    // Resolve signal type based on incoming parameters
-    let resolvedSignalType: string | undefined = undefined;
-    if (ttclid) {
-      resolvedSignalType = 'tiktok_ad';
-    } else if (!sid && gclid) {
-      resolvedSignalType = 'google_ad';
-    } else if (fbclid) {
-      resolvedSignalType = 'meta_ad';
-    } else if (li_fat_id) {
-      resolvedSignalType = 'linkedin_ad';
-    }
-
     if (session) {
-      if (resolvedSignalType && !session.signal_type) {
+      if (resolvedSignalType) {
+        session.metadata = { ...(session.metadata || {}), acquisition_signal: session.metadata?.acquisition_signal || session.signal_type || resolvedSignalType };
         session.signal_type = resolvedSignalType;
       }
-    } else {
-      session = {
-        id: sid || '',
-        client_id,
-        signal_type: resolvedSignalType || (sid ? 'sid' : (cookie ? 'cookie' : undefined)),
-        click_count: 0,
-        converted: false,
-        created_at: new Date().toISOString(),
-      } as Session;
+      if (!resolvedSignalType && !matchedTrackedLink && cookie) {
+        session.metadata = { ...(session.metadata || {}), acquisition_signal: session.signal_type };
+        session.visitor_type = 'returning_visitor';
+        session.signal_type = 'returning_visitor';
+      }
+    } else if (resolvedSignalType || hasUtmSignal) {
+      // Persist anonymous acquisition traffic so the visitor token survives the
+      // first page view and returning-visitor rules have stable state.
+      const anonymousId = crypto.randomUUID();
+      // A supplied cookie reached this branch only because it did not resolve
+      // for this tenant. Never reuse that untrusted token (it may belong to a
+      // different tenant and visitor_token is globally unique).
+      const visitorToken = crypto.randomUUID();
+      const { data: inserted, error: insertError } = await supabaseAdmin
+        .from('sessions')
+        .insert({
+          id: anonymousId,
+          client_id,
+          signal_type: resolvedSignalType || null,
+          visitor_type: !resolvedSignalType && cookie ? 'returning_visitor' : null,
+          visitor_token: visitorToken,
+          session_kind: 'anonymous_visit',
+          metadata: { utms: utms || {}, acquisition_signal: resolvedSignalType },
+          click_count: 0,
+          converted: false,
+        })
+        .select('*')
+        .single();
+      if (!insertError && inserted) session = inserted as Session;
+      else if (insertError) console.error('[Resolve Error] Anonymous session insert failed:', insertError);
     }
 
     // Store the utms object in the session metadata
@@ -318,6 +313,20 @@ export async function POST(req: NextRequest) {
         utms: utms || {},
       };
     }
+    waitUntil(
+      Promise.resolve(supabaseAdmin.from('analytics_events').insert({
+        client_id,
+        session_id: session?.id || null,
+        event_type: 'page_view',
+        signal_type: session?.signal_type || resolvedSignalType || null,
+        created_at: new Date().toISOString(),
+        metadata: { schema_version: 2, page_url: page_url || null },
+      }))
+        .then(({ error }) => {
+          if (error) console.error('[Analytics Error] Failed to log page view:', error);
+        })
+        .catch((error) => console.error('[Analytics Error] Failed to log page view:', error))
+    );
 
     // 3.5 Live HubSpot CRM Session Enrichment
     if (clientData.crm_type === 'hubspot' && session?.prospect_email) {
@@ -379,7 +388,7 @@ export async function POST(req: NextRequest) {
     if (!matchedRule) {
       queueAnalyticsEvent('no_match', null);
       return NextResponse.json(
-        { visitor_token: null, swaps: [] },
+        { visitor_token: session?.visitor_token || null, swaps: [] },
         { headers: corsHeaders }
       );
     }
@@ -387,7 +396,17 @@ export async function POST(req: NextRequest) {
     const swapsList: Array<{ selector: string; content: string }> = [];
     const actionSwaps = matchedRule.action_payload?.swaps;
 
-    if (Array.isArray(actionSwaps) && actionSwaps.length > 0) {
+    // The action type is canonical. A stale `swaps` array must never suppress
+    // the calendar action and produce an empty iframe.
+    if (matchedRule.action_type === 'show_calendar') {
+      const target = matchedRule.target_selector || matchedRule.action_payload?.selector;
+      if (target) {
+        const rawCalUrl = String(matchedRule.action_payload?.calendar_url || session?.calendar_url || '');
+        let safeCalUrl = '';
+        try { safeCalUrl = normalizeEmbedUrl(rawCalUrl).replace(/"/g, '&quot;'); } catch {}
+        if (safeCalUrl) swapsList.push({ selector: target, content: `<iframe src="${safeCalUrl}" width="100%" height="100%" frameborder="0" allow="camera; microphone; fullscreen" referrerpolicy="strict-origin-when-cross-origin"></iframe>` });
+      }
+    } else if (matchedRule.action_type === 'inject_copy' && Array.isArray(actionSwaps) && actionSwaps.length > 0) {
       for (const s of actionSwaps) {
         if (s && typeof s === 'object' && 'selector' in s) {
           const swapRecord = s as Record<string, unknown>;
@@ -400,17 +419,10 @@ export async function POST(req: NextRequest) {
           });
         }
       }
-    } else {
+    } else if (matchedRule.action_type === 'inject_copy') {
       // Fallback to the existing single selector/variant_content logic for backwards compatibility
       if (matchedRule.target_selector !== null && matchedRule.target_selector !== undefined) {
         let content = matchedRule.variant_content || '';
-        if (matchedRule.action_type === 'show_calendar') {
-          const rawCalUrl = (matchedRule.action_payload?.calendar_url || session?.calendar_url || '').toString();
-          const safeCalUrl = /^https?:\/\//i.test(rawCalUrl) ? rawCalUrl.replace(/"/g, '&quot;') : '';
-          content = safeCalUrl
-            ? `<iframe src="${safeCalUrl}" width="100%" height="100%" frameborder="0"></iframe>`
-            : '';
-        }
         content = replaceVariables(content, session);
         swapsList.push({
           selector: matchedRule.target_selector,
@@ -422,7 +434,7 @@ export async function POST(req: NextRequest) {
     if (swapsList.length === 0) {
       queueAnalyticsEvent('no_match', null);
       return NextResponse.json(
-        { visitor_token: null, swaps: [] },
+        { visitor_token: session?.visitor_token || null, swaps: [] },
         { headers: corsHeaders }
       );
     }
@@ -432,29 +444,11 @@ export async function POST(req: NextRequest) {
     const contentPreview = firstSwap.content.length > 100 ? firstSwap.content.slice(0, 100) + '...' : firstSwap.content;
     queueAnalyticsEvent('rule_triggered', matchedRule.id, firstSwap.selector, contentPreview);
 
-    // 8. Cache instructions in Redis with a 300 second TTL
     const visitor_token = session?.visitor_token || null;
     const instructions = {
       visitor_token,
       swaps: swapsList,
     };
-
-    if (primarySignal && cacheKey) {
-      try {
-        await redis.setex(cacheKey, 300, JSON.stringify({
-          instructions,
-          analytics: {
-            ruleId: matchedRule.id,
-            selector: firstSwap.selector,
-            preview: contentPreview,
-          },
-        }));
-      } catch (cacheSetError) {
-        console.error('[Cache Set Error] Failed to write to cache:', cacheSetError);
-      }
-    }
-
-    // Visit counter moved to top of handler (after limit check) — removed from here
 
     return NextResponse.json(instructions, { headers: corsHeaders });
 

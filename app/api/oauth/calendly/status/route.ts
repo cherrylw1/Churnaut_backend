@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
     // Retrieve the connection token from the crm_tokens table
     const { data: tokenData, error } = await supabaseAdmin
       .from('crm_tokens')
-      .select('updated_at, created_at')
+      .select('access_token, connection_status, updated_at, created_at')
       .eq('client_id', clientId)
       .eq('crm_type', 'calendly')
       .maybeSingle();
@@ -24,8 +24,8 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Database query failed' }, { status: 500 });
     }
 
-    if (!tokenData) {
-      return NextResponse.json({ connected: false, connected_at: null });
+    if (!tokenData?.access_token || tokenData.connection_status === 'unhealthy') {
+      return NextResponse.json({ connected: false, connected_at: null, reason: !tokenData ? 'missing_token' : tokenData.connection_status === 'unhealthy' ? 'refresh_failed' : 'invalid_token' });
     }
 
     const connectedAt = tokenData.updated_at || tokenData.created_at || null;
@@ -47,28 +47,10 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // 1. Reset Calendly token column in clients table
-    const { error: clientUpdateError } = await supabaseAdmin
-      .from('clients')
-      .update({
-        calendly_token: null,
-      })
-      .eq('id', clientId);
-
-    if (clientUpdateError) {
-      console.error('[Calendly Disconnect Error] Client update failed:', clientUpdateError);
-      return NextResponse.json({ error: 'Failed to disconnect Calendly from client profile' }, { status: 500 });
-    }
-
-    // 2. Clear token storage from crm_tokens where crm_type is 'calendly'
-    const { error: tokenDeleteError } = await supabaseAdmin
-      .from('crm_tokens')
-      .delete()
-      .eq('client_id', clientId)
-      .eq('crm_type', 'calendly');
-
-    if (tokenDeleteError) {
-      console.warn('[Calendly Disconnect Warning] Token delete failed:', tokenDeleteError);
+    const { error: disconnectError } = await supabaseAdmin.rpc('disconnect_calendly', { client_id_input: clientId });
+    if (disconnectError) {
+      console.error('[Calendly Disconnect Error] Transaction failed:', disconnectError);
+      return NextResponse.json({ error: 'Failed to disconnect Calendly' }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });

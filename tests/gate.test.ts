@@ -20,15 +20,20 @@ describe('Gate module tests', () => {
       expect(response).toBeNull()
     })
 
-    it('should return a 403 response if user plan is null and pro is required', () => {
+    it('should defer null-plan handling to the route auth check', () => {
       const response = planGate(null, 'pro')
-      expect(response).toBeInstanceOf(NextResponse)
-      expect(response?.status).toBe(403)
+      expect(response).toBeNull()
     })
 
     it('should return null if user has pro plan and pro is required', () => {
       const response = planGate('pro', 'pro')
       expect(response).toBeNull()
+    })
+
+    it('does not disguise account lookup failures as upgrade prompts', () => {
+      expect(planGate('missing_client', 'growth')?.status).toBe(404)
+      expect(planGate('plan_unavailable', 'growth')?.status).toBe(503)
+      expect(planGate('account_inactive', 'growth')?.status).toBe(403)
     })
   })
 })

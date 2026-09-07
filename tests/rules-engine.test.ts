@@ -32,7 +32,8 @@ describe('Rules engine tests', () => {
     signal_type: 'hubspot',
     conditions: {},
     action_type: 'show_calendar',
-    action_payload: {},
+    action_payload: { use_session_calendar: true },
+    target_selector: '.cta',
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   }
@@ -76,6 +77,19 @@ describe('Rules engine tests', () => {
     // If the caller passes them pre-sorted, the one first in the array (highest priority) wins.
     const result = evaluateRules(baseSession, [ruleHighPriority, ruleLowPriority])
     expect(result).toBe(ruleHighPriority)
+  })
+
+  it('fails closed for unsupported actions and malformed conditions', () => {
+    expect(evaluateRules(baseSession, [{ ...baseRule, action_type: 'redirect' as any }])).toBeNull()
+    expect(evaluateRules(baseSession, [{ ...baseRule, conditions: { job_title_contains: '' } }])).toBeNull()
+    expect(evaluateRules(baseSession, [{ ...baseRule, conditions: { unknown: 'value' } as any }])).toBeNull()
+    expect(evaluateRules(baseSession, [{ ...baseRule, conditions: 'job_title_contains=engineer' as any }])).toBeNull()
+    expect(evaluateRules(baseSession, [{ ...baseRule, conditions: [] as any }])).toBeNull()
+  })
+
+  it('requires every supported condition to match', () => {
+    const rule = { ...baseRule, conditions: { job_title_contains: 'engineer', company_name_equals: 'Wrong Company' } }
+    expect(evaluateRules(baseSession, [rule])).toBeNull()
   })
 
   describe('Condition evaluation', () => {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getAuthedClientId } from '@/lib/auth';
 import { clientDomainRequestSchema, readJson } from '@/lib/validation';
+import { normalizeTrackedOrigin } from '@/lib/url';
 
 export const dynamic = 'force-dynamic';
 
@@ -47,18 +48,17 @@ export async function PATCH(req: NextRequest) {
     if (!parsedBody.ok) return NextResponse.json({ error: parsedBody.error }, { status: 400 });
     const { domain } = parsedBody.data;
 
-    // Normalize domain — ensure it starts with https://
-    let normalizedDomain = domain.trim();
-    if (!normalizedDomain.startsWith('http://') && !normalizedDomain.startsWith('https://')) {
-      normalizedDomain = 'https://' + normalizedDomain;
+    let normalizedDomain: string;
+    try {
+      normalizedDomain = normalizeTrackedOrigin(domain);
+    } catch (error) {
+      return NextResponse.json({ error: error instanceof Error ? error.message : 'Invalid domain' }, { status: 400 });
     }
-    // Remove trailing slash
-    normalizedDomain = normalizedDomain.replace(/\/$/, '');
 
-    const { error } = await supabaseAdmin
-      .from('clients')
-      .update({ domain: normalizedDomain })
-      .eq('id', clientId);
+    const { error } = await supabaseAdmin.rpc('set_primary_client_domain', {
+      client_id_input: clientId,
+      origin_input: normalizedDomain,
+    });
 
     if (error) {
       console.error('[PATCH Client Error] Failed to update domain:', error);

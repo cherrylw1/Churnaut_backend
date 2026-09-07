@@ -8,7 +8,8 @@ export interface ScoutDeal {
   stage: string;
   deal_value: number;
   close_date: string | null;
-  days_in_stage: number;
+  days_in_stage: number | null;
+  stage_entered_at: string | null;
   last_activity_days: number | null;
   contact_count: number;
   contact_emails: string[];
@@ -25,6 +26,76 @@ interface ActivityProperties {
   hs_last_activity_date?: string;
 }
 
+type HubSpotSearchResult = { id: string; properties: Record<string, string | undefined> };
+
+export function daysSince(timestamp: string | null | undefined, now = Date.now()): number | null {
+  if (!timestamp) return null;
+  const parsed = Date.parse(timestamp);
+  if (!Number.isFinite(parsed)) return null;
+  return Math.max(0, Math.floor((now - parsed) / 86_400_000));
+}
+
+export async function searchHubSpotDeals(accessToken: string, filterGroups: unknown[], properties: string[]): Promise<HubSpotSearchResult[]> {
+  const results = new Map<string, HubSpotSearchResult>();
+  const seenCursors = new Set<number>();
+  let after: number | undefined;
+  const maxPages = 100;
+  for (let pageNumber = 0; pageNumber < maxPages; pageNumber++) {
+    let response: Response | null = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      response = await fetch('https://api.hubapi.com/crm/v3/objects/deals/search', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filterGroups, properties, limit: 100, ...(after === undefined ? {} : { after }) }),
+      });
+      if (response.status !== 429) break;
+      const waitSeconds = Math.min(5, Math.max(0, Number(response.headers.get('Retry-After') || 1)));
+      await new Promise((resolve) => setTimeout(resolve, waitSeconds * 1000));
+    }
+    if (!response) throw new Error('HubSpot search produced no response');
+    if (!response.ok) throw new Error(`Failed to fetch deals from HubSpot: ${response.statusText}`);
+    const page = await response.json();
+    for (const deal of page.results || []) if (deal?.id) results.set(deal.id, deal);
+    const next = page.paging?.next?.after;
+    if (next === undefined) return [...results.values()];
+    const nextCursor = Number(next);
+    if (!Number.isFinite(nextCursor) || seenCursors.has(nextCursor)) throw new Error('HubSpot returned a repeated or invalid pagination cursor');
+    seenCursors.add(nextCursor);
+    after = nextCursor;
+  }
+  throw new Error(`HubSpot search exceeded the ${maxPages}-page safety limit`);
+}
+
+export async function fetchStageEntryDates(
+  accessToken: string,
+  deals: Array<{ id: string; currentStage: string | null | undefined }>
+): Promise<Map<string, string>> {
+  const result = new Map<string, string>();
+  const currentStageById = new Map(deals.map((deal) => [deal.id, deal.currentStage]));
+  const dealIds = deals.map((deal) => deal.id);
+  for (let i = 0; i < dealIds.length; i += 100) {
+    const response = await fetch('https://api.hubapi.com/crm/v3/objects/deals/batch/read', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ inputs: dealIds.slice(i, i + 100).map((id) => ({ id })), propertiesWithHistory: ['dealstage'] }),
+    });
+    if (!response.ok) continue;
+    const body = await response.json();
+    for (const deal of body.results || []) {
+      const history = deal.propertiesWithHistory?.dealstage || [];
+      const currentStage = currentStageById.get(deal.id);
+      const latest = history
+        .filter((entry: { value?: string }) => !!currentStage && entry.value === currentStage)
+        .map((entry: { timestamp?: string }) => entry.timestamp)
+        .filter((timestamp: unknown): timestamp is string => typeof timestamp === 'string' && Number.isFinite(Date.parse(timestamp)))
+        .sort()
+        .at(-1);
+      if (latest) result.set(deal.id, latest);
+    }
+  }
+  return result;
+}
+
 /**
  * Fetches HubSpot pipeline data for a given client, enriches it with contact info
  * and recent website visits, and returns a sanitized list of open deals.
@@ -33,7 +104,7 @@ interface ActivityProperties {
 export async function getValidHubSpotToken(clientId: string): Promise<string | null> {
   const { data: tokens, error: tokenError } = await supabaseAdmin
     .from('crm_tokens')
-    .select('access_token, refresh_token, expires_at')
+    .select('access_token, refresh_token, expires_at, connection_status')
     .eq('client_id', clientId)
     .eq('crm_type', 'hubspot')
     .order('updated_at', { ascending: false });
@@ -47,6 +118,7 @@ export async function getValidHubSpotToken(clientId: string): Promise<string | n
     console.warn(`[HubSpot Token] No HubSpot OAuth connection found for client ${clientId}`);
     return null;
   }
+  if (tokenData.connection_status === 'unhealthy') return null;
 
   let accessToken = decrypt(tokenData.access_token);
   if (!accessToken) {
@@ -75,15 +147,20 @@ export async function getValidHubSpotToken(clientId: string): Promise<string | n
       });
 
       if (!refreshRes.ok) {
-        const errBody = await refreshRes.text();
-        console.error('[HubSpot Token] Refresh failed:', refreshRes.status, errBody);
-        return accessToken;
+        console.error('[HubSpot Token] Refresh failed with status:', refreshRes.status);
+        await supabaseAdmin.from('crm_tokens').update({ connection_status: 'unhealthy', last_error: `refresh_http_${refreshRes.status}`, updated_at: new Date().toISOString() }).eq('client_id', clientId).eq('crm_type', 'hubspot');
+        return null;
       }
 
       const refreshData = await refreshRes.json();
       const newAccessToken = refreshData.access_token;
-      const newRefreshToken = refreshData.refresh_token;
-      const newExpiresAt = new Date(Date.now() + 1800 * 1000).toISOString();
+      if (!refreshData.access_token || !Number.isFinite(Number(refreshData.expires_in))) {
+        console.error('[HubSpot Token] Refresh response is missing required fields');
+        await supabaseAdmin.from('crm_tokens').update({ connection_status: 'unhealthy', last_error: 'refresh_invalid_response', updated_at: new Date().toISOString() }).eq('client_id', clientId).eq('crm_type', 'hubspot');
+        return null;
+      }
+      const newRefreshToken = refreshData.refresh_token || decryptedRefreshToken;
+      const newExpiresAt = new Date(Date.now() + Number(refreshData.expires_in) * 1000).toISOString();
       const encryptedAccess = encrypt(newAccessToken);
       const encryptedRefresh = encrypt(newRefreshToken);
 
@@ -93,6 +170,8 @@ export async function getValidHubSpotToken(clientId: string): Promise<string | n
           access_token: encryptedAccess,
           refresh_token: encryptedRefresh,
           expires_at: newExpiresAt,
+          connection_status: 'healthy',
+          last_error: null,
           updated_at: new Date().toISOString(),
         })
         .eq('client_id', clientId)
@@ -100,12 +179,15 @@ export async function getValidHubSpotToken(clientId: string): Promise<string | n
 
       if (updateError) {
         console.error('[HubSpot Token] Failed to update refreshed tokens:', updateError.message);
+        return null;
       } else {
         console.log('[HubSpot Token] Refreshed and updated successfully.');
         accessToken = newAccessToken;
       }
     } catch (refreshErr) {
       console.error('[HubSpot Token] Exception during refresh:', refreshErr);
+      await supabaseAdmin.from('crm_tokens').update({ connection_status: 'unhealthy', last_error: 'refresh_exception', updated_at: new Date().toISOString() }).eq('client_id', clientId).eq('crm_type', 'hubspot');
+      return null;
     }
   }
 
@@ -133,27 +215,19 @@ export async function fetchHubSpotPipeline(clientId: string, bypassCache = false
 
   // 2. Get valid HubSpot access token (handles lookup, decrypt, refresh)
   const accessToken = await getValidHubSpotToken(clientId);
-  if (!accessToken) return [];
+  if (!accessToken) throw new Error('HubSpot connection is unavailable');
 
   // 4. Fetch open deals from HubSpot CRM
   const searchUrl = 'https://api.hubapi.com/crm/v3/objects/deals/search';
   console.log('[HubSpot Pipeline debug] Fetching open deals from Search URL:', searchUrl);
-  const dealsRes = await fetch(searchUrl, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      filterGroups: [
+  const rawDeals = await searchHubSpotDeals(accessToken, [
         {
           filters: [
             { propertyName: 'dealstage', operator: 'NEQ', value: 'closedwon' },
             { propertyName: 'dealstage', operator: 'NEQ', value: 'closedlost' }
           ]
         }
-      ],
-      properties: [
+      ], [
         'dealname',
         'dealstage',
         'amount',
@@ -165,19 +239,8 @@ export async function fetchHubSpotPipeline(clientId: string, bypassCache = false
         'notes_last_contacted',
         'hs_last_booked_meeting_date',
         'hs_last_sales_activity_timestamp'
-      ],
-      limit: 100
-    })
-  });
-
-  if (!dealsRes.ok) {
-    const errBody = await dealsRes.json().catch(() => ({}));
-    console.error(`[Scout Pipeline API Error] Deals fetch from Search URL "${searchUrl}" failed with status ${dealsRes.status}:`, errBody);
-    throw new Error(`Failed to fetch deals from HubSpot: ${dealsRes.statusText}`);
-  }
-
-  const dealsData = await dealsRes.json();
-  const rawDeals = dealsData.results || [];
+        ,'hs_v2_date_entered_current_stage'
+      ]);
 
 interface HubSpotDealResult {
   id: string;
@@ -193,12 +256,17 @@ interface HubSpotDealResult {
     notes_last_contacted?: string;
     hs_last_booked_meeting_date?: string;
     hs_last_sales_activity_timestamp?: string;
+    hs_v2_date_entered_current_stage?: string;
   };
 }
 
   // Log how many deals are returned and what their stages are after the fix
   const dealStages = (rawDeals as HubSpotDealResult[]).map((d) => d.properties?.dealstage || 'unknown');
   console.log(`[HubSpot Pipeline] Returned ${rawDeals.length} deals with stages:`, dealStages);
+  const stageEntryDates = await fetchStageEntryDates(accessToken, (rawDeals as HubSpotDealResult[]).map((deal) => ({
+    id: deal.id,
+    currentStage: deal.properties?.dealstage,
+  })));
 
   // Fetch unique owner details from HubSpot Owners API
   const uniqueOwnerIds = Array.from(
@@ -211,9 +279,8 @@ interface HubSpotDealResult {
 
   const ownerMap = new Map<string, { email: string; name: string }>();
 
-  if (uniqueOwnerIds.length > 0) {
-    await Promise.all(
-      uniqueOwnerIds.map(async (ownerId) => {
+  for (let ownerOffset = 0; ownerOffset < uniqueOwnerIds.length; ownerOffset += 10) {
+    await Promise.all(uniqueOwnerIds.slice(ownerOffset, ownerOffset + 10).map(async (ownerId) => {
         try {
           const ownerRes = await fetch(`https://api.hubapi.com/crm/v3/owners/${ownerId}`, {
             method: 'GET',
@@ -235,8 +302,7 @@ interface HubSpotDealResult {
         } catch (err) {
           console.error(`[HubSpot Pipeline Error] Failed to fetch owner details for ID: ${ownerId}:`, err);
         }
-      })
-    );
+      }));
   }
 
   // 5. Batch-fetch all deal→contact associations in one API call (replaces N+1 per-deal fetches)
@@ -262,7 +328,8 @@ interface HubSpotDealResult {
           });
 
           if (assocRes.status === 429) {
-            const retryAfter = parseInt(assocRes.headers.get('Retry-After') || '10', 10);
+            const parsedRetryAfter = Number(assocRes.headers.get('Retry-After') || 1);
+            const retryAfter = Math.min(5, Math.max(0, Number.isFinite(parsedRetryAfter) ? parsedRetryAfter : 1));
             console.warn(`[Scout Pipeline] 429 on batch associations — waiting ${retryAfter}s`);
             await new Promise(r => setTimeout(r, retryAfter * 1000));
             retries++;
@@ -343,9 +410,9 @@ interface HubSpotDealResult {
 
   // Map contact IDs to emails for each deal
   const dealsWithEmails = detailedDeals.map((d) => {
-    const emails = d.contactIds
+    const emails = Array.from(new Set(d.contactIds
       .map((id) => contactIdToEmail.get(id))
-      .filter((email): email is string => !!email);
+      .filter((email): email is string => !!email)));
     const contactsInfo = d.contactIds.map((id) => ({
       email: contactIdToEmail.get(id) || null,
       title: contactIdToTitle.get(id) || null,
@@ -363,23 +430,31 @@ interface HubSpotDealResult {
   const allSessionIds: string[] = [];
 
   if (allEmails.length > 0) {
-    const { data: sessions, error: sessionsErr } = await supabaseAdmin
-      .from('sessions')
-      .select('id, prospect_email')
-      .eq('client_id', clientId)
-      .in('prospect_email', allEmails);
+    for (let emailOffset = 0; emailOffset < allEmails.length; emailOffset += 100) {
+      const emailChunk = allEmails.slice(emailOffset, emailOffset + 100);
+      for (let page = 0; page < 100; page++) {
+        const from = page * 1000;
+        const { data: sessions, error: sessionsErr } = await supabaseAdmin
+          .from('sessions')
+          .select('id, prospect_email')
+          .eq('client_id', clientId)
+          .in('prospect_email', emailChunk)
+          .range(from, from + 999);
 
-    if (sessionsErr) {
-      console.error('[Scout Pipeline DB Error] Failed fetching sessions:', sessionsErr);
-    } else if (sessions) {
-      for (const session of sessions) {
-        if (session.prospect_email) {
-          const email = session.prospect_email.toLowerCase().trim();
-          const list = emailToSessionIds.get(email) || [];
-          list.push(session.id);
-          emailToSessionIds.set(email, list);
-          allSessionIds.push(session.id);
+        if (sessionsErr) {
+          console.error('[Scout Pipeline DB Error] Failed fetching sessions:', sessionsErr);
+          break;
         }
+        for (const session of sessions || []) {
+          if (session.prospect_email) {
+            const email = session.prospect_email.toLowerCase().trim();
+            const list = emailToSessionIds.get(email) || [];
+            list.push(session.id);
+            emailToSessionIds.set(email, list);
+            allSessionIds.push(session.id);
+          }
+        }
+        if (!sessions || sessions.length < 1000) break;
       }
     }
   }
@@ -394,21 +469,27 @@ interface HubSpotDealResult {
     const chunkSize = 100;
     for (let i = 0; i < uniqueSessionIds.length; i += chunkSize) {
       const chunk = uniqueSessionIds.slice(i, i + chunkSize);
-      const { data: events, error: eventsErr } = await supabaseAdmin
-        .from('analytics_events')
-        .select('session_id')
-        .eq('client_id', clientId)
-        .in('session_id', chunk)
-        .gte('created_at', sevenDaysAgo.toISOString());
+      for (let page = 0; page < 100; page++) {
+        const from = page * 1000;
+        const { data: events, error: eventsErr } = await supabaseAdmin
+          .from('analytics_events')
+          .select('session_id')
+          .eq('client_id', clientId)
+          .in('session_id', chunk)
+          .eq('event_type', 'page_view')
+          .gte('created_at', sevenDaysAgo.toISOString())
+          .range(from, from + 999);
 
-      if (eventsErr) {
-        console.error('[Scout Pipeline DB Error] Failed fetching analytics events:', eventsErr);
-      } else if (events) {
-        for (const ev of events) {
+        if (eventsErr) {
+          console.error('[Scout Pipeline DB Error] Failed fetching analytics events:', eventsErr);
+          break;
+        }
+        for (const ev of events || []) {
           if (ev.session_id) {
             sessionToEventCount.set(ev.session_id, (sessionToEventCount.get(ev.session_id) || 0) + 1);
           }
         }
+        if (!events || events.length < 1000) break;
       }
     }
   }
@@ -424,15 +505,11 @@ interface HubSpotDealResult {
     }
 
     const dealProps = item.deal.properties || {};
-    const createdate = dealProps.createdate;
+    const stageEnteredAt = stageEntryDates.get(item.deal.id) || dealProps.hs_v2_date_entered_current_stage;
     const hs_last_sales_activity_timestamp = item.activityProperties.hs_last_sales_activity_timestamp;
 
     // Calculate days_in_stage
-    let days_in_stage = 0;
-    if (createdate) {
-      const diffMs = Date.now() - new Date(createdate).getTime();
-      days_in_stage = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
-    }
+    const days_in_stage = daysSince(stageEnteredAt);
 
     // Calculate last_activity_days
     let last_activity_days: number | null = null;
@@ -446,10 +523,7 @@ interface HubSpotDealResult {
       lastActivityTimestamp = item.activityProperties.hs_last_booked_meeting_date;
     }
 
-    if (lastActivityTimestamp) {
-      const diffMs = Date.now() - new Date(lastActivityTimestamp).getTime();
-      last_activity_days = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
-    }
+    if (lastActivityTimestamp) last_activity_days = daysSince(lastActivityTimestamp);
 
     const ownerId = dealProps.hubspot_owner_id;
     const ownerInfo = ownerId ? ownerMap.get(ownerId) : null;
@@ -463,6 +537,7 @@ interface HubSpotDealResult {
       deal_value: dealProps.amount ? parseFloat(dealProps.amount) : 0,
       close_date: dealProps.closedate || null,
       days_in_stage,
+      stage_entered_at: stageEnteredAt || null,
       last_activity_days,
       contact_count: item.contactIds.length,
       contact_emails: item.emails,
@@ -489,7 +564,7 @@ export interface ScoutClosedLostDeal {
   stage: string;
   deal_value: number;
   close_date: string | null;
-  days_in_stage: number;
+  days_in_stage: number | null;
   last_activity_days: number | null;
   contact_count: number;
 }
@@ -501,41 +576,10 @@ export async function fetchClosedLostDeals(clientId: string): Promise<ScoutClose
 
   // 1. Get valid HubSpot access token (handles lookup, decrypt, refresh)
   const accessToken = await getValidHubSpotToken(clientId);
-  if (!accessToken) return [];
+  if (!accessToken) throw new Error('HubSpot connection is unavailable');
 
   // 3. Search closed lost deals from HubSpot CRM
-  const searchUrl = 'https://api.hubapi.com/crm/v3/objects/deals/search';
-  const searchRes = await fetch(searchUrl, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      filterGroups: [
-        {
-          filters: [
-            {
-              propertyName: 'dealstage',
-              operator: 'EQ',
-              value: 'closedlost'
-            }
-          ]
-        }
-      ],
-      properties: ['dealname', 'dealstage', 'amount', 'closedate', 'createdate', 'hs_lastmodifieddate', 'hubspot_owner_id', 'hs_last_activity_date', 'notes_last_contacted', 'hs_last_booked_meeting_date', 'hs_last_sales_activity_timestamp'],
-      limit: 100
-    })
-  });
-
-  if (!searchRes.ok) {
-    const errBody = await searchRes.json().catch(() => ({}));
-    console.error(`[Scout Closed Lost API Error] Deals search failed:`, errBody);
-    throw new Error(`Failed to search closedlost deals: ${searchRes.statusText}`);
-  }
-
-  const searchData = await searchRes.json();
-  const rawDeals = searchData.results || [];
+  const rawDeals = await searchHubSpotDeals(accessToken, [{ filters: [{ propertyName: 'dealstage', operator: 'EQ', value: 'closedlost' }] }], ['dealname', 'dealstage', 'amount', 'closedate', 'createdate', 'hs_lastmodifieddate', 'hubspot_owner_id', 'hs_last_activity_date', 'notes_last_contacted', 'hs_last_booked_meeting_date', 'hs_last_sales_activity_timestamp', 'hs_v2_date_entered_current_stage']);
 
   interface HubSpotDealResult {
     id: string;
@@ -551,19 +595,25 @@ export async function fetchClosedLostDeals(clientId: string): Promise<ScoutClose
       notes_last_contacted?: string;
       hs_last_booked_meeting_date?: string;
       hs_last_sales_activity_timestamp?: string;
+      hs_v2_date_entered_current_stage?: string;
     };
   }
 
   // 4. Batch-fetch all deal→contact associations (replaces N+1 per-deal fetches)
   // Activity properties are already in rawDeals from the search request above
   const closedLostDealIds = (rawDeals as HubSpotDealResult[]).map(d => d.id);
+  const closedLostStageEntryDates = await fetchStageEntryDates(accessToken, (rawDeals as HubSpotDealResult[]).map((deal) => ({
+    id: deal.id,
+    currentStage: deal.properties?.dealstage,
+  })));
   const closedLostContactMap = new Map<string, string[]>();
   if (closedLostDealIds.length > 0) {
-    try {
+    for (let offset = 0; offset < closedLostDealIds.length; offset += 100) try {
+      const chunk = closedLostDealIds.slice(offset, offset + 100);
       const assocRes = await fetch('https://api.hubapi.com/crm/v3/associations/deals/contacts/batch/read', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ inputs: closedLostDealIds.map(id => ({ from: { id } })) }),
+        body: JSON.stringify({ inputs: chunk.map(id => ({ from: { id } })) }),
       });
       if (assocRes.ok) {
         const assocData = await assocRes.json();
@@ -588,15 +638,11 @@ export async function fetchClosedLostDeals(clientId: string): Promise<ScoutClose
       };
 
       const dealProps = deal.properties || {};
-      const createdate = dealProps.createdate;
+      const stageEnteredAt = closedLostStageEntryDates.get(deal.id) || dealProps.hs_v2_date_entered_current_stage;
       const hs_last_sales_activity_timestamp = activityProperties.hs_last_sales_activity_timestamp;
 
       // Calculate days_in_stage (or final stage duration)
-      let days_in_stage = 0;
-      if (createdate) {
-        const diffMs = Date.now() - new Date(createdate).getTime();
-        days_in_stage = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
-      }
+      const days_in_stage = daysSince(stageEnteredAt);
 
       // Calculate last_activity_days
       let last_activity_days: number | null = null;
@@ -609,10 +655,7 @@ export async function fetchClosedLostDeals(clientId: string): Promise<ScoutClose
         lastActivityTimestamp = activityProperties.hs_last_booked_meeting_date;
       }
 
-      if (lastActivityTimestamp) {
-        const diffMs = Date.now() - new Date(lastActivityTimestamp).getTime();
-        last_activity_days = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
-      }
+      if (lastActivityTimestamp) last_activity_days = daysSince(lastActivityTimestamp);
 
       return {
         deal_id: deal.id,
@@ -645,41 +688,10 @@ export async function fetchClosedWonDeals(clientId: string): Promise<ScoutClosed
 
   // 1. Get valid HubSpot access token (handles lookup, decrypt, refresh)
   const accessToken = await getValidHubSpotToken(clientId);
-  if (!accessToken) return [];
+  if (!accessToken) throw new Error('HubSpot connection is unavailable');
 
   // 3. Search closedwon deals from HubSpot CRM
-  const searchUrl = 'https://api.hubapi.com/crm/v3/objects/deals/search';
-  const searchRes = await fetch(searchUrl, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      filterGroups: [
-        {
-          filters: [
-            {
-              propertyName: 'dealstage',
-              operator: 'EQ',
-              value: 'closedwon'
-            }
-          ]
-        }
-      ],
-      properties: ['dealname', 'dealstage', 'amount', 'closedate', 'createdate', 'hs_lastmodifieddate', 'hubspot_owner_id', 'hs_last_activity_date', 'notes_last_contacted', 'hs_last_booked_meeting_date', 'hs_last_sales_activity_timestamp'],
-      limit: 100
-    })
-  });
-
-  if (!searchRes.ok) {
-    const errBody = await searchRes.json().catch(() => ({}));
-    console.error(`[Scout Closed Won API Error] Deals search failed:`, errBody);
-    throw new Error(`Failed to search closedwon deals: ${searchRes.statusText}`);
-  }
-
-  const searchData = await searchRes.json();
-  const rawDeals = searchData.results || [];
+  const rawDeals = await searchHubSpotDeals(accessToken, [{ filters: [{ propertyName: 'dealstage', operator: 'EQ', value: 'closedwon' }] }], ['dealname', 'dealstage', 'amount', 'closedate', 'createdate', 'hs_lastmodifieddate', 'hubspot_owner_id', 'hs_last_activity_date', 'notes_last_contacted', 'hs_last_booked_meeting_date', 'hs_last_sales_activity_timestamp', 'hs_v2_date_entered_current_stage']);
 
   interface HubSpotDealResult {
     id: string;
@@ -702,11 +714,12 @@ export async function fetchClosedWonDeals(clientId: string): Promise<ScoutClosed
   const closedWonDealIds = (rawDeals as HubSpotDealResult[]).map(d => d.id);
   const closedWonContactMap = new Map<string, string[]>();
   if (closedWonDealIds.length > 0) {
-    try {
+    for (let offset = 0; offset < closedWonDealIds.length; offset += 100) try {
+      const chunk = closedWonDealIds.slice(offset, offset + 100);
       const assocRes = await fetch('https://api.hubapi.com/crm/v3/associations/deals/contacts/batch/read', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ inputs: closedWonDealIds.map(id => ({ from: { id } })) }),
+        body: JSON.stringify({ inputs: chunk.map(id => ({ from: { id } })) }),
       });
       if (assocRes.ok) {
         const assocData = await assocRes.json();
@@ -793,5 +806,3 @@ export async function fetchClosedWonDeals(clientId: string): Promise<ScoutClosed
     };
   });
 }
-
-

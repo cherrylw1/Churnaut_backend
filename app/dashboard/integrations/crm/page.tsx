@@ -76,7 +76,7 @@ export default function CrmIndexPage() {
 
   const getStatusBadge = (crmName: string) => {
     if (loading) return <span className="text-[9px] font-mono text-[var(--text-muted)]">...</span>;
-    return crmType === crmName ? (
+    return status?.connected && crmType === crmName ? (
       <div className="flex items-center gap-1.5 text-[var(--green)] text-xs font-mono">
         <span className="w-1.5 h-1.5 rounded-full bg-[var(--green)] animate-pulse"></span>
         Connected
@@ -170,16 +170,11 @@ export default function CrmIndexPage() {
                 {getStatusBadge('pipedrive')}
               </div>
               <p className="font-mono text-xs text-[var(--text-secondary)] leading-relaxed">
-                Sync deals, contacts, and pipeline stages from Pipedrive.
+                Webhook intake is available; native Scout pipeline sync is not yet available.
               </p>
             </div>
             <div>
-              <Link
-                href="/dashboard/integrations/crm/pipedrive"
-                className="block w-full py-2 px-3 border border-[var(--border-subtle)] hover:border-[#C2683D] hover:text-white text-[var(--text-secondary)] font-mono text-xs rounded text-center transition-all hover:bg-[#C2683D]/5 active:scale-[0.98]"
-              >
-                MANAGE →
-              </Link>
+              <span className="block w-full py-2 px-3 border border-[var(--border-subtle)] text-[var(--text-muted)] font-mono text-xs rounded text-center">WEBHOOK ONLY — ADAPTER PENDING</span>
             </div>
           </div>
 
@@ -191,16 +186,11 @@ export default function CrmIndexPage() {
                 {getStatusBadge('zoho')}
               </div>
               <p className="font-mono text-xs text-[var(--text-secondary)] leading-relaxed">
-                Sync Zoho CRM contacts, leads, and deal stages for real-time personalization.
+                Webhook intake is available; native Scout pipeline sync is not yet available.
               </p>
             </div>
             <div>
-              <Link
-                href="/dashboard/integrations/crm/zoho"
-                className="block w-full py-2 px-3 border border-[var(--border-subtle)] hover:border-[#C2683D] hover:text-white text-[var(--text-secondary)] font-mono text-xs rounded text-center transition-all hover:bg-[#C2683D]/5 active:scale-[0.98]"
-              >
-                MANAGE →
-              </Link>
+              <span className="block w-full py-2 px-3 border border-[var(--border-subtle)] text-[var(--text-muted)] font-mono text-xs rounded text-center">WEBHOOK ONLY — ADAPTER PENDING</span>
             </div>
           </div>
 
@@ -212,16 +202,11 @@ export default function CrmIndexPage() {
                 {getStatusBadge('close')}
               </div>
               <p className="font-mono text-xs text-[var(--text-secondary)] leading-relaxed">
-                Sync Close CRM leads, opportunities, and rep activity into personalization flows.
+                Webhook intake is available; native Scout pipeline sync is not yet available.
               </p>
             </div>
             <div>
-              <Link
-                href="/dashboard/integrations/crm/close"
-                className="block w-full py-2 px-3 border border-[var(--border-subtle)] hover:border-[#C2683D] hover:text-white text-[var(--text-secondary)] font-mono text-xs rounded text-center transition-all hover:bg-[#C2683D]/5 active:scale-[0.98]"
-              >
-                MANAGE →
-              </Link>
+              <span className="block w-full py-2 px-3 border border-[var(--border-subtle)] text-[var(--text-muted)] font-mono text-xs rounded text-center">WEBHOOK ONLY — ADAPTER PENDING</span>
             </div>
           </div>
 

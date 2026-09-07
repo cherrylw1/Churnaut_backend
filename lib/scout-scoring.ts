@@ -526,7 +526,7 @@ Your response must be a single, plain-text string containing exactly the 3-sente
           conditions: {
             job_title_contains: jt,
           },
-          action_type: 'swap_text',
+          action_type: 'inject_copy',
           action_payload: {
             swaps: [
               {
@@ -558,5 +558,4 @@ Your response must be a single, plain-text string containing exactly the 3-sente
     rules_created: rulesCreated,
   };
 }
-
 

@@ -32,6 +32,10 @@ export interface Session {
   converted: boolean;
   converted_at?: string;
   visitor_token?: string;
+  destination_url?: string | null;
+  session_kind?: 'tracked_link' | 'anonymous_visit' | 'webhook' | string;
+  tracked_url?: string | null;
+  legacy_destination_fallback?: boolean;
   metadata?: {
     utms?: {
       utm_source?: string | null;

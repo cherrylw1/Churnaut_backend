@@ -48,8 +48,4 @@ describe('Crypto module tests', () => {
     expect(() => decrypt('notvalid')).toThrow()
     expect(() => decrypt('part1:part2')).toThrow()
   })
-
-  it.skip('should skip legacy CBC path testing as CBC support has been removed', () => {
-    // CBC support was removed in Phase 14.
-  })
 })

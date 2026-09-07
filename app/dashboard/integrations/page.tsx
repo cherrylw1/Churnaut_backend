@@ -75,6 +75,9 @@ export default function IntegrationsPage() {
           CRM PLATFORMS
         </span>
       </div>
+      <div className="border border-[var(--accent)]/20 bg-[var(--accent)]/5 rounded-lg px-4 py-3 text-xs font-mono text-[var(--text-secondary)]">
+        Scout intelligence is currently powered by the HubSpot adapter. Other CRM connections can receive webhooks, but are not presented as Scout-enriched integrations until their adapter is enabled.
+      </div>
 
       {/* Grid of CRM Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -138,12 +141,7 @@ export default function IntegrationsPage() {
               </p>
             </div>
             <div>
-              <Link
-                href="/dashboard/integrations/crm/pipedrive"
-                className="block w-full py-2 px-3 border border-[var(--border-subtle)] hover:border-[var(--accent)] hover:text-[var(--text-primary)] text-[var(--text-secondary)] font-mono text-xs rounded text-center transition-all hover:bg-[var(--accent)]/5 active:scale-[0.98]"
-              >
-                MANAGE →
-              </Link>
+              <span className="block w-full py-2 px-3 border border-[var(--border-subtle)] text-[var(--text-muted)] font-mono text-xs rounded text-center">WEBHOOK ONLY — ADAPTER PENDING</span>
             </div>
           </div>
         </div>
@@ -177,12 +175,7 @@ export default function IntegrationsPage() {
               </p>
             </div>
             <div>
-              <Link
-                href="/dashboard/integrations/crm/zoho"
-                className="block w-full py-2 px-3 border border-[var(--border-subtle)] hover:border-[var(--accent)] hover:text-[var(--text-primary)] text-[var(--text-secondary)] font-mono text-xs rounded text-center transition-all hover:bg-[var(--accent)]/5 active:scale-[0.98]"
-              >
-                MANAGE →
-              </Link>
+              <span className="block w-full py-2 px-3 border border-[var(--border-subtle)] text-[var(--text-muted)] font-mono text-xs rounded text-center">WEBHOOK ONLY — ADAPTER PENDING</span>
             </div>
           </div>
         </div>
@@ -216,12 +209,7 @@ export default function IntegrationsPage() {
               </p>
             </div>
             <div>
-              <Link
-                href="/dashboard/integrations/crm/close"
-                className="block w-full py-2 px-3 border border-[var(--border-subtle)] hover:border-[var(--accent)] hover:text-[var(--text-primary)] text-[var(--text-secondary)] font-mono text-xs rounded text-center transition-all hover:bg-[var(--accent)]/5 active:scale-[0.98]"
-              >
-                MANAGE →
-              </Link>
+              <span className="block w-full py-2 px-3 border border-[var(--border-subtle)] text-[var(--text-muted)] font-mono text-xs rounded text-center">WEBHOOK ONLY — ADAPTER PENDING</span>
             </div>
           </div>
         </div>

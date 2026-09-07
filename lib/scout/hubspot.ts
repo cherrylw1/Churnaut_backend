@@ -77,6 +77,12 @@ export async function buildHubSpotCrmSignals(clientId: string): Promise<CrmSigna
       stage_canonical: mapStage(d.stage),
       close_date: d.close_date ?? undefined,
       days_in_current_stage: d.days_in_stage,
+      stage_history: d.stage_entered_at ? [{
+        stage_raw: d.stage,
+        canonical: mapStage(d.stage),
+        entered_at: d.stage_entered_at,
+        days_in_stage: d.days_in_stage ?? undefined,
+      }] : [],
       last_activity_at,
       days_since_last_activity: d.last_activity_days ?? undefined,
       contacts,

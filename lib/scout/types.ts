@@ -101,7 +101,7 @@ export interface CrmSignals {
   close_date?: string;
   created_at?: string;
   deal_age_days?: number;
-  days_in_current_stage?: number;
+  days_in_current_stage?: number | null;
   last_activity_at?: string;
   last_activity_type?: ActivityType;
   days_since_last_activity?: number;

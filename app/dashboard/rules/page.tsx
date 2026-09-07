@@ -6,6 +6,7 @@ import { Sliders } from 'lucide-react';
 import { toast } from '@/hooks/useToast';
 import EmptyState from '@/components/ui/EmptyState';
 import ErrorState from '@/components/ui/ErrorState';
+import { isCanonicalRuleConfiguration } from '@/lib/validation';
 
 interface PlaybookInput {
   field_name: string;
@@ -60,11 +61,11 @@ const CONDITION_OPTIONS = [
 // Action types mapping
 const ACTION_MAPPING = [
   { value: 'show_calendar', label: 'Show Rep Calendar' },
-  { value: 'show_short_form', label: 'Show Demo Request Form' },
   { value: 'inject_copy', label: 'Change Page Text' },
-  { value: 'show_case_study', label: 'Show Case Study' },
-  { value: 'redirect', label: 'Send to Different Page' },
 ];
+const SUPPORTED_CONDITIONS = new Set(['job_title_contains', 'company_name_equals', 'deal_stage_equals', 'visitor_type_equals', 'utm_campaign_contains', 'utm_source_equals', 'utm_medium_equals', 'utm_content_contains']);
+
+const isValidStoredRule = (rule: RoutingRule) => isCanonicalRuleConfiguration(rule);
 
 export default function RulesPage() {
   const [plan, setPlan] = useState<string>('starter');
@@ -169,7 +170,7 @@ export default function RulesPage() {
   // Helper: Get human-readable action label
   const getActionLabel = (actionType: string) => {
     const matched = ACTION_MAPPING.find((a) => a.value === actionType);
-    return matched ? matched.label : actionType;
+    return matched ? matched.label : 'Unsupported legacy action';
   };
 
   // Helper: Display conditions in plain English
@@ -178,6 +179,7 @@ export default function RulesPage() {
       return 'Any visitor';
     }
     const parts: string[] = [];
+    if (!Object.entries(conditions).every(([key, value]) => SUPPORTED_CONDITIONS.has(key) && typeof value === 'string' && value.trim())) return 'Invalid configuration';
     if (conditions.job_title_contains) {
       parts.push(`Job title contains "${conditions.job_title_contains}"`);
     }
@@ -268,10 +270,6 @@ export default function RulesPage() {
       payload.calendar_url = content;
     } else if (type === 'inject_copy') {
       payload.variant_content = content;
-    } else if (type === 'redirect') {
-      payload.url = content;
-    } else {
-      payload.value = content;
     }
     return payload;
   };
@@ -397,6 +395,10 @@ export default function RulesPage() {
 
   // Toggle active/inactive status immediately
   const handleToggleActive = async (rule: RoutingRule) => {
+    if (!isValidStoredRule(rule)) {
+      toast.error('Repair this invalid configuration before activating it.');
+      return;
+    }
     const updatedStatus = !rule.active;
 
     // Optimistic state update
@@ -428,15 +430,20 @@ export default function RulesPage() {
   // Create new rule submit handler
   const handleCreateRule = async (e: FormEvent) => {
     e.preventDefault();
+    if (newConditionType !== 'Any visitor' && !newConditionValue.trim()) {
+      toast.error('Condition value is required.');
+      return;
+    }
+    if (newActionType === 'show_calendar' && (!newActionContent.startsWith('https://') || !newSwaps[0]?.selector.trim())) {
+      toast.error('Calendar rules require an HTTPS calendar URL and target selector.');
+      return;
+    }
     setSavingNewRule(true);
 
     try {
       const conditionsPayload = buildConditionsPayload(newConditionType, newConditionValue);
       const basePayload = buildActionPayload(newActionType, newActionContent);
-      const actionPayload = {
-        ...basePayload,
-        swaps: newSwaps,
-      };
+      const actionPayload = newActionType === 'show_calendar' ? basePayload : { ...basePayload, swaps: newSwaps };
 
       const firstSwap = newSwaps[0] || { selector: '.sr-target', content: '' };
 
@@ -480,16 +487,21 @@ export default function RulesPage() {
   const handleUpdateRule = async (e: FormEvent) => {
     e.preventDefault();
     if (!selectedRule) return;
+    if (editConditionType !== 'Any visitor' && !editConditionValue.trim()) {
+      toast.error('Condition value is required.');
+      return;
+    }
+    if (editActionType === 'show_calendar' && (!editActionContent.startsWith('https://') || !editSwaps[0]?.selector.trim())) {
+      toast.error('Calendar rules require an HTTPS calendar URL and target selector.');
+      return;
+    }
 
     setUpdatingRule(true);
 
     try {
       const conditionsPayload = buildConditionsPayload(editConditionType, editConditionValue);
       const basePayload = buildActionPayload(editActionType, editActionContent);
-      const actionPayload = {
-        ...basePayload,
-        swaps: editSwaps,
-      };
+      const actionPayload = editActionType === 'show_calendar' ? basePayload : { ...basePayload, swaps: editSwaps };
 
       const firstSwap = editSwaps[0] || { selector: '.sr-target', content: '' };
 
@@ -749,7 +761,7 @@ export default function RulesPage() {
                           {rule.signal_type || 'Any Signal'}
                         </span>
                         <span className="text-[10px] font-mono px-2 py-0.5 bg-[var(--green)]/10 border border-[var(--green)]/30 text-[var(--green)] rounded">
-                          {getActionLabel(rule.action_type)}
+                          {isValidStoredRule(rule) ? getActionLabel(rule.action_type) : 'Invalid configuration'}
                         </span>
                       </div>
 
@@ -775,15 +787,17 @@ export default function RulesPage() {
                     >
                       <button
                         onClick={() => handleToggleActive(rule)}
+                        disabled={!isValidStoredRule(rule)}
+                        title={!isValidStoredRule(rule) ? 'Repair this invalid configuration before activation' : undefined}
                         className={`w-10 h-5 rounded-full p-0.5 transition-colors focus:outline-none border ${
-                          rule.active
+                          rule.active && isValidStoredRule(rule)
                             ? 'bg-[var(--accent)] border-[var(--accent)] text-right'
                             : 'bg-[var(--border-subtle)] border-[var(--border-subtle)] text-left'
                         }`}
                       >
                         <span
                           className={`inline-block w-3.5 h-3.5 rounded-full bg-white transition-transform transform ${
-                            rule.active ? 'translate-x-5' : 'translate-x-0'
+                            rule.active && isValidStoredRule(rule) ? 'translate-x-5' : 'translate-x-0'
                           }`}
                         />
                       </button>
@@ -817,6 +831,11 @@ export default function RulesPage() {
         {selectedRule && (
           <div className="w-[calc(40%-12px)] flex-shrink-0 min-w-0">
             <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/50 rounded-lg p-6 space-y-6">
+              {!isValidStoredRule(selectedRule) && (
+                <div className="rounded border border-[var(--red)]/40 bg-[var(--red)]/10 p-3 text-xs text-[var(--red)]">
+                  Invalid configuration: this rule cannot execute. Choose a supported action and valid condition, then save to repair it.
+                </div>
+              )}
               <div className="flex justify-between items-center border-b border-[var(--border-subtle)] pb-4">
                 <h2 className="text-sm font-bold tracking-wider font-mono text-[var(--accent)] uppercase">
                   Edit Rule #{selectedRule.priority}

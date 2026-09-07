@@ -376,10 +376,7 @@ export default function AnalyticsPage() {
                           (
                             {
                               show_calendar: 'Show Rep Calendar',
-                              show_short_form: 'Show Demo Request Form',
                               inject_copy: 'Change Page Text',
-                              show_case_study: 'Show Case Study',
-                              redirect: 'Send to Different Page'
                             } as Record<string, string>
                           )[rule.action_type] || rule.action_type
                         }

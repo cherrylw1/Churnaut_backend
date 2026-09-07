@@ -3,6 +3,7 @@ import {
   authSessionRequestSchema,
   createRuleRequestSchema,
   generatedRuleSchema,
+  linksRequestSchema,
   resolveRequestSchema,
   signupRequestSchema,
   webhookPayloadSchema,
@@ -23,12 +24,21 @@ describe('request validation', () => {
     expect(result.success).toBe(false);
   });
 
+  it('rejects unknown or empty tracking signals', () => {
+    expect(resolveRequestSchema.safeParse({ client_id: 'key', signals: { made_up: 'value' } }).success).toBe(false);
+    expect(resolveRequestSchema.safeParse({ client_id: 'key', utms: { utm_source: '' } }).success).toBe(false);
+  });
+
   it('rejects unsafe or unsupported routing actions', () => {
     const result = createRuleRequestSchema.safeParse({
       action_type: 'delete_everything',
       target_selector: '.cta',
     });
     expect(result.success).toBe(false);
+    expect(createRuleRequestSchema.safeParse({
+      action_type: 'inject_copy',
+      action_payload: { swaps: [{ selector: 'div::before', content: 'Unsafe' }] },
+    }).success).toBe(false);
   });
 
   it('requires a valid UUID for signup users', () => {
@@ -54,6 +64,13 @@ describe('request validation', () => {
     expect(generatedRuleSchema.safeParse({
       priority: 1,
       action_type: 'inject_copy',
+      action_payload: { swaps: [{ selector: '#headline', content: 'Hello' }] },
     }).success).toBe(true);
+  });
+
+  it('allows HTTP destinations but requires HTTPS calendar embeds', () => {
+    expect(linksRequestSchema.safeParse({ destination_url: 'http://example.com/page' }).success).toBe(true);
+    expect(linksRequestSchema.safeParse({ destination_url: 'https://example.com', calendar_url: 'http://calendar.example.com' }).success).toBe(false);
+    expect(linksRequestSchema.safeParse({ destination_url: 'https://example.com', calendar_url: 'https://calendar.example.com' }).success).toBe(true);
   });
 });

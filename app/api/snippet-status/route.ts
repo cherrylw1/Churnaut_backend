@@ -12,19 +12,16 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // 2. Compute 24-hour threshold
+    // Installation is proven by the explicit snippet heartbeat, never by a
+    // webhook or arbitrary analytics event.
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
     const yesterdayISO = yesterday.toISOString();
 
-    // 3. Query analytics_events for recent pings
-    const { data: recentEvent, error: queryErr } = await supabaseAdmin
-      .from('analytics_events')
-      .select('created_at')
-      .eq('client_id', clientId)
-      .gte('created_at', yesterdayISO)
-      .order('created_at', { ascending: false })
-      .limit(1)
+    const { data: client, error: queryErr } = await supabaseAdmin
+      .from('clients')
+      .select('last_snippet_ping_at')
+      .eq('id', clientId)
       .maybeSingle();
 
     if (queryErr) {
@@ -33,10 +30,10 @@ export async function GET(req: NextRequest) {
     }
 
     // 4. Return status
-    if (recentEvent) {
+    if (client?.last_snippet_ping_at && client.last_snippet_ping_at >= yesterdayISO) {
       return NextResponse.json({
         active: true,
-        lastPing: recentEvent.created_at,
+        lastPing: client.last_snippet_ping_at,
       });
     } else {
       return NextResponse.json({

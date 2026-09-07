@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { getClientPlan } from '@/lib/gate';
+import { getClientPlan, planGate } from '@/lib/gate';
 import { getAuthedClientId } from '@/lib/auth';
 import { readJson, createRuleRequestSchema, reorderRulesRequestSchema, updateRuleRequestSchema } from '@/lib/validation';
+import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,6 +44,8 @@ export async function POST(req: NextRequest) {
     }
 
     const plan = await getClientPlan(req)
+    const accountGate = planGate(plan, 'starter')
+    if (accountGate) return accountGate
     const { data: existingRules } = await supabaseAdmin
       .from('routing_rules')
       .select('id')
@@ -148,6 +151,29 @@ export async function PATCH(req: NextRequest) {
       variant_content,
     } = body;
 
+    const changesConfiguration = action_type !== undefined || action_payload !== undefined || target_selector !== undefined || variant_content !== undefined || conditions !== undefined || signal_type !== undefined;
+    if (changesConfiguration || active === true) {
+      const { data: existingRule, error: existingError } = await supabaseAdmin
+        .from('routing_rules')
+        .select('signal_type, conditions, action_type, action_payload, target_selector, variant_content')
+        .eq('id', id)
+        .eq('client_id', clientId)
+        .maybeSingle();
+      if (existingError) return NextResponse.json({ error: existingError.message }, { status: 500 });
+      if (!existingRule) return NextResponse.json({ error: 'Rule not found' }, { status: 404 });
+      const validated = createRuleRequestSchema.safeParse({
+        signal_type: signal_type !== undefined ? signal_type : existingRule.signal_type,
+        conditions: conditions !== undefined ? conditions : existingRule.conditions,
+        action_type: action_type !== undefined ? action_type : existingRule.action_type,
+        action_payload: action_payload !== undefined ? action_payload : existingRule.action_payload,
+        target_selector: target_selector !== undefined ? target_selector : existingRule.target_selector,
+        variant_content: variant_content !== undefined ? variant_content : existingRule.variant_content,
+      });
+      if (!validated.success) {
+        return NextResponse.json({ error: validated.error.issues.map((issue) => `${issue.path.join('.')}: ${issue.message}`).join('; ') }, { status: 400 });
+      }
+    }
+
     // Construct dynamic updates object
     const updates: Record<string, unknown> = {};
     if (active !== undefined) updates.active = active;
@@ -191,8 +217,8 @@ export async function DELETE(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
 
-    if (!id) {
-      return NextResponse.json({ error: 'id parameter is required' }, { status: 400 });
+    if (!id || !z.string().uuid().safeParse(id).success) {
+      return NextResponse.json({ error: 'A valid rule id is required' }, { status: 400 });
     }
 
     // Delete rule

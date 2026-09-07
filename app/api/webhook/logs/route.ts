@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
       .from('analytics_events')
       .select('*')
       .eq('client_id', clientId)
-      .eq('event_type', 'webhook')
+      .eq('event_type', 'webhook_received')
       .order('created_at', { ascending: false })
       .limit(15);
 

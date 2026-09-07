@@ -6,6 +6,7 @@ import { calculateDealPatterns } from '@/lib/scout-scoring';
 import { logLLMCall } from '@/lib/llm/logger';
 import { getClientPlan, planGate } from '@/lib/gate';
 import { getAuthedClientId } from '@/lib/auth';
+import { getScoutConnectionStatus } from '@/lib/scout/crm-adapters';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
@@ -19,24 +20,37 @@ export async function POST(req: NextRequest) {
     const clientId = await getAuthedClientId(req);
     if (!clientId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+    const connection = await getScoutConnectionStatus(clientId);
+    if (!connection.ready) {
+      return NextResponse.json({ error: 'crm_unavailable', reason: connection.reason }, { status: connection.reason === 'lookup_failed' ? 503 : 409 });
+    }
+
     // 1. Assemble normalized deals (CRM + universal + priors)
     const deals = await buildNormalizedDeals(clientId);
     const currentDealIds = deals.map((d) => d.crm.deal_id);
 
-    // 2. Cleanup stale deal_scores (deals no longer in pipeline)
-    if (currentDealIds.length > 0) {
-      const { error: deleteError } = await supabaseAdmin
+    // 2. Cleanup stale deal_scores only after the provider read succeeded.
+    // Avoid interpolating external CRM IDs into a PostgREST filter string.
+    const activeDealIds = new Set(currentDealIds);
+    const staleDealIds: string[] = [];
+    for (let page = 0; page < 100; page++) {
+      const from = page * 1000;
+      const { data: existingScores, error: existingError } = await supabaseAdmin
         .from('deal_scores')
-        .delete({ count: 'exact' })
+        .select('deal_id')
         .eq('client_id', clientId)
-        .not('deal_id', 'in', `(${currentDealIds.map((id) => `"${id}"`).join(',')})`);
-      if (deleteError) { console.error('[Scout Score POST] Stale cleanup error:', deleteError); throw deleteError; }
-    } else {
+        .range(from, from + 999);
+      if (existingError) throw existingError;
+      for (const score of existingScores || []) if (!activeDealIds.has(score.deal_id)) staleDealIds.push(score.deal_id);
+      if (!existingScores || existingScores.length < 1000) break;
+    }
+    for (let index = 0; index < staleDealIds.length; index += 100) {
       const { error: deleteError } = await supabaseAdmin
         .from('deal_scores')
         .delete()
-        .eq('client_id', clientId);
-      if (deleteError) { console.error('[Scout Score POST] Empty-pipeline cleanup error:', deleteError); throw deleteError; }
+        .eq('client_id', clientId)
+        .in('deal_id', staleDealIds.slice(index, index + 100));
+      if (deleteError) { console.error('[Scout Score POST] Stale cleanup error:', deleteError); throw deleteError; }
     }
 
     // 3. Analyze with the new Scout engine
@@ -84,7 +98,7 @@ export async function POST(req: NextRequest) {
         stage: crm?.stage_raw || crm?.stage_canonical || 'Unknown Stage',
         deal_value: crm?.value || 0,
         close_date: crm?.close_date || null,
-        days_in_stage: crm?.days_in_current_stage || 0,
+        days_in_stage: crm?.days_in_current_stage ?? null,
         last_activity_days: crm?.days_since_last_activity ?? null,
         contact_count: crm?.contacts?.length || 0,
         website_visits_7d: uni?.website?.visits_7d || 0,

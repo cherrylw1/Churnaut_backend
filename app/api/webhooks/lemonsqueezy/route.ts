@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { normalizeEmail } from '@/lib/email-normalization'
 import { verifyWebhookSignature, getVariantId, getCustomerId, getSubscriptionId, getTrialEndsAt, getStatus, getCustomClientId } from '@/lib/lemonsqueezy'
 import { VARIANT_TO_PLAN } from '@/lib/plans'
 
@@ -136,12 +137,15 @@ export async function POST(req: NextRequest) {
 
         // Fallback: match by email
         if (!clientUser && email) {
-          const { data: found, error } = await supabaseAdmin
-            .from('clients')
-            .select('id')
-            .eq('email', email.toLowerCase())
-            .maybeSingle()
-          if (!error && found) clientUser = found
+          const normalizedEmail = normalizeEmail(email)
+          if (normalizedEmail) {
+            const { data: found, error } = await supabaseAdmin
+              .from('clients')
+              .select('id')
+              .eq('email', normalizedEmail)
+              .maybeSingle()
+            if (!error && found) clientUser = found
+          }
         }
 
         if (!clientUser) {

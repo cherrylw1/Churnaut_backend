@@ -4,260 +4,73 @@ import { getAuthedClientId } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
+type RuleMetric = { rule_id: string; triggers: number; conversions: number; conversion_rate: number };
+type LiftMetric = { rule_id: string; personalized_sessions: number; personalized_rate: number };
+type Aggregate = {
+  summaryStats: Record<string, number>;
+  signalBreakdown: unknown[];
+  repPerformance: unknown[];
+  rulePerformance: RuleMetric[];
+  dailyVolume: Array<{ rawDate: string; count: number }>;
+  liftReport: { personalized_sessions: number; unpersonalized_sessions: number; personalized_rate: number; baseline_rate: number; overall_lift_pp: number; rules: LiftMetric[] };
+};
 
 export async function GET(req: NextRequest) {
   try {
     const clientId = await getAuthedClientId(req);
-    if (!clientId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Analytics window: last 90 days by default, overridable via ?days= param
-    const url = new URL(req.url);
-    const days = Math.min(365, Math.max(7, parseInt(url.searchParams.get('days') || '90', 10)));
-    const fromDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
-
-    // 1. Fetch sessions within window (capped at 2000 rows)
-    const { data: sessions, error: sessionsErr } = await supabaseAdmin
-      .from('sessions')
-      .select('*')
-      .eq('client_id', clientId)
-      .gte('created_at', fromDate)
-      .order('created_at', { ascending: false })
-      .limit(2000);
-
-    if (sessionsErr) {
-      console.error('[GET Analytics Error] Sessions fetch failed:', sessionsErr);
-      return NextResponse.json({ error: sessionsErr.message }, { status: 500 });
-    }
-
-    const totalSessions = sessions?.length || 0;
-
-    // 2. Fetch analytics events within window (capped at 10000 rows)
-    const { data: events, error: eventsErr } = await supabaseAdmin
-      .from('analytics_events')
-      .select('*')
-      .eq('client_id', clientId)
-      .gte('created_at', fromDate)
-      .order('created_at', { ascending: false })
-      .limit(10000);
-
-    if (eventsErr) {
-      console.error('[GET Analytics Error] Events fetch failed:', eventsErr);
-      return NextResponse.json({ error: eventsErr.message }, { status: 500 });
-    }
-
-    // Resolve currently records rule_triggered/no_match events. Treat the
-    // personalization events as the trigger series used by these reports.
-    const resolveEvents = events?.filter(e => e.event_type === 'rule_triggered') || [];
-
-    // 3. Fetch routing rules for mappings
-    const { data: rules } = await supabaseAdmin
-      .from('routing_rules')
-      .select('*')
-      .eq('client_id', clientId);
-
-    // 4. Calculate Summary Stats (Created in the current month)
+    if (!clientId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const rawDays = new URL(req.url).searchParams.get('days') || '90';
+    if (!/^\d+$/.test(rawDays)) return NextResponse.json({ error: 'days must be an integer' }, { status: 400 });
+    const days = Number(rawDays);
+    if (days < 7 || days > 365) return NextResponse.json({ error: 'days must be between 7 and 365' }, { status: 400 });
+    const fromDate = new Date(Date.now() - days * 86_400_000).toISOString();
     const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const startOfMonthISO = startOfMonth.toISOString();
+    const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
 
-    const monthlySessions = sessions?.filter(s => s.created_at >= startOfMonthISO) || [];
-    const totalLinksThisMonth = monthlySessions.length;
-
-    // Click aggregates (clicks from sessions created/updated this month)
-    const totalClicksThisMonth = monthlySessions.reduce((sum, s) => sum + (s.click_count || 0), 0);
-
-    // Personalization trigger rate (ratio of resolve events to total sessions)
-    const triggerRate = totalSessions > 0
-      ? Math.min(100, Math.round((resolveEvents.length / totalSessions) * 100))
-      : 0;
-
-    // Overall conversion rate
-    const totalConverted = sessions?.filter(s => s.converted).length || 0;
-    const overallConversionRate = totalSessions > 0
-      ? Math.min(100, Math.round((totalConverted / totalSessions) * 100))
-      : 0;
-
-    // 5. Signal Breakdown Aggregation
-    const signalGroups: Record<string, { signal: string; links: number; clicks: number; conversions: number }> = {};
-    if (sessions) {
-      for (const s of sessions) {
-        const sig = s.signal_type || 'Outbound Link';
-        if (!signalGroups[sig]) {
-          signalGroups[sig] = { signal: sig, links: 0, clicks: 0, conversions: 0 };
-        }
-        signalGroups[sig].links += 1;
-        signalGroups[sig].clicks += s.click_count || 0;
-        if (s.converted) {
-          signalGroups[sig].conversions += 1;
-        }
-      }
-    }
-    const signalBreakdown = Object.values(signalGroups).map(item => ({
-      ...item,
-      conversion_rate: Math.round((item.conversions / Math.max(1, item.links)) * 100),
-    }));
-
-    // 6. Rule Performance Aggregation
-    const ruleGroups: Record<string, { triggers: number; conversions: number }> = {};
-    for (const e of resolveEvents) {
-      const rid = e.rule_id;
-      if (rid) {
-        if (!ruleGroups[rid]) {
-          ruleGroups[rid] = { triggers: 0, conversions: 0 };
-        }
-        ruleGroups[rid].triggers += 1;
-        
-        // Find if this specific trigger lead to a conversion
-        const sessionRow = sessions?.find(s => s.id === e.session_id);
-        if (sessionRow && sessionRow.converted) {
-          ruleGroups[rid].conversions += 1;
-        }
-      }
+    const [{ data: aggregateData, error: aggregateError }, { data: rules, error: rulesError }, { data: recent, error: recentError }] = await Promise.all([
+      supabaseAdmin.rpc('analytics_v2_aggregate', { client_id_input: clientId, from_date_input: fromDate, month_start_input: monthStart }),
+      supabaseAdmin.from('routing_rules').select('id, priority, signal_type, action_type').eq('client_id', clientId),
+      supabaseAdmin.from('analytics_events').select('id, session_id, event_type, signal_type, created_at').eq('client_id', clientId).gte('created_at', fromDate).order('created_at', { ascending: false }).limit(20),
+    ]);
+    if (aggregateError || rulesError || recentError || !aggregateData) {
+      console.error('[GET Analytics Error] Aggregate query failed:', aggregateError || rulesError || recentError);
+      return NextResponse.json({ error: 'Analytics query failed' }, { status: 500 });
     }
 
-    const rulePerformance = (rules || []).map(r => {
-      const perf = ruleGroups[r.id] || { triggers: 0, conversions: 0 };
-      return {
-        rule_id: r.id,
-        priority: r.priority,
-        signal_type: r.signal_type || 'Any Signal',
-        action_type: r.action_type,
-        triggers: perf.triggers,
-        conversions: perf.conversions,
-        conversion_rate: Math.round((perf.conversions / Math.max(1, perf.triggers)) * 100),
-      };
+    const aggregate = aggregateData as Aggregate;
+    const ruleById = new Map((rules || []).map((rule) => [rule.id, rule]));
+    const metricByRule = new Map((aggregate.rulePerformance || []).map((metric) => [metric.rule_id, metric]));
+    const rulePerformance = (rules || []).map((rule) => {
+      const metric = metricByRule.get(rule.id) || { rule_id: rule.id, triggers: 0, conversions: 0, conversion_rate: 0 };
+      return { ...metric, priority: rule.priority, signal_type: rule.signal_type || 'Any Signal', action_type: rule.action_type };
     }).sort((a, b) => a.priority - b.priority);
 
-    // 7. Rep Performance Aggregation
-    const repGroups: Record<string, { rep: string; links: number; conversions: number }> = {};
-    if (sessions) {
-      for (const s of sessions) {
-        if (s.assigned_rep) {
-          const rep = s.assigned_rep;
-          if (!repGroups[rep]) {
-            repGroups[rep] = { rep, links: 0, conversions: 0 };
-          }
-          repGroups[rep].links += 1;
-          if (s.converted) {
-            repGroups[rep].conversions += 1;
-          }
-        }
-      }
-    }
-    const repPerformance = Object.values(repGroups).map(item => ({
-      ...item,
-      conversion_rate: Math.round((item.conversions / Math.max(1, item.links)) * 100),
-    }));
+    const baselineRate = aggregate.liftReport?.baseline_rate || 0;
+    const liftRules = (aggregate.liftReport?.rules || []).map((metric) => {
+      const rule = ruleById.get(metric.rule_id);
+      return { ...metric, signal_type: rule?.signal_type || 'Any Signal', action_type: rule?.action_type || 'Unknown', baseline_rate: baselineRate, lift_pp: metric.personalized_rate - baselineRate };
+    }).sort((a, b) => b.lift_pp - a.lift_pp);
 
-    // 8. Personalization Lift Report
-    // Compares conversion rate of personalized sessions vs unmatched sessions (control group)
-    const ruleTriggeredEvents = events?.filter(e => e.event_type === 'rule_triggered') || []
-    const personalizedSessionIds = new Set(
-      ruleTriggeredEvents.map(e => e.session_id).filter((id): id is string => !!id)
-    )
-    const personalizedSessions = (sessions || []).filter(s => personalizedSessionIds.has(s.id))
-    const unpersonalizedSessions = (sessions || []).filter(s => !personalizedSessionIds.has(s.id))
+    const sessionIds = [...new Set((recent || []).map((event) => event.session_id).filter((id): id is string => !!id))];
+    const sessionResult = sessionIds.length
+      ? await supabaseAdmin.from('sessions').select('id, prospect_name').eq('client_id', clientId).in('id', sessionIds)
+      : { data: [], error: null };
+    if (sessionResult.error) return NextResponse.json({ error: 'Recent event lookup failed' }, { status: 500 });
+    const names = new Map((sessionResult.data || []).map((session) => [session.id, session.prospect_name || 'Anonymous']));
+    const recentEvents = (recent || []).map((event) => ({ id: event.id, event_type: event.event_type, signal_type: event.signal_type || 'Unknown', created_at: event.created_at, prospect_name: event.session_id ? names.get(event.session_id) || 'Anonymous' : 'Anonymous' }));
 
-    const personalizedRate = personalizedSessions.length > 0
-      ? Math.round((personalizedSessions.filter(s => s.converted).length / personalizedSessions.length) * 100)
-      : 0
-    const baselineRate = unpersonalizedSessions.length > 0
-      ? Math.round((unpersonalizedSessions.filter(s => s.converted).length / unpersonalizedSessions.length) * 100)
-      : 0
-
-    const ruleLift = (rules || []).map(r => {
-      const ruleSessionIds = new Set(
-        ruleTriggeredEvents
-          .filter(e => e.rule_id === r.id)
-          .map(e => e.session_id)
-          .filter((id): id is string => !!id)
-      )
-      const ruleSessions = (sessions || []).filter(s => ruleSessionIds.has(s.id))
-      const ruleRate = ruleSessions.length > 0
-        ? Math.round((ruleSessions.filter(s => s.converted).length / ruleSessions.length) * 100)
-        : 0
-      return {
-        rule_id: r.id,
-        signal_type: r.signal_type || 'Any Signal',
-        action_type: r.action_type,
-        personalized_sessions: ruleSessions.length,
-        personalized_rate: ruleRate,
-        baseline_rate: baselineRate,
-        lift_pp: ruleRate - baselineRate,
-      }
-    }).filter(r => r.personalized_sessions > 0)
-      .sort((a, b) => b.lift_pp - a.lift_pp)
-
-    const liftReport = {
-      personalized_sessions: personalizedSessions.length,
-      unpersonalized_sessions: unpersonalizedSessions.length,
-      personalized_rate: personalizedRate,
-      baseline_rate: baselineRate,
-      overall_lift_pp: personalizedRate - baselineRate,
-      rules: ruleLift,
-    }
-
-    // 8. Recent events (last 20 events)
-    const sortedEvents = [...(events || [])]
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-      .slice(0, 20);
-
-    const recentEvents = sortedEvents.map(e => {
-      const sessionRow = sessions?.find(s => s.id === e.session_id);
-      return {
-        id: e.id,
-        event_type: e.event_type,
-        signal_type: e.signal_type || 'Unknown',
-        created_at: e.created_at,
-        prospect_name: sessionRow?.prospect_name || 'Anonymous',
-      };
+    const dailyByDate = new Map((aggregate.dailyVolume || []).map((item) => [item.rawDate, item.count]));
+    const displayDays = Math.min(30, days);
+    const dailyVolume = Array.from({ length: displayDays }, (_, index) => {
+      const date = new Date();
+      date.setUTCDate(date.getUTCDate() - (displayDays - index - 1));
+      const rawDate = date.toISOString().slice(0, 10);
+      return { date: date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' }), rawDate, count: dailyByDate.get(rawDate) || 0 };
     });
 
-    // 9. Daily Volume (Past 30 Days)
-    const dailyVolume: Record<string, number> = {};
-    for (let i = 29; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const dateString = d.toISOString().split('T')[0];
-      dailyVolume[dateString] = 0;
-    }
-
-    for (const e of resolveEvents) {
-      const dateString = e.created_at.split('T')[0];
-      if (dailyVolume[dateString] !== undefined) {
-        dailyVolume[dateString] += 1;
-      }
-    }
-
-    const dailyVolumeArray = Object.keys(dailyVolume).map(date => {
-      const formattedDate = new Date(date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-      return {
-        date: formattedDate,
-        rawDate: date,
-        count: dailyVolume[date],
-      };
-    });
-
-    return NextResponse.json({
-      summaryStats: {
-        totalLinksCreatedThisMonth: totalLinksThisMonth,
-        totalClicksThisMonth: totalClicksThisMonth,
-        personalizationTriggerRate: triggerRate,
-        overallConversionRate: overallConversionRate,
-      },
-      signalBreakdown,
-      rulePerformance,
-      recentEvents,
-      repPerformance,
-      dailyVolume: dailyVolumeArray,
-      liftReport,
-    });
-
-  } catch (err) {
-    console.error('[GET Analytics Exception] Unhandled error:', err);
-    const errMsg = err instanceof Error ? err.message : 'Internal server error';
-    return NextResponse.json({ error: errMsg }, { status: 500 });
+    return NextResponse.json({ analyticsVersion: 2, historicalNote: 'Exact click timing is available only for Analytics v2 events; legacy cumulative click counts are not backfilled.', summaryStats: aggregate.summaryStats, signalBreakdown: aggregate.signalBreakdown || [], rulePerformance, recentEvents, repPerformance: aggregate.repPerformance || [], dailyVolume, liftReport: { ...aggregate.liftReport, rules: liftRules } });
+  } catch (error) {
+    console.error('[GET Analytics Exception]:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

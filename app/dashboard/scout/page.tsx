@@ -31,7 +31,7 @@ interface ScoutDealDetail {
   stage: string;
   deal_value: number;
   close_date: string | null;
-  days_in_stage: number;
+  days_in_stage: number | null;
   last_activity_days: number | null;
   contact_count: number;
   website_visits_7d: number;
@@ -853,7 +853,7 @@ export default function ScoutDashboard() {
                                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 border-b border-[var(--border-subtle)] py-3.5 text-[10px] font-mono">
                                     <div>
                                       <span className="text-[var(--text-muted)] block uppercase">Days In Stage</span>
-                                      <span className="text-[var(--text-primary)] text-xs font-bold block mt-0.5">{deal.days_in_stage}d</span>
+                                      <span className="text-[var(--text-primary)] text-xs font-bold block mt-0.5">{deal.days_in_stage === null ? 'Unknown' : `${deal.days_in_stage}d`}</span>
                                     </div>
                                     <div>
                                       <span className="text-[var(--text-muted)] block uppercase">Last Activity</span>
@@ -973,7 +973,7 @@ export default function ScoutDashboard() {
                                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 border-b border-[var(--border-subtle)] py-3.5 text-[10px] font-mono">
                                     <div>
                                       <span className="text-[var(--text-muted)] block uppercase">Days In Stage</span>
-                                      <span className="text-[var(--text-primary)] text-xs font-bold block mt-0.5">{deal.days_in_stage}d</span>
+                                      <span className="text-[var(--text-primary)] text-xs font-bold block mt-0.5">{deal.days_in_stage === null ? 'Unknown' : `${deal.days_in_stage}d`}</span>
                                     </div>
                                     <div>
                                       <span className="text-[var(--text-muted)] block uppercase">Last Activity</span>

@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { buildICPFromWins } from '@/lib/scout-scoring';
 import { getClientPlan, planGate } from '@/lib/gate';
 import { getAuthedClientId } from '@/lib/auth';
+import { getScoutConnectionStatus } from '@/lib/scout/crm-adapters';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,6 +45,11 @@ export async function POST(req: NextRequest) {
     const clientId = await getAuthedClientId(req);
     if (!clientId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const connection = await getScoutConnectionStatus(clientId);
+    if (!connection.ready) {
+      return NextResponse.json({ error: 'crm_unavailable', reason: connection.reason }, { status: connection.reason === 'lookup_failed' ? 503 : 409 });
     }
 
     const result = await buildICPFromWins(clientId);

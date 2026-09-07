@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
     - signal_type: text (Must be one of: 'Cold Email', 'LinkedIn Ad', 'Google Ad', 'QR Code', 'G2 Referral', 'Webinar Follow-up', 'Partner Referral', 'Conference QR Code', 'Returning Visitor', 'Other', or null for any signal)
     - conditions: jsonb (e.g., {"job_title_contains": "CEO"} or {"company_name_equals": "Acme"} or {} for any visitor)
     - action_type: 'show_calendar' or 'inject_copy'
-    - action_payload: jsonb (e.g., {"calendar_url": "https://calendly.com/meeting"} or {"variant_content": "custom copy"})
+    - action_payload: jsonb. For show_calendar use {"calendar_url": "https://calendly.com/meeting"}; for inject_copy use {"swaps": [{"selector": "h1", "content": "Personalized copy"}]}
     - target_selector: text (e.g., '.sr-target' or '#cta-button')
     - variant_content: text (the personalized headline or copy, e.g., 'Personalized copy swaps for {{ company_name }}')
 
@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
       const priorities = rules.map((rule) => rule.priority);
       if (new Set(priorities).size !== priorities.length) throw new Error('Rule priorities must be unique');
     } catch (parseErr) {
-      console.error('[Onboarding Rule Parse Error] Failed to parse JSON list:', cleanedText, parseErr);
+      console.error('[Onboarding Rule Parse Error] Failed to validate generated rules:', parseErr);
       return NextResponse.json({ error: 'AI generated invalid routing rule structure' }, { status: 502 });
     }
 
