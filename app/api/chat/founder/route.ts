@@ -61,10 +61,10 @@ async function fetchHealthData() {
     supabaseAdmin.from('analytics_events').select('event_type, signal_type, created_at').gte('created_at', since24h).order('created_at', { ascending: false }).limit(50),
 
     // Sessions created 48h ago with zero clicks — links sent but never opened
-    supabaseAdmin.from('sessions').select('id, prospect_name, prospect_email, signal_type, created_at').lte('created_at', since48h).eq('click_count', 0).limit(10),
+    supabaseAdmin.from('sessions').select('id, prospect_name, prospect_email, signal_type, created_at').lte('created_at', since48h).eq('session_kind', 'tracked_link').eq('click_count', 0).order('created_at', { ascending: false }).limit(10),
 
     // Sessions created via webhook in last 24h
-    supabaseAdmin.from('sessions').select('id, prospect_name, signal_type, created_at').gte('created_at', since24h).eq('signal_type', 'webhook').limit(10),
+    supabaseAdmin.from('sessions').select('id, prospect_name, signal_type, created_at').gte('created_at', since24h).eq('session_kind', 'webhook').limit(10),
 
     // RED deals with no nudge sent
     supabaseAdmin.from('deal_scores').select('deal_name, score, primary_risk, scored_at').eq('score', 'RED').limit(5),

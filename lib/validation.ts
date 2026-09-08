@@ -115,6 +115,17 @@ export const copywriterRequestSchema = z.object({
   desired_tone: z.string().trim().max(100).optional().default('consultative'),
 }).strict();
 
+export const copywriterVariantsSchema = z.array(
+  z.string().trim().min(1).max(200)
+).length(5);
+
+export const weeklyDigestOutputSchema = z.object({
+  summary: z.string().trim().min(1).max(2000),
+  top_signal: z.string().trim().min(1).max(1000),
+  rep_spotlight: z.string().trim().min(1).max(1000),
+  recommendation: z.string().trim().min(1).max(1000),
+}).strict();
+
 export const onboardingRequestSchema = z.object({
   crm: z.string().trim().max(100).optional(),
   ideal_customer: z.string().trim().max(1000).optional(),
@@ -135,7 +146,7 @@ export const generatedRuleSchema = z.object({
 }).strict().superRefine(validateCanonicalRule);
 
 export const nudgeRequestSchema = z.object({
-  deal_id: z.string().max(200).nullable().optional(),
+  deal_id: z.string().trim().min(1).max(200),
   deal_name: z.string().trim().max(500).nullable().optional(),
   rep_email: z.string().email().max(320).nullable().optional().or(z.literal('')),
   rep_name: z.string().trim().max(200).nullable().optional(),

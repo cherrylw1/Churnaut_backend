@@ -4,7 +4,7 @@ import { logLLMCall } from '@/lib/llm/logger';
 import { generateText } from '@/lib/llm/complete';
 import { getClientPlan, planGate } from '@/lib/gate';
 import { getAuthedClientId } from '@/lib/auth';
-import { copywriterRequestSchema, readJson } from '@/lib/validation';
+import { copywriterRequestSchema, copywriterVariantsSchema, readJson } from '@/lib/validation';
 
 export const dynamic = 'force-dynamic';
 
@@ -61,12 +61,9 @@ export async function POST(req: NextRequest) {
 
     let variants: string[] = [];
     try {
-      variants = JSON.parse(cleanedText);
-      if (!Array.isArray(variants) || variants.length === 0) {
-        throw new Error('Parsed object is not a non-empty array');
-      }
+      variants = copywriterVariantsSchema.parse(JSON.parse(cleanedText));
     } catch (parseErr) {
-      console.error('[Copywriter Parse Error] Failed to parse JSON content:', cleanedText, parseErr);
+      console.error('[Copywriter Parse Error] Failed to validate model response:', parseErr);
       return NextResponse.json({ error: 'Failed to parse AI response as a JSON list' }, { status: 502 });
     }
 
@@ -85,7 +82,7 @@ export async function POST(req: NextRequest) {
       console.error('[Copywriter Cache Set Error] Redis write failed:', cacheSetErr);
     }
 
-    return NextResponse.json({ success: true, source: 'gemini', variants });
+    return NextResponse.json({ success: true, source: 'model', variants });
 
   } catch (err) {
     console.error('[Copywriter Exception] Unhandled exception:', err);

@@ -57,10 +57,16 @@ export async function GET(req: NextRequest) {
     }
 
     const total = count ?? 0;
-    const [{ data: primaryDomain }, { data: client }] = await Promise.all([
+    const [primaryDomainResult, clientResult] = await Promise.all([
       supabaseAdmin.from('client_domains').select('origin').eq('client_id', clientId).eq('is_primary', true).eq('active', true).maybeSingle(),
       supabaseAdmin.from('clients').select('domain').eq('id', clientId).maybeSingle(),
     ]);
+    if (primaryDomainResult.error || clientResult.error) {
+      console.error('[GET Links Error] Destination lookup failed:', primaryDomainResult.error || clientResult.error);
+      return NextResponse.json({ error: 'Unable to resolve link destinations' }, { status: 500 });
+    }
+    const primaryDomain = primaryDomainResult.data;
+    const client = clientResult.data;
     const hydratedSessions = (sessions || []).map((session) => {
       let destination = session.destination_url || primaryDomain?.origin || client?.domain || null;
       try { destination = destination ? normalizeDestinationUrl(destination) : null; } catch { destination = null; }

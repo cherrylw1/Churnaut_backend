@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getAuthedClientId } from '@/lib/auth';
 import { readJson, webhookMappingRequestSchema } from '@/lib/validation';
+import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
 
@@ -47,11 +48,11 @@ export async function POST(req: NextRequest) {
     // Insert new mapping
     const { data: mapping, error: insertError } = await supabaseAdmin
       .from('webhook_mappings')
-      .insert({
+      .upsert({
         client_id: clientId,
         external_field: external_field.trim(),
         internal_field: internal_field.trim(),
-      })
+      }, { onConflict: 'client_id,external_field,internal_field' })
       .select()
       .single();
 
@@ -79,8 +80,8 @@ export async function DELETE(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
 
-    if (!id) {
-      return NextResponse.json({ error: 'id parameter is required' }, { status: 400 });
+    if (!id || !z.string().uuid().safeParse(id).success) {
+      return NextResponse.json({ error: 'A valid id parameter is required' }, { status: 400 });
     }
 
     // Delete mapping row

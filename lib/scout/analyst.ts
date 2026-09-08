@@ -1,5 +1,6 @@
 import { generateJSON } from '@/lib/llm/complete';
 import type { NormalizedDeal, ScoutBrief, ScoutScore, Confidence } from './types';
+import { z } from 'zod';
 
 const ANALYST_SYSTEM = `You are Scout, a senior B2B sales analyst. You assess ONE deal at a time from structured signals and produce a rigorous, evidence-grounded brief for the rep who owns it. You are sharp, specific, and honest about uncertainty.
 
@@ -35,16 +36,21 @@ OUTPUT RULES:
 Respond with ONLY a JSON object (no prose, no markdown) with exactly these keys:
 {"score":"RED|AMBER|GREEN","confidence":"low|medium|high","reasoning":"string","evidence":["string"],"primary_risk":"string","comparison":"string","next_action":"string","draft_message":"string","what_would_move_score":"string","data_gaps":["string"]}`;
 
-function asScore(v: any): ScoutScore {
-  const s = String(v || '').toUpperCase();
-  return s === 'RED' || s === 'GREEN' ? (s as ScoutScore) : 'AMBER';
-}
-function asConfidence(v: any): Confidence {
-  const s = String(v || '').toLowerCase();
-  return s === 'high' || s === 'medium' ? (s as Confidence) : 'low';
-}
-function asStringArray(v: any): string[] {
-  return Array.isArray(v) ? v.filter((x) => typeof x === 'string') : [];
+const scoutBriefOutputSchema = z.object({
+  score: z.enum(['RED', 'AMBER', 'GREEN']),
+  confidence: z.enum(['low', 'medium', 'high']),
+  reasoning: z.string().min(1).max(3000),
+  evidence: z.array(z.string().min(1).max(1000)).max(20),
+  primary_risk: z.string().min(1).max(1000),
+  comparison: z.string().max(1500),
+  next_action: z.string().min(1).max(1000),
+  draft_message: z.string().max(5000),
+  what_would_move_score: z.string().max(1500),
+  data_gaps: z.array(z.string().min(1).max(500)).max(20),
+}).strict();
+
+export function parseScoutBriefOutput(value: unknown): z.infer<typeof scoutBriefOutputSchema> {
+  return scoutBriefOutputSchema.parse(value);
 }
 
 export async function analyzeDealWithScout(deal: NormalizedDeal): Promise<ScoutBrief> {
@@ -54,19 +60,19 @@ export async function analyzeDealWithScout(deal: NormalizedDeal): Promise<ScoutB
     maxTokens: 1500,
     temperature: 0.3,
   });
-  const p = (parsed || {}) as any;
+  const p = parseScoutBriefOutput(parsed);
   return {
     deal_id: deal.crm.deal_id,
     deal_name: deal.crm.deal_name,
-    score: asScore(p.score),
-    confidence: asConfidence(p.confidence),
-    reasoning: typeof p.reasoning === 'string' ? p.reasoning : '',
-    evidence: asStringArray(p.evidence),
-    primary_risk: typeof p.primary_risk === 'string' ? p.primary_risk : '',
-    comparison: typeof p.comparison === 'string' && p.comparison.trim() ? p.comparison : undefined,
-    next_action: typeof p.next_action === 'string' ? p.next_action : '',
-    draft_message: typeof p.draft_message === 'string' && p.draft_message.trim() ? p.draft_message : undefined,
-    what_would_move_score: typeof p.what_would_move_score === 'string' && p.what_would_move_score.trim() ? p.what_would_move_score : undefined,
-    data_gaps: asStringArray(p.data_gaps),
+    score: p.score as ScoutScore,
+    confidence: p.confidence as Confidence,
+    reasoning: p.reasoning,
+    evidence: p.evidence,
+    primary_risk: p.primary_risk,
+    comparison: p.comparison.trim() ? p.comparison : undefined,
+    next_action: p.next_action,
+    draft_message: p.draft_message.trim() ? p.draft_message : undefined,
+    what_would_move_score: p.what_would_move_score.trim() ? p.what_would_move_score : undefined,
+    data_gaps: p.data_gaps,
   };
 }

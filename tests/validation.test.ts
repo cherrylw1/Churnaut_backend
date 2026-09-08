@@ -4,9 +4,12 @@ import {
   createRuleRequestSchema,
   generatedRuleSchema,
   linksRequestSchema,
+  nudgeRequestSchema,
   resolveRequestSchema,
   signupRequestSchema,
   webhookPayloadSchema,
+  copywriterVariantsSchema,
+  weeklyDigestOutputSchema,
 } from '@/lib/validation';
 
 describe('request validation', () => {
@@ -72,5 +75,22 @@ describe('request validation', () => {
     expect(linksRequestSchema.safeParse({ destination_url: 'http://example.com/page' }).success).toBe(true);
     expect(linksRequestSchema.safeParse({ destination_url: 'https://example.com', calendar_url: 'http://calendar.example.com' }).success).toBe(false);
     expect(linksRequestSchema.safeParse({ destination_url: 'https://example.com', calendar_url: 'https://calendar.example.com' }).success).toBe(true);
+  });
+
+  it('requires a deal id before a Scout nudge can resolve its trusted recipient', () => {
+    expect(nudgeRequestSchema.safeParse({ rep_email: 'attacker@example.com' }).success).toBe(false);
+    expect(nudgeRequestSchema.safeParse({ deal_id: 'hubspot-deal-1', rep_email: 'rep@example.com' }).success).toBe(true);
+  });
+
+  it('rejects malformed AI copy and digest outputs', () => {
+    expect(copywriterVariantsSchema.safeParse(['one', 'two', 'three', 'four', 'five']).success).toBe(true);
+    expect(copywriterVariantsSchema.safeParse(['only one']).success).toBe(false);
+    expect(weeklyDigestOutputSchema.safeParse({
+      summary: 'Healthy week',
+      top_signal: 'LinkedIn',
+      rep_spotlight: 'Asha led conversions',
+      recommendation: 'Expand the best rule',
+    }).success).toBe(true);
+    expect(weeklyDigestOutputSchema.safeParse({ summary: { unsafe: true } }).success).toBe(false);
   });
 });

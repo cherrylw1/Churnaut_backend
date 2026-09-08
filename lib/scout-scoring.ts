@@ -2,6 +2,7 @@ import { redis } from '@/lib/redis';
 import { ScoutDeal, ScoutClosedLostDeal, ScoutClosedWonDeal, fetchClosedWonDeals } from './integrations/hubspot-pipeline';
 import { generateText } from '@/lib/llm/complete';
 import { supabaseAdmin } from '@/lib/supabase';
+import { z } from 'zod';
 
 export interface ScoredDeal {
   deal_id: string;
@@ -17,8 +18,43 @@ export interface ScoutScoreResult {
   deals: ScoredDeal[];
 }
 
+const scoredDealSchema = z.object({
+  deal_id: z.string().min(1).max(200),
+  deal_name: z.string().min(1).max(500),
+  score: z.enum(['RED', 'AMBER', 'GREEN']),
+  primary_risk: z.string().min(1).max(1000),
+  next_action: z.string().min(1).max(1000),
+  draft_email: z.string().max(5000).nullable().optional(),
+}).strict();
+
+const scoutScoreResultSchema = z.object({
+  pipeline_pressure_score: z.number().int().min(0).max(100),
+  deals: z.array(scoredDealSchema).max(10000),
+}).strict();
+
+export function parseScoutScoreResult(value: unknown, expectedDealIds: string[]): ScoutScoreResult {
+  const parsed = scoutScoreResultSchema.parse(value);
+  const expected = new Set(expectedDealIds);
+  const returned = new Set(parsed.deals.map((deal) => deal.deal_id));
+  if (
+    expected.size !== expectedDealIds.length ||
+    returned.size !== parsed.deals.length ||
+    returned.size !== expected.size ||
+    [...expected].some((dealId) => !returned.has(dealId))
+  ) {
+    throw new Error('Scout scoring response did not contain every expected deal exactly once');
+  }
+  return {
+    pipeline_pressure_score: parsed.pipeline_pressure_score,
+    deals: parsed.deals.map((deal) => ({
+      ...deal,
+      draft_email: deal.score === 'RED' ? (deal.draft_email ?? null) : null,
+    })),
+  };
+}
+
 /**
- * Scores a client's pipeline deals using Gemini 2.5 Flash-Lite based on a structured rubric.
+ * Scores a client's pipeline deals using the configured Together AI model based on a structured rubric.
  * Calculates an overall Pipeline Pressure Score and drafts re-engagement emails for RED deals.
  * Caches the output in Redis for 1 hour.
  */
@@ -44,7 +80,8 @@ export async function scoreDealsWithScout(
     try {
       const cached = await redis.get(cacheKey);
       if (cached) {
-        return typeof cached === 'string' ? JSON.parse(cached) : (cached as ScoutScoreResult);
+        const value = typeof cached === 'string' ? JSON.parse(cached) : cached;
+        return parseScoutScoreResult(value, deals.map((deal) => deal.deal_id));
       }
     } catch (cacheErr) {
       console.error('[Scout Scoring Cache Read Error] Failed to read from Redis:', cacheErr);
@@ -141,36 +178,17 @@ Return ONLY the JSON. No markdown wrappers, no conversational text, no explanati
     cleanedText = cleanedText.replace(/^```[a-zA-Z]*\n/, '').replace(/\n```$/, '').trim();
   }
 
-  console.log('[Scout Scoring] String to be parsed with JSON.parse:', cleanedText);
-
-  let parsed: { pipeline_pressure_score: number; deals: Record<string, unknown>[] };
+  let parsed: unknown;
   try {
     parsed = JSON.parse(cleanedText);
-    if (typeof parsed.pipeline_pressure_score !== 'number' || !Array.isArray(parsed.deals)) {
-      throw new Error('Parsed object is missing required root fields');
-    }
+    parsed = parseScoutScoreResult(parsed, deals.map((deal) => deal.deal_id));
   } catch (parseErr) {
     const parseErrMsg = parseErr instanceof Error ? parseErr.message : String(parseErr);
     const parseErrStack = parseErr instanceof Error ? parseErr.stack : '';
     console.error(`[Scout Scoring Parse Error Details] Error: ${parseErrMsg}\nStack: ${parseErrStack}`);
-    console.error('[Scout Scoring Parse Error] Failed to parse JSON content:', cleanedText, parseErr);
     throw new Error('Failed to parse Scout AI scoring response as valid JSON object');
   }
-
-  // Ensure all deals have deal_id mapped correctly and values validated
-  const scoredDeals: ScoredDeal[] = parsed.deals.map((scoredDeal) => ({
-    deal_id: (scoredDeal.deal_id as string) || '',
-    deal_name: (scoredDeal.deal_name as string) || 'Unnamed Deal',
-    score: (['RED', 'AMBER', 'GREEN'].includes(scoredDeal.score as string) ? scoredDeal.score : 'AMBER') as 'RED' | 'AMBER' | 'GREEN',
-    primary_risk: (scoredDeal.primary_risk as string) || 'No direct risk identified.',
-    next_action: (scoredDeal.next_action as string) || 'Review deal status.',
-    draft_email: (scoredDeal.score as string) === 'RED' ? ((scoredDeal.draft_email as string) || null) : null,
-  }));
-
-  const result: ScoutScoreResult = {
-    pipeline_pressure_score: parsed.pipeline_pressure_score,
-    deals: scoredDeals,
-  };
+  const result = parsed as ScoutScoreResult;
 
   // 5. Cache result in Redis for 1 hour (3600 seconds)
   try {
@@ -558,4 +576,3 @@ Your response must be a single, plain-text string containing exactly the 3-sente
     rules_created: rulesCreated,
   };
 }
-

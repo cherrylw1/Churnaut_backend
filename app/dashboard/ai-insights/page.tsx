@@ -80,7 +80,7 @@ export default function AiInsightsPage() {
     if (runningDetection) return;
     setRunningDetection(true);
     try {
-      const res = await fetch('/api/ai/anomaly?run=true');
+      const res = await fetch('/api/ai/anomaly', { method: 'POST' });
       if (res.ok) {
         const data = await res.json();
         setAlerts(data.alerts || []);

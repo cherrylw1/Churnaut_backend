@@ -5,11 +5,14 @@ import { generateJSON } from '@/lib/llm/complete';
 import { getClientPlan, planGate } from '@/lib/gate';
 import { getAuthedClientId } from '@/lib/auth';
 import { alertPatchRequestSchema, readJson } from '@/lib/validation';
+import { parseAnomalyAggregate } from '@/lib/analytics/anomaly';
+import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
 
-// GET handler: either runs anomaly detection (if run=true) or fetches unread alerts
-export async function GET(req: NextRequest) {
+const generatedAlertsSchema = z.array(z.string().trim().min(1).max(500)).min(1).max(3);
+
+async function handleAnomalyRequest(req: NextRequest, runDetection: boolean) {
   const plan = await getClientPlan(req)
   const gate = planGate(plan, 'growth')
   if (gate) return gate
@@ -19,9 +22,6 @@ export async function GET(req: NextRequest) {
     if (!clientId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-
-    const { searchParams } = new URL(req.url);
-    const runDetection = searchParams.get('run') === 'true' || searchParams.get('action') === 'run';
 
     if (!runDetection) {
       // Fetch unread alerts
@@ -54,6 +54,8 @@ export async function GET(req: NextRequest) {
 
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const fourteenDaysAgo = new Date();
+    fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
 
     // 1. Fetch active routing rules to compare trigger counts and detect new rules
     const { data: rules, error: rulesErr } = await supabaseAdmin
@@ -67,16 +69,21 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: rulesErr.message }, { status: 500 });
     }
 
-    // 2. Query analytics events in the last 7 days
-    const { data: events, error: eventsErr } = await supabaseAdmin
-      .from('analytics_events')
-      .select('created_at, rule_id, event_type')
-      .eq('client_id', clientId)
-      .gte('created_at', sevenDaysAgo.toISOString());
-
-    if (eventsErr) {
-      console.error('[Anomaly Detection Error] Fetching events failed:', eventsErr);
-      return NextResponse.json({ error: eventsErr.message }, { status: 500 });
+    // 2. Query exact server-side aggregates. Event timestamps determine each
+    // period, and the result cannot be truncated by PostgREST row limits.
+    const { data: aggregateData, error: aggregateError } = await supabaseAdmin.rpc(
+      'anomaly_v2_aggregate',
+      {
+        client_id_input: clientId,
+        current_start_input: sevenDaysAgo.toISOString(),
+        previous_start_input: fourteenDaysAgo.toISOString(),
+        period_end_input: new Date().toISOString(),
+      }
+    );
+    const aggregate = parseAnomalyAggregate(aggregateData);
+    if (aggregateError || !aggregate) {
+      console.error('[Anomaly Detection Error] Aggregate calculation failed:', aggregateError);
+      return NextResponse.json({ error: 'Unable to calculate anomaly metrics' }, { status: 500 });
     }
 
     // Grouping triggers daily in-memory
@@ -97,12 +104,9 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    for (const event of events || []) {
-      if (event.event_type === 'rule_triggered' && event.rule_id) {
-        const day = event.created_at.split('T')[0];
-        if (ruleDailyTriggers[event.rule_id] && ruleDailyTriggers[event.rule_id][day] !== undefined) {
-          ruleDailyTriggers[event.rule_id][day]++;
-        }
+    for (const metric of aggregate.rule_daily) {
+      if (ruleDailyTriggers[metric.rule_id]?.[metric.day] !== undefined) {
+        ruleDailyTriggers[metric.rule_id][metric.day] = metric.count;
       }
     }
 
@@ -146,37 +150,11 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // 3. Compare overall conversion rate drops (last 3 days vs previous 4 days)
-    const fourteenDaysAgo = new Date();
-    fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
-
-    const { data: sessions, error: sessionsErr } = await supabaseAdmin
-      .from('sessions')
-      .select('created_at, converted')
-      .eq('client_id', clientId)
-      .gte('created_at', fourteenDaysAgo.toISOString());
-
-    if (sessionsErr) {
-      console.error('[Anomaly Detection Error] Fetching sessions failed:', sessionsErr);
-    }
-
-    if (sessions && sessions.length > 0) {
-      const thisWeekSessions = sessions.filter(s => new Date(s.created_at) >= sevenDaysAgo);
-      const prevWeekSessions = sessions.filter(s => new Date(s.created_at) < sevenDaysAgo);
-
-      const thisWeekConverted = thisWeekSessions.filter(s => s.converted).length;
-      const thisWeekTotal = thisWeekSessions.length;
-      const thisWeekRate = thisWeekTotal > 0 ? thisWeekConverted / thisWeekTotal : 0;
-
-      const prevWeekConverted = prevWeekSessions.filter(s => s.converted).length;
-      const prevWeekTotal = prevWeekSessions.length;
-      const prevWeekRate = prevWeekTotal > 0 ? prevWeekConverted / prevWeekTotal : 0;
-
-      if (prevWeekRate > 0) {
-        const convDrop = (prevWeekRate - thisWeekRate) / prevWeekRate;
-        if (convDrop > 0.40) {
-          anomalies.push('Overall conversion rate dropped significantly this week');
-        }
+    // 3. Compare event-timed conversion rates for the two seven-day windows.
+    if (aggregate.previous.rate > 0) {
+      const convDrop = (aggregate.previous.rate - aggregate.current.rate) / aggregate.previous.rate;
+      if (convDrop > 0.40) {
+        anomalies.push('Overall conversion rate dropped significantly this week');
       }
     }
 
@@ -204,18 +182,14 @@ Example of the exact format required:
     let alertTexts: string[] = [];
     try {
       const { parsed } = await generateJSON(prompt, { maxTokens: 1200 });
-      if (!Array.isArray(parsed)) {
-        throw new Error('Response is not a JSON array');
-      }
-      alertTexts = parsed;
+      alertTexts = generatedAlertsSchema.parse(parsed);
     } catch (parseErr) {
       console.error('[Anomaly Parse Error] Failed parsing JSON:', parseErr);
       return NextResponse.json({ error: 'Failed to parse AI response as JSON' }, { status: 502 });
     }
 
     // 5. Store alerts in anomaly_alerts Supabase table
-    const savedAlerts = [];
-    for (const text of alertTexts) {
+    const alertRows = alertTexts.map((text) => {
       const lower = text.toLowerCase();
       let severity: 'info' | 'warning' | 'critical' = 'warning';
 
@@ -225,22 +199,18 @@ Example of the exact format required:
         severity = 'info';
       }
 
-      const { data, error } = await supabaseAdmin
-        .from('anomaly_alerts')
-        .insert({
-          client_id: clientId,
-          alert_text: text,
-          severity,
-          read: false,
-        })
-        .select()
-        .single();
+      return { client_id: clientId, alert_text: text, severity, read: false };
+    });
 
-      if (!error && data) {
-        savedAlerts.push(data);
-      } else {
-        console.error('[Anomaly Save Error] Failed inserting alert:', error);
-      }
+    // One statement prevents a partially saved alert set from being returned
+    // as a successful detection run.
+    const { data: savedAlerts, error: saveError } = await supabaseAdmin
+      .from('anomaly_alerts')
+      .insert(alertRows)
+      .select();
+    if (saveError || !savedAlerts) {
+      console.error('[Anomaly Save Error] Failed inserting alert set:', saveError);
+      return NextResponse.json({ error: 'Unable to save anomaly alerts' }, { status: 500 });
     }
 
     // 6. Cache alerts array in Redis for 1 hour (3600 seconds)
@@ -253,10 +223,20 @@ Example of the exact format required:
     return NextResponse.json({ alerts: savedAlerts });
 
   } catch (error) {
-    console.error('[Anomaly GET Exception] Error:', error);
+    console.error('[Anomaly Exception] Error:', error);
     const errMsg = error instanceof Error ? error.message : 'Internal server error';
     return NextResponse.json({ error: errMsg }, { status: 500 });
   }
+}
+
+// Reading alerts is side-effect free. Detection is POST-only because it calls
+// the model and writes alerts; GET requests must remain safe and cacheable.
+export async function GET(req: NextRequest) {
+  return handleAnomalyRequest(req, false);
+}
+
+export async function POST(req: NextRequest) {
+  return handleAnomalyRequest(req, true);
 }
 
 // PATCH handler: marks a specific alert as read

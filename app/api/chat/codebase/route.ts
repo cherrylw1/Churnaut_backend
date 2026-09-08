@@ -1,21 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { getAuthedClientId } from '@/lib/auth'
-import { embed } from '@/lib/llm/complete'
+import { DEFAULT_MODEL, embed } from '@/lib/llm/complete'
 import { chatRequestSchema, readJson } from '@/lib/validation'
 
 export const dynamic = 'force-dynamic'
 
 const TOGETHER_API_URL = 'https://api.together.xyz/v1/chat/completions'
-const TOGETHER_MODEL = 'Qwen/Qwen2.5-7B-Instruct-Turbo'
-
 const SYSTEM_PROMPT = `You are an expert AI assistant with complete knowledge of the Churnaut codebase.
 
 Churnaut is a B2B RevOps SaaS with two pillars:
 1. Website Personalization Engine — tracks prospects via unique links, personalizes page content in real time using routing rules
 2. Scout AI — connects to HubSpot, scores pipeline deals Red/Amber/Green using Gemini AI, surfaces at-risk deals
 
-Tech stack: Next.js 14 App Router, TypeScript, Supabase (PostgreSQL), Upstash Redis, Vercel, Google Gemini AI, Resend email.
+Tech stack: Next.js 16 App Router, React 19, TypeScript, Supabase (PostgreSQL), Upstash Redis, Vercel, Together AI, and Resend email.
 
 You have been given relevant code chunks from the actual codebase to answer the question.
 Be specific, technical, and precise. Reference exact file names, function names, and variable names from the code.
@@ -89,7 +87,7 @@ export async function POST(req: NextRequest) {
         Authorization: `Bearer ${process.env.TOGETHER_API_KEY}`,
       },
       body: JSON.stringify({
-        model: TOGETHER_MODEL,
+        model: DEFAULT_MODEL,
         messages,
         max_tokens: 1024,
         temperature: 0.3,

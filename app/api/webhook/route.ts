@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
 
     if (mappingsErr) {
       console.error('[Webhook Mapping Error] Mappings fetch failed:', mappingsErr);
-      // Soft-fail: continue without mappings, using standard fallback keys
+      return NextResponse.json({ error: 'Webhook mapping service unavailable' }, { status: 503 });
     }
 
     const isLinkedInLeadGen = payload.linkedin_lead_gen_form_id !== undefined || payload.li_form_id !== undefined;

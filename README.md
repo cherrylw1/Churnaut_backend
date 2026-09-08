@@ -4,11 +4,11 @@ Churnaut is a multi-tenant B2B RevOps SaaS. It identifies high-intent visitors, 
 
 ## Stack
 
-- Next.js 14 App Router and TypeScript
+- Next.js 16 App Router, React 19, and TypeScript
 - Supabase Postgres/Auth (service-role access is scoped by verified client ID)
 - Upstash Redis for caching and rate limiting
 - Vercel functions and cron jobs
-- Together/Gemini-compatible LLM integrations and Resend email
+- Together AI model and embedding integrations, plus Resend email
 
 ## Local setup
 

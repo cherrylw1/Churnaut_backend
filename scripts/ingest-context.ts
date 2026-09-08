@@ -62,7 +62,7 @@ The Magic Outreach Flow (zero manual work):
 5. Every prospect gets unique personalized tracked link — zero manual work per rep
 
 PILLAR 2 — SCOUT AI DEAL INTELLIGENCE
-Connects to HubSpot CRM via OAuth. Pulls open pipeline deals. Scores them using Gemini AI into Red/Amber/Green health ratings. Surfaces at-risk deals, suggests next actions, generates draft outreach emails. Weekly pipeline digest emails sent to reps via Resend.
+Connects to HubSpot CRM via OAuth. Pulls open pipeline deals. Scores them using the configured Together AI model into Red/Amber/Green health ratings. Surfaces at-risk deals, suggests next actions, generates draft outreach emails. Weekly pipeline digest emails sent to reps via Resend.
 
 Scout scoring rules:
 - RED = no activity 10+ days + close within 30 days OR single contact on $10K+ deal OR stuck 2x average stage duration
@@ -70,36 +70,36 @@ Scout scoring rules:
 - GREEN = activity within 5 days, multiple contacts
 - NULL activity treated as 999 days inactive
 
-Scout AI model: Gemini 2.5 Flash-Lite with 3-layer prompt (Scout persona + scoring rules + deal data + Deal DNA injection if available)`
+Scout AI model: configured through TOGETHER_MODEL (default Kimi K2.6), with a structured evidence-grounded prompt and Deal DNA injection when available)`
   },
   {
     name: 'tech-stack-and-infrastructure',
     type: 'context',
     content: `CHURNAUT — TECH STACK & INFRASTRUCTURE
 
-Frontend: Next.js 14 App Router, TypeScript, Tailwind CSS
+Frontend: Next.js 16 App Router, React 19, TypeScript, Tailwind CSS
 Backend: Next.js API Routes (serverless)
 Database: Supabase (PostgreSQL) — all RLS enabled, all API routes use supabaseAdmin (service role key)
 Cache: Upstash Redis — rate limiting + caching (300s TTL for resolve, 60s for pipeline)
 CDN/Hosting: Vercel — auto-deploys from GitHub main branch
-AI (Product): Google Gemini 2.5 Flash-Lite
+AI (Product): Together AI using the model configured by TOGETHER_MODEL (default Kimi K2.6)
 AI (Embeddings): Together AI multilingual-e5-large-instruct (1024 dimensions)
-AI (Codebase Chat): Qwen/Qwen2.5-7B-Instruct-Turbo via Together AI
+AI (Codebase Chat): the configured Together AI model
 Email: Resend — sent from noreply@churnaut.com
 Payments: Lemon Squeezy (pending — blocked on Pvt Ltd registration)
 Ad Tracking: Google (gclid), LinkedIn (li_fat_id), Meta (fbclid), TikTok (ttclid), UTMs
 OAuth CRMs: HubSpot (live + enrichment), Pipedrive (live), Zoho (live), Close (live)
 Outreach Webhooks: Instantly, Smartlead, Apollo, Lemlist, Zapier, Make
 Calendar: Calendly (OAuth)
-IDE: Antigravity (auto-deploys to Vercel on push to main)
+IDE/agent: Codex (Vercel auto-deploys from GitHub main)
 
 Design System:
-- Font: font-mono for all UI text, font-sans for headings
-- Accent: #6366f1 (indigo), #10b981 (green success)
+- Font: system sans for UI text and Georgia serif for headings
+- Accent: #C2683D (terracotta), #3F8F6B (green success)
 - CSS vars: var(--border-subtle), var(--bg-elevated), var(--bg-surface), var(--text-primary), var(--text-secondary), var(--text-muted)
-- Dark theme throughout — background ~#080B0F to #111118
-- Primary button: bg-[#6366f1] hover:bg-[#5053e1]
-- All labels: uppercase tracking-wider font-mono text-xs
+- Warm light theme — cream #FAF6F0 base, white surfaces, dark brown text
+- Primary controls use var(--accent) with var(--accent-hover)
+- Compact labels commonly use uppercase tracking
 - Status badges: green pulsing dot (active/connected), gray (disconnected/coming soon), yellow (pending)
 
 Environment Variables:
@@ -116,7 +116,7 @@ RESEND_API_KEY, NEXT_PUBLIC_SNIPPET_CDN_URL`
     content: `CHURNAUT — DATABASE SCHEMA (ALL TABLES)
 
 clients — Master account table
-Key columns: id (uuid), company_name, domain (used to build trackedUrl), plan, snippet_key (auth token + webhook URL key), crm_type, crm_api_key (encrypted tokens JSON), calendly_token, stripe_customer_id, active
+Key columns: id (uuid), company_name, domain (used to build trackedUrl), plan, snippet_key (public browser tracking identifier only), webhook_secret (private inbound-webhook credential), crm_type, crm_api_key (encrypted tokens JSON), calendly_token, stripe_customer_id, active
 
 sessions — Every tracked link ever created
 Key fields: id (6-char session ID), client_id, prospect_name, prospect_email, company_name, job_title, signal_type, assigned_rep, calendar_url, visitor_token, click_count, converted, converted_at, expires_at, deal_stage, crm_deal_id, metadata (jsonb)
@@ -188,7 +188,8 @@ Salesforce — Coming Soon. Needs Connected App registration.
 Attio — Coming Soon. Needs OAuth app registration.
 
 OUTREACH TOOLS (Webhook-based)
-Universal endpoint: https://app.churnaut.com/api/webhook?client_key={snippet_key}
+Universal endpoint: https://app.churnaut.com/api/webhook?client_key={webhook_secret}
+The query-parameter name remains client_key for compatibility, but its value must be the private webhook_secret shown in the dashboard. Never use the public snippet_key.
 All active: Instantly, Smartlead, Apollo, Lemlist, Zapier, Make
 
 CALENDLY — LIVE OAuth. Embeds calendar in personalization rules.
@@ -205,10 +206,10 @@ KNOWN ISSUES:
     content: `CHURNAUT — AI/ML ROADMAP & CURRENT STATE
 
 CURRENT AI FEATURES:
-- Scout AI deal scoring: Gemini 2.5 Flash-Lite, Red/Amber/Green ratings, all calls logged to llm_logs
-- AI Copywriter: Gemini-powered, 5 CTA variants per rule, 30-day Redis cache, logged to llm_logs
-- Weekly Digest: Gemini generates 4-section plain-English pipeline summary, logged to llm_logs
-- Codebase RAG Chat: pgvector + Qwen2.5-7B via Together AI at /dashboard/chat
+- Scout AI deal scoring: configured Together AI model, Red/Amber/Green ratings, all calls logged to llm_logs
+- AI Copywriter: Together AI-powered, 5 CTA variants per rule, 30-day Redis cache, logged to llm_logs
+- Weekly Digest: Together AI generates a validated 4-section plain-English pipeline summary, logged to llm_logs
+- Codebase RAG Chat: pgvector + the configured Together AI model at /dashboard/chat
 
 PHASE 1 — LLM LOGGING (COMPLETE)
 llm_logs table captures every inference call. logLLMCall() utility in lib/llm/logger.ts (fire-and-forget). logLLMCallWithId() returns row UUID for feedback linking. Wired into scout/score, ai/copywriter, ai/digest routes.
@@ -217,7 +218,7 @@ PHASE 2 — FEEDBACK COLLECTION (COMPLETE)
 Thumbs up/down on RED and AMBER Scout deal cards. log_id returned in Scout score API response. /api/scout/feedback PATCH endpoint writes feedback_type back to llm_logs. feedbackGiven state prevents double-submission.
 
 PHASE 3 — CODEBASE RAG CHAT (COMPLETE)
-pgvector enabled on Supabase. code_embeddings table with HNSW index (1024 dimensions). match_code_chunks() RPC for cosine similarity search. scripts/ingest.ts walks repo, chunks files, embeds via Together AI E5 helper, stores in Supabase. /api/chat/codebase route: embeds query, vector search top 8 chunks, passes to Qwen2.5-7B. /dashboard/chat: clean chat UI, suggested questions, sources shown.
+pgvector enabled on Supabase. code_embeddings table with HNSW index (1024 dimensions). match_code_chunks() RPC for cosine similarity search. scripts/ingest.ts walks repo, chunks files, embeds via Together AI E5 helper, stores in Supabase. /api/chat/codebase route embeds the query, retrieves the top 8 chunks, and passes them to the configured Together AI model.
 
 PHASE 4 — FINE-TUNING PLAN (FUTURE)
 Target model: Gemma 3 4B (or Qwen2.5-7B when data is ready)
@@ -230,14 +231,14 @@ Together AI account created: TOGETHER_API_KEY in .env.local, $25 free credits`
   {
     name: 'working-patterns-and-rules',
     type: 'context',
-    content: `CHURNAUT — HOW CLAUDE AND SHARATH WORK TOGETHER
+    content: `CHURNAUT — CURRENT ENGINEERING WORKFLOW
 
 WORKFLOW:
-1. Recon first — always ask Antigravity to show current file contents before writing any build prompt (prefix with "Do not change anything.")
-2. Paste recon here — Sharath pastes Antigravity's response into Claude
-3. Claude writes precise prompt — targeting exact file names, component names, line-level changes
-4. Sharath copies and fires — into Antigravity
-5. Sharath confirms completion — pastes Antigravity's summary back
+1. Inspect the current Codex workspace and git state before changing files.
+2. Keep changes scoped, preserve unrelated work, and use ordered Supabase migrations for database changes.
+3. Run lint, TypeScript, tests, production build, and dependency audit before deployment.
+4. Push verified commits to GitHub main; Vercel deploys automatically.
+5. Verify the production deployment and smoke-test important public/auth boundaries.
 
 PROMPT FORMAT RULES:
 - Simple recon prompts: inline text, no card widget, prefix with "Do not change anything."
@@ -245,10 +246,9 @@ PROMPT FORMAT RULES:
 - Always include VERIFY AND DEPLOY step (npm run build + push to main)
 - For env variable additions: give exact lines to add to .env.local
 
-ANTIGRAVITY BEHAVIOR:
-- Antigravity is the AI coding tool connected to the actual codebase
-- It can read files, make changes, run builds, push to git
-- Always deployed to Vercel on push to main — no manual deploy needed
+CODEX BEHAVIOR:
+- Codex works against the local Git checkout, can run verification, and can push approved changes
+- Vercel deploys automatically on a successful push to main
 
 CRITICAL BUGS FIXED — DO NOT REINTRODUCE:
 - snippet.js calls app.churnaut.com/api/resolve NOT any other URL
@@ -256,7 +256,7 @@ CRITICAL BUGS FIXED — DO NOT REINTRODUCE:
 - sid is nested inside signals object: const sid = signals?.sid
 - signal_type matching uses normalize() — lowercase + replace spaces with underscores
 - Redis cache was serving stale empty swaps — bypassCache=true on POST scout/score
-- /api/webhook client lookup uses .eq('snippet_key', key) NOT .or() query
+- /api/webhook authenticates only against clients.webhook_secret; never restore snippet_key fallback authentication
 - HubSpot access tokens expire after 30 min — auto refresh logic in both hubspot-pipeline.ts and hubspot.ts
 - sessions.metadata column doesn't exist — use prospect_name/prospect_email/signal_type/visitor_type/deal_stage
 - duplicate crm_tokens rows — orders by updated_at and takes tokens[0]
@@ -315,7 +315,7 @@ LIVE AND WORKING:
 - Snippet & personalization engine — full resolve flow, timeout fix, session expiry
 - Tracked Links — single, bulk CSV, click counting, rep click notifications
 - Routing Rules — CRUD, drag reorder, priority, active toggle
-- AI Copywriter — Gemini-powered, logged to llm_logs
+- AI Copywriter — Together AI-powered, logged to llm_logs
 - Playbook Library — 21 templates, 4 tiers, install flow (tab inside Routing Rules)
 - Analytics — stats, charts, rule performance, rep performance
 - HubSpot OAuth + live enrichment + token refresh
@@ -329,7 +329,7 @@ LIVE AND WORKING:
 - ICP Builder — from closed-won HubSpot deals
 - Onboarding flow — 4-step checklist, auto-dismiss
 - LLM Logging — all 3 AI routes wired to llm_logs
-- Codebase RAG Chat — /dashboard/chat, pgvector + Qwen2.5-7B
+- Codebase RAG Chat — /dashboard/chat, pgvector + the configured Together AI model
 
 BLOCKED:
 - Salesforce OAuth — needs Connected App

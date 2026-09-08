@@ -28,12 +28,17 @@ export async function GET(req: NextRequest) {
     }
 
     // Retrieve the connection date from the crm_tokens table
-    const { data: tokenData } = await supabaseAdmin
+    const { data: tokenData, error: tokenError } = await supabaseAdmin
       .from('crm_tokens')
       .select('access_token, refresh_token, connection_status, last_error, updated_at, created_at')
       .eq('client_id', clientId)
       .eq('crm_type', client.crm_type)
       .maybeSingle();
+
+    if (tokenError) {
+      console.error('[CRM Status GET Error] Token lookup failed:', tokenError);
+      return NextResponse.json({ error: 'Unable to verify CRM connection' }, { status: 500 });
+    }
 
     const connectedAt = tokenData ? (tokenData.updated_at || tokenData.created_at || null) : null;
 
@@ -59,7 +64,12 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { data: currentClient } = await supabaseAdmin.from('clients').select('crm_type').eq('id', clientId).maybeSingle();
+    const { data: currentClient, error: clientError } = await supabaseAdmin.from('clients').select('crm_type').eq('id', clientId).maybeSingle();
+    if (clientError) {
+      console.error('[CRM Disconnect Error] Client lookup failed:', clientError);
+      return NextResponse.json({ error: 'Unable to verify CRM connection' }, { status: 500 });
+    }
+    if (!currentClient) return NextResponse.json({ error: 'Client profile not found' }, { status: 404 });
     const crmType = currentClient?.crm_type;
 
     if (!crmType) return NextResponse.json({ success: true });

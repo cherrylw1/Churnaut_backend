@@ -8,11 +8,17 @@ export async function GET(req: NextRequest) {
   const clientId = await getAuthedClientId(req)
   if (!clientId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data: client } = await supabaseAdmin
+  const { data: client, error: clientError } = await supabaseAdmin
     .from('clients')
     .select('lemonsqueezy_customer_id, plan')
     .eq('id', clientId)
     .maybeSingle()
+
+  if (clientError) {
+    console.error('[Billing Portal] Client lookup failed:', clientError)
+    return NextResponse.json({ error: 'Unable to load billing account' }, { status: 500 })
+  }
+  if (!client) return NextResponse.json({ error: 'Client profile not found' }, { status: 404 })
 
   if (!client?.lemonsqueezy_customer_id || client.plan === 'starter') {
     return NextResponse.json({ url: null })

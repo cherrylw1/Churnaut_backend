@@ -129,7 +129,11 @@ export async function POST(req: NextRequest) {
       if (insRes.error) { console.error('[Scout Score POST] Insert error:', insRes.error); throw insRes.error; }
     }
     for (const updateRec of toUpdate) {
-      const updRes = await supabaseAdmin.from('deal_scores').update(updateRec).eq('id', updateRec.id as string);
+      const updRes = await supabaseAdmin
+        .from('deal_scores')
+        .update(updateRec)
+        .eq('id', updateRec.id as string)
+        .eq('client_id', clientId);
       if (updRes.error) { console.error('[Scout Score POST] Update error:', updRes.error); throw updRes.error; }
     }
 

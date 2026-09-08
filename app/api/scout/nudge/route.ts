@@ -22,20 +22,39 @@ export async function POST(req: NextRequest) {
     // 2. Parse request payload
     const parsedBody = await readJson(req, nudgeRequestSchema);
     if (!parsedBody.ok) return NextResponse.json({ error: parsedBody.error }, { status: 400 });
-    const { deal_id, deal_name, rep_email, rep_name, message } = parsedBody.data;
-    if (!rep_email) {
-      return NextResponse.json({ error: 'A verified representative email address is required' }, { status: 400 });
+    const { deal_id, message } = parsedBody.data;
+
+    // Never trust the browser to choose the email recipient. Resolve the deal
+    // and representative from this tenant's latest CRM-backed score record.
+    const { data: scoreData, error: scoreError } = await supabaseAdmin
+      .from('deal_scores')
+      .select('deal_name, rep_email, rep_name, draft_email, next_action')
+      .eq('client_id', clientId)
+      .eq('deal_id', deal_id)
+      .maybeSingle();
+    if (scoreError) {
+      console.error('[Scout Nudge POST] Error resolving trusted recipient:', scoreError);
+      return NextResponse.json({ error: 'Unable to verify the deal representative' }, { status: 500 });
     }
+    if (!scoreData) {
+      return NextResponse.json({ error: 'Deal not found' }, { status: 404 });
+    }
+    const repEmail = scoreData.rep_email?.trim();
+    if (!repEmail) {
+      return NextResponse.json({ error: 'No verified CRM representative email is available for this deal' }, { status: 409 });
+    }
+    const dealName = scoreData.deal_name || 'Unnamed Deal';
+    const repName = scoreData.rep_name || '';
 
     // 3. Insert nudge record in scout_nudges table
     const { data, error } = await supabaseAdmin
       .from('scout_nudges')
       .insert({
         client_id: clientId,
-        deal_id: deal_id || null,
-        deal_name: deal_name || null,
-        rep_email: rep_email || '',
-        rep_name: rep_name || '',
+        deal_id,
+        deal_name: dealName,
+        rep_email: repEmail,
+        rep_name: repName,
         message: message || '',
         sent: false,
         sent_at: null,
@@ -50,24 +69,9 @@ export async function POST(req: NextRequest) {
 
     // 4. Resolve the recommended content, then deliver before marking sent.
     try {
-      let draftEmail: string | null = null;
-      let nextAction = 'No next action specified';
-      if (deal_id) {
-        const { data: scoreData, error: scoreError } = await supabaseAdmin
-          .from('deal_scores')
-          .select('draft_email, next_action')
-          .eq('client_id', clientId)
-          .eq('deal_id', deal_id)
-          .maybeSingle();
-
-        if (scoreError) {
-          console.error('[Scout Nudge POST] Error fetching deal_scores for email nudge:', scoreError);
-        } else if (scoreData) {
-          draftEmail = scoreData.draft_email || null;
-          nextAction = scoreData.next_action || nextAction;
-        }
-      }
-      const emailResult = await sendNudgeEmail(rep_email, deal_name || 'Unnamed Deal', message || draftEmail, nextAction);
+      const draftEmail = scoreData.draft_email || null;
+      const nextAction = scoreData.next_action || 'No next action specified';
+      const emailResult = await sendNudgeEmail(repEmail, dealName, message || draftEmail, nextAction);
       if (!emailResult.success) throw new Error('Nudge email delivery failed');
 
       const { data: sentNudge, error: sentError } = await supabaseAdmin

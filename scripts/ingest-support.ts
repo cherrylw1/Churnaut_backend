@@ -220,8 +220,8 @@ HOW THE MAGIC FLOW WORKS
 
 HOW TO GET YOUR WEBHOOK URL
 Go to Dashboard → Integrations → Outreach Tools
-Your webhook URL is: https://app.churnaut.com/api/webhook?client_key=YOUR_KEY
-Copy it from the dashboard — it shows your actual key automatically
+Your webhook URL is: https://app.churnaut.com/api/webhook?client_key=YOUR_PRIVATE_WEBHOOK_SECRET
+Copy it from the dashboard — it contains the private webhook secret generated for your account. Never substitute the public snippet key.
 
 SETTING UP IN INSTANTLY
 1. In Instantly, go to your campaign settings
@@ -246,7 +246,7 @@ IMPORTANT: Set your domain in Settings → Account before using webhooks. Withou
 
 TROUBLESHOOTING
 - Not getting churnaut_link back? Check your domain is set in Settings
-- Webhook not firing? Check the URL is correct and includes your client_key
+- Webhook not firing? Copy the URL again from Dashboard → Integrations and verify it contains your private webhook secret
 - Wrong prospect data? Check your field mappings in Integrations → Outreach Tools → Field Mappings`
   },
   {
@@ -361,7 +361,7 @@ TRACKED LINK NOT WORKING
 
 WEBHOOK NOT RETURNING CHURNAUT_LINK
 1. Check your domain is set in Settings → Account
-2. Check the webhook URL includes your correct client_key
+2. Copy the webhook URL again from Dashboard → Integrations; it must contain the private webhook secret, not the public snippet key
 3. Check the payload includes at least an email or name field
 
 CRM NOT CONNECTING

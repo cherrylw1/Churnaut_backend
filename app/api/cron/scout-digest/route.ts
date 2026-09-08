@@ -3,6 +3,12 @@ import { supabaseAdmin } from '@/lib/supabase'
 import { generateText } from '@/lib/llm/complete'
 import { sendWeeklyDigest } from '@/lib/email/resend'
 import { getPreviousUtcWeekRange } from '@/lib/time'
+import {
+  parseDigestAggregate,
+  selectBestRep,
+  selectTopSignal,
+} from '@/lib/analytics/digest'
+import { weeklyDigestOutputSchema } from '@/lib/validation'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
@@ -28,6 +34,7 @@ export async function GET(req: NextRequest) {
   // Use a stable Monday-to-Monday UTC reporting window. Manual retries later in
   // the week must target the same digest row instead of creating a new key.
   const { periodStart, periodEnd, weekStart: weekStartStr } = getPreviousUtcWeekRange()
+  const previousStart = new Date(new Date(periodStart).getTime() - 7 * 24 * 60 * 60 * 1000).toISOString()
 
   let sent = 0
   let skipped = 0
@@ -51,21 +58,15 @@ export async function GET(req: NextRequest) {
         !!existing.claimed_at && new Date(existing.claimed_at).getTime() >= staleBefore
       if (existing?.delivery_status === 'sent' || activelyProcessing) { skipped++; continue }
 
-      // Fetch 7-day metrics
-      const [sessionsRes, eventsRes, snapRes] = await Promise.all([
-        supabaseAdmin
-          .from('sessions')
-          .select('signal_type, converted, assigned_rep, click_count')
-          .eq('client_id', client.id)
-          .gte('created_at', periodStart)
-          .lt('created_at', periodEnd),
-        supabaseAdmin
-          .from('analytics_events')
-          .select('rule_id')
-          .eq('client_id', client.id)
-          .eq('event_type', 'rule_triggered')
-          .gte('created_at', periodStart)
-          .lt('created_at', periodEnd),
+      // Fetch exact, event-timed metrics. The database aggregate avoids the
+      // PostgREST row cap and never treats lifetime counters as weekly data.
+      const [aggregateRes, snapRes] = await Promise.all([
+        supabaseAdmin.rpc('digest_v2_aggregate', {
+          client_id_input: client.id,
+          current_start_input: periodStart,
+          previous_start_input: previousStart,
+          period_end_input: periodEnd,
+        }),
         supabaseAdmin
           .from('pipeline_snapshots')
           .select('pressure_score, red_count, amber_count, green_count, total_deals')
@@ -75,32 +76,20 @@ export async function GET(req: NextRequest) {
           .maybeSingle(),
       ])
 
-      const sessions = sessionsRes.data || []
-      const events = eventsRes.data || []
+      const aggregate = parseDigestAggregate(aggregateRes.data)
+      if (aggregateRes.error || !aggregate) {
+        console.error(`[scout-digest cron] Aggregate failed for client ${client.id}:`, aggregateRes.error)
+        throw new Error('Unable to calculate weekly digest metrics')
+      }
       const snap = snapRes.data
+      if (snapRes.error) throw snapRes.error
 
-      const totalLinks = sessions.length
-      const totalClicks = sessions.reduce((sum, s) => sum + (s.click_count || 0), 0)
-      const totalConversions = sessions.filter(s => s.converted).length
-      const triggerCount = events.length
-
-      // Top signal by conversion
-      const signalMap: Record<string, { total: number; converted: number }> = {}
-      for (const s of sessions) {
-        const sig = s.signal_type || 'any'
-        if (!signalMap[sig]) signalMap[sig] = { total: 0, converted: 0 }
-        signalMap[sig].total++
-        if (s.converted) signalMap[sig].converted++
-      }
-      const topSignal = Object.entries(signalMap)
-        .sort((a, b) => (b[1].converted / Math.max(1, b[1].total)) - (a[1].converted / Math.max(1, a[1].total)))[0]
-
-      // Best rep
-      const repMap: Record<string, number> = {}
-      for (const s of sessions) {
-        if (s.assigned_rep && s.converted) repMap[s.assigned_rep] = (repMap[s.assigned_rep] || 0) + 1
-      }
-      const bestRep = Object.entries(repMap).sort((a, b) => b[1] - a[1])[0]
+      const totalLinks = aggregate.current.links_created
+      const totalClicks = aggregate.current.clicks
+      const totalConversions = aggregate.current.conversions
+      const triggerCount = aggregate.current.triggers
+      const topSignal = selectTopSignal(aggregate.current.signals)
+      const bestRep = selectBestRep(aggregate.current.reps)
 
       const pipelineLine = snap && snap.total_deals > 0
         ? `Pipeline: ${snap.total_deals} open deals, pressure score ${snap.pressure_score}/100. ${snap.red_count} RED, ${snap.amber_count} AMBER, ${snap.green_count} GREEN.`
@@ -109,12 +98,12 @@ export async function GET(req: NextRequest) {
       const prompt = `You are generating a weekly performance digest for a B2B SaaS customer using Churnaut.
 
 Weekly data:
-- Tracked links active: ${totalLinks}
+- Tracked links created: ${totalLinks}
 - Prospect clicks: ${totalClicks}
 - Conversions: ${totalConversions}
 - Personalization rule fires: ${triggerCount}
-- Top signal: ${topSignal ? `${topSignal[0]} (${topSignal[1].converted}/${topSignal[1].total} conversions)` : 'none'}
-- Best rep: ${bestRep ? `${bestRep[0]} with ${bestRep[1]} conversions` : 'none this week'}
+- Top signal: ${topSignal ? `${topSignal.signal} (${topSignal.converted}/${topSignal.total} conversions)` : 'none'}
+- Best rep: ${bestRep ? `${bestRep.rep} with ${bestRep.conversions} conversions` : 'none this week'}
 - ${pipelineLine}
 
 Return ONLY a JSON object (no markdown) with exactly these keys:
@@ -130,7 +119,7 @@ Return ONLY a JSON object (no markdown) with exactly these keys:
       let digestJson: { summary: string; top_signal: string; rep_spotlight: string; recommendation: string }
       try {
         const cleaned = raw.replace(/```json|```/g, '').trim()
-        digestJson = JSON.parse(cleaned)
+        digestJson = weeklyDigestOutputSchema.parse(JSON.parse(cleaned))
       } catch {
         console.error(`[scout-digest cron] JSON parse failed for client ${client.id}`)
         errors.push(client.id)

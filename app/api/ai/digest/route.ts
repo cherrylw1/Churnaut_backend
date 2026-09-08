@@ -5,6 +5,14 @@ import { logLLMCall } from '@/lib/llm/logger';
 import { generateText } from '@/lib/llm/complete';
 import { getClientPlan, planGate } from '@/lib/gate';
 import { getAuthedClientId } from '@/lib/auth';
+import {
+  parseDigestAggregate,
+  selectBestRep,
+  selectBestRule,
+  selectTopSignal,
+} from '@/lib/analytics/digest';
+import { weeklyDigestOutputSchema } from '@/lib/validation';
+import { getPreviousUtcWeekRange } from '@/lib/time';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,7 +50,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST handler: calculates metrics and calls Gemini to generate a weekly performance digest
+// POST handler: calculates metrics and generates a weekly performance digest
 export async function POST(req: NextRequest) {
   const plan = await getClientPlan(req)
   const gate = planGate(plan, 'growth')
@@ -54,7 +62,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const cacheKey = `digest:${clientId}`;
+    // Manual and scheduled generation must use the same completed UTC week so
+    // repeated runs are idempotent and always report identical date bounds.
+    const { periodStart, periodEnd, weekStart: weekStartStr } = getPreviousUtcWeekRange();
+    const previousStart = new Date(
+      new Date(periodStart).getTime() - 7 * 24 * 60 * 60 * 1000
+    ).toISOString();
+    const cacheKey = `digest:${clientId}:${weekStartStr}`;
     // Check cache
     try {
       const cached = await redis.get(cacheKey);
@@ -66,129 +80,54 @@ export async function POST(req: NextRequest) {
       console.error('[Digest Cache Read Error]:', cacheErr);
     }
 
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    const fourteenDaysAgo = new Date();
-    fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
-
-    // 1. Fetch sessions for the last 14 days
-    const { data: sessions, error: sessionsErr } = await supabaseAdmin
-      .from('sessions')
-      .select('created_at, signal_type, converted, assigned_rep')
-      .eq('client_id', clientId)
-      .gte('created_at', fourteenDaysAgo.toISOString());
-
-    if (sessionsErr) {
-      console.error('[Digest POST Error] Fetching sessions failed:', sessionsErr);
+    // Calculate both seven-day windows inside Postgres. This uses immutable
+    // event timestamps and exact server-side counts, so historical digests do
+    // not drift and are not truncated by PostgREST's row limit.
+    const { data: aggregateData, error: aggregateError } = await supabaseAdmin.rpc(
+      'digest_v2_aggregate',
+      {
+        client_id_input: clientId,
+        current_start_input: periodStart,
+        previous_start_input: previousStart,
+        period_end_input: periodEnd,
+      }
+    );
+    const aggregate = parseDigestAggregate(aggregateData);
+    if (aggregateError || !aggregate) {
+      console.error('[Digest POST Error] Aggregate calculation failed:', aggregateError);
+      return NextResponse.json({ error: 'Unable to calculate digest metrics' }, { status: 500 });
     }
 
-    // 2. Fetch analytics personalization triggers (events) for the last 14 days
-    const { data: events, error: eventsErr } = await supabaseAdmin
-      .from('analytics_events')
-      .select('created_at, rule_id')
-      .eq('client_id', clientId)
-      .eq('event_type', 'rule_triggered')
-      .gte('created_at', fourteenDaysAgo.toISOString());
+    const topSignalMetric = selectTopSignal(aggregate.current.signals);
+    const topSignal = topSignalMetric?.signal || 'None';
+    const previousSignalMetric = topSignalMetric
+      ? aggregate.previous.signals.find((signal) => signal.signal === topSignalMetric.signal)
+      : null;
+    const previousSignalRate = previousSignalMetric?.rate || 0;
+    const signalPercentageChange = topSignalMetric
+      ? previousSignalRate > 0
+        ? Math.round(((topSignalMetric.rate - previousSignalRate) / previousSignalRate) * 100)
+        : topSignalMetric.rate > 0 ? 100 : 0
+      : 0;
 
-    if (eventsErr) {
-      console.error('[Digest POST Error] Fetching events failed:', eventsErr);
-    }
+    const bestRepMetric = selectBestRep(aggregate.current.reps);
+    const bestRuleMetric = selectBestRule(aggregate.current.rules);
 
-    const thisWeekSessions = (sessions || []).filter(s => new Date(s.created_at) >= sevenDaysAgo);
-    const lastWeekSessions = (sessions || []).filter(s => new Date(s.created_at) < sevenDaysAgo);
-
-    // Compute Personalization Triggers
-    const thisWeekTriggers = (events || []).filter(e => new Date(e.created_at) >= sevenDaysAgo).length;
-    const lastWeekTriggers = (events || []).filter(e => new Date(e.created_at) < sevenDaysAgo).length;
-
-    // Compute Top converting signal this week with percentage change from previous week
-    let topSignal = 'None';
-    let signalPercentageChange = 0;
-
-    const computeSignalRates = (sessList: typeof sessions) => {
-      const counts: Record<string, { total: number; converted: number }> = {};
-      for (const s of sessList || []) {
-        const sig = s.signal_type || 'Any';
-        if (!counts[sig]) counts[sig] = { total: 0, converted: 0 };
-        counts[sig].total++;
-        if (s.converted) counts[sig].converted++;
-      }
-
-      const rates: Record<string, number> = {};
-      for (const sig in counts) {
-        rates[sig] = counts[sig].total > 0 ? counts[sig].converted / counts[sig].total : 0;
-      }
-      return { counts, rates };
-    };
-
-    const thisWeekSignalData = computeSignalRates(thisWeekSessions);
-    const lastWeekSignalData = computeSignalRates(lastWeekSessions);
-
-    let maxRate = -1;
-    for (const sig in thisWeekSignalData.rates) {
-      const rate = thisWeekSignalData.rates[sig];
-      // Require at least 1 session to consider
-      if (rate > maxRate && thisWeekSignalData.counts[sig].total > 0) {
-        maxRate = rate;
-        topSignal = sig;
-      }
-    }
-
-    if (topSignal !== 'None') {
-      const thisRate = thisWeekSignalData.rates[topSignal] || 0;
-      const lastRate = lastWeekSignalData.rates[topSignal] || 0;
-      if (lastRate > 0) {
-        signalPercentageChange = Math.round(((thisRate - lastRate) / lastRate) * 100);
-      } else {
-        signalPercentageChange = thisRate > 0 ? 100 : 0;
-      }
-    }
-
-    // Compute best converting rep this week
-    let bestRep = 'None';
-    const repConversions: Record<string, number> = {};
-    for (const s of thisWeekSessions) {
-      if (s.assigned_rep && s.converted) {
-        repConversions[s.assigned_rep] = (repConversions[s.assigned_rep] || 0) + 1;
-      }
-    }
-    let maxRepConversions = 0;
-    for (const rep in repConversions) {
-      if (repConversions[rep] > maxRepConversions) {
-        maxRepConversions = repConversions[rep];
-        bestRep = rep;
-      }
-    }
-
-    // Compute best performing routing rule (triggered the most this week)
+    // Compute best performing routing rule (triggered the most this week).
     let bestRuleDesc = 'None';
-    const ruleTriggerCounts: Record<string, number> = {};
-    for (const e of (events || []).filter(ev => new Date(ev.created_at) >= sevenDaysAgo)) {
-      if (e.rule_id) {
-        ruleTriggerCounts[e.rule_id] = (ruleTriggerCounts[e.rule_id] || 0) + 1;
-      }
-    }
-    let maxRuleTriggers = 0;
-    let bestRuleId = '';
-    for (const rId in ruleTriggerCounts) {
-      if (ruleTriggerCounts[rId] > maxRuleTriggers) {
-        maxRuleTriggers = ruleTriggerCounts[rId];
-        bestRuleId = rId;
-      }
-    }
-
-    if (bestRuleId) {
-      // Fetch details of this rule
+    if (bestRuleMetric) {
+      // Fetch details with the tenant boundary repeated at the write/read edge.
       const { data: ruleDetails } = await supabaseAdmin
         .from('routing_rules')
         .select('signal_type, priority')
-        .eq('id', bestRuleId)
+        .eq('id', bestRuleMetric.rule_id)
+        .eq('client_id', clientId)
         .maybeSingle();
 
       if (ruleDetails) {
-        bestRuleDesc = `Priority ${ruleDetails.priority} (${ruleDetails.signal_type || 'Any'} Signal) rule with ${maxRuleTriggers} triggers`;
+        bestRuleDesc = `Priority ${ruleDetails.priority} (${ruleDetails.signal_type || 'Any'} Signal) rule with ${bestRuleMetric.triggers} triggers`;
       } else {
-        bestRuleDesc = `Rule ID ${bestRuleId} with ${maxRuleTriggers} triggers`;
+        bestRuleDesc = `Rule ID ${bestRuleMetric.rule_id} with ${bestRuleMetric.triggers} triggers`;
       }
     }
 
@@ -212,17 +151,17 @@ export async function POST(req: NextRequest) {
 
     const performanceData = {
       top_signal_this_week: topSignal,
-      top_signal_conversion_rate: topSignal !== 'None' ? `${Math.round((thisWeekSignalData.rates[topSignal] || 0) * 100)}%` : '0%',
+      top_signal_conversion_rate: topSignalMetric ? `${Math.round(topSignalMetric.rate * 100)}%` : '0%',
       top_signal_change_vs_last_week: signalPercentageChange >= 0 ? `+${signalPercentageChange}%` : `${signalPercentageChange}%`,
-      best_converting_rep: bestRep !== 'None' ? `${bestRep} (${maxRepConversions} conversions)` : 'None',
-      personalization_triggers_this_week: thisWeekTriggers,
-      personalization_triggers_last_week: lastWeekTriggers,
+      best_converting_rep: bestRepMetric ? `${bestRepMetric.rep} (${bestRepMetric.conversions} conversions)` : 'None',
+      personalization_triggers_this_week: aggregate.current.triggers,
+      personalization_triggers_last_week: aggregate.previous.triggers,
       best_performing_rule: bestRuleDesc,
     };
 
     // 3. Call Together AI API
 
-    const geminiPrompt = `You are a B2B revenue analyst writing a weekly performance digest for a SaaS company using website personalization.
+    const digestPrompt = `You are a B2B revenue analyst writing a weekly performance digest for a SaaS company using website personalization.
 Data:
 - Top converting traffic source/signal: ${performanceData.top_signal_this_week} (Conversion rate: ${performanceData.top_signal_conversion_rate}, Change from last week: ${performanceData.top_signal_change_vs_last_week})
 - Best performing sales rep: ${performanceData.best_converting_rep}
@@ -239,7 +178,7 @@ Tone: direct, data-driven, peer-level. Total under 150 words.
 Output only a JSON object with keys: summary, top_signal, rep_spotlight, recommendation. Do not include markdown formatting or preamble.`;
 
     const llmStart = Date.now();
-    const rawText = (await generateText(geminiPrompt, { maxTokens: 1500 })) || '{}';
+    const rawText = (await generateText(digestPrompt, { maxTokens: 1500 })) || '{}';
 
     let cleanedText = rawText.trim();
     if (cleanedText.startsWith('```')) {
@@ -248,12 +187,9 @@ Output only a JSON object with keys: summary, top_signal, rep_spotlight, recomme
 
     let digestJson: { summary: string; top_signal: string; rep_spotlight: string; recommendation: string };
     try {
-      digestJson = JSON.parse(cleanedText);
-      if (!digestJson.summary || !digestJson.top_signal || !digestJson.rep_spotlight || !digestJson.recommendation) {
-        throw new Error('Missing key sections in Gemini response');
-      }
+      digestJson = weeklyDigestOutputSchema.parse(JSON.parse(cleanedText));
     } catch (parseErr) {
-      console.error('[Digest Parse Error] Failed parsing JSON:', cleanedText, parseErr);
+      console.error('[Digest Parse Error] Failed parsing model response:', parseErr);
       return NextResponse.json({ error: 'Failed to parse AI response as JSON' }, { status: 502 });
     }
 
@@ -266,18 +202,16 @@ Output only a JSON object with keys: summary, top_signal, rep_spotlight, recomme
     });
 
     // 4. Store Weekly Digest in weekly_digests table
-    const weekStartStr = sevenDaysAgo.toISOString().split('T')[0];
-
     const { data: savedDigest, error: insertErr } = await supabaseAdmin
       .from('weekly_digests')
-      .insert({
+      .upsert({
         client_id: clientId,
         week_start: weekStartStr,
         summary: digestJson.summary,
         top_signal: digestJson.top_signal,
         rep_spotlight: digestJson.rep_spotlight,
         recommendation: digestJson.recommendation,
-      })
+      }, { onConflict: 'client_id,week_start' })
       .select()
       .single();
 

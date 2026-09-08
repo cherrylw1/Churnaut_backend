@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getAuthedClientId } from '@/lib/auth';
+import { parseAnomalyAggregate } from '@/lib/analytics/anomaly';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,13 +32,15 @@ export async function GET(req: NextRequest) {
     }
 
     // 1. Fetch latest snapshot (for pressure score and pipeline status)
-    const { data: snapshot } = await supabaseAdmin
+    const { data: snapshot, error: snapshotError } = await supabaseAdmin
       .from('pipeline_snapshots')
       .select('pressure_score')
       .eq('client_id', clientId)
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
+
+    if (snapshotError) throw snapshotError;
 
     const pressureScore = snapshot?.pressure_score ?? 0;
     let pipelineStatus = 'HEALTHY';
@@ -48,43 +51,61 @@ export async function GET(req: NextRequest) {
     }
 
     // 2. Fetch Active Rules count
-    const { count: activeRulesCount } = await supabaseAdmin
+    const { count: activeRulesCount, error: activeRulesError } = await supabaseAdmin
       .from('routing_rules')
       .select('*', { count: 'exact', head: true })
       .eq('client_id', clientId)
       .eq('active', true);
 
+    if (activeRulesError) throw activeRulesError;
+
     // 3. Fetch Tracked Links count
-    const { count: trackedLinksCount } = await supabaseAdmin
+    const { count: trackedLinksCount, error: trackedLinksError } = await supabaseAdmin
       .from('sessions')
       .select('*', { count: 'exact', head: true })
-      .eq('client_id', clientId);
+      .eq('client_id', clientId)
+      .or('session_kind.eq.tracked_link,session_kind.is.null');
+
+    if (trackedLinksError) throw trackedLinksError;
 
     // 4. Fetch Sessions This Week count
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    const { count: sessionsThisWeek } = await supabaseAdmin
-      .from('sessions')
-      .select('*', { count: 'exact', head: true })
-      .eq('client_id', clientId)
-      .gte('created_at', sevenDaysAgo.toISOString());
+    const fourteenDaysAgo = new Date();
+    fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+    const { data: visitAggregateData, error: visitAggregateError } = await supabaseAdmin.rpc(
+      'anomaly_v2_aggregate',
+      {
+        client_id_input: clientId,
+        current_start_input: sevenDaysAgo.toISOString(),
+        previous_start_input: fourteenDaysAgo.toISOString(),
+        period_end_input: new Date().toISOString(),
+      }
+    );
+    const visitAggregate = parseAnomalyAggregate(visitAggregateData);
+    if (visitAggregateError || !visitAggregate) throw visitAggregateError || new Error('Invalid dashboard aggregate');
+    const sessionsThisWeek = visitAggregate.current.visitors;
 
     // 5. Fetch Scout Inbox Details
-    const { data: dealScores } = await supabaseAdmin
+    const { data: dealScores, error: dealScoresError } = await supabaseAdmin
       .from('deal_scores')
       .select('*')
       .eq('client_id', clientId);
+
+    if (dealScoresError) throw dealScoresError;
 
     const typedDeals = (dealScores || []) as unknown as ScoutDealScore[];
     const redDeals = typedDeals.filter((d) => d.score === 'RED');
 
     // Fetch sessions to map deals to representatives
-    const { data: sessionsData } = await supabaseAdmin
+    const { data: sessionsData, error: sessionsError } = await supabaseAdmin
       .from('sessions')
       .select('crm_deal_id, assigned_rep')
       .eq('client_id', clientId)
       .not('crm_deal_id', 'is', null);
+
+    if (sessionsError) throw sessionsError;
 
     const dealRepMap = new Map<string, string>();
     if (sessionsData) {
@@ -135,12 +156,14 @@ export async function GET(req: NextRequest) {
     };
 
     // 6. Fetch Recent Activity (last 5 analytics events)
-    const { data: recentEvents } = await supabaseAdmin
+    const { data: recentEvents, error: recentEventsError } = await supabaseAdmin
       .from('analytics_events')
       .select('event_type, signal_type, created_at')
       .eq('client_id', clientId)
       .order('created_at', { ascending: false })
       .limit(5);
+
+    if (recentEventsError) throw recentEventsError;
 
     return NextResponse.json({
       pressure_score: pressureScore,

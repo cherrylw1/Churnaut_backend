@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { getAuthedClientId } from '@/lib/auth'
-import { embed } from '@/lib/llm/complete'
+import { DEFAULT_MODEL, embed } from '@/lib/llm/complete'
 import { supportChatRatelimit } from '@/lib/redis'
 import { normalizeEmail } from '@/lib/email-normalization'
 import { chatRequestSchema, readJson } from '@/lib/validation'
@@ -9,8 +9,6 @@ import { chatRequestSchema, readJson } from '@/lib/validation'
 export const dynamic = 'force-dynamic'
 
 const TOGETHER_API_URL = 'https://api.together.xyz/v1/chat/completions'
-const TOGETHER_MODEL = 'moonshotai/Kimi-K2.6'
-
 const SYSTEM_PROMPT = `You are Maya, Churnaut's AI support agent — warm, sharp, and direct. You have deep product knowledge but you never show off. You solve problems efficiently and make users feel heard. You are honest about being an AI when asked, and you frame it as a feature: you can debug sessions, create routing rules, and answer product questions instantly.
 
 ━━━ ESCALATION — CHECK THIS FIRST ON EVERY MESSAGE ━━━
@@ -152,7 +150,7 @@ function parseRuleIntent(message: string): { signal_type?: string; condition_typ
 async function fetchAccountContext(clientId: string) {
   const [rulesRes, sessionsRes, clientRes] = await Promise.all([
     supabaseAdmin.from('routing_rules').select('id, signal_type, action_type, active').eq('client_id', clientId).limit(10),
-    supabaseAdmin.from('sessions').select('id').eq('client_id', clientId).limit(1),
+    supabaseAdmin.from('sessions').select('id').eq('client_id', clientId).or('session_kind.eq.tracked_link,session_kind.is.null').limit(1),
     supabaseAdmin.from('clients').select('domain, crm_type, plan').eq('id', clientId).single(),
   ])
   return {
@@ -249,7 +247,7 @@ export async function POST(req: NextRequest) {
         const debugData = await debugSession(clientId, prospectQuery)
         if (debugData.sessions.length > 0) {
           const session = debugData.sessions[0]
-          const matchingRules = debugData.rules.filter((r: {signal_type: string}) => r.signal_type === session.signal_type || r.signal_type === 'any')
+          const matchingRules = debugData.rules.filter((r: {signal_type: string | null}) => !r.signal_type || r.signal_type === session.signal_type)
           const recentFires = debugData.recentEvents.filter((e: {event_type: string}) => e.event_type === 'rule_triggered').length
           enrichedMessage += `\n\nLIVE_SESSION_DATA: Found session for "${prospectQuery}". Prospect: ${session.prospect_name}, Email: ${session.prospect_email}, Company: ${session.company_name}, Job Title: ${session.job_title || 'not set'}, Signal Type: ${session.signal_type}, Clicks: ${session.click_count}, Converted: ${session.converted}, Deal Stage: ${session.deal_stage || 'not set'}, Expired: ${session.expires_at ? new Date(session.expires_at) < new Date() : false}. Active rules for this signal type: ${matchingRules.length}. Rules found: ${JSON.stringify(matchingRules.map((r: {signal_type: string; action_type: string; conditions: unknown}) => ({ signal: r.signal_type, action: r.action_type, conditions: r.conditions })))}. Recent rule fires in account: ${recentFires}.`
         } else {
@@ -321,7 +319,7 @@ export async function POST(req: NextRequest) {
     const response = await fetch(TOGETHER_API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.TOGETHER_API_KEY}` },
-      body: JSON.stringify({ model: TOGETHER_MODEL, messages, max_tokens: 1000, temperature: 0.5, top_p: 0.9, chat_template_kwargs: { thinking: false } }),
+      body: JSON.stringify({ model: DEFAULT_MODEL, messages, max_tokens: 1000, temperature: 0.5, top_p: 0.9, chat_template_kwargs: { thinking: false } }),
     })
 
     if (!response.ok) {
