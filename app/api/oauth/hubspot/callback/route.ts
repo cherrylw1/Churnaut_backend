@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { encrypt } from '@/lib/crypto';
 import { redis } from '@/lib/redis';
+import { getAppOrigin } from '@/lib/app-origin';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,7 +35,7 @@ export async function GET(req: NextRequest) {
 
     // 2. Exchange OAuth code for access and refresh tokens
     const tokenUrl = 'https://api.hubapi.com/oauth/v1/token';
-    const redirectUri = 'https://app.churnaut.com/api/oauth/hubspot/callback';
+    const redirectUri = `${getAppOrigin()}/api/oauth/hubspot/callback`;
 
     const tokenResponse = await fetch(tokenUrl, {
       method: 'POST',

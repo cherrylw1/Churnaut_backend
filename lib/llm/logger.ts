@@ -1,32 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
-interface LLMLogInput {
-  client_id?: string;
-  session_id?: string;
-  deal_id?: string;
-  feature: 'scout_score' | 'copywriter' | 'weekly_digest';
-  model_used?: string;
-  prompt_version?: string;
-  system_prompt?: string;
-  input_payload: Record<string, unknown>;
-  output_payload: Record<string, unknown>;
-  latency_ms?: number;
-  input_tokens?: number;
-  output_tokens?: number;
-}
-
-export async function logLLMCall(data: LLMLogInput): Promise<void> {
-  supabase
-    .from('llm_logs')
-    .insert({
-      ...data,
-      model_used: data.model_used ?? 'moonshotai/Kimi-K2.6',
-      prompt_version: data.prompt_version ?? 'v1.0',
-    })
-    .then();
-}
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder-project.supabase.co', process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder-service-key');
+interface LLMLogInput { client_id?: string; session_id?: string; deal_id?: string; feature: string; model_used?: string; prompt_version?: string; system_prompt?: string; input_payload: Record<string, unknown>; output_payload: Record<string, unknown>; latency_ms?: number; input_tokens?: number; output_tokens?: number }
+export async function logLLMCall(data: LLMLogInput): Promise<void> { supabase.from('llm_logs').insert({ ...data, model_used: data.model_used ?? process.env.TOGETHER_MODEL ?? 'moonshotai/Kimi-K2.6', prompt_version: data.prompt_version ?? 'v1.0' }).then(); }
+export interface AIProviderAttemptLog { client_id?: string; feature: string; scope: 'customer' | 'internal'; provider: string; operation: 'chat' | 'embedding'; model: string; request_id: string; attempt: number; fallback_used: boolean; status: string; latency_ms: number; input_tokens: number; output_tokens: number; estimated_cost_micros?: number; usage_source?: string; finish_reason?: string; reservation_id?: string; error_code?: string }
+export async function logAIProviderAttempt(data: AIProviderAttemptLog): Promise<void> { supabase.from('llm_logs').insert({ client_id: data.client_id, feature: data.feature, model_used: data.model, input_payload: {}, output_payload: {}, scope: data.scope, latency_ms: data.latency_ms, input_tokens: data.input_tokens, output_tokens: data.output_tokens, estimated_cost_micros: data.estimated_cost_micros ?? null, usage_source: data.usage_source ?? null, finish_reason: data.finish_reason ?? null, record_type: 'provider_attempt', provider: data.provider, operation: data.operation, request_id: data.request_id, attempt: data.attempt, fallback_used: data.fallback_used, status: data.status, reservation_id: data.reservation_id, error_code: data.error_code }).then(); }

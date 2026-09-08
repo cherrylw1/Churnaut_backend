@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { getAuthedClientId } from '@/lib/auth'
-import { DEFAULT_MODEL, embed } from '@/lib/llm/complete'
+import { embed, generateChat } from '@/lib/llm/complete'
 import { supportChatRatelimit } from '@/lib/redis'
 import { normalizeEmail } from '@/lib/email-normalization'
 import { chatRequestSchema, readJson } from '@/lib/validation'
 
 export const dynamic = 'force-dynamic'
 
-const TOGETHER_API_URL = 'https://api.together.xyz/v1/chat/completions'
 const SYSTEM_PROMPT = `You are Maya, Churnaut's AI support agent — warm, sharp, and direct. You have deep product knowledge but you never show off. You solve problems efficiently and make users feel heard. You are honest about being an AI when asked, and you frame it as a feature: you can debug sessions, create routing rules, and answer product questions instantly.
 
 ━━━ ESCALATION — CHECK THIS FIRST ON EVERY MESSAGE ━━━
@@ -98,8 +97,8 @@ ACCOUNT_CONTEXT → silent background only. Never summarise it. Never mention wh
 
 
 
-async function embedQuery(text: string): Promise<number[]> {
-  return embed(text, { type: 'query' })
+async function embedQuery(text: string, clientId: string): Promise<number[]> {
+  return embed(text, { type: 'query', context: { feature: 'support_query_embedding', scope: 'customer', clientId } })
 }
 
 // Detect if message is asking about a specific prospect/session not working
@@ -307,12 +306,12 @@ export async function POST(req: NextRequest) {
     }
 
     // RAG search
-    const queryEmbedding = await embedQuery(message)
-    const { data: chunks, error: searchError } = await supabaseAdmin.rpc('match_support_chunks', {
-      query_embedding: JSON.stringify(queryEmbedding),
-      match_count: 6,
-      match_threshold: 0.3,
-    })
+    let queryEmbedding: number[] = []
+    try { queryEmbedding = await embedQuery(message, clientId) }
+    catch (error) { console.error('[Support Chat] Embedding unavailable; continuing without RAG:', error instanceof Error ? error.message : 'unknown') }
+    const { data: chunks, error: searchError } = queryEmbedding.length
+      ? await supabaseAdmin.rpc('match_support_chunks', { query_embedding: JSON.stringify(queryEmbedding), match_count: 6, match_threshold: 0.3 })
+      : { data: [], error: null }
     if (searchError) console.error('[Support Chat] Search error:', searchError)
 
     const docContext = chunks && chunks.length > 0
@@ -330,21 +329,10 @@ export async function POST(req: NextRequest) {
       { role: 'user', content: enrichedMessage },
     ]
 
-    const response = await fetch(TOGETHER_API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.TOGETHER_API_KEY}` },
-      body: JSON.stringify({ model: DEFAULT_MODEL, messages, max_tokens: 1000, temperature: 0.5, top_p: 0.9, chat_template_kwargs: { thinking: false } }),
-    })
-
-    if (!response.ok) {
-      const err = await response.text()
-      console.error('[Support Chat] Together AI error:', err)
-      return NextResponse.json({ error: 'AI inference failed' }, { status: 500 })
-    }
-
-    const data = await response.json()
-    const answer = data.choices?.[0]?.message?.content || 'Sorry, I could not generate a response.'
-    return NextResponse.json({ answer, ruleCreated })
+    let answer: string
+    try { answer = await generateChat(messages, { maxTokens: 1000, temperature: 0.5, context: { feature: 'support_chat', scope: 'customer', clientId } }) || 'Sorry, I could not generate a response.' }
+    catch (error) { console.error('[Support Chat] AI provider unavailable:', error instanceof Error ? error.message : 'unknown'); answer = ruleCreated ? 'The routing rule was created successfully; automated follow-up text is temporarily unavailable. Please email support@churnaut.com if you need help.' : 'Automated support is temporarily unavailable. Please email support@churnaut.com and the team will help.' }
+    return NextResponse.json({ answer, ruleCreated, degraded: answer.startsWith('Automated support is temporarily unavailable') })
 
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : 'Internal server error'

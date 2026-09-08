@@ -39,4 +39,10 @@ describe('email delivery results', () => {
     expect(result.success).toBe(true);
     expect(sendMock).toHaveBeenCalledOnce();
   });
+
+  it('passes digest idempotency through Resend request options', async () => {
+    sendMock.mockResolvedValue({ data: { id: 'email_123' }, error: null, headers: null });
+    await sendWeeklyDigest('owner@example.com', { summary: 'Summary', top_signal: 'Signal', rep_spotlight: 'Rep', recommendation: 'Recommendation' }, 'weekly-digest:client:week');
+    expect(sendMock.mock.calls[0][1]).toEqual({ idempotencyKey: 'weekly-digest:client:week' });
+  });
 });

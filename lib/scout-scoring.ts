@@ -165,7 +165,7 @@ Return ONLY the JSON. No markdown wrappers, no conversational text, no explanati
 `;
 
   // 3. Invoke Together AI/Kimi API
-  const rawText = await generateText(prompt, { maxTokens: 3000 });
+  const rawText = await generateText(prompt, { maxTokens: 3000, context: { feature: 'scout_batch_legacy', scope: 'customer', clientId } });
 
   if (!rawText) {
     console.error('[Scout Scoring Error] Empty response structure from AI model');
@@ -355,7 +355,7 @@ Return ONLY the JSON. No markdown wrappers (no \`\`\`json block), no conversatio
 `;
 
   // 3. Invoke Together AI/Kimi API
-  const rawText = await generateText(prompt, { maxTokens: 2500 });
+  const rawText = await generateText(prompt, { maxTokens: 2500, context: { feature: 'scout_obituary', scope: 'customer', clientId } });
 
   let cleanedText = rawText.trim();
   if (cleanedText.startsWith('```')) {
@@ -472,7 +472,9 @@ Calculated patterns from closed-won deals:
 Your response must be a single, plain-text string containing exactly the 3-sentence ICP summary. No JSON, no markdown wrappers, no conversational text, no explanations. Just the raw 3-sentence summary.
 `;
 
-  let icpSummary = (await generateText(prompt, { maxTokens: 1500 })) || '';
+  let icpSummary = '';
+  try { icpSummary = (await generateText(prompt, { maxTokens: 1500, context: { feature: 'scout_icp', scope: 'customer', clientId } })) || ''; }
+  catch (error) { console.error('[Scout ICP] AI unavailable; using deterministic summary:', error instanceof Error ? error.message : 'unknown'); icpSummary = `${winCount} closed-won deals averaging $${avgDealValue.toFixed(0)} with an average ${avgDaysToClose}-day sales cycle.`; }
   icpSummary = icpSummary.trim();
 
   // Remove potential markdown code blocks if AI wrapped it

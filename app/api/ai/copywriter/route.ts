@@ -51,7 +51,9 @@ export async function POST(req: NextRequest) {
     const prompt = `You are a B2B SaaS copywriter specializing in high-converting CTA copy for sales-led growth companies. Generate exactly 5 short CTA variants for a website button. Context: Signal type is ${signal_type}. The visitor's job title is ${job_title}. Their industry is ${industry}. Company size is ${company_size}. Desired tone is ${desired_tone}. Each variant should be under 10 words. Output only a JSON array of 5 strings. No explanation, no preamble, no markdown.`;
 
     const llmStart = Date.now();
-    const rawText = await generateText(prompt, { maxTokens: 1200 });
+    let rawText: string;
+    try { rawText = await generateText(prompt, { maxTokens: 1200, context: { feature: 'copywriter', scope: 'customer', clientId } }); }
+    catch (error) { console.error('[Copywriter AI] unavailable:', error instanceof Error ? error.message : 'unknown'); return NextResponse.json({ success: false, degraded: true, error: 'ai_unavailable', message: 'AI copy is temporarily unavailable; enter the copy manually.' }); }
 
     // 6. Clean Markdown formatting out of JSON response
     let cleanedText = rawText.trim();

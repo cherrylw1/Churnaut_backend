@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
 
     const { data: client, error } = await supabaseAdmin
       .from('clients')
-      .select('id, company_name, domain, plan, plan_status, monthly_visits, snippet_key, webhook_secret, crm_type, active, lemonsqueezy_customer_id')
+      .select('id, company_name, domain, plan, plan_status, monthly_visits, snippet_key, webhook_secret, webhook_query_auth_expires_at, webhook_previous_secret_expires_at, crm_type, active, lemonsqueezy_customer_id')
       .eq('id', clientId)
       .maybeSingle();
 

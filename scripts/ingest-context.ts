@@ -188,8 +188,14 @@ Salesforce — Coming Soon. Needs Connected App registration.
 Attio — Coming Soon. Needs OAuth app registration.
 
 OUTREACH TOOLS (Webhook-based)
-Universal endpoint: https://app.churnaut.com/api/webhook?client_key={webhook_secret}
-The query-parameter name remains client_key for compatibility, but its value must be the private webhook_secret shown in the dashboard. Never use the public snippet_key.
+Universal endpoint: https://app.churnaut.com/api/webhook
+Preferred authentication: Authorization: Bearer {webhook_secret}
+Existing customers may have a time-limited legacy URL compatibility window; new
+customers must never put a secret in the URL. Never use the public snippet_key.
+For custom HMAC senders, sign <timestamp>.<exact request body> with HMAC-SHA256
+using webhook_secret and send X-Churnaut-Client-Id, X-Churnaut-Timestamp, and
+X-Churnaut-Signature: v1=<lowercase hex digest>. Timestamps must be within five
+minutes; previous credentials work only in the displayed rotation grace.
 All active: Instantly, Smartlead, Apollo, Lemlist, Zapier, Make
 
 CALENDLY — LIVE OAuth. Embeds calendar in personalization rules.
@@ -361,7 +367,7 @@ function chunkContent(content: string): string[] {
 }
 
 async function embedText(text: string): Promise<number[]> {
-  return embed(text)
+  return embed(text, { context: { feature: 'code_embedding_ingest', scope: 'internal' } })
 }
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))

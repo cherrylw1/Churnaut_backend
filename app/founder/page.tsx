@@ -403,6 +403,7 @@ export default function FounderPage() {
           <div className="flex items-center gap-2">
             <Sparkles className="w-3 h-3 text-[#C2683D]" />
             <span className="text-[10px] font-mono text-[var(--text-muted)] uppercase tracking-wider">Qwen2.5-7B · RAG</span>
+            <a href="/founder/ai-costs" className="text-[10px] font-mono text-[#C2683D] uppercase tracking-wider hover:underline">AI costs</a>
           </div>
         </div>
 

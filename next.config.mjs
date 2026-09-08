@@ -11,6 +11,9 @@ const securityHeaders = [
 ]
 
 const nextConfig = {
+  // Keep Next's AI-agent guidance files out of the application source tree;
+  // repository instructions are managed explicitly in version control.
+  agentRules: false,
   async headers() {
     return [
       {

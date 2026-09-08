@@ -554,13 +554,12 @@ export default function RulesPage() {
         }),
       });
 
-      if (res.ok) {
-        const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success !== false && !data.degraded) {
         setAiSuggestions(data.variants || []);
         toast.success('AI copywriting variants generated');
       } else {
-        const errData = await res.json();
-        toast.error(errData.error || 'Failed to generate copy.');
+        toast.error(data.error || 'AI copywriting is temporarily unavailable. Enter the copy manually.');
       }
     } catch (err) {
       console.error('Error generating AI variants:', err);

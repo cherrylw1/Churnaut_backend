@@ -40,30 +40,51 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   // the browser session in localStorage.
   React.useEffect(() => {
     let mounted = true;
+    const authTimeout = window.setTimeout(() => {
+      if (mounted) router.replace('/login');
+    }, 15_000);
+
+    // A stalled Supabase request must not leave the dashboard on an endless
+    // “Securing your workspace…” screen. This is especially important when
+    // Supabase is paused or temporarily unreachable: fail closed and return
+    // the visitor to login so they can retry.
+    const withTimeout = <T,>(promise: Promise<T>, timeoutMs = 10_000) => {
+      let timeoutId: number | undefined;
+      const timeout = new Promise<T>((_, reject) => {
+        timeoutId = window.setTimeout(() => reject(new Error('Authentication timed out')), timeoutMs);
+      });
+      return Promise.race([promise, timeout]).finally(() => {
+        if (timeoutId !== undefined) window.clearTimeout(timeoutId);
+      });
+    };
 
     const syncSession = async () => {
       try {
-        const { data: { session }, error } = await supabaseBrowser.auth.getSession();
+        const { data: { session }, error } = await withTimeout(supabaseBrowser.auth.getSession());
         if (error || !session) {
-          await fetch('/api/auth/session', { method: 'DELETE' });
+          await withTimeout(fetch('/api/auth/session', { method: 'DELETE' }), 5_000).catch(() => undefined);
           if (mounted) router.replace('/login');
           return;
         }
 
-        const response = await fetch('/api/auth/session', {
+        const response = await withTimeout(fetch('/api/auth/session', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ access_token: session.access_token, expires_at: session.expires_at }),
-        });
+        }), 10_000);
         if (!response.ok) {
           await supabaseBrowser.auth.signOut();
           await fetch('/api/auth/session', { method: 'DELETE' });
           if (mounted) router.replace('/login');
           return;
         }
-        if (mounted) setAuthReady(true);
+        if (mounted) {
+          window.clearTimeout(authTimeout);
+          setAuthReady(true);
+        }
       } catch (error) {
         console.error('[Auth] Failed to establish the dashboard session:', error);
+        window.clearTimeout(authTimeout);
         if (mounted) router.replace('/login');
       }
     };
@@ -71,24 +92,32 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
     const { data: authListener } = supabaseBrowser.auth.onAuthStateChange((event, session) => {
       if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session) {
-        void fetch('/api/auth/session', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ access_token: session.access_token, expires_at: session.expires_at }),
-        }).then((response) => {
-          if (!response.ok) {
-            setAuthReady(false);
-            router.replace('/login');
+        void (async () => {
+          try {
+            const response = await withTimeout(fetch('/api/auth/session', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ access_token: session.access_token, expires_at: session.expires_at }),
+            }), 10_000);
+            if (!response.ok) throw new Error(`Session refresh failed (${response.status})`);
+          } catch (error) {
+            console.error('[Auth] Failed to refresh the dashboard session:', error);
+            await withTimeout(fetch('/api/auth/session', { method: 'DELETE' }), 5_000).catch(() => undefined);
+            if (mounted) {
+              setAuthReady(false);
+              router.replace('/login');
+            }
           }
-        });
+        })();
       } else if (event === 'SIGNED_OUT') {
         setAuthReady(false);
-        void fetch('/api/auth/session', { method: 'DELETE' });
+        void withTimeout(fetch('/api/auth/session', { method: 'DELETE' }), 5_000).catch(() => undefined);
         router.replace('/login');
       }
     });
     return () => {
       mounted = false;
+      window.clearTimeout(authTimeout);
       authListener.subscription.unsubscribe();
     };
   }, [router]);

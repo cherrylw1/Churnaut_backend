@@ -181,11 +181,11 @@ Example of the exact format required:
 
     let alertTexts: string[] = [];
     try {
-      const { parsed } = await generateJSON(prompt, { maxTokens: 1200 });
+      const { parsed } = await generateJSON(prompt, { maxTokens: 1200, context: { feature: 'anomaly_summary', scope: 'customer', clientId } });
       alertTexts = generatedAlertsSchema.parse(parsed);
     } catch (parseErr) {
-      console.error('[Anomaly Parse Error] Failed parsing JSON:', parseErr);
-      return NextResponse.json({ error: 'Failed to parse AI response as JSON' }, { status: 502 });
+      console.error('[Anomaly Parse Error] Falling back to deterministic alerts:', parseErr);
+      alertTexts = anomalies.slice(0, 3);
     }
 
     // 5. Store alerts in anomaly_alerts Supabase table

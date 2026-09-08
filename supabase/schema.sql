@@ -1,6 +1,33 @@
 -- Enable pgcrypto for gen_random_uuid()
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
+-- Keep pgvector objects out of the public schema on fresh installations.
+-- Supabase ships this extension; placing it in a dedicated schema avoids
+-- exposing extension implementation objects through the public API surface.
+CREATE SCHEMA IF NOT EXISTS extensions;
+CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA extensions;
+GRANT USAGE ON SCHEMA extensions TO service_role;
+
+-- If a fresh baseline is applied to a database where pgvector already exists
+-- in public, converge it on the same dedicated schema used by migrations.
+DO $$
+DECLARE
+    current_schema text;
+BEGIN
+    SELECT n.nspname INTO current_schema
+    FROM pg_extension e
+    JOIN pg_namespace n ON n.oid = e.extnamespace
+    WHERE e.extname = 'vector';
+
+    IF current_schema = 'public' THEN
+        BEGIN
+            ALTER EXTENSION vector SET SCHEMA extensions;
+        EXCEPTION WHEN feature_not_supported OR dependent_objects_still_exist OR insufficient_privilege THEN
+            RAISE NOTICE 'vector extension could not be relocated automatically; manual Supabase remediation required';
+        END;
+    END IF;
+END $$;
+
 -- ==========================================
 -- 1. CLIENTS TABLE
 -- ==========================================
@@ -14,6 +41,9 @@ CREATE TABLE IF NOT EXISTS clients (
     monthly_visits integer DEFAULT 0,
     snippet_key text UNIQUE DEFAULT gen_random_uuid()::text,
     webhook_secret uuid DEFAULT gen_random_uuid(),
+    webhook_query_auth_expires_at timestamptz,
+    webhook_previous_secret uuid,
+    webhook_previous_secret_expires_at timestamptz,
     email text,
     crm_type text,
     crm_api_key text,
@@ -27,6 +57,11 @@ CREATE TABLE IF NOT EXISTS clients (
     last_snippet_ping_at timestamptz,
     active boolean DEFAULT true
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS clients_webhook_secret_unique
+  ON clients (webhook_secret) WHERE webhook_secret IS NOT NULL;
+CREATE INDEX IF NOT EXISTS clients_webhook_previous_secret_idx
+  ON clients (webhook_previous_secret) WHERE webhook_previous_secret IS NOT NULL;
 
 -- Provision the tenant row inside the same transaction as the Supabase Auth
 -- user. A profile failure aborts sign-up, preventing orphaned auth accounts.
@@ -677,6 +712,72 @@ CREATE INDEX IF NOT EXISTS idx_llm_logs_feature ON llm_logs(feature);
 CREATE INDEX IF NOT EXISTS idx_llm_logs_created_at ON llm_logs(created_at DESC);
 ALTER TABLE llm_logs ENABLE ROW LEVEL SECURITY;
 
+-- AI cost/reliability controls (authoritative baseline; apply the ordered migration for upgrades).
+ALTER TABLE llm_logs ADD COLUMN IF NOT EXISTS record_type text NOT NULL DEFAULT 'interaction';
+ALTER TABLE llm_logs ADD COLUMN IF NOT EXISTS provider text;
+ALTER TABLE llm_logs ADD COLUMN IF NOT EXISTS scope text;
+ALTER TABLE llm_logs ADD COLUMN IF NOT EXISTS operation text;
+ALTER TABLE llm_logs ADD COLUMN IF NOT EXISTS request_id uuid;
+ALTER TABLE llm_logs ADD COLUMN IF NOT EXISTS attempt integer;
+ALTER TABLE llm_logs ADD COLUMN IF NOT EXISTS fallback_used boolean NOT NULL DEFAULT false;
+ALTER TABLE llm_logs ADD COLUMN IF NOT EXISTS estimated_cost_micros bigint;
+ALTER TABLE llm_logs ADD COLUMN IF NOT EXISTS reservation_id uuid;
+ALTER TABLE llm_logs ADD COLUMN IF NOT EXISTS status text;
+ALTER TABLE llm_logs ADD COLUMN IF NOT EXISTS error_code text;
+ALTER TABLE llm_logs ADD COLUMN IF NOT EXISTS usage_source text;
+ALTER TABLE llm_logs ADD COLUMN IF NOT EXISTS finish_reason text;
+ALTER TABLE llm_logs ALTER COLUMN input_payload SET DEFAULT '{}'::jsonb;
+ALTER TABLE llm_logs ALTER COLUMN output_payload SET DEFAULT '{}'::jsonb;
+CREATE TABLE IF NOT EXISTS ai_plan_limits (plan text PRIMARY KEY, monthly_cost_limit_micros bigint NOT NULL, monthly_token_limit bigint NOT NULL, created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now());
+INSERT INTO ai_plan_limits(plan,monthly_cost_limit_micros,monthly_token_limit) VALUES ('starter',10000000,2000000),('growth',50000000,10000000),('pro',200000000,40000000) ON CONFLICT DO NOTHING;
+CREATE TABLE IF NOT EXISTS ai_client_limit_overrides (client_id uuid PRIMARY KEY REFERENCES clients(id) ON DELETE CASCADE, monthly_cost_limit_micros bigint, monthly_token_limit bigint, created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS ai_model_pricing (provider text NOT NULL, model text NOT NULL, input_cost_micros_per_million_tokens bigint, output_cost_micros_per_million_tokens bigint, verified_at timestamptz, active boolean NOT NULL DEFAULT true, PRIMARY KEY(provider,model));
+CREATE TABLE IF NOT EXISTS ai_usage_monthly (client_id uuid NOT NULL REFERENCES clients(id) ON DELETE CASCADE, month_start date NOT NULL, reserved_cost_micros bigint NOT NULL DEFAULT 0, estimated_cost_micros bigint NOT NULL DEFAULT 0, reserved_tokens bigint NOT NULL DEFAULT 0, input_tokens bigint NOT NULL DEFAULT 0, output_tokens bigint NOT NULL DEFAULT 0, successful_attempts integer NOT NULL DEFAULT 0, failed_attempts integer NOT NULL DEFAULT 0, denied_attempts integer NOT NULL DEFAULT 0, expired_reservations integer NOT NULL DEFAULT 0, created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY(client_id,month_start));
+CREATE TABLE IF NOT EXISTS ai_budget_reservations (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), client_id uuid NOT NULL REFERENCES clients(id) ON DELETE CASCADE, request_id uuid NOT NULL UNIQUE, feature text NOT NULL, provider text NOT NULL, model text NOT NULL, month_start date NOT NULL, reserved_cost_micros bigint NOT NULL DEFAULT 0, reserved_tokens bigint NOT NULL, status text NOT NULL DEFAULT 'reserved', expires_at timestamptz NOT NULL DEFAULT(now()+interval '10 minutes'), created_at timestamptz NOT NULL DEFAULT now(), settled_at timestamptz);
+ALTER TABLE ai_plan_limits ENABLE ROW LEVEL SECURITY; ALTER TABLE ai_client_limit_overrides ENABLE ROW LEVEL SECURITY; ALTER TABLE ai_model_pricing ENABLE ROW LEVEL SECURITY; ALTER TABLE ai_usage_monthly ENABLE ROW LEVEL SECURITY; ALTER TABLE ai_budget_reservations ENABLE ROW LEVEL SECURITY;
+CREATE INDEX IF NOT EXISTS idx_llm_logs_record_type_created ON llm_logs(record_type, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_llm_logs_client_created ON llm_logs(client_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_llm_logs_status_created ON llm_logs(status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_llm_logs_provider_model_created ON llm_logs(provider, model_used, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_llm_logs_request_id ON llm_logs(request_id);
+CREATE INDEX IF NOT EXISTS idx_ai_usage_monthly_client ON ai_usage_monthly(client_id, month_start DESC);
+CREATE INDEX IF NOT EXISTS idx_ai_reservations_expiry ON ai_budget_reservations(status, expires_at);
+INSERT INTO ai_model_pricing(provider,model) VALUES ('together','moonshotai/Kimi-K2.6') ON CONFLICT DO NOTHING;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='ai_plan_limits_plan_check') THEN ALTER TABLE ai_plan_limits ADD CONSTRAINT ai_plan_limits_plan_check CHECK (plan IN ('starter','growth','pro')); END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='ai_budget_reservations_status_check') THEN ALTER TABLE ai_budget_reservations ADD CONSTRAINT ai_budget_reservations_status_check CHECK (status IN ('reserved','settled','released','expired_charged')); END IF;
+END $$;
+
+CREATE OR REPLACE FUNCTION public.reserve_ai_budget(client_id_input uuid, feature_input text, request_id_input uuid, provider_input text, model_input text, estimated_input_tokens bigint, max_output_tokens bigint, enforce_input boolean DEFAULT false)
+RETURNS TABLE(allowed boolean, reservation_id uuid, reserved_cost_micros bigint, reserved_tokens bigint, remaining_cost_micros bigint, remaining_tokens bigint, denial_reason text)
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp AS $$
+DECLARE plan_name text; cost_limit bigint; token_limit bigint; month_value date:=date_trunc('month',now())::date; price_in bigint; price_out bigint; cost_value bigint:=0; usage_row ai_usage_monthly%ROWTYPE; existing ai_budget_reservations%ROWTYPE; projected_cost bigint; projected_tokens bigint; stale_cost bigint:=0; stale_tokens bigint:=0; stale_count integer:=0;
+BEGIN
+ SELECT plan INTO plan_name FROM clients WHERE id=client_id_input; IF plan_name IS NULL THEN plan_name:='starter'; END IF;
+ SELECT COALESCE(o.monthly_cost_limit_micros,p.monthly_cost_limit_micros),COALESCE(o.monthly_token_limit,p.monthly_token_limit) INTO cost_limit,token_limit FROM ai_plan_limits p LEFT JOIN ai_client_limit_overrides o ON o.client_id=client_id_input WHERE p.plan=CASE WHEN plan_name IN('starter','growth','pro') THEN plan_name ELSE 'starter' END;
+ SELECT * INTO existing FROM ai_budget_reservations WHERE request_id=request_id_input; IF existing.id IS NOT NULL AND existing.status='reserved' THEN RETURN QUERY SELECT true,existing.id,existing.reserved_cost_micros,existing.reserved_tokens,GREATEST(0,cost_limit-existing.reserved_cost_micros),GREATEST(0,token_limit-existing.reserved_tokens),NULL::text; RETURN; END IF;
+ SELECT input_cost_micros_per_million_tokens,output_cost_micros_per_million_tokens INTO price_in,price_out FROM ai_model_pricing WHERE provider=provider_input AND model=model_input AND active; IF price_in IS NOT NULL AND price_out IS NOT NULL THEN cost_value:=ceil((estimated_input_tokens*price_in+max_output_tokens*price_out)::numeric/1000000); END IF;
+ INSERT INTO ai_usage_monthly(client_id,month_start) VALUES(client_id_input,month_value) ON CONFLICT DO NOTHING; SELECT * INTO usage_row FROM ai_usage_monthly WHERE client_id=client_id_input AND month_start=month_value FOR UPDATE;
+ SELECT COALESCE(sum(reserved_cost_micros),0),COALESCE(sum(reserved_tokens),0),count(*) INTO stale_cost,stale_tokens,stale_count FROM ai_budget_reservations WHERE client_id=client_id_input AND month_start=month_value AND status='reserved' AND expires_at<now();
+ IF stale_count>0 THEN UPDATE ai_budget_reservations SET status='expired_charged',settled_at=now() WHERE client_id=client_id_input AND month_start=month_value AND status='reserved' AND expires_at<now(); UPDATE ai_usage_monthly SET reserved_cost_micros=GREATEST(0,reserved_cost_micros-stale_cost),reserved_tokens=GREATEST(0,reserved_tokens-stale_tokens),estimated_cost_micros=estimated_cost_micros+stale_cost,input_tokens=input_tokens+stale_tokens,expired_reservations=expired_reservations+stale_count,failed_attempts=failed_attempts+stale_count,updated_at=now() WHERE client_id=client_id_input AND month_start=month_value; usage_row.reserved_cost_micros:=GREATEST(0,usage_row.reserved_cost_micros-stale_cost); usage_row.reserved_tokens:=GREATEST(0,usage_row.reserved_tokens-stale_tokens); usage_row.estimated_cost_micros:=usage_row.estimated_cost_micros+stale_cost; usage_row.input_tokens:=usage_row.input_tokens+stale_tokens; END IF;
+ projected_cost:=usage_row.estimated_cost_micros+usage_row.reserved_cost_micros+cost_value; projected_tokens:=usage_row.input_tokens+usage_row.output_tokens+usage_row.reserved_tokens+estimated_input_tokens+max_output_tokens;
+ IF enforce_input AND (price_in IS NULL OR price_out IS NULL) THEN UPDATE ai_usage_monthly SET denied_attempts=denied_attempts+1,updated_at=now() WHERE client_id=client_id_input AND month_start=month_value; RETURN QUERY SELECT false,NULL::uuid,0::bigint,0::bigint,GREATEST(0,cost_limit-projected_cost),GREATEST(0,token_limit-projected_tokens),'pricing_missing'; RETURN; END IF;
+ IF enforce_input AND (projected_cost>cost_limit OR projected_tokens>token_limit) THEN UPDATE ai_usage_monthly SET denied_attempts=denied_attempts+1,updated_at=now() WHERE client_id=client_id_input AND month_start=month_value; RETURN QUERY SELECT false,NULL::uuid,cost_value,estimated_input_tokens+max_output_tokens,GREATEST(0,cost_limit-(projected_cost-cost_value)),GREATEST(0,token_limit-(projected_tokens-estimated_input_tokens-max_output_tokens)),'budget_exceeded'; RETURN; END IF;
+ INSERT INTO ai_budget_reservations(client_id,request_id,feature,provider,model,month_start,reserved_cost_micros,reserved_tokens) VALUES(client_id_input,request_id_input,feature_input,provider_input,model_input,month_value,cost_value,estimated_input_tokens+max_output_tokens) RETURNING * INTO existing; UPDATE ai_usage_monthly SET reserved_cost_micros=reserved_cost_micros+cost_value,reserved_tokens=reserved_tokens+existing.reserved_tokens,updated_at=now() WHERE client_id=client_id_input AND month_start=month_value; RETURN QUERY SELECT true,existing.id,cost_value,existing.reserved_tokens,GREATEST(0,cost_limit-projected_cost),GREATEST(0,token_limit-projected_tokens),NULL::text;
+END; $$;
+CREATE OR REPLACE FUNCTION public.settle_ai_budget_legacy(reservation_id_input uuid,input_tokens_input bigint,output_tokens_input bigint,status_input text DEFAULT 'settled') RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp AS $$
+DECLARE r ai_budget_reservations%ROWTYPE; price_in bigint; price_out bigint; actual_cost bigint:=0; charged_input bigint; charged_output bigint; BEGIN SELECT * INTO r FROM ai_budget_reservations WHERE id=reservation_id_input FOR UPDATE; IF r.id IS NULL OR r.status<>'reserved' THEN RETURN false; END IF; charged_input:=CASE WHEN status_input='expired_charged' THEN r.reserved_tokens ELSE GREATEST(0,input_tokens_input) END; charged_output:=CASE WHEN status_input='settled' THEN GREATEST(0,output_tokens_input) ELSE 0 END; SELECT input_cost_micros_per_million_tokens,output_cost_micros_per_million_tokens INTO price_in,price_out FROM ai_model_pricing WHERE provider=r.provider AND model=r.model AND active; IF price_in IS NOT NULL AND price_out IS NOT NULL THEN actual_cost:=ceil((GREATEST(0,input_tokens_input)*price_in+GREATEST(0,output_tokens_input)*price_out)::numeric/1000000); END IF; IF status_input='expired_charged' THEN actual_cost:=GREATEST(actual_cost,r.reserved_cost_micros); END IF; UPDATE ai_budget_reservations SET status=status_input,settled_at=now() WHERE id=r.id; UPDATE ai_usage_monthly SET reserved_cost_micros=GREATEST(0,reserved_cost_micros-r.reserved_cost_micros),reserved_tokens=GREATEST(0,reserved_tokens-r.reserved_tokens),input_tokens=input_tokens+charged_input,output_tokens=output_tokens+charged_output,estimated_cost_micros=estimated_cost_micros+actual_cost,successful_attempts=successful_attempts+CASE WHEN status_input='settled' THEN 1 ELSE 0 END,failed_attempts=failed_attempts+CASE WHEN status_input<>'settled' THEN 1 ELSE 0 END,updated_at=now() WHERE client_id=r.client_id AND month_start=r.month_start; RETURN true; END; $$;
+CREATE OR REPLACE FUNCTION public.get_ai_cost_dashboard_legacy(month_start_input date DEFAULT date_trunc('month',now())::date) RETURNS jsonb LANGUAGE sql SECURITY DEFINER SET search_path=public,pg_temp AS $$ SELECT '{}'::jsonb; $$;
+CREATE OR REPLACE FUNCTION public.get_ai_cost_dashboard(month_start_input date DEFAULT date_trunc('month',now())::date) RETURNS jsonb LANGUAGE sql SECURITY DEFINER SET search_path=public,pg_temp AS $$
+SELECT jsonb_build_object('month_start',month_start_input,'usage',COALESCE((SELECT jsonb_build_object('estimated_cost_micros',COALESCE(sum(estimated_cost_micros),0),'input_tokens',COALESCE(sum(input_tokens),0),'output_tokens',COALESCE(sum(output_tokens),0),'denied_attempts',COALESCE(sum(denied_attempts),0),'expired_reservations',COALESCE(sum(expired_reservations),0)) FROM ai_usage_monthly WHERE month_start=month_start_input),'{}'::jsonb),'by_client',COALESCE((SELECT jsonb_agg(x) FROM (SELECT c.id,c.company_name,c.plan,COALESCE(u.estimated_cost_micros,0) estimated_cost_micros,COALESCE(u.input_tokens,0) input_tokens,COALESCE(u.output_tokens,0) output_tokens,COALESCE(u.denied_attempts,0) denied_attempts,COALESCE(o.monthly_cost_limit_micros,p.monthly_cost_limit_micros) cost_limit_micros,COALESCE(o.monthly_token_limit,p.monthly_token_limit) token_limit FROM clients c LEFT JOIN ai_usage_monthly u ON u.client_id=c.id AND u.month_start=month_start_input LEFT JOIN ai_plan_limits p ON p.plan=CASE WHEN c.plan IN('starter','growth','pro') THEN c.plan ELSE 'starter' END LEFT JOIN ai_client_limit_overrides o ON o.client_id=c.id ORDER BY estimated_cost_micros DESC)x),'[]'::jsonb),'by_feature',COALESCE((SELECT jsonb_agg(x) FROM (SELECT feature,count(*) attempts,sum(COALESCE(estimated_cost_micros,0)) estimated_cost_micros,sum(COALESCE(input_tokens,0)) input_tokens,sum(COALESCE(output_tokens,0)) output_tokens,count(*) FILTER(WHERE status<>'success') errors,count(*) FILTER(WHERE fallback_used) fallbacks,count(*) FILTER(WHERE usage_source='pricing_missing') unpriced,count(*) FILTER(WHERE status='timeout') timeouts FROM llm_logs WHERE record_type='provider_attempt' AND created_at>=month_start_input AND created_at<(month_start_input+interval '1 month') GROUP BY feature ORDER BY estimated_cost_micros DESC)x),'[]'::jsonb),'by_model',COALESCE((SELECT jsonb_agg(x) FROM (SELECT provider,model_used,count(*) attempts,sum(COALESCE(estimated_cost_micros,0)) estimated_cost_micros,count(*) FILTER(WHERE status<>'success') errors FROM llm_logs WHERE record_type='provider_attempt' AND created_at>=month_start_input AND created_at<(month_start_input+interval '1 month') GROUP BY provider,model_used)x),'[]'::jsonb)); $$;
+REVOKE ALL ON FUNCTION public.get_ai_cost_dashboard_legacy(date) FROM PUBLIC,anon,authenticated;
+DROP FUNCTION IF EXISTS public.get_ai_cost_dashboard_legacy(date);
+CREATE OR REPLACE FUNCTION public.settle_ai_budget(reservation_id_input uuid,input_tokens_input bigint,output_tokens_input bigint,status_input text DEFAULT 'settled') RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp AS $$ DECLARE r ai_budget_reservations%ROWTYPE; price_in bigint; price_out bigint; actual_cost bigint:=0; charged_input bigint; charged_output bigint; BEGIN SELECT * INTO r FROM ai_budget_reservations WHERE id=reservation_id_input FOR UPDATE; IF r.id IS NULL OR r.status<>'reserved' THEN RETURN false; END IF; charged_input:=CASE WHEN status_input='expired_charged' THEN r.reserved_tokens WHEN status_input='settled' THEN GREATEST(0,input_tokens_input) ELSE 0 END; charged_output:=CASE WHEN status_input='settled' THEN GREATEST(0,output_tokens_input) ELSE 0 END; SELECT input_cost_micros_per_million_tokens,output_cost_micros_per_million_tokens INTO price_in,price_out FROM ai_model_pricing WHERE provider=r.provider AND model=r.model AND active; IF price_in IS NOT NULL AND price_out IS NOT NULL THEN actual_cost:=ceil((GREATEST(0,input_tokens_input)*price_in+GREATEST(0,output_tokens_input)*price_out)::numeric/1000000); END IF; IF status_input='expired_charged' THEN actual_cost:=GREATEST(actual_cost,r.reserved_cost_micros); END IF; UPDATE ai_budget_reservations SET status=status_input,settled_at=now() WHERE id=r.id; UPDATE ai_usage_monthly SET reserved_cost_micros=GREATEST(0,reserved_cost_micros-r.reserved_cost_micros),reserved_tokens=GREATEST(0,reserved_tokens-r.reserved_tokens),input_tokens=input_tokens+charged_input,output_tokens=output_tokens+charged_output,estimated_cost_micros=estimated_cost_micros+actual_cost,successful_attempts=successful_attempts+CASE WHEN status_input='settled' THEN 1 ELSE 0 END,failed_attempts=failed_attempts+CASE WHEN status_input<>'settled' THEN 1 ELSE 0 END,updated_at=now() WHERE client_id=r.client_id AND month_start=r.month_start; RETURN true; END; $$;
+CREATE OR REPLACE FUNCTION public.settle_ai_budget(reservation_id_input uuid,input_tokens_input bigint,output_tokens_input bigint,status_input text DEFAULT 'settled') RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp AS $$ DECLARE r ai_budget_reservations%ROWTYPE; pi bigint; po bigint; cost bigint:=0; ci bigint; co bigint; BEGIN SELECT * INTO r FROM ai_budget_reservations WHERE id=reservation_id_input FOR UPDATE; IF r.id IS NULL OR r.status<>'reserved' THEN RETURN false; END IF; ci:=CASE WHEN status_input='expired_charged' THEN r.reserved_tokens WHEN status_input='settled' THEN GREATEST(0,input_tokens_input) ELSE 0 END; co:=CASE WHEN status_input='settled' THEN GREATEST(0,output_tokens_input) ELSE 0 END; SELECT input_cost_micros_per_million_tokens,output_cost_micros_per_million_tokens INTO pi,po FROM ai_model_pricing WHERE provider=r.provider AND model=r.model AND active; IF status_input<>'released' AND pi IS NOT NULL AND po IS NOT NULL THEN cost:=ceil((GREATEST(0,input_tokens_input)*pi+GREATEST(0,output_tokens_input)*po)::numeric/1000000); END IF; IF status_input='expired_charged' THEN cost:=GREATEST(cost,r.reserved_cost_micros); END IF; UPDATE ai_budget_reservations SET status=status_input,settled_at=now() WHERE id=r.id; UPDATE ai_usage_monthly SET reserved_cost_micros=GREATEST(0,reserved_cost_micros-r.reserved_cost_micros),reserved_tokens=GREATEST(0,reserved_tokens-r.reserved_tokens),input_tokens=input_tokens+ci,output_tokens=output_tokens+co,estimated_cost_micros=estimated_cost_micros+cost,successful_attempts=successful_attempts+CASE WHEN status_input='settled' THEN 1 ELSE 0 END,failed_attempts=failed_attempts+CASE WHEN status_input<>'settled' THEN 1 ELSE 0 END,updated_at=now() WHERE client_id=r.client_id AND month_start=r.month_start; RETURN true; END; $$;
+REVOKE ALL ON FUNCTION public.reserve_ai_budget(uuid,text,uuid,text,text,bigint,bigint,boolean) FROM PUBLIC,anon,authenticated; REVOKE ALL ON FUNCTION public.settle_ai_budget(uuid,bigint,bigint,text) FROM PUBLIC,anon,authenticated; REVOKE ALL ON FUNCTION public.get_ai_cost_dashboard(date) FROM PUBLIC,anon,authenticated; GRANT EXECUTE ON FUNCTION public.reserve_ai_budget(uuid,text,uuid,text,text,bigint,bigint,boolean) TO service_role; GRANT EXECUTE ON FUNCTION public.settle_ai_budget(uuid,bigint,bigint,text) TO service_role; GRANT EXECUTE ON FUNCTION public.get_ai_cost_dashboard(date) TO service_role;
+REVOKE ALL ON FUNCTION public.settle_ai_budget_legacy(uuid,bigint,bigint,text) FROM PUBLIC,anon,authenticated;
+DROP FUNCTION IF EXISTS public.settle_ai_budget_legacy(uuid,bigint,bigint,text);
+
 -- ==========================================
 -- ROW LEVEL SECURITY (RLS) POLICIES
 -- ==========================================
@@ -685,48 +786,41 @@ ALTER TABLE sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE routing_rules ENABLE ROW LEVEL SECURITY;
 ALTER TABLE analytics_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE client_domains ENABLE ROW LEVEL SECURITY;
+ALTER TABLE processed_webhooks ENABLE ROW LEVEL SECURITY;
 
 -- CLIENTS POLICIES
 -- Dashboard user can manage their own client profile.
 -- (Assumes auth.uid() corresponds to the client ID or client owner user ID)
 CREATE POLICY "Clients can view their own profile" ON clients
     FOR SELECT TO authenticated
-    USING (auth.uid() = id);
+    USING ((select auth.uid()) = id);
 
 CREATE POLICY "Clients can update their own profile" ON clients
     FOR UPDATE TO authenticated
-    USING (auth.uid() = id)
-    WITH CHECK (auth.uid() = id);
+    USING ((select auth.uid()) = id)
+    WITH CHECK ((select auth.uid()) = id);
 
 -- SESSIONS POLICIES
-CREATE POLICY "Clients can view their own sessions" ON sessions
-    FOR SELECT TO authenticated
-    USING (client_id = auth.uid());
-
 CREATE POLICY "Clients can manage their own sessions" ON sessions
     FOR ALL TO authenticated
-    USING (client_id = auth.uid())
-    WITH CHECK (client_id = auth.uid());
+    USING (client_id = (select auth.uid()))
+    WITH CHECK (client_id = (select auth.uid()));
 
 -- ROUTING RULES POLICIES
-CREATE POLICY "Clients can view their own routing rules" ON routing_rules
-    FOR SELECT TO authenticated
-    USING (client_id = auth.uid());
-
 CREATE POLICY "Clients can manage their own routing rules" ON routing_rules
     FOR ALL TO authenticated
-    USING (client_id = auth.uid())
-    WITH CHECK (client_id = auth.uid());
+    USING (client_id = (select auth.uid()))
+    WITH CHECK (client_id = (select auth.uid()));
 
 -- ANALYTICS EVENTS POLICIES
 CREATE POLICY "Clients can view their own analytics events" ON analytics_events
     FOR SELECT TO authenticated
-    USING (client_id = auth.uid());
+    USING (client_id = (select auth.uid()));
 
 CREATE POLICY "Clients manage own domains" ON client_domains
     FOR ALL TO authenticated
-    USING (client_id = auth.uid())
-    WITH CHECK (client_id = auth.uid());
+    USING (client_id = (select auth.uid()))
+    WITH CHECK (client_id = (select auth.uid()));
 
 -- ==========================================
 -- 5. WEBHOOK MAPPINGS TABLE
@@ -747,14 +841,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_webhook_mappings_unique_pair
 -- RLS POLICIES FOR WEBHOOK MAPPINGS
 ALTER TABLE webhook_mappings ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Clients can view their own webhook mappings" ON webhook_mappings
-    FOR SELECT TO authenticated
-    USING (client_id = auth.uid());
-
 CREATE POLICY "Clients can manage their own webhook mappings" ON webhook_mappings
     FOR ALL TO authenticated
-    USING (client_id = auth.uid())
-    WITH CHECK (client_id = auth.uid());
+    USING (client_id = (select auth.uid()))
+    WITH CHECK (client_id = (select auth.uid()));
 
 -- ==========================================
 -- 6. CRM TOKENS TABLE
@@ -844,14 +934,10 @@ GRANT EXECUTE ON FUNCTION disconnect_calendly(uuid) TO service_role;
 -- RLS POLICIES FOR CRM TOKENS
 ALTER TABLE crm_tokens ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Clients can view their own crm tokens" ON crm_tokens
-    FOR SELECT TO authenticated
-    USING (client_id = auth.uid());
-
 CREATE POLICY "Clients can manage their own crm tokens" ON crm_tokens
     FOR ALL TO authenticated
-    USING (client_id = auth.uid())
-    WITH CHECK (client_id = auth.uid());
+    USING (client_id = (select auth.uid()))
+    WITH CHECK (client_id = (select auth.uid()));
 
 -- ==========================================
 -- 7. PLAYBOOK TEMPLATES TABLE
@@ -866,6 +952,8 @@ CREATE TABLE IF NOT EXISTS playbook_templates (
     rule_template jsonb NOT NULL,
     created_at timestamptz DEFAULT now()
 );
+
+ALTER TABLE playbook_templates ENABLE ROW LEVEL SECURITY;
 
 -- SEED PLAYBOOK TEMPLATES
 INSERT INTO playbook_templates (name, description, signal_type, tier, required_inputs, rule_template) VALUES 
@@ -910,12 +998,12 @@ ALTER TABLE anomaly_alerts ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Clients can view their own anomaly alerts" ON anomaly_alerts
     FOR SELECT TO authenticated
-    USING (client_id = auth.uid());
+    USING (client_id = (select auth.uid()));
 
 CREATE POLICY "Clients can update their own anomaly alerts" ON anomaly_alerts
     FOR UPDATE TO authenticated
-    USING (client_id = auth.uid())
-    WITH CHECK (client_id = auth.uid());
+    USING (client_id = (select auth.uid()))
+    WITH CHECK (client_id = (select auth.uid()));
 
 -- ==========================================
 -- 9. WEEKLY DIGESTS TABLE
@@ -941,14 +1029,59 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_weekly_digests_client_week ON weekly_diges
 
 ALTER TABLE weekly_digests ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Clients can view their own weekly digests" ON weekly_digests
-    FOR SELECT TO authenticated
-    USING (client_id = auth.uid());
-
 CREATE POLICY "Clients can manage their own weekly digests" ON weekly_digests
     FOR ALL TO authenticated
-    USING (client_id = auth.uid())
-    WITH CHECK (client_id = auth.uid());
+    USING (client_id = (select auth.uid()))
+    WITH CHECK (client_id = (select auth.uid()));
+
+-- ==========================================
+-- DURABLE BACKGROUND JOB QUEUE
+-- ==========================================
+CREATE TABLE IF NOT EXISTS weekly_digest_runs (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(), week_start date NOT NULL UNIQUE,
+    period_start timestamptz NOT NULL, period_end timestamptz NOT NULL, previous_start timestamptz NOT NULL,
+    status text NOT NULL DEFAULT 'running' CHECK (status IN ('running','completed','completed_with_failures')),
+    scan_cursor uuid, scan_completed_at timestamptz, started_at timestamptz NOT NULL DEFAULT now(),
+    completed_at timestamptz, last_error text, created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS background_jobs (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(), job_type text NOT NULL, dedupe_key text NOT NULL,
+    run_id uuid REFERENCES weekly_digest_runs(id) ON DELETE CASCADE, client_id uuid REFERENCES clients(id) ON DELETE CASCADE,
+    payload jsonb NOT NULL DEFAULT '{}'::jsonb, status text NOT NULL DEFAULT 'queued' CHECK (status IN ('queued','processing','retry','succeeded','dead')),
+    priority smallint NOT NULL DEFAULT 100, attempts integer NOT NULL DEFAULT 0, max_attempts integer NOT NULL DEFAULT 5,
+    available_at timestamptz NOT NULL DEFAULT now(), locked_at timestamptz, locked_until timestamptz, lock_token uuid,
+    last_error text, completed_at timestamptz, created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT background_jobs_dedupe_unique UNIQUE (job_type, dedupe_key)
+);
+CREATE INDEX IF NOT EXISTS background_jobs_ready_idx ON background_jobs(priority, available_at, created_at) WHERE status IN ('queued','retry');
+CREATE INDEX IF NOT EXISTS background_jobs_lease_idx ON background_jobs(locked_until) WHERE status='processing';
+CREATE INDEX IF NOT EXISTS background_jobs_run_status_idx ON background_jobs(run_id, status);
+CREATE INDEX IF NOT EXISTS background_jobs_client_type_idx ON background_jobs(client_id, job_type);
+ALTER TABLE weekly_digest_runs ENABLE ROW LEVEL SECURITY; ALTER TABLE background_jobs ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON weekly_digest_runs FROM PUBLIC, anon, authenticated; REVOKE ALL ON background_jobs FROM PUBLIC, anon, authenticated;
+
+CREATE OR REPLACE FUNCTION public.start_weekly_digest_run(week_start_input date, period_start_input timestamptz, period_end_input timestamptz, previous_start_input timestamptz)
+RETURNS TABLE(run_id uuid, created boolean) LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp AS $$
+DECLARE r weekly_digest_runs; was_created boolean:=false; BEGIN
+  INSERT INTO weekly_digest_runs(week_start,period_start,period_end,previous_start) VALUES(week_start_input,period_start_input,period_end_input,previous_start_input)
+  ON CONFLICT(week_start) DO NOTHING RETURNING * INTO r;
+  IF FOUND THEN was_created:=true; ELSE SELECT * INTO r FROM weekly_digest_runs WHERE week_start=week_start_input; END IF;
+  INSERT INTO background_jobs(job_type,dedupe_key,run_id,payload,priority) VALUES('weekly_digest_scan','weekly-digest-scan:'||week_start_input::text||':start',r.id,jsonb_build_object('week_start',week_start_input,'after_client_id',NULL),10) ON CONFLICT DO NOTHING;
+  RETURN QUERY SELECT r.id, was_created;
+END; $$;
+CREATE OR REPLACE FUNCTION public.claim_background_jobs(limit_input integer DEFAULT 10, lease_seconds_input integer DEFAULT 240) RETURNS SETOF background_jobs LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp AS $$
+DECLARE token uuid:=gen_random_uuid(); BEGIN
+  UPDATE background_jobs SET status=CASE WHEN attempts>=max_attempts THEN 'dead' ELSE 'retry' END,available_at=now(),locked_at=NULL,locked_until=NULL,lock_token=NULL,updated_at=now() WHERE status='processing' AND locked_until<now();
+  RETURN QUERY WITH picked AS(SELECT id FROM background_jobs WHERE status IN('queued','retry') AND available_at<=now() ORDER BY priority,available_at,created_at FOR UPDATE SKIP LOCKED LIMIT LEAST(GREATEST(limit_input,1),50)) UPDATE background_jobs j SET status='processing',attempts=j.attempts+1,locked_at=now(),locked_until=now()+make_interval(secs=>LEAST(GREATEST(lease_seconds_input,30),600)),lock_token=token,updated_at=now() FROM picked WHERE j.id=picked.id RETURNING j.*;
+END; $$;
+CREATE OR REPLACE FUNCTION public.complete_background_job(job_id_input uuid,lock_token_input uuid,result_input jsonb DEFAULT '{}'::jsonb) RETURNS boolean LANGUAGE sql SECURITY DEFINER SET search_path=public,pg_temp AS $$ UPDATE background_jobs SET status='succeeded',completed_at=now(),locked_at=NULL,locked_until=NULL,lock_token=NULL,updated_at=now(),payload=payload||jsonb_build_object('result',result_input) WHERE id=job_id_input AND status='processing' AND lock_token=lock_token_input RETURNING true; $$;
+CREATE OR REPLACE FUNCTION public.fail_background_job(job_id_input uuid,lock_token_input uuid,error_input text,retry_at_input timestamptz) RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp AS $$ BEGIN UPDATE background_jobs SET status=CASE WHEN attempts>=max_attempts THEN 'dead' ELSE 'retry' END,available_at=CASE WHEN attempts>=max_attempts THEN available_at ELSE retry_at_input END,last_error=left(coalesce(error_input,'unknown failure'),500),locked_at=NULL,locked_until=NULL,lock_token=NULL,updated_at=now() WHERE id=job_id_input AND status='processing' AND lock_token=lock_token_input; RETURN FOUND; END; $$;
+CREATE OR REPLACE FUNCTION public.requeue_background_job(job_id_input uuid) RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp AS $$ DECLARE run_id_value uuid; BEGIN UPDATE background_jobs SET status='retry',available_at=now(),locked_at=NULL,locked_until=NULL,lock_token=NULL,last_error=NULL,attempts=0,updated_at=now() WHERE id=job_id_input AND status='dead' RETURNING run_id INTO run_id_value; IF NOT FOUND THEN RETURN false; END IF; UPDATE weekly_digest_runs SET status='running',completed_at=NULL,updated_at=now() WHERE id=run_id_value; RETURN true; END; $$;
+CREATE OR REPLACE FUNCTION public.reconcile_weekly_digest_run(run_id_input uuid) RETURNS text LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp AS $$ DECLARE result text; BEGIN IF EXISTS(SELECT 1 FROM background_jobs WHERE run_id=run_id_input AND status IN('queued','processing','retry')) THEN result:='running'; ELSIF EXISTS(SELECT 1 FROM background_jobs WHERE run_id=run_id_input AND status='dead') THEN result:='completed_with_failures'; ELSIF EXISTS(SELECT 1 FROM weekly_digest_runs WHERE id=run_id_input AND scan_completed_at IS NULL) THEN result:='running'; ELSE result:='completed'; END IF; UPDATE weekly_digest_runs SET status=result,completed_at=CASE WHEN result='running' THEN NULL ELSE now() END,updated_at=now() WHERE id=run_id_input; RETURN result; END; $$;
+REVOKE ALL ON FUNCTION public.start_weekly_digest_run(date,timestamptz,timestamptz,timestamptz) FROM PUBLIC,anon,authenticated; REVOKE ALL ON FUNCTION public.claim_background_jobs(integer,integer) FROM PUBLIC,anon,authenticated;
+REVOKE ALL ON FUNCTION public.complete_background_job(uuid,uuid,jsonb) FROM PUBLIC,anon,authenticated; REVOKE ALL ON FUNCTION public.fail_background_job(uuid,uuid,text,timestamptz) FROM PUBLIC,anon,authenticated; REVOKE ALL ON FUNCTION public.requeue_background_job(uuid) FROM PUBLIC,anon,authenticated;
+REVOKE ALL ON FUNCTION public.reconcile_weekly_digest_run(uuid) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.start_weekly_digest_run(date,timestamptz,timestamptz,timestamptz) TO service_role; GRANT EXECUTE ON FUNCTION public.claim_background_jobs(integer,integer) TO service_role; GRANT EXECUTE ON FUNCTION public.complete_background_job(uuid,uuid,jsonb) TO service_role; GRANT EXECUTE ON FUNCTION public.fail_background_job(uuid,uuid,text,timestamptz) TO service_role; GRANT EXECUTE ON FUNCTION public.requeue_background_job(uuid) TO service_role; GRANT EXECUTE ON FUNCTION public.reconcile_weekly_digest_run(uuid) TO service_role;
 
 -- ==========================================
 -- 10. DEAL SCORES TABLE
@@ -981,14 +1114,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_deal_scores_client_deal
 
 ALTER TABLE deal_scores ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Clients can view their own deal scores" ON deal_scores
-    FOR SELECT TO authenticated
-    USING (client_id = auth.uid());
-
 CREATE POLICY "Clients can manage their own deal scores" ON deal_scores
     FOR ALL TO authenticated
-    USING (client_id = auth.uid())
-    WITH CHECK (client_id = auth.uid());
+    USING (client_id = (select auth.uid()))
+    WITH CHECK (client_id = (select auth.uid()));
 
 -- ==========================================
 -- 11. PIPELINE SNAPSHOTS TABLE
@@ -1009,14 +1138,10 @@ CREATE INDEX IF NOT EXISTS idx_pipeline_snapshots_client_id ON pipeline_snapshot
 
 ALTER TABLE pipeline_snapshots ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Clients can view their own pipeline snapshots" ON pipeline_snapshots
-    FOR SELECT TO authenticated
-    USING (client_id = auth.uid());
-
 CREATE POLICY "Clients can manage their own pipeline snapshots" ON pipeline_snapshots
     FOR ALL TO authenticated
-    USING (client_id = auth.uid())
-    WITH CHECK (client_id = auth.uid());
+    USING (client_id = (select auth.uid()))
+    WITH CHECK (client_id = (select auth.uid()));
 
 -- ==========================================
 -- 12. SCOUT NUDGES TABLE
@@ -1038,14 +1163,10 @@ CREATE INDEX IF NOT EXISTS idx_scout_nudges_client_id ON scout_nudges(client_id)
 
 ALTER TABLE scout_nudges ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Clients can view their own scout nudges" ON scout_nudges
-    FOR SELECT TO authenticated
-    USING (client_id = auth.uid());
-
 CREATE POLICY "Clients can manage their own scout nudges" ON scout_nudges
     FOR ALL TO authenticated
-    USING (client_id = auth.uid())
-    WITH CHECK (client_id = auth.uid());
+    USING (client_id = (select auth.uid()))
+    WITH CHECK (client_id = (select auth.uid()));
 
 -- ==========================================
 -- 13. COMPANY DEAL PATTERNS TABLE
@@ -1065,14 +1186,10 @@ CREATE INDEX IF NOT EXISTS idx_company_deal_patterns_client_id ON company_deal_p
 
 ALTER TABLE company_deal_patterns ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Clients can view their own company deal patterns" ON company_deal_patterns
-    FOR SELECT TO authenticated
-    USING (client_id = auth.uid());
-
 CREATE POLICY "Clients can manage their own company deal patterns" ON company_deal_patterns
     FOR ALL TO authenticated
-    USING (client_id = auth.uid())
-    WITH CHECK (client_id = auth.uid());
+    USING (client_id = (select auth.uid()))
+    WITH CHECK (client_id = (select auth.uid()));
 
 
 -- ==========================================
@@ -1100,14 +1217,10 @@ CREATE INDEX IF NOT EXISTS idx_deal_obituaries_client_id ON deal_obituaries(clie
 -- Enable RLS
 ALTER TABLE deal_obituaries ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Clients can view their own deal obituaries" ON deal_obituaries
-    FOR SELECT TO authenticated
-    USING (client_id = auth.uid());
-
 CREATE POLICY "Clients can manage their own deal obituaries" ON deal_obituaries
     FOR ALL TO authenticated
-    USING (client_id = auth.uid())
-    WITH CHECK (client_id = auth.uid());
+    USING (client_id = (select auth.uid()))
+    WITH CHECK (client_id = (select auth.uid()));
 
 
 -- ==========================================
@@ -1131,11 +1244,34 @@ CREATE INDEX IF NOT EXISTS idx_icp_profiles_client_id ON icp_profiles(client_id)
 -- Enable RLS
 ALTER TABLE icp_profiles ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Clients can view their own icp profiles" ON icp_profiles
-    FOR SELECT TO authenticated
-    USING (client_id = auth.uid());
-
 CREATE POLICY "Clients can manage their own icp profiles" ON icp_profiles
     FOR ALL TO authenticated
-    USING (client_id = auth.uid())
-    WITH CHECK (client_id = auth.uid());
+    USING (client_id = (select auth.uid()))
+    WITH CHECK (client_id = (select auth.uid()));
+
+-- Rotate webhook credentials atomically. The previous credential is retained
+-- for 24 hours for header/signature callers only; query authentication is
+-- disabled immediately.
+CREATE OR REPLACE FUNCTION public.rotate_webhook_secret(
+    client_id_input uuid,
+    new_secret_input uuid DEFAULT gen_random_uuid()
+)
+RETURNS TABLE(webhook_secret uuid, webhook_previous_secret_expires_at timestamptz)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+    RETURN QUERY
+    UPDATE public.clients
+    SET webhook_previous_secret = clients.webhook_secret,
+        webhook_previous_secret_expires_at = now() + interval '24 hours',
+        webhook_secret = new_secret_input,
+        webhook_query_auth_expires_at = NULL
+    WHERE clients.id = client_id_input
+    RETURNING clients.webhook_secret, clients.webhook_previous_secret_expires_at;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.rotate_webhook_secret(uuid, uuid) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rotate_webhook_secret(uuid, uuid) TO service_role;

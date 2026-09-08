@@ -3,21 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 
-interface ClientProfile {
-  id: string;
-  company_name: string;
-  domain: string;
-  snippet_key: string;
-  webhook_secret?: string;
-  crm_type?: string;
-  active: boolean;
-}
-
 export default function IntegrationsPage() {
   const [plan, setPlan] = useState<string>('starter');
   const [crmStatus, setCrmStatus] = useState<{ connected: boolean; crm_type: string | null } | null>(null);
   const [calendlyStatus, setCalendlyStatus] = useState<{ connected: boolean; connected_at: string | null } | null>(null);
-  const [client, setClient] = useState<ClientProfile | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [openExpectedFields, setOpenExpectedFields] = useState<Record<string, boolean>>({});
 
@@ -35,7 +24,6 @@ export default function IntegrationsPage() {
     fetch('/api/client')
       .then(res => res.json())
       .then(data => {
-        setClient(data.client);
         if (data.client?.plan) setPlan(data.client.plan);
       })
       .catch(() => {});
@@ -55,9 +43,7 @@ export default function IntegrationsPage() {
     }));
   };
 
-  const webhookUrl = client?.webhook_secret
-    ? `${window.location.origin}/api/webhook?client_key=${client.webhook_secret}`
-    : '';
+  const webhookUrl = typeof window !== 'undefined' ? `${window.location.origin}/api/webhook` : '/api/webhook';
 
   return (
     <div className="space-y-6">
@@ -282,6 +268,9 @@ export default function IntegrationsPage() {
         <span className="text-[10px] font-mono text-[var(--accent)] tracking-widest uppercase bg-[var(--border-subtle)]/40 py-1 px-2.5 rounded border border-[var(--border-subtle)]">
           OUTREACH TOOLS
         </span>
+      </div>
+      <div className="border border-[var(--accent)]/20 bg-[var(--accent)]/5 rounded-lg px-4 py-3 text-xs font-mono text-[var(--text-secondary)]">
+        Use the plain endpoint shown below. If your provider supports custom headers, send <span className="text-[var(--text-primary)]">Authorization: Bearer &lt;your webhook secret&gt;</span> (or the signed headers documented in Webhooks). Existing legacy URL integrations continue only until their displayed deadline; if a new provider cannot set headers or signatures, use an approved relay/custom sender instead of putting a secret in the URL.
       </div>
 
       {/* Grid of Outreach Cards */}
@@ -698,7 +687,7 @@ export default function IntegrationsPage() {
             <div className="text-[11px] font-mono text-[var(--text-secondary)] space-y-1 bg-[var(--bg-elevated)]/20 p-2.5 rounded border border-[var(--border-subtle)]/40">
               <span className="text-[10px] text-[var(--text-secondary)] font-bold uppercase tracking-wider block mb-1">Setup Instructions:</span>
               <p>1. In Make, open your scenario and add an HTTP module &rarr; Make a request</p>
-              <p>2. Set method to POST and paste your Churnaut webhook URL above</p>
+              <p>2. Set method to POST and use the plain Churnaut webhook endpoint above; if your provider supports custom headers, add Authorization: Bearer &lt;your webhook secret&gt;</p>
               <p>3. Set Content-Type header to application/json</p>
               <p>4. Map your prospect fields in the request body: prospect_name, prospect_email, company_name, job_title, assigned_rep, signal_type</p>
               <p>5. Set signal_type to &quot;Make&quot; for correct analytics attribution</p>

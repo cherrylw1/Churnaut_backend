@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthedClientId } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase'
-import { embed, DEFAULT_MODEL } from '@/lib/llm/complete'
+import { embed, generateChat } from '@/lib/llm/complete'
 import { chatRequestSchema, readJson } from '@/lib/validation'
 
 export const dynamic = 'force-dynamic'
 
-const TOGETHER_API_URL = 'https://api.together.xyz/v1/chat/completions'
 
 const SYSTEM_PROMPT = `You are an expert AI assistant for Sharath, the solo founder of Churnaut — a B2B RevOps SaaS product.
 
@@ -34,7 +33,7 @@ Never make up code that doesn't exist.`
 
 
 async function embedQuery(text: string): Promise<number[]> {
-  return embed(text, { type: 'query' })
+  return embed(text, { type: 'query', context: { feature: 'founder_query_embedding', scope: 'internal' } })
 }
 
 function isHealthCheckRequest(message: string): boolean {
@@ -160,27 +159,9 @@ export async function POST(req: NextRequest) {
       { role: 'user', content: enrichedMessage },
     ]
 
-    const response = await fetch(TOGETHER_API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.TOGETHER_API_KEY}` },
-      body: JSON.stringify({
-        model: DEFAULT_MODEL,
-        messages,
-        max_tokens: 1500,
-        temperature: 0.3,
-        top_p: 0.9,
-        chat_template_kwargs: { thinking: false },
-      }),
-    })
-
-    if (!response.ok) {
-      const err = await response.text()
-      console.error('[Founder Chat] Together AI error:', err)
-      return NextResponse.json({ error: 'AI inference failed' }, { status: 500 })
-    }
-
-    const data = await response.json()
-    const answer = data.choices?.[0]?.message?.content || 'No response generated.'
+    let answer: string
+    try { answer = await generateChat(messages, { maxTokens: 1500, temperature: 0.3, context: { feature: 'founder_chat', scope: 'internal' } }) || 'No response generated.' }
+    catch (error) { console.error('[Founder Chat] AI provider unavailable:', error instanceof Error ? error.message : 'unknown'); return NextResponse.json({ error: 'AI inference failed' }, { status: 503 }) }
     const sourcesUsed = chunks.map(c => c.file_path).filter((v, i, a) => a.indexOf(v) === i)
 
     return NextResponse.json({ answer, sources: sourcesUsed })

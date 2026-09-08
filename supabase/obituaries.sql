@@ -21,11 +21,9 @@ CREATE INDEX IF NOT EXISTS idx_deal_obituaries_client_id ON deal_obituaries(clie
 -- Enable RLS
 ALTER TABLE deal_obituaries ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Clients can view their own deal obituaries" ON deal_obituaries
-    FOR SELECT TO authenticated
-    USING (client_id = auth.uid());
-
+DROP POLICY IF EXISTS "Clients can view their own deal obituaries" ON deal_obituaries;
+DROP POLICY IF EXISTS "Clients can manage their own deal obituaries" ON deal_obituaries;
 CREATE POLICY "Clients can manage their own deal obituaries" ON deal_obituaries
     FOR ALL TO authenticated
-    USING (client_id = auth.uid())
-    WITH CHECK (client_id = auth.uid());
+    USING (client_id = (select auth.uid()))
+    WITH CHECK (client_id = (select auth.uid()));

@@ -1,6 +1,7 @@
 import { supabaseAdmin } from '@/lib/supabase';
 import { decrypt, encrypt } from '@/lib/crypto';
 import { redis } from '@/lib/redis';
+import { getAppOrigin } from '@/lib/app-origin';
 
 export interface ScoutDeal {
   deal_id: string;
@@ -137,7 +138,7 @@ export async function getValidHubSpotToken(clientId: string): Promise<string | n
       params.append('grant_type', 'refresh_token');
       params.append('client_id', process.env.HUBSPOT_CLIENT_ID || '');
       params.append('client_secret', process.env.HUBSPOT_CLIENT_SECRET || '');
-      params.append('redirect_uri', 'https://app.churnaut.com/api/oauth/hubspot/callback');
+      params.append('redirect_uri', `${getAppOrigin()}/api/oauth/hubspot/callback`);
       params.append('refresh_token', decryptedRefreshToken);
 
       const refreshRes = await fetch('https://api.hubapi.com/oauth/v1/token', {

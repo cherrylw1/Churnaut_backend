@@ -17,11 +17,9 @@ CREATE INDEX IF NOT EXISTS idx_icp_profiles_client_id ON icp_profiles(client_id)
 -- Enable RLS
 ALTER TABLE icp_profiles ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Clients can view their own icp profiles" ON icp_profiles
-    FOR SELECT TO authenticated
-    USING (client_id = auth.uid());
-
+DROP POLICY IF EXISTS "Clients can view their own icp profiles" ON icp_profiles;
+DROP POLICY IF EXISTS "Clients can manage their own icp profiles" ON icp_profiles;
 CREATE POLICY "Clients can manage their own icp profiles" ON icp_profiles
     FOR ALL TO authenticated
-    USING (client_id = auth.uid())
-    WITH CHECK (client_id = auth.uid());
+    USING (client_id = (select auth.uid()))
+    WITH CHECK (client_id = (select auth.uid()));

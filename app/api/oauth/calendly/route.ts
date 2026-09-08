@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthedClientId } from '@/lib/auth';
 import { redis } from '@/lib/redis';
 import crypto from 'crypto';
+import { getAppOrigin } from '@/lib/app-origin';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,7 +26,7 @@ export async function GET(req: NextRequest) {
     await redis.setex(`oauth_state:${nonce}`, 600, clientId);
 
     // 3. Construct Calendly Authorization URL
-    const redirectUri = 'https://app.churnaut.com/api/oauth/calendly/callback';
+    const redirectUri = `${getAppOrigin()}/api/oauth/calendly/callback`;
     
     const calendlyAuthUrl = `https://auth.calendly.com/oauth/authorize` +
       `?client_id=${encodeURIComponent(calendlyClientId)}` +

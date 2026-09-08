@@ -9,6 +9,8 @@ interface ClientProfile {
   domain: string;
   snippet_key: string;
   webhook_secret: string;
+  webhook_query_auth_expires_at?: string | null;
+  webhook_previous_secret_expires_at?: string | null;
   crm_type?: string;
   active: boolean;
 }
@@ -25,6 +27,7 @@ interface WebhookLog {
   session_id?: string;
   metadata?: {
     webhook_action?: string;
+    webhook_auth_method?: 'bearer' | 'signature' | 'legacy_query';
     payload?: unknown;
     transformed?: unknown;
   };
@@ -52,6 +55,7 @@ export default function WebhooksSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [copiedToken, setCopiedToken] = useState(false);
+  const [rotatingSecret, setRotatingSecret] = useState(false);
 
   // Source fields for mapping UI
   const [sourceFields, setSourceFields] = useState<string[]>([
@@ -114,6 +118,22 @@ export default function WebhooksSettingsPage() {
     navigator.clipboard.writeText(token);
     setCopiedToken(true);
     setTimeout(() => setCopiedToken(false), 2000);
+  };
+
+  const handleRotateSecret = async () => {
+    if (!window.confirm('Rotate the webhook secret? Existing URL authentication will stop immediately.')) return;
+    setRotatingSecret(true);
+    try {
+      const res = await fetch('/api/webhook/secret/rotate', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Unable to rotate webhook secret');
+      setClient(prev => prev ? { ...prev, webhook_secret: data.webhook_secret, webhook_query_auth_expires_at: null, webhook_previous_secret_expires_at: data.previous_secret_expires_at } : prev);
+      toast.success('Webhook secret rotated. Update your sender headers now.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Unable to rotate webhook secret');
+    } finally {
+      setRotatingSecret(false);
+    }
   };
 
   // Add a new source field name manually
@@ -202,10 +222,7 @@ export default function WebhooksSettingsPage() {
   };
 
   const getWebhookUrl = () => {
-    if (typeof window !== 'undefined' && client?.webhook_secret) {
-      return `${window.location.origin}/api/webhook?client_key=${client.webhook_secret}`;
-    }
-    return '';
+    return typeof window !== 'undefined' ? `${window.location.origin}/api/webhook` : '/api/webhook';
   };
 
   return (
@@ -246,7 +263,7 @@ export default function WebhooksSettingsPage() {
               </div>
 
               <div className="space-y-1">
-                <label className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase">Authorization Bearer Token (Alternative)</label>
+                <label className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase">Authorization Bearer Token (Recommended)</label>
                 <div className="flex gap-2">
                   <input
                     type="text"
@@ -264,6 +281,27 @@ export default function WebhooksSettingsPage() {
                 <span className="block text-[9px] font-mono text-[var(--text-muted)] mt-1">
                   You can authenticate by placing this token in the header as: Authorization: Bearer &lt;token&gt;
                 </span>
+                <button
+                  type="button"
+                  onClick={handleRotateSecret}
+                  disabled={rotatingSecret}
+                  className="mt-3 border border-red-400/30 text-red-300 hover:bg-red-400/10 font-mono text-[10px] px-3 py-2 rounded transition-all disabled:opacity-50"
+                >
+                  {rotatingSecret ? 'ROTATING…' : 'ROTATE WEBHOOK SECRET'}
+                </button>
+                {client?.webhook_previous_secret_expires_at && (
+                  <span className="block text-[9px] font-mono text-[var(--text-muted)] mt-2">
+                    Previous header/signature credential expires {new Date(client.webhook_previous_secret_expires_at).toLocaleString()} (never valid in URLs).
+                  </span>
+                )}
+                {client?.webhook_query_auth_expires_at && Date.parse(client.webhook_query_auth_expires_at) > Date.now() && (
+                  <span className="block text-[9px] font-mono text-amber-300 mt-2">
+                    Legacy URL integrations remain supported until {new Date(client.webhook_query_auth_expires_at).toLocaleString()}. New setups must use the Authorization header.
+                  </span>
+                )}
+                <div className="mt-3 border-t border-[var(--border-subtle)] pt-3 text-[9px] font-mono text-[var(--text-muted)]">
+                  Custom senders may sign the exact request body with <span className="text-[var(--text-secondary)]">X-Churnaut-Client-Id</span>, <span className="text-[var(--text-secondary)]">X-Churnaut-Timestamp</span>, and <span className="text-[var(--text-secondary)]">X-Churnaut-Signature: v1=&lt;HMAC-SHA256&gt;</span>.
+                </div>
               </div>
             </div>
           </div>
@@ -400,6 +438,7 @@ export default function WebhooksSettingsPage() {
                 {logs.map((log) => {
                   const isExpanded = expandedLogId === log.id;
                   const logAction = log.metadata?.webhook_action || 'processed';
+                  const authMethod = log.metadata?.webhook_auth_method;
                   const dateStr = new Date(log.created_at).toLocaleString();
 
                   return (
@@ -414,6 +453,11 @@ export default function WebhooksSettingsPage() {
                             POST
                           </span>
                           <span className="text-[var(--text-secondary)] font-semibold">{logAction}</span>
+                          {authMethod && (
+                            <span className={`text-[9px] px-2 py-0.5 rounded uppercase border ${authMethod === 'legacy_query' ? 'text-amber-300 border-amber-300/30 bg-amber-300/10' : 'text-[var(--text-muted)] border-[var(--border-subtle)]'}`}>
+                              {authMethod === 'legacy_query' ? 'Legacy URL' : authMethod === 'signature' ? 'Signature' : 'Bearer'}
+                            </span>
+                          )}
                           {log.session_id && (
                             <span className="text-[var(--text-muted)]">
                               SID: <span className="text-[#C2683D]">{log.session_id}</span>

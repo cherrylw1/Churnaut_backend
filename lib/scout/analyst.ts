@@ -53,12 +53,13 @@ export function parseScoutBriefOutput(value: unknown): z.infer<typeof scoutBrief
   return scoutBriefOutputSchema.parse(value);
 }
 
-export async function analyzeDealWithScout(deal: NormalizedDeal): Promise<ScoutBrief> {
+export async function analyzeDealWithScout(deal: NormalizedDeal, clientId: string): Promise<ScoutBrief> {
   const prompt = `Analyze this deal and return the JSON brief.\n\nDEAL SIGNALS (JSON):\n${JSON.stringify(deal)}`;
   const { parsed } = await generateJSON(prompt, {
     system: ANALYST_SYSTEM,
     maxTokens: 1500,
     temperature: 0.3,
+    context: { feature: 'scout_deal_score', scope: 'customer', clientId },
   });
   const p = parseScoutBriefOutput(parsed);
   return {

@@ -44,14 +44,14 @@ export default function OnboardingPage() {
         }),
       });
 
-      if (res.ok) {
+      const responseData = await res.json().catch(() => ({}));
+      if (res.ok && responseData.success !== false) {
         setCompleted(true);
         toast.success('Workspace initialized successfully!');
         // Explicit redirect to /dashboard/rules
         router.push('/dashboard/rules');
       } else {
-        const errorData = await res.json();
-        toast.error(errorData.error || 'Failed to complete onboarding setups.');
+        toast.error(responseData.error || (responseData.degraded ? 'AI setup is temporarily unavailable. You can continue manually from Routing Rules.' : 'Failed to complete onboarding setup.'));
       }
     } catch (err) {
       console.error(err);

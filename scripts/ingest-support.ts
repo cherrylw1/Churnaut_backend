@@ -218,35 +218,38 @@ HOW THE MAGIC FLOW WORKS
 4. Your outreach tool inserts {{churnaut_link}} into the email template automatically
 5. Every prospect gets their own personalized link — zero manual work
 
-HOW TO GET YOUR WEBHOOK URL
+HOW TO CONFIGURE YOUR WEBHOOK
 Go to Dashboard → Integrations → Outreach Tools
-Your webhook URL is: https://app.churnaut.com/api/webhook?client_key=YOUR_PRIVATE_WEBHOOK_SECRET
-Copy it from the dashboard — it contains the private webhook secret generated for your account. Never substitute the public snippet key.
+Use the plain endpoint https://app.churnaut.com/api/webhook. If your provider supports
+custom headers, use Authorization: Bearer <your private webhook secret>. If it supports
+signed requests, use the documented X-Churnaut-* headers instead. Otherwise use an
+approved relay/custom sender. Existing grandfathered URL setups may continue only until
+their displayed migration deadline. Never put a secret in a new URL or use the public snippet key.
 
 SETTING UP IN INSTANTLY
 1. In Instantly, go to your campaign settings
 2. Find the Webhook section
-3. Paste your Churnaut webhook URL
+3. Use the plain /api/webhook endpoint. If Instantly supports custom headers, add Authorization: Bearer; if it supports signed requests, use the X-Churnaut-* headers. If neither is available, use an approved relay/custom sender rather than putting a secret in the URL.
 4. Add {{churnaut_link}} to your email template where you want the link to appear
 5. Test with a sample prospect
 
 SETTING UP IN SMARTLEAD
-Same process — paste webhook URL in campaign webhook settings, use {{churnaut_link}} in email template
+Same process — use the plain /api/webhook endpoint in campaign webhook settings; if supported, add the Authorization header. Use {{churnaut_link}} in the email template.
 
 SETTING UP IN APOLLO
-Go to Apollo → Sequences → Settings → Webhook → paste your Churnaut webhook URL
+Go to Apollo → Sequences → Settings → Webhook → use the plain /api/webhook endpoint. Configure Authorization or signed headers only if Apollo exposes those controls; otherwise use an approved relay.
 
 SETTING UP IN LEMLIST
-Go to campaign settings → Integrations → Webhook → paste URL
+Go to campaign settings → Integrations → Webhook → use the plain /api/webhook endpoint and add Authorization or signed headers if the provider supports them; otherwise use an approved relay.
 
 SETTING UP IN ZAPIER OR MAKE
-Use Churnaut webhook URL as the POST endpoint in your Zap or scenario
+Use the plain /api/webhook endpoint as the POST target. If your Zap/scenario supports custom headers, add Authorization: Bearer; otherwise route through an approved relay rather than putting a secret in the URL.
 
 IMPORTANT: Set your domain in Settings → Account before using webhooks. Without a domain, the churnaut_link will not be generated correctly.
 
 TROUBLESHOOTING
 - Not getting churnaut_link back? Check your domain is set in Settings
-- Webhook not firing? Copy the URL again from Dashboard → Integrations and verify it contains your private webhook secret
+- Webhook not firing? Use the plain /api/webhook endpoint and verify the provider is sending the configured Authorization header (or signed headers). Existing legacy URL integrations are temporary and should be rotated before the displayed deadline.
 - Wrong prospect data? Check your field mappings in Integrations → Outreach Tools → Field Mappings`
   },
   {
@@ -361,7 +364,7 @@ TRACKED LINK NOT WORKING
 
 WEBHOOK NOT RETURNING CHURNAUT_LINK
 1. Check your domain is set in Settings → Account
-2. Copy the webhook URL again from Dashboard → Integrations; it must contain the private webhook secret, not the public snippet key
+2. Use the plain /api/webhook endpoint from Dashboard → Integrations. If the provider cannot set headers or signatures, use an approved relay/custom sender; never put a secret back in the URL.
 3. Check the payload includes at least an email or name field
 
 CRM NOT CONNECTING
@@ -399,7 +402,7 @@ function chunkContent(content: string): string[] {
 }
 
 async function embedText(text: string): Promise<number[]> {
-  return embed(text)
+  return embed(text, { context: { feature: 'support_embedding_ingest', scope: 'internal' } })
 }
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))

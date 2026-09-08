@@ -10,10 +10,14 @@
     "build": "next build --webpack",
     "ingest": "npx tsx scripts/ingest-changed.ts",
     "audit:rules": "npx tsx scripts/audit-rules.ts",
+    "dr:audit": "node --experimental-strip-types scripts/dr/audit.ts",
+    "dr:verify-restore": "node --experimental-strip-types scripts/dr/verify-restore.ts",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "verify": "npm run lint && npm run typecheck && npm test && npm run build"
@@ -41,6 +45,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@types/node": "^20",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.7",

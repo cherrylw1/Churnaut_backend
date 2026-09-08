@@ -111,7 +111,7 @@ function chunkContent(content: string): string[] {
 }
 
 async function embedText(text: string): Promise<number[]> {
-  return embed(text)
+  return embed(text, { context: { feature: 'code_embedding_ingest', scope: 'internal' } })
 }
 
 function getChangedFiles(): string[] {

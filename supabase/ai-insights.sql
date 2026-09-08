@@ -15,14 +15,16 @@ CREATE INDEX IF NOT EXISTS idx_anomaly_alerts_read ON anomaly_alerts(client_id, 
 
 ALTER TABLE anomaly_alerts ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Clients can view their own anomaly alerts" ON anomaly_alerts;
+DROP POLICY IF EXISTS "Clients can update their own anomaly alerts" ON anomaly_alerts;
 CREATE POLICY "Clients can view their own anomaly alerts" ON anomaly_alerts
     FOR SELECT TO authenticated
-    USING (client_id = auth.uid());
+    USING (client_id = (select auth.uid()));
 
 CREATE POLICY "Clients can update their own anomaly alerts" ON anomaly_alerts
     FOR UPDATE TO authenticated
-    USING (client_id = auth.uid())
-    WITH CHECK (client_id = auth.uid());
+    USING (client_id = (select auth.uid()))
+    WITH CHECK (client_id = (select auth.uid()));
 
 -- ==========================================
 -- 9. WEEKLY DIGESTS TABLE
@@ -42,11 +44,9 @@ CREATE INDEX IF NOT EXISTS idx_weekly_digests_client_id ON weekly_digests(client
 
 ALTER TABLE weekly_digests ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Clients can view their own weekly digests" ON weekly_digests
-    FOR SELECT TO authenticated
-    USING (client_id = auth.uid());
-
+DROP POLICY IF EXISTS "Clients can view their own weekly digests" ON weekly_digests;
+DROP POLICY IF EXISTS "Clients can manage their own weekly digests" ON weekly_digests;
 CREATE POLICY "Clients can manage their own weekly digests" ON weekly_digests
     FOR ALL TO authenticated
-    USING (client_id = auth.uid())
-    WITH CHECK (client_id = auth.uid());
+    USING (client_id = (select auth.uid()))
+    WITH CHECK (client_id = (select auth.uid()));

@@ -80,6 +80,16 @@ export async function POST(req: NextRequest) {
       console.error('[Digest Cache Read Error]:', cacheErr);
     }
 
+    const { data: scheduledDigest, error: scheduledLookupError } = await supabaseAdmin
+      .from('weekly_digests')
+      .select('id, delivery_status, sent_at, summary, top_signal, rep_spotlight, recommendation')
+      .eq('client_id', clientId).eq('week_start', weekStartStr).maybeSingle();
+    if (scheduledLookupError) throw scheduledLookupError;
+    // Never overwrite a scheduled delivery that is currently being processed.
+    if (scheduledDigest?.delivery_status === 'processing') {
+      return NextResponse.json({ digest: scheduledDigest, source: 'scheduled' });
+    }
+
     // Calculate both seven-day windows inside Postgres. This uses immutable
     // event timestamps and exact server-side counts, so historical digests do
     // not drift and are not truncated by PostgREST's row limit.
@@ -183,7 +193,9 @@ Tone: direct, data-driven, peer-level. Total under 150 words.
 Output only a JSON object with keys: summary, top_signal, rep_spotlight, recommendation. Do not include markdown formatting or preamble.`;
 
     const llmStart = Date.now();
-    const rawText = (await generateText(digestPrompt, { maxTokens: 1500 })) || '{}';
+    let rawText = '{}';
+    try { rawText = (await generateText(digestPrompt, { maxTokens: 1500, context: { feature: 'weekly_digest_manual', scope: 'customer', clientId } })) || '{}'; }
+    catch (error) { console.error('[Digest AI] unavailable; using deterministic summary:', error instanceof Error ? error.message : 'unknown'); rawText = JSON.stringify({ summary: `This week recorded ${aggregate.current.triggers} personalization triggers and ${aggregate.current.conversions} conversions.`, top_signal: `Top signal: ${topSignal}.`, rep_spotlight: performanceData.best_converting_rep === 'None' ? 'No rep conversion data was available.' : `Top rep: ${performanceData.best_converting_rep}.`, recommendation: 'Review your highest-volume signal and keep its best-performing rule active.' }); }
 
     let cleanedText = rawText.trim();
     if (cleanedText.startsWith('```')) {
@@ -194,8 +206,8 @@ Output only a JSON object with keys: summary, top_signal, rep_spotlight, recomme
     try {
       digestJson = weeklyDigestOutputSchema.parse(JSON.parse(cleanedText));
     } catch (parseErr) {
-      console.error('[Digest Parse Error] Failed parsing model response:', parseErr);
-      return NextResponse.json({ error: 'Failed to parse AI response as JSON' }, { status: 502 });
+      console.error('[Digest Parse Error] Falling back to deterministic digest:', parseErr);
+      digestJson = { summary: `This week recorded ${aggregate.current.triggers} personalization triggers and ${aggregate.current.conversions} conversions.`, top_signal: `Top signal: ${topSignal}.`, rep_spotlight: performanceData.best_converting_rep === 'None' ? 'No rep conversion data was available.' : `Top rep: ${performanceData.best_converting_rep}.`, recommendation: 'Review your highest-volume signal and keep its best-performing rule active.' };
     }
 
     logLLMCall({
@@ -207,22 +219,36 @@ Output only a JSON object with keys: summary, top_signal, rep_spotlight, recomme
     });
 
     // 4. Store Weekly Digest in weekly_digests table
-    const { data: savedDigest, error: insertErr } = await supabaseAdmin
-      .from('weekly_digests')
-      .upsert({
+    const digestValues = {
         client_id: clientId,
         week_start: weekStartStr,
         summary: digestJson.summary,
         top_signal: digestJson.top_signal,
         rep_spotlight: digestJson.rep_spotlight,
         recommendation: digestJson.recommendation,
-      }, { onConflict: 'client_id,week_start' })
-      .select()
-      .single();
+      };
+    let savedDigest: typeof scheduledDigest;
+    let insertErr: { message: string; code?: string } | null = null;
+    if (scheduledDigest?.id) {
+      const result = await supabaseAdmin.from('weekly_digests').update(digestValues)
+        .eq('id', scheduledDigest.id).neq('delivery_status', 'processing').select().maybeSingle();
+      savedDigest = result.data;
+      insertErr = result.error;
+      if (!savedDigest && !insertErr) savedDigest = scheduledDigest;
+    } else {
+      const result = await supabaseAdmin.from('weekly_digests').insert(digestValues).select().maybeSingle();
+      savedDigest = result.data;
+      insertErr = result.error;
+      if (insertErr?.code === '23505') {
+        const raced = await supabaseAdmin.from('weekly_digests').select().eq('client_id', clientId).eq('week_start', weekStartStr).maybeSingle();
+        savedDigest = raced.data;
+        insertErr = raced.error;
+      }
+    }
 
-    if (insertErr) {
+    if (insertErr || !savedDigest) {
       console.error('[Digest Save Error] Failed inserting weekly digest:', insertErr);
-      return NextResponse.json({ error: insertErr.message }, { status: 500 });
+      return NextResponse.json({ error: insertErr?.message || 'Unable to save digest' }, { status: 500 });
     }
 
     // 5. Cache result in Redis for 24 hours (86,400 seconds)

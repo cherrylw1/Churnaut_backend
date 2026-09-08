@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
 
     // 3. Analyze with the new Scout engine
     const llmStart = Date.now();
-    const { pipeline_pressure_score, briefs } = await analyzeDeals(deals);
+    const { pipeline_pressure_score, briefs, ai_status } = await analyzeDeals(deals, clientId, Date.now() + 275_000);
     const latency = Date.now() - llmStart;
 
     const dealMap = new Map(deals.map((d) => [d.crm.deal_id, d]));
@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
         total_pipeline_value: 0, pressure_score: 0,
       });
       if (snapErr) console.error('[Scout Score POST] Empty snapshot insert failed:', snapErr);
-      return NextResponse.json({ pipeline_pressure_score: 0, deals: [] });
+      return NextResponse.json({ pipeline_pressure_score: 0, deals: [], ai_status: 'full' });
     }
 
     // 4. Map briefs -> deal_scores rows (existing column shape only)
@@ -165,7 +165,7 @@ export async function POST(req: NextRequest) {
     try { await calculateDealPatterns(clientId); }
     catch (e) { console.error('[Scout Score POST] calculateDealPatterns failed (non-fatal):', e); }
 
-    return NextResponse.json({ pipeline_pressure_score, deals: scoredDeals });
+    return NextResponse.json({ pipeline_pressure_score, deals: scoredDeals, ai_status });
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : 'Internal server error';
     const errStack = error instanceof Error ? error.stack : 'No stack trace';

@@ -53,7 +53,9 @@ export async function POST(req: NextRequest) {
     Generate exactly 3 highly relevant and helpful rules in priority order based on their profile. E.g., if they use Cold Email, signal_type should be 'Cold Email'. If they sell to large companies, target executives.
     Return ONLY a JSON array. No markdown, no preambles, no explanation.`;
 
-    const rawText = await generateText(prompt, { maxTokens: 1500 });
+    let rawText: string;
+    try { rawText = await generateText(prompt, { maxTokens: 1500, context: { feature: 'onboarding_rules', scope: 'customer', clientId } }); }
+    catch (error) { console.error('[Onboarding AI] unavailable:', error instanceof Error ? error.message : 'unknown'); return NextResponse.json({ success: false, degraded: true, error: 'ai_unavailable', canContinueManually: true }); }
 
     if (!rawText) {
       console.error('[Onboarding Error] Empty response structure');

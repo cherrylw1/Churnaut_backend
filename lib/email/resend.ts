@@ -156,7 +156,8 @@ export async function sendWeeklyDigest(
     top_signal: string;
     rep_spotlight: string;
     recommendation: string;
-  }
+  },
+  idempotencyKey?: string,
 ) {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey || apiKey === 're_placeholder_key') {
@@ -286,15 +287,15 @@ export async function sendWeeklyDigest(
       to,
       subject,
       html,
-    });
+    }, idempotencyKey ? { idempotencyKey } : undefined);
     if (data.error) {
-      console.error(`[Resend digest] API rejected digest to ${to}:`, data.error);
+      console.error('[Resend digest] API rejected weekly digest:', { name: data.error.name, statusCode: data.error.statusCode });
       return { success: false, error: data.error };
     }
-    console.log(`[Resend digest] Weekly digest sent successfully to ${to}:`, data);
+    console.log('[Resend digest] Weekly digest sent successfully:', { id: data.data?.id ?? null });
     return { success: true, data };
   } catch (error) {
-    console.error(`[Resend digest] Error sending digest to ${to}:`, error);
+    console.error('[Resend digest] Error sending weekly digest:', { category: error instanceof Error ? error.name : 'unknown' });
     return { success: false, error };
   }
 }

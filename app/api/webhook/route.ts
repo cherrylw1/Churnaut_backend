@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { supabaseAdmin } from '@/lib/supabase';
 import { ratelimit } from '@/lib/redis';
-import { readJson, webhookPayloadSchema } from '@/lib/validation';
+import { webhookPayloadSchema } from '@/lib/validation';
+import { authenticateWebhookRequest } from '@/lib/webhook-auth';
 import { normalizeEmail } from '@/lib/email-normalization';
 import { normalizeEmbedUrl } from '@/lib/url';
 
@@ -27,38 +28,19 @@ function generateSessionId(length: number = 6): string {
 
 export async function POST(req: NextRequest) {
   try {
-    // 1. Authenticate Client
-    let key = '';
-    const authHeader = req.headers.get('Authorization');
-    if (authHeader && authHeader.toLowerCase().startsWith('bearer ')) {
-      key = authHeader.substring(7).trim();
-    } else {
-      const { searchParams } = new URL(req.url);
-      key = searchParams.get('client_key') || '';
+    // Read the exact bytes once so signed requests can be verified before JSON
+    // parsing or re-serialization. Credentials are never logged.
+    const contentLength = Number(req.headers.get('content-length') || '0');
+    if (Number.isFinite(contentLength) && contentLength > 1_000_000) {
+      return NextResponse.json({ error: 'Webhook payload is too large' }, { status: 413 });
     }
+    const rawBody = await req.text();
+    if (rawBody.length > 1_000_000) return NextResponse.json({ error: 'Webhook payload is too large' }, { status: 413 });
 
-    if (!key) {
-      return NextResponse.json({ error: 'Missing webhook secret or Authorization Bearer token' }, { status: 401 });
-    }
-
-    // Webhook authentication must use the private webhook secret. The snippet_key
-    // is intentionally embedded in public website JavaScript for browser tracking
-    // and must never be accepted as an inbound integration credential.
-    const { data: clientBySecret, error: secretErr } = await supabaseAdmin
-      .from('clients')
-      .select('*')
-      .eq('webhook_secret', key)
-      .maybeSingle();
-
-    const client = clientBySecret;
-
-    if (secretErr) {
-      console.error('[Webhook Auth Error] Client lookup failed:', secretErr);
-      return NextResponse.json({ error: 'Webhook authentication service unavailable' }, { status: 503 });
-    }
-    if (!client) {
-      return NextResponse.json({ error: 'Unauthorized client key' }, { status: 401 });
-    }
+    const authResult = await authenticateWebhookRequest(req, rawBody);
+    // Preserve the existing 503 contract: "Webhook authentication service unavailable".
+    if (!authResult.ok) return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+    const { client, method: webhookAuthMethod } = authResult;
 
     const clientId = client.id;
 
@@ -72,15 +54,15 @@ export async function POST(req: NextRequest) {
       console.error('[RateLimit Error] Failed to enforce rate limiting on webhook:', rlError);
     }
 
-    // 2. Parse Incoming Payload
-    const contentLength = Number(req.headers.get('content-length') || '0');
-    if (Number.isFinite(contentLength) && contentLength > 1_000_000) {
-      return NextResponse.json({ error: 'Webhook payload is too large' }, { status: 413 });
+    // 2. Parse Incoming Payload after authentication.
+    let payloadValue: unknown;
+    try {
+      payloadValue = JSON.parse(rawBody);
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
     }
-    const parsedPayload = await readJson(req, webhookPayloadSchema);
-    if (!parsedPayload.ok) {
-      return NextResponse.json({ error: parsedPayload.error }, { status: 400 });
-    }
+    const parsedPayload = webhookPayloadSchema.safeParse(payloadValue);
+    if (!parsedPayload.success) return NextResponse.json({ error: 'Invalid webhook payload' }, { status: 400 });
     const payload = parsedPayload.data;
 
     // 3. Query Webhook Field Mappings
@@ -366,6 +348,7 @@ export async function POST(req: NextRequest) {
         metadata: {
           schema_version: 2,
           webhook_action: isNewSession ? 'create_session' : 'update_session',
+          webhook_auth_method: webhookAuthMethod,
           payload,
           transformed,
         },

@@ -27,14 +27,12 @@ CREATE INDEX IF NOT EXISTS idx_deal_scores_client_id ON deal_scores(client_id);
 
 ALTER TABLE deal_scores ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Clients can view their own deal scores" ON deal_scores
-    FOR SELECT TO authenticated
-    USING (client_id = auth.uid());
-
+DROP POLICY IF EXISTS "Clients can view their own deal scores" ON deal_scores;
+DROP POLICY IF EXISTS "Clients can manage their own deal scores" ON deal_scores;
 CREATE POLICY "Clients can manage their own deal scores" ON deal_scores
     FOR ALL TO authenticated
-    USING (client_id = auth.uid())
-    WITH CHECK (client_id = auth.uid());
+    USING (client_id = (select auth.uid()))
+    WITH CHECK (client_id = (select auth.uid()));
 
 -- ==========================================
 -- 11. PIPELINE SNAPSHOTS TABLE
@@ -55,14 +53,12 @@ CREATE INDEX IF NOT EXISTS idx_pipeline_snapshots_client_id ON pipeline_snapshot
 
 ALTER TABLE pipeline_snapshots ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Clients can view their own pipeline snapshots" ON pipeline_snapshots
-    FOR SELECT TO authenticated
-    USING (client_id = auth.uid());
-
+DROP POLICY IF EXISTS "Clients can view their own pipeline snapshots" ON pipeline_snapshots;
+DROP POLICY IF EXISTS "Clients can manage their own pipeline snapshots" ON pipeline_snapshots;
 CREATE POLICY "Clients can manage their own pipeline snapshots" ON pipeline_snapshots
     FOR ALL TO authenticated
-    USING (client_id = auth.uid())
-    WITH CHECK (client_id = auth.uid());
+    USING (client_id = (select auth.uid()))
+    WITH CHECK (client_id = (select auth.uid()));
 
 -- ==========================================
 -- 12. SCOUT NUDGES TABLE
@@ -84,11 +80,9 @@ CREATE INDEX IF NOT EXISTS idx_scout_nudges_client_id ON scout_nudges(client_id)
 
 ALTER TABLE scout_nudges ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Clients can view their own scout nudges" ON scout_nudges
-    FOR SELECT TO authenticated
-    USING (client_id = auth.uid());
-
+DROP POLICY IF EXISTS "Clients can view their own scout nudges" ON scout_nudges;
+DROP POLICY IF EXISTS "Clients can manage their own scout nudges" ON scout_nudges;
 CREATE POLICY "Clients can manage their own scout nudges" ON scout_nudges
     FOR ALL TO authenticated
-    USING (client_id = auth.uid())
-    WITH CHECK (client_id = auth.uid());
+    USING (client_id = (select auth.uid()))
+    WITH CHECK (client_id = (select auth.uid()));

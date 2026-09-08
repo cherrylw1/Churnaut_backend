@@ -16,11 +16,9 @@ CREATE INDEX IF NOT EXISTS idx_company_deal_patterns_client_id ON company_deal_p
 
 ALTER TABLE company_deal_patterns ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Clients can view their own company deal patterns" ON company_deal_patterns
-    FOR SELECT TO authenticated
-    USING (client_id = auth.uid());
-
+DROP POLICY IF EXISTS "Clients can view their own company deal patterns" ON company_deal_patterns;
+DROP POLICY IF EXISTS "Clients can manage their own company deal patterns" ON company_deal_patterns;
 CREATE POLICY "Clients can manage their own company deal patterns" ON company_deal_patterns
     FOR ALL TO authenticated
-    USING (client_id = auth.uid())
-    WITH CHECK (client_id = auth.uid());
+    USING (client_id = (select auth.uid()))
+    WITH CHECK (client_id = (select auth.uid()));

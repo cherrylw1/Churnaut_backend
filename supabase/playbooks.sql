@@ -10,6 +10,10 @@ CREATE TABLE IF NOT EXISTS playbook_templates (
     created_at timestamptz DEFAULT now()
 );
 
+-- Templates are read by server routes with the service role; keep the table
+-- protected if this helper is run independently of the main baseline.
+ALTER TABLE playbook_templates ENABLE ROW LEVEL SECURITY;
+
 -- SEED PLAYBOOK TEMPLATES
 INSERT INTO playbook_templates (name, description, signal_type, tier, required_inputs, rule_template) VALUES 
 ('Tracked Link VIP Prospect', 'Personalize the page for a known prospect arriving via a tracked link. Show rep calendar and inject their name.', 'cold_email', 1, '[{"field_name":"rep_name","label":"Rep Name","placeholder":"e.g. Sarah Chen","type":"text"},{"field_name":"calendly_url","label":"Calendly URL","placeholder":"https://calendly.com/your-link","type":"text"},{"field_name":"headline","label":"Personalized Headline","placeholder":"e.g. Hey {{prospect_name}}, we know why you are here.","type":"text"}]', '{"signal_type":"cold_email","conditions":{},"action_type":"inject_copy","target_selector":"#headline","variant_content":"{{headline}}"}'), 
