@@ -46,10 +46,15 @@ export async function POST(req: NextRequest) {
     const plan = await getClientPlan(req)
     const accountGate = planGate(plan, 'starter')
     if (accountGate) return accountGate
-    const { data: existingRules } = await supabaseAdmin
+    const { data: existingRules, error: existingRulesError } = await supabaseAdmin
       .from('routing_rules')
       .select('id')
       .eq('client_id', clientId)
+
+    if (existingRulesError) {
+      console.error('[POST Rules Error] Rule limit lookup failed:', existingRulesError)
+      return NextResponse.json({ error: 'Unable to verify the routing rule limit' }, { status: 503 })
+    }
 
     const ruleLimit = plan === 'starter' ? 5 : Infinity
     if (existingRules && existingRules.length >= ruleLimit) {
@@ -121,17 +126,13 @@ export async function PATCH(req: NextRequest) {
 
     // Case 1: Bulk Priority Reorder
     if ('rules' in body && Array.isArray(body.rules)) {
-      for (const ruleItem of body.rules) {
-        const { error: updateError } = await supabaseAdmin
-          .from('routing_rules')
-          .update({ priority: ruleItem.priority })
-          .eq('id', ruleItem.id)
-          .eq('client_id', clientId);
-
-        if (updateError) {
-          console.error(`[PATCH Rules Error] Failed to update priority for ${ruleItem.id}:`, updateError);
-          return NextResponse.json({ error: updateError.message }, { status: 500 });
-        }
+      const { data: updatedCount, error: reorderError } = await supabaseAdmin.rpc(
+        'reorder_routing_rules',
+        { client_id_input: clientId, rules_input: body.rules }
+      );
+      if (reorderError || updatedCount !== body.rules.length) {
+        console.error('[PATCH Rules Error] Atomic reorder failed:', reorderError);
+        return NextResponse.json({ error: 'Unable to reorder routing rules' }, { status: 500 });
       }
       return NextResponse.json({ success: true });
     }
@@ -221,43 +222,16 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'A valid rule id is required' }, { status: 400 });
     }
 
-    // Delete rule
-    const { error: deleteError } = await supabaseAdmin
-      .from('routing_rules')
-      .delete()
-      .eq('id', id)
-      .eq('client_id', clientId);
-
+    const { data: deleted, error: deleteError } = await supabaseAdmin.rpc(
+      'delete_routing_rule_and_resequence',
+      { client_id_input: clientId, rule_id_input: id }
+    );
     if (deleteError) {
-      console.error('[DELETE Rule Error] Deletion failed:', deleteError);
-      return NextResponse.json({ error: deleteError.message }, { status: 500 });
+      console.error('[DELETE Rule Error] Atomic delete failed:', deleteError);
+      return NextResponse.json({ error: 'Unable to delete routing rule' }, { status: 500 });
     }
-
-    // Recalculate remaining priorities so they remain sequential starting from 1
-    const { data: remaining, error: selectError } = await supabaseAdmin
-      .from('routing_rules')
-      .select('id')
-      .eq('client_id', clientId)
-      .order('priority', { ascending: true });
-
-    if (selectError) {
-      console.error('[DELETE Rule Error] Post-deletion sorting fetch failed:', selectError);
-      return NextResponse.json({ error: selectError.message }, { status: 500 });
-    }
-
-    if (remaining && remaining.length > 0) {
-      for (let i = 0; i < remaining.length; i++) {
-        const { error: reorderError } = await supabaseAdmin
-          .from('routing_rules')
-          .update({ priority: i + 1 })
-          .eq('id', remaining[i].id)
-          .eq('client_id', clientId);
-
-        if (reorderError) {
-          console.error(`[DELETE Rule Error] Post-deletion priority reorder failed for ${remaining[i].id}:`, reorderError);
-          return NextResponse.json({ error: reorderError.message }, { status: 500 });
-        }
-      }
+    if (!deleted) {
+      return NextResponse.json({ error: 'Rule not found' }, { status: 404 });
     }
 
     return NextResponse.json({ success: true });

@@ -53,7 +53,7 @@ async function fetchHealthData() {
   const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
   const since48h = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()
 
-  const [anomalies, recentEvents, deadSessions, webhookSessions, scoutNudges] = await Promise.all([
+  const results = await Promise.all([
     // Unread anomaly alerts
     supabaseAdmin.from('anomaly_alerts').select('alert_text, severity, created_at').eq('read', false).order('created_at', { ascending: false }).limit(5),
 
@@ -69,6 +69,9 @@ async function fetchHealthData() {
     // RED deals with no nudge sent
     supabaseAdmin.from('deal_scores').select('deal_name, score, primary_risk, scored_at').eq('score', 'RED').limit(5),
   ])
+  const [anomalies, recentEvents, deadSessions, webhookSessions, scoutNudges] = results
+  const queryError = results.find((result) => result.error)?.error
+  if (queryError) throw new Error(`Unable to load live health data: ${queryError.message}`)
 
   const eventTypes = recentEvents.data?.reduce((acc: Record<string, number>, e: { event_type: string }) => {
     acc[e.event_type] = (acc[e.event_type] || 0) + 1
@@ -88,11 +91,12 @@ async function fetchHealthData() {
 async function searchCodebase(query: string, matchCount = 8) {
   try {
     const embedding = await embedQuery(query)
-    const { data } = await supabaseAdmin.rpc('match_code_chunks', {
+    const { data, error } = await supabaseAdmin.rpc('match_code_chunks', {
       query_embedding: JSON.stringify(embedding),
       match_count: matchCount,
       match_threshold: 0.35,
     })
+    if (error) throw error
     return data || []
   } catch (err) {
     console.error('[Founder Chat] Codebase search failed, bypassing RAG context:', err)

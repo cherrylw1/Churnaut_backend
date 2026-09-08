@@ -78,6 +78,7 @@ export async function GET(req: NextRequest) {
 
     if (sessionsError) {
       console.error('[Scout Pipeline GET] Error fetching sessions for rep mapping:', sessionsError);
+      return NextResponse.json({ error: 'Database error fetching session mappings' }, { status: 500 });
     }
 
     const dealRepMap = new Map<string, { rep_name: string; rep_email: string }>();
@@ -93,11 +94,15 @@ export async function GET(req: NextRequest) {
     }
 
     // Fetch score history for sparkline trends
-    const { data: historyData } = await supabaseAdmin
+    const { data: historyData, error: historyError } = await supabaseAdmin
       .from('deal_score_history')
       .select('deal_id, score, scored_at')
       .eq('client_id', clientId)
       .order('scored_at', { ascending: true });
+    if (historyError) {
+      console.error('[Scout Pipeline GET] Error fetching score history:', historyError);
+      return NextResponse.json({ error: 'Database error fetching score history' }, { status: 500 });
+    }
     const historyMap = new Map<string, { scored_at: string; score: string }[]>();
     for (const h of historyData || []) {
       const list = historyMap.get(h.deal_id) || [];
@@ -142,6 +147,7 @@ export async function GET(req: NextRequest) {
 
     if (eventsError) {
       console.error('[Scout Pipeline GET] Error fetching recent events:', eventsError);
+      return NextResponse.json({ error: 'Database error fetching recent activity' }, { status: 500 });
     }
 
     // Cross-reference recent visits with open deals
@@ -168,6 +174,7 @@ export async function GET(req: NextRequest) {
 
       if (matchSessionsError) {
         console.error('[Scout Pipeline GET] Error fetching matching sessions:', matchSessionsError);
+        return NextResponse.json({ error: 'Database error fetching acceleration triggers' }, { status: 500 });
       }
 
       if (matchingSessions && matchingSessions.length > 0) {

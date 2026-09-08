@@ -117,12 +117,16 @@ export async function POST(req: NextRequest) {
     let bestRuleDesc = 'None';
     if (bestRuleMetric) {
       // Fetch details with the tenant boundary repeated at the write/read edge.
-      const { data: ruleDetails } = await supabaseAdmin
+      const { data: ruleDetails, error: ruleDetailsError } = await supabaseAdmin
         .from('routing_rules')
         .select('signal_type, priority')
         .eq('id', bestRuleMetric.rule_id)
         .eq('client_id', clientId)
         .maybeSingle();
+
+      if (ruleDetailsError) {
+        console.error('[Digest POST Error] Best rule lookup failed:', ruleDetailsError);
+      }
 
       if (ruleDetails) {
         bestRuleDesc = `Priority ${ruleDetails.priority} (${ruleDetails.signal_type || 'Any'} Signal) rule with ${bestRuleMetric.triggers} triggers`;
@@ -134,13 +138,14 @@ export async function POST(req: NextRequest) {
     // Scout pipeline health (non-fatal) for a two-pillar digest
     let pipelineHealthLine = '';
     try {
-      const { data: snap } = await supabaseAdmin
+      const { data: snap, error: snapshotError } = await supabaseAdmin
         .from('pipeline_snapshots')
         .select('pressure_score, red_count, amber_count, total_deals')
         .eq('client_id', clientId)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
+      if (snapshotError) throw snapshotError;
       if (snap && (snap.total_deals || 0) > 0) {
         const atRisk = (snap.red_count || 0) + (snap.amber_count || 0);
         pipelineHealthLine = `\n- Pipeline health (Scout): pressure score ${snap.pressure_score}/100, ${atRisk} of ${snap.total_deals} open deals flagged at risk (RED/AMBER).`;

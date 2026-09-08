@@ -25,7 +25,11 @@ export async function POST(req: NextRequest) {
     const parsed = await readJson(req, snippetPingRequestSchema);
     if (!parsed.ok) return json({ error: parsed.error }, 400);
     const clientId = parsed.data.client_id;
-    const { data: client } = await supabaseAdmin.from('clients').select('id').eq('snippet_key', clientId).maybeSingle();
+    const { data: client, error: clientError } = await supabaseAdmin.from('clients').select('id').eq('snippet_key', clientId).maybeSingle();
+    if (clientError) {
+      console.error('[Snippet Ping] Client lookup failed:', clientError);
+      return json({ error: 'Unable to verify snippet client' }, 503);
+    }
     if (!client) return json({ error: 'Unknown client' }, 401);
     if (!(await isRegisteredClientOrigin(client.id, req.headers.get('origin')))) return json({ error: 'Unregistered website origin' }, 403);
     const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || 'unknown';
@@ -38,7 +42,8 @@ export async function POST(req: NextRequest) {
     const { error } = await supabaseAdmin.rpc('record_snippet_ping', { client_id_input: client.id });
     if (error) return json({ error: 'Unable to record snippet ping' }, 503);
     return json({ ok: true });
-  } catch {
-    return json({ error: 'Invalid request' }, 400);
+  } catch (error) {
+    console.error('[Snippet Ping] Request failed:', error);
+    return json({ error: 'Snippet verification unavailable' }, 503);
   }
 }

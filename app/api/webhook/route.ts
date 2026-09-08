@@ -51,10 +51,12 @@ export async function POST(req: NextRequest) {
       .maybeSingle();
 
     const client = clientBySecret;
-    const clientErr = secretErr;
 
-    if (clientErr || !client) {
-      console.error('[Webhook Auth Error] Failed client lookup:', clientErr);
+    if (secretErr) {
+      console.error('[Webhook Auth Error] Client lookup failed:', secretErr);
+      return NextResponse.json({ error: 'Webhook authentication service unavailable' }, { status: 503 });
+    }
+    if (!client) {
       return NextResponse.json({ error: 'Unauthorized client key' }, { status: 401 });
     }
 
@@ -173,17 +175,21 @@ export async function POST(req: NextRequest) {
 
     if (!isLinkedInLeadGen) {
       if (sessionId) {
-        const { data } = await supabaseAdmin
+        const { data, error: sessionLookupError } = await supabaseAdmin
           .from('sessions')
           .select('*')
           .eq('id', sessionId)
           .eq('client_id', clientId)
           .maybeSingle();
+        if (sessionLookupError) {
+          console.error('[Webhook Session Lookup Error] ID lookup failed:', sessionLookupError);
+          return NextResponse.json({ error: 'Session lookup unavailable' }, { status: 503 });
+        }
         session = data;
       }
 
       if (!session && email) {
-        const { data } = await supabaseAdmin
+        const { data, error: emailLookupError } = await supabaseAdmin
           .from('sessions')
           .select('*')
           .eq('prospect_email', email)
@@ -191,6 +197,10 @@ export async function POST(req: NextRequest) {
           .order('created_at', { ascending: false })
           .limit(1)
           .maybeSingle();
+        if (emailLookupError) {
+          console.error('[Webhook Session Lookup Error] Email lookup failed:', emailLookupError);
+          return NextResponse.json({ error: 'Session lookup unavailable' }, { status: 503 });
+        }
         session = data;
       }
     }
@@ -247,15 +257,17 @@ export async function POST(req: NextRequest) {
       }
 
       // Fetch the updated row to get visitor_token for cache invalidation
-      const { data: updatedSession } = await supabaseAdmin
+      const { data: updatedSession, error: updatedSessionError } = await supabaseAdmin
         .from('sessions')
         .select('*')
         .eq('id', finalSessionId)
         .eq('client_id', clientId)
         .single();
-      if (updatedSession) {
-        session = updatedSession;
+      if (updatedSessionError || !updatedSession) {
+        console.error('[Webhook Session Update Error] Updated row could not be reloaded:', updatedSessionError);
+        return NextResponse.json({ error: 'Unable to verify the updated session' }, { status: 500 });
       }
+      session = updatedSession;
     } else if (email || isLinkedInLeadGen) {
       // 7. Create a new session if email matches and no session exists
       isNewSession = true;
@@ -265,11 +277,16 @@ export async function POST(req: NextRequest) {
 
       // Unique Sid generator loop
       while (!isUnique && attempts < 10) {
-        const { data } = await supabaseAdmin
+        const { data, error: uniquenessError } = await supabaseAdmin
           .from('sessions')
           .select('id')
           .eq('id', newSid)
           .maybeSingle();
+
+        if (uniquenessError) {
+          console.error('[Webhook Session Insert Error] Session ID availability check failed:', uniquenessError);
+          return NextResponse.json({ error: 'Unable to allocate a webhook session ID' }, { status: 503 });
+        }
 
         if (!data) {
           isUnique = true;
@@ -277,6 +294,10 @@ export async function POST(req: NextRequest) {
           newSid = generateSessionId();
           attempts++;
         }
+      }
+
+      if (!isUnique) {
+        return NextResponse.json({ error: 'Unable to allocate a unique webhook session ID' }, { status: 503 });
       }
 
       finalSessionId = newSid;

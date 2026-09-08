@@ -120,11 +120,16 @@ export async function POST(req: NextRequest) {
     let attempts = 0;
 
     while (!isUnique && attempts < 10) {
-      const { data } = await supabaseAdmin
+      const { data, error: uniquenessError } = await supabaseAdmin
         .from('sessions')
         .select('id')
         .eq('id', sessionId)
         .maybeSingle();
+
+      if (uniquenessError) {
+        console.error('[POST Links Error] Session ID availability check failed:', uniquenessError);
+        return NextResponse.json({ error: 'Unable to allocate a tracked link ID' }, { status: 503 });
+      }
 
       if (!data) {
         isUnique = true;
@@ -132,6 +137,10 @@ export async function POST(req: NextRequest) {
         sessionId = generateSessionId();
         attempts++;
       }
+    }
+
+    if (!isUnique) {
+      return NextResponse.json({ error: 'Unable to allocate a unique tracked link ID' }, { status: 503 });
     }
 
     // 2. Compute expiration date

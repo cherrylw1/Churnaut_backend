@@ -153,6 +153,8 @@ async function fetchAccountContext(clientId: string) {
     supabaseAdmin.from('sessions').select('id').eq('client_id', clientId).or('session_kind.eq.tracked_link,session_kind.is.null').limit(1),
     supabaseAdmin.from('clients').select('domain, crm_type, plan').eq('id', clientId).single(),
   ])
+  const queryError = rulesRes.error || sessionsRes.error || clientRes.error
+  if (queryError) throw new Error(`Unable to load account context: ${queryError.message}`)
   return {
     rules: rulesRes.data || [],
     hasLinks: (sessionsRes.data?.length || 0) > 0,
@@ -172,11 +174,19 @@ async function debugSession(clientId: string, prospectQuery: string) {
   } else {
     sessionQuery = sessionQuery.ilike('prospect_name', `%${prospectQuery}%`)
   }
-  const { data: sessions } = await sessionQuery.order('created_at', { ascending: false }).limit(3)
-  const { data: rules } = await supabaseAdmin.from('routing_rules').select('id, signal_type, conditions, action_type, active, priority').eq('client_id', clientId).eq('active', true).order('priority')
-  const { data: events } = await supabaseAdmin.from('analytics_events').select('event_type, signal_type, rule_id, created_at').eq('client_id', clientId).order('created_at', { ascending: false }).limit(20)
+  const [sessionsResult, rulesResult, eventsResult] = await Promise.all([
+    sessionQuery.order('created_at', { ascending: false }).limit(3),
+    supabaseAdmin.from('routing_rules').select('id, signal_type, conditions, action_type, active, priority').eq('client_id', clientId).eq('active', true).order('priority'),
+    supabaseAdmin.from('analytics_events').select('event_type, signal_type, rule_id, created_at').eq('client_id', clientId).order('created_at', { ascending: false }).limit(20),
+  ])
+  const queryError = sessionsResult.error || rulesResult.error || eventsResult.error
+  if (queryError) throw new Error(`Unable to debug the session: ${queryError.message}`)
 
-  return { sessions: sessions || [], rules: rules || [], recentEvents: events || [] }
+  return {
+    sessions: sessionsResult.data || [],
+    rules: rulesResult.data || [],
+    recentEvents: eventsResult.data || [],
+  }
 }
 
 async function createRule(clientId: string, intent: ReturnType<typeof parseRuleIntent>) {
@@ -185,7 +195,11 @@ async function createRule(clientId: string, intent: ReturnType<typeof parseRuleI
   if (intent.action_type !== 'show_calendar') {
     return { success: false, id: undefined, error: 'Complete copy rules in the rule editor' }
   }
-  const { data: existing } = await supabaseAdmin.from('routing_rules').select('priority').eq('client_id', clientId).order('priority', { ascending: false }).limit(1)
+  const { data: existing, error: priorityError } = await supabaseAdmin.from('routing_rules').select('priority').eq('client_id', clientId).order('priority', { ascending: false }).limit(1)
+  if (priorityError) {
+    console.error('[Support Chat] Rule priority lookup failed:', priorityError)
+    return { success: false, id: undefined, error: 'Unable to determine the next rule priority' }
+  }
   const nextPriority = existing && existing.length > 0 ? existing[0].priority + 1 : 1
 
   const conditions = intent.condition_type && intent.condition_value
