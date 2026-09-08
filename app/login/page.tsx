@@ -23,6 +23,17 @@ export default function LoginPage() {
       });
 
       if (error) {
+        const category = /rate|too many/i.test(error.message)
+          ? 'rate_limited'
+          : /invalid|credentials|password|email/i.test(error.message)
+            ? 'invalid_credentials'
+            : 'provider_error';
+        void fetch('/api/ops/auth-failure', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ category }),
+          keepalive: true,
+        }).catch(() => undefined);
         setErrorMsg(error.message);
       } else {
         if (data.session) {

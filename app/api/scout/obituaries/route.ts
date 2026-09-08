@@ -1,3 +1,4 @@
+import { logError } from '@/lib/observability/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { fetchClosedLostDeals } from '@/lib/integrations/hubspot-pipeline';
@@ -26,13 +27,13 @@ export async function GET(req: NextRequest) {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('[Scout Obituaries GET] Error fetching obituaries:', error);
+      logError('[Scout Obituaries GET] Error fetching obituaries:', error);
       return NextResponse.json({ error: 'Failed to fetch obituaries' }, { status: 500 });
     }
 
     return NextResponse.json(obituaries || []);
   } catch (err) {
-    console.error('[Scout Obituaries GET] Exception:', err);
+    logError('[Scout Obituaries GET] Exception:', err);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
@@ -60,7 +61,7 @@ export async function POST(req: NextRequest) {
       .eq('client_id', clientId);
 
     if (existingError) {
-      console.error('[Scout Obituaries POST] Error fetching existing obituaries:', existingError);
+      logError('[Scout Obituaries POST] Error fetching existing obituaries:', existingError);
       return NextResponse.json({ error: 'Failed to check existing obituaries' }, { status: 500 });
     }
 
@@ -82,13 +83,13 @@ export async function POST(req: NextRequest) {
         await generateDealObituary(clientId, deal);
         generatedCount++;
       } catch (genErr) {
-        console.error(`[Scout Obituaries POST] Failed generating obituary for deal ${deal.deal_id}:`, genErr);
+        logError(`[Scout Obituaries POST] Failed generating obituary for deal ${deal.deal_id}:`, genErr);
       }
     }
 
     return NextResponse.json({ count: generatedCount });
   } catch (err) {
-    console.error('[Scout Obituaries POST] Exception:', err);
+    logError('[Scout Obituaries POST] Exception:', err);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

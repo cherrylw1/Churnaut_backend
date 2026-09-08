@@ -1,3 +1,6 @@
+import { logError, logWarn, logInfo } from '../observability/logger';
+import { recordOpsEvent } from '../monitoring/events';
+import { stagingIntegrationsEnabled } from '../environment';
 import { supabaseAdmin } from '@/lib/supabase';
 import { decrypt, encrypt } from '@/lib/crypto';
 import { redis } from '@/lib/redis';
@@ -103,6 +106,7 @@ export async function fetchStageEntryDates(
  * Caches results in Upstash Redis for 30 minutes.
  */
 export async function getValidHubSpotToken(clientId: string): Promise<string | null> {
+  if (!stagingIntegrationsEnabled()) return null;
   const { data: tokens, error: tokenError } = await supabaseAdmin
     .from('crm_tokens')
     .select('access_token, refresh_token, expires_at, connection_status')
@@ -111,19 +115,19 @@ export async function getValidHubSpotToken(clientId: string): Promise<string | n
     .order('updated_at', { ascending: false });
 
   if (tokenError) {
-    console.error('[HubSpot Token] Error fetching token from crm_tokens:', tokenError);
+    logError('[HubSpot Token] Error fetching token from crm_tokens:', tokenError);
   }
 
   const tokenData = tokens && tokens.length > 0 ? tokens[0] : null;
   if (!tokenData) {
-    console.warn(`[HubSpot Token] No HubSpot OAuth connection found for client ${clientId}`);
+    logWarn(`[HubSpot Token] No HubSpot OAuth connection found for client ${clientId}`);
     return null;
   }
   if (tokenData.connection_status === 'unhealthy') return null;
 
   let accessToken = decrypt(tokenData.access_token);
   if (!accessToken) {
-    console.error('[HubSpot Token] Failed to decrypt access token');
+    logError('[HubSpot Token] Failed to decrypt access token');
     return null;
   }
 
@@ -131,7 +135,7 @@ export async function getValidHubSpotToken(clientId: string): Promise<string | n
   const isExpired = expiresAt === 0 || expiresAt - Date.now() < 5 * 60 * 1000;
 
   if (isExpired && tokenData.refresh_token) {
-    console.log('[HubSpot Token] Access token expired or expiring soon. Refreshing...');
+    logInfo('[HubSpot Token] Access token expired or expiring soon. Refreshing...');
     try {
       const decryptedRefreshToken = decrypt(tokenData.refresh_token);
       const params = new URLSearchParams();
@@ -148,16 +152,18 @@ export async function getValidHubSpotToken(clientId: string): Promise<string | n
       });
 
       if (!refreshRes.ok) {
-        console.error('[HubSpot Token] Refresh failed with status:', refreshRes.status);
+        logError('[HubSpot Token] Refresh failed with status:', refreshRes.status);
         await supabaseAdmin.from('crm_tokens').update({ connection_status: 'unhealthy', last_error: `refresh_http_${refreshRes.status}`, updated_at: new Date().toISOString() }).eq('client_id', clientId).eq('crm_type', 'hubspot');
+        await recordOpsEvent({ component: 'crm', eventCode: 'crm_unhealthy', severity: 'error', clientId, metadata: { crm_type: 'hubspot', failure_category: 'refresh_http' } });
         return null;
       }
 
       const refreshData = await refreshRes.json();
       const newAccessToken = refreshData.access_token;
       if (!refreshData.access_token || !Number.isFinite(Number(refreshData.expires_in))) {
-        console.error('[HubSpot Token] Refresh response is missing required fields');
+        logError('[HubSpot Token] Refresh response is missing required fields');
         await supabaseAdmin.from('crm_tokens').update({ connection_status: 'unhealthy', last_error: 'refresh_invalid_response', updated_at: new Date().toISOString() }).eq('client_id', clientId).eq('crm_type', 'hubspot');
+        await recordOpsEvent({ component: 'crm', eventCode: 'crm_unhealthy', severity: 'error', clientId, metadata: { crm_type: 'hubspot', failure_category: 'refresh_invalid_response' } });
         return null;
       }
       const newRefreshToken = refreshData.refresh_token || decryptedRefreshToken;
@@ -179,15 +185,16 @@ export async function getValidHubSpotToken(clientId: string): Promise<string | n
         .eq('crm_type', 'hubspot');
 
       if (updateError) {
-        console.error('[HubSpot Token] Failed to update refreshed tokens:', updateError.message);
+        logError('[HubSpot Token] Failed to update refreshed tokens:', updateError.message);
         return null;
       } else {
-        console.log('[HubSpot Token] Refreshed and updated successfully.');
+        logInfo('[HubSpot Token] Refreshed and updated successfully.');
         accessToken = newAccessToken;
       }
     } catch (refreshErr) {
-      console.error('[HubSpot Token] Exception during refresh:', refreshErr);
+      logError('[HubSpot Token] Exception during refresh:', refreshErr);
       await supabaseAdmin.from('crm_tokens').update({ connection_status: 'unhealthy', last_error: 'refresh_exception', updated_at: new Date().toISOString() }).eq('client_id', clientId).eq('crm_type', 'hubspot');
+      await recordOpsEvent({ component: 'crm', eventCode: 'crm_unhealthy', severity: 'error', clientId, metadata: { crm_type: 'hubspot', failure_category: 'refresh_exception' } });
       return null;
     }
   }
@@ -199,6 +206,7 @@ export async function fetchHubSpotPipeline(clientId: string, bypassCache = false
   if (!clientId) {
     throw new Error('Missing client ID');
   }
+  if (!stagingIntegrationsEnabled()) return [];
 
   const cacheKey = `scout:pipeline:${clientId}`;
 
@@ -210,7 +218,7 @@ export async function fetchHubSpotPipeline(clientId: string, bypassCache = false
         return typeof cached === 'string' ? JSON.parse(cached) : (cached as ScoutDeal[]);
       }
     } catch (cacheErr) {
-      console.error('[Scout Pipeline Cache Read Error] Failed to read from Redis:', cacheErr);
+      logError('[Scout Pipeline Cache Read Error] Failed to read from Redis:', cacheErr);
     }
   }
 
@@ -220,7 +228,7 @@ export async function fetchHubSpotPipeline(clientId: string, bypassCache = false
 
   // 4. Fetch open deals from HubSpot CRM
   const searchUrl = 'https://api.hubapi.com/crm/v3/objects/deals/search';
-  console.log('[HubSpot Pipeline debug] Fetching open deals from Search URL:', searchUrl);
+  logInfo('[HubSpot Pipeline debug] Fetching open deals from Search URL:', searchUrl);
   const rawDeals = await searchHubSpotDeals(accessToken, [
         {
           filters: [
@@ -263,7 +271,7 @@ interface HubSpotDealResult {
 
   // Log how many deals are returned and what their stages are after the fix
   const dealStages = (rawDeals as HubSpotDealResult[]).map((d) => d.properties?.dealstage || 'unknown');
-  console.log(`[HubSpot Pipeline] Returned ${rawDeals.length} deals with stages:`, dealStages);
+  logInfo(`[HubSpot Pipeline] Returned ${rawDeals.length} deals with stages:`, dealStages);
   const stageEntryDates = await fetchStageEntryDates(accessToken, (rawDeals as HubSpotDealResult[]).map((deal) => ({
     id: deal.id,
     currentStage: deal.properties?.dealstage,
@@ -298,10 +306,10 @@ interface HubSpotDealResult {
             const name = `${firstName} ${lastName}`.trim() || 'Unknown Rep';
             ownerMap.set(ownerId, { email, name });
           } else {
-            console.warn(`[HubSpot Pipeline Warning] Failed to fetch owner details for ID: ${ownerId}. Status: ${ownerRes.status}`);
+            logWarn(`[HubSpot Pipeline Warning] Failed to fetch owner details for ID: ${ownerId}. Status: ${ownerRes.status}`);
           }
         } catch (err) {
-          console.error(`[HubSpot Pipeline Error] Failed to fetch owner details for ID: ${ownerId}:`, err);
+          logError(`[HubSpot Pipeline Error] Failed to fetch owner details for ID: ${ownerId}:`, err);
         }
       }));
   }
@@ -331,7 +339,7 @@ interface HubSpotDealResult {
           if (assocRes.status === 429) {
             const parsedRetryAfter = Number(assocRes.headers.get('Retry-After') || 1);
             const retryAfter = Math.min(5, Math.max(0, Number.isFinite(parsedRetryAfter) ? parsedRetryAfter : 1));
-            console.warn(`[Scout Pipeline] 429 on batch associations — waiting ${retryAfter}s`);
+            logWarn(`[Scout Pipeline] 429 on batch associations — waiting ${retryAfter}s`);
             await new Promise(r => setTimeout(r, retryAfter * 1000));
             retries++;
             continue;
@@ -345,11 +353,11 @@ interface HubSpotDealResult {
               if (fromId) dealContactMap.set(fromId, toIds);
             }
           } else {
-            console.warn(`[Scout Pipeline] Batch associations failed: ${assocRes.status}`);
+            logWarn(`[Scout Pipeline] Batch associations failed: ${assocRes.status}`);
           }
           break;
         } catch (err) {
-          console.error('[Scout Pipeline] Batch associations error:', err);
+          logError('[Scout Pipeline] Batch associations error:', err);
           break;
         }
       }
@@ -404,7 +412,7 @@ interface HubSpotDealResult {
           }
         }
       } catch (err) {
-        console.error('[Scout Pipeline Error] Contact batch fetch failed:', err);
+        logError('[Scout Pipeline Error] Contact batch fetch failed:', err);
       }
     }
   }
@@ -443,7 +451,7 @@ interface HubSpotDealResult {
           .range(from, from + 999);
 
         if (sessionsErr) {
-          console.error('[Scout Pipeline DB Error] Failed fetching sessions:', sessionsErr);
+          logError('[Scout Pipeline DB Error] Failed fetching sessions:', sessionsErr);
           break;
         }
         for (const session of sessions || []) {
@@ -482,7 +490,7 @@ interface HubSpotDealResult {
           .range(from, from + 999);
 
         if (eventsErr) {
-          console.error('[Scout Pipeline DB Error] Failed fetching analytics events:', eventsErr);
+          logError('[Scout Pipeline DB Error] Failed fetching analytics events:', eventsErr);
           break;
         }
         for (const ev of events || []) {
@@ -553,7 +561,7 @@ interface HubSpotDealResult {
   try {
     await redis.set(cacheKey, JSON.stringify(scoredDeals), { ex: 60 });
   } catch (cacheErr) {
-    console.error('[Scout Pipeline Cache Write Error] Failed to write to Redis:', cacheErr);
+    logError('[Scout Pipeline Cache Write Error] Failed to write to Redis:', cacheErr);
   }
 
   return scoredDeals;
@@ -625,7 +633,7 @@ export async function fetchClosedLostDeals(clientId: string): Promise<ScoutClose
         }
       }
     } catch (err) {
-      console.error('[Scout Closed Lost] Batch associations error:', err);
+      logError('[Scout Closed Lost] Batch associations error:', err);
     }
   }
 
@@ -731,7 +739,7 @@ export async function fetchClosedWonDeals(clientId: string): Promise<ScoutClosed
         }
       }
     } catch (err) {
-      console.error('[Scout Closed Won] Batch associations error:', err);
+      logError('[Scout Closed Won] Batch associations error:', err);
     }
   }
 
@@ -774,7 +782,7 @@ export async function fetchClosedWonDeals(clientId: string): Promise<ScoutClosed
           }
         }
       } catch (err) {
-        console.error('[Scout Closed Won Error] Contact batch fetch failed:', err);
+        logError('[Scout Closed Won Error] Contact batch fetch failed:', err);
       }
     }
   }

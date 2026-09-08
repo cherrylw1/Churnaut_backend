@@ -4,6 +4,7 @@ import path from 'path'
 import { createClient } from '@supabase/supabase-js'
 import * as dotenv from 'dotenv'
 import { embed } from '../lib/llm/complete'
+import { assertEmbeddingVector } from '../lib/embeddings'
 
 dotenv.config({ path: '.env.local' })
 
@@ -171,6 +172,7 @@ async function ingestChanged() {
       const contextualChunk = `File: ${filePath}\nType: ${fileType}\n\n${chunks[i]}`
       try {
         const embedding = await embedText(contextualChunk)
+        assertEmbeddingVector(embedding, `${filePath} chunk ${i}`)
         const { error } = await supabase.from('code_embeddings').insert({
           file_path: filePath,
           file_type: fileType,

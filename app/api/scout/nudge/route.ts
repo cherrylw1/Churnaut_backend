@@ -1,3 +1,4 @@
+import { logError } from '@/lib/observability/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { sendNudgeEmail } from '@/lib/email/resend';
@@ -33,7 +34,7 @@ export async function POST(req: NextRequest) {
       .eq('deal_id', deal_id)
       .maybeSingle();
     if (scoreError) {
-      console.error('[Scout Nudge POST] Error resolving trusted recipient:', scoreError);
+      logError('[Scout Nudge POST] Error resolving trusted recipient:', scoreError);
       return NextResponse.json({ error: 'Unable to verify the deal representative' }, { status: 500 });
     }
     if (!scoreData) {
@@ -63,7 +64,7 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (error) {
-      console.error('[Scout Nudge POST] Database error:', error);
+      logError('[Scout Nudge POST] Database error:', error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
@@ -84,12 +85,12 @@ export async function POST(req: NextRequest) {
       if (sentError) throw sentError;
       return NextResponse.json({ success: true, nudge: sentNudge });
     } catch (emailErr) {
-      console.error('[Scout Nudge POST] Exception during email dispatch:', emailErr);
+      logError('[Scout Nudge POST] Exception during email dispatch:', emailErr);
       return NextResponse.json({ error: 'Nudge email delivery failed' }, { status: 502 });
     }
 
   } catch (error) {
-    console.error('[Scout Nudge POST Exception] Unhandled error:', error);
+    logError('[Scout Nudge POST Exception] Unhandled error:', error);
     const errMsg = error instanceof Error ? error.message : 'Internal server error';
     return NextResponse.json({ error: errMsg }, { status: 500 });
   }

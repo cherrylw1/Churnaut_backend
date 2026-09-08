@@ -1,3 +1,4 @@
+import { logError } from './observability/logger.ts';
 import crypto from 'crypto';
 
 // Dynamically derive a 32-byte key from the environment secret
@@ -51,7 +52,7 @@ export function decrypt(encryptedText: string): string {
     decrypted += decipher.final('utf8');
     return decrypted;
   } catch (err) {
-    console.error('[Crypto Decryption Error] Failed to decrypt:', err);
+    logError('[Crypto Decryption Error] Failed to decrypt:', err);
     throw err;
   }
 }

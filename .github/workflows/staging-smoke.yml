@@ -1,0 +1,77 @@
+name: Staging smoke
+on:
+  workflow_dispatch:
+jobs:
+  verify:
+    environment: staging
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run staging:verify
+        env:
+          APP_ENV: staging
+          APP_ORIGIN: ${{ secrets.STAGING_APP_URL }}
+          NEXT_PUBLIC_APP_ORIGIN: ${{ secrets.STAGING_APP_URL }}
+          E2E_BASE_URL: ${{ secrets.STAGING_APP_URL }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          STAGING_SUPABASE_PROJECT_REF: ${{ secrets.STAGING_SUPABASE_PROJECT_REF }}
+          PRODUCTION_SUPABASE_PROJECT_REF: ${{ secrets.PRODUCTION_SUPABASE_PROJECT_REF }}
+          STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+          BILLING_MODE: disabled
+          STAGING_CRONS_ENABLED: 'false'
+          STAGING_EXTERNAL_INTEGRATIONS_ENABLED: 'false'
+      - name: Apply ordered migrations to staging only
+        run: |
+          test -n "$STAGING_DATABASE_URL" || { echo 'STAGING_DATABASE_URL is required'; exit 1; }
+          npx supabase db push --db-url "$STAGING_DATABASE_URL"
+        env:
+          STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+      - name: Verify remote staging deployment and synthetic data
+        env:
+          APP_ENV: staging
+          APP_ORIGIN: ${{ secrets.STAGING_APP_URL }}
+          NEXT_PUBLIC_APP_ORIGIN: ${{ secrets.STAGING_APP_URL }}
+          E2E_BASE_URL: ${{ secrets.STAGING_APP_URL }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          STAGING_SUPABASE_PROJECT_REF: ${{ secrets.STAGING_SUPABASE_PROJECT_REF }}
+          PRODUCTION_SUPABASE_PROJECT_REF: ${{ secrets.PRODUCTION_SUPABASE_PROJECT_REF }}
+          STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+          BILLING_MODE: disabled
+          STAGING_VERIFY_REMOTE: 'true'
+          EXPECTED_GIT_SHA: ${{ github.sha }}
+        run: npm run staging:verify
+      - run: npm run rag:verify-schema
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      - run: npm run supabase:verify-advisors
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      - name: Authenticated browser smoke
+        run: |
+          test -n "$E2E_EMAIL" && test -n "$E2E_PASSWORD" || { echo 'E2E_EMAIL and E2E_PASSWORD are required'; exit 1; }
+          test -n "$E2E_TEST_SITE_URL" && test -n "$E2E_SNIPPET_KEY" || { echo 'E2E_TEST_SITE_URL and E2E_SNIPPET_KEY are required'; exit 1; }
+          npx playwright install --with-deps chromium && npx playwright test tests/e2e --retries=0
+        env:
+          APP_ENV: staging
+          E2E_BASE_URL: ${{ secrets.STAGING_APP_URL }}
+          E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
+          E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+          E2E_TEST_SITE_URL: ${{ secrets.E2E_TEST_SITE_URL }}
+          E2E_SNIPPET_KEY: ${{ secrets.E2E_SNIPPET_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          E2E_BUSINESS_FLOWS: 'true'

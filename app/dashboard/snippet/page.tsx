@@ -65,7 +65,8 @@ export default function SnippetPage() {
 
   const getSnippetCode = () => {
     const key = client?.snippet_key || 'CLIENT_UNIQUE_KEY_HERE';
-    return `<script>window.SR_CLIENT_ID = '${key}';</script>\n<script src="https://cdn.churnaut.com/snippet.js" async defer></script>`;
+    const apiOrigin = typeof window !== 'undefined' && window.location.origin !== 'https://app.churnaut.com' ? window.location.origin : '';
+    return `${apiOrigin ? `<script>window.SR_API_ORIGIN = '${apiOrigin}';</script>\n` : ''}<script>window.SR_CLIENT_ID = '${key}';</script>\n<script src="https://cdn.churnaut.com/snippet.js" async defer></script>`;
   };
 
   const toggleGuide = (guideName: string) => {

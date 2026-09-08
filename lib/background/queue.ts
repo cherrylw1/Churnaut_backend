@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabase'
+import { safeErrorMessage } from '@/lib/observability/redact'
 
 export type BackgroundJob = {
   id: string; job_type: string; dedupe_key: string; run_id: string | null; client_id: string | null
@@ -28,7 +29,7 @@ export async function completeBackgroundJob(jobId: string, lockToken: string, re
 }
 
 export async function failBackgroundJob(jobId: string, lockToken: string, message: string, retryAt: Date) {
-  const { data, error } = await supabaseAdmin.rpc('fail_background_job', { job_id_input: jobId, lock_token_input: lockToken, error_input: message.slice(0, 500), retry_at_input: retryAt.toISOString() })
+  const { data, error } = await supabaseAdmin.rpc('fail_background_job', { job_id_input: jobId, lock_token_input: lockToken, error_input: safeErrorMessage(message), retry_at_input: retryAt.toISOString() })
   if (error) throw error
   return Boolean(data)
 }

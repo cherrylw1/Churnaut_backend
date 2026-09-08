@@ -1,3 +1,4 @@
+import { logError } from '@/lib/observability/logger';
 import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'node:crypto'
 import { getAuthedClientId } from '@/lib/auth'
@@ -14,7 +15,7 @@ export async function POST(req: NextRequest) {
     new_secret_input: crypto.randomUUID(),
   }).maybeSingle()
   if (error) {
-    console.error('[Webhook Secret Rotation] Failed:', error)
+    logError('[Webhook Secret Rotation] Failed:', error)
     return NextResponse.json({ error: 'Unable to rotate webhook secret' }, { status: 503 })
   }
   const rotated = data as { webhook_secret?: string; webhook_previous_secret_expires_at?: string }

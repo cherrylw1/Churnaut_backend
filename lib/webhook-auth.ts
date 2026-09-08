@@ -1,3 +1,4 @@
+import { logError } from './observability/logger';
 import crypto from 'node:crypto'
 import { supabaseAdmin } from '@/lib/supabase'
 
@@ -103,7 +104,7 @@ export async function authenticateWebhookRequest(req: Request, rawBody: string):
     }
     return { ok: true, client, method: 'legacy_query' }
   } catch (error) {
-    console.error('[Webhook Auth Error] Client lookup failed:', error)
+    logError('[Webhook Auth Error] Client lookup failed:', error)
     return { ok: false, status: 503, error: 'Webhook authentication service unavailable' }
   }
 }

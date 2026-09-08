@@ -1,4 +1,5 @@
 (function () {
+  var apiOrigin = (window.SR_API_ORIGIN || "https://app.churnaut.com").replace(/\/$/, "");
   /**
    * Helper function to get a cookie value by name.
    * @param {string} name - Name of the cookie.
@@ -126,7 +127,7 @@
     var pingKey = "_sr_ping_" + clientId;
     var lastPing = Number(localStorage.getItem(pingKey) || 0);
     if (!lastPing || Date.now() - lastPing > 86400000) {
-      fetch("https://app.churnaut.com/api/snippet-ping", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ client_id: clientId }), keepalive: true })
+      fetch(apiOrigin + "/api/snippet-ping", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ client_id: clientId }), keepalive: true })
         .then(function (response) { if (response.ok) localStorage.setItem(pingKey, String(Date.now())); })
         .catch(function () {});
     }
@@ -169,7 +170,7 @@
     controller.abort();
   }, 4000);
 
-  fetch("https://app.churnaut.com/api/resolve", {
+  fetch(apiOrigin + "/api/resolve", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

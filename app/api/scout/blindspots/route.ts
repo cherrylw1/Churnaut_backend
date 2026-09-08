@@ -1,3 +1,4 @@
+import { logError } from '@/lib/observability/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getClientPlan, planGate } from '@/lib/gate';
@@ -54,7 +55,7 @@ export async function GET(req: NextRequest) {
       .eq('client_id', clientId);
 
     if (scoresError) {
-      console.error('[Scout Blindspots GET] Error fetching deal scores:', scoresError);
+      logError('[Scout Blindspots GET] Error fetching deal scores:', scoresError);
       return NextResponse.json({ error: 'Database error fetching deal scores' }, { status: 500 });
     }
 
@@ -70,7 +71,7 @@ export async function GET(req: NextRequest) {
       .not('crm_deal_id', 'is', null);
 
     if (sessionsError) {
-      console.error('[Scout Blindspots GET] Error fetching sessions for rep mapping:', sessionsError);
+      logError('[Scout Blindspots GET] Error fetching sessions for rep mapping:', sessionsError);
     }
 
     const dealRepMap = new Map<string, string>();
@@ -185,7 +186,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(reports);
   } catch (error) {
-    console.error('[Scout Blindspots GET Exception] Unhandled error:', error);
+    logError('[Scout Blindspots GET Exception] Unhandled error:', error);
     const errMsg = error instanceof Error ? error.message : 'Internal server error';
     return NextResponse.json({ error: errMsg }, { status: 500 });
   }

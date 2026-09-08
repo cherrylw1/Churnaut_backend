@@ -1,8 +1,11 @@
+import { logError, logInfo } from '@/lib/observability/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { encrypt } from '@/lib/crypto';
 import { redis } from '@/lib/redis';
 import { getAppOrigin } from '@/lib/app-origin';
+import { recordOpsEvent } from '@/lib/monitoring/events';
+import { stagingIntegrationsEnabled } from '@/lib/environment';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,7 +15,7 @@ export async function GET(req: NextRequest) {
   const state = searchParams.get('state'); // State contains Churnaut client's dynamic nonce
 
   if (!code || !state) {
-    console.error('[Calendly OAuth Callback Error] Missing code or state parameters');
+    logError('[Calendly OAuth Callback Error] Missing code or state parameters');
     return NextResponse.redirect(new URL('/dashboard/integrations?error=missing_parameters', req.url));
   }
 
@@ -20,16 +23,18 @@ export async function GET(req: NextRequest) {
   const redisKey = `oauth_state:${state}`;
   const clientId = await redis.getdel<string>(redisKey);
   if (!clientId) {
-    console.error('[Calendly OAuth Callback Error] Invalid or expired state nonce');
+    logError('[Calendly OAuth Callback Error] Invalid or expired state nonce');
+    await recordOpsEvent({ component: 'crm', eventCode: 'oauth_failure', severity: 'warning', metadata: { crm_type: 'calendly', failure_category: 'invalid_state' } });
     return NextResponse.redirect(new URL('/dashboard/integrations?error=invalid_state', req.url));
   }
+  if (!stagingIntegrationsEnabled()) return NextResponse.redirect(new URL('/dashboard/integrations?error=integrations_disabled', req.url));
 
   try {
     const calendlyClientId = process.env.CALENDLY_CLIENT_ID;
     const calendlyClientSecret = process.env.CALENDLY_CLIENT_SECRET;
 
     if (!calendlyClientId || !calendlyClientSecret) {
-      console.error('[Calendly OAuth Callback Error] Calendly credentials are not configured in environment');
+      logError('[Calendly OAuth Callback Error] Calendly credentials are not configured in environment');
       return NextResponse.redirect(new URL('/dashboard/integrations?error=server_configuration_error', req.url));
     }
 
@@ -52,7 +57,8 @@ export async function GET(req: NextRequest) {
     });
 
     if (!tokenResponse.ok) {
-      console.error('[Calendly OAuth Callback Error] Token exchange failed with status:', tokenResponse.status);
+      await recordOpsEvent({ component: 'crm', eventCode: 'oauth_failure', severity: 'error', clientId, metadata: { crm_type: 'calendly', failure_category: 'token_exchange' } });
+      logError('[Calendly OAuth Callback Error] Token exchange failed with status:', tokenResponse.status);
       return NextResponse.redirect(
         new URL('/dashboard/integrations?error=token_exchange_failed', req.url)
       );
@@ -62,7 +68,7 @@ export async function GET(req: NextRequest) {
     const { access_token, refresh_token, expires_in } = tokenData;
 
     if (!access_token || !refresh_token) {
-      console.error('[Calendly OAuth Callback Error] Token exchange response missing tokens');
+      logError('[Calendly OAuth Callback Error] Token exchange response missing tokens');
       return NextResponse.redirect(new URL('/dashboard/integrations?error=missing_tokens', req.url));
     }
 
@@ -78,15 +84,18 @@ export async function GET(req: NextRequest) {
       expires_at_input: expiresAt,
     });
     if (oauthError) {
-      console.error('[Calendly OAuth Callback Error] Transaction failed:', oauthError);
+      await recordOpsEvent({ component: 'crm', eventCode: 'oauth_failure', severity: 'error', clientId, metadata: { crm_type: 'calendly', failure_category: 'token_storage' } });
+      logError('[Calendly OAuth Callback Error] Transaction failed:', oauthError);
       return NextResponse.redirect(new URL('/dashboard/integrations?error=token_storage_failed', req.url));
     }
 
-    console.log('[Calendly OAuth Callback Success] Successfully authenticated and stored tokens');
+    logInfo('[Calendly OAuth Callback Success] Successfully authenticated and stored tokens');
     // 6. Redirect to settings page with connected flag
+    await recordOpsEvent({ component: 'crm', eventCode: 'oauth_success', severity: 'info', clientId, metadata: { crm_type: 'calendly', status: 'connected' } });
     return NextResponse.redirect(new URL('/dashboard/integrations/calendly?connected=true', req.url));
   } catch (err) {
-    console.error('[Calendly OAuth Callback Exception] Unhandled callback error:', err);
+    await recordOpsEvent({ component: 'crm', eventCode: 'oauth_failure', severity: 'error', clientId: clientId ?? undefined, metadata: { crm_type: 'calendly', failure_category: 'callback_error' } });
+    logError('[Calendly OAuth Callback Exception] Unhandled callback error:', err);
     return NextResponse.redirect(new URL('/dashboard/integrations?error=internal_server_error', req.url));
   }
 }

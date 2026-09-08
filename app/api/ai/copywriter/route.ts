@@ -1,3 +1,4 @@
+import { logError } from '@/lib/observability/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { redis } from '@/lib/redis';
 import { logLLMCall } from '@/lib/llm/logger';
@@ -42,7 +43,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: true, source: 'cache', variants });
       }
     } catch (cacheErr) {
-      console.error('[Copywriter Cache Error] Redis check failed:', cacheErr);
+      logError('[Copywriter Cache Error] Redis check failed:', cacheErr);
       // Soft fail: continue to query Gemini
     }
 
@@ -53,7 +54,7 @@ export async function POST(req: NextRequest) {
     const llmStart = Date.now();
     let rawText: string;
     try { rawText = await generateText(prompt, { maxTokens: 1200, context: { feature: 'copywriter', scope: 'customer', clientId } }); }
-    catch (error) { console.error('[Copywriter AI] unavailable:', error instanceof Error ? error.message : 'unknown'); return NextResponse.json({ success: false, degraded: true, error: 'ai_unavailable', message: 'AI copy is temporarily unavailable; enter the copy manually.' }); }
+    catch (error) { logError('[Copywriter AI] unavailable:', error instanceof Error ? error.message : 'unknown'); return NextResponse.json({ success: false, degraded: true, error: 'ai_unavailable', message: 'AI copy is temporarily unavailable; enter the copy manually.' }); }
 
     // 6. Clean Markdown formatting out of JSON response
     let cleanedText = rawText.trim();
@@ -65,15 +66,14 @@ export async function POST(req: NextRequest) {
     try {
       variants = copywriterVariantsSchema.parse(JSON.parse(cleanedText));
     } catch (parseErr) {
-      console.error('[Copywriter Parse Error] Failed to validate model response:', parseErr);
+      logError('[Copywriter Parse Error] Failed to validate model response:', parseErr);
       return NextResponse.json({ error: 'Failed to parse AI response as a JSON list' }, { status: 502 });
     }
 
     logLLMCall({
       client_id: clientId,
       feature: 'copywriter',
-      input_payload: parsedBody.data as unknown as Record<string, unknown>,
-      output_payload: { variants } as unknown as Record<string, unknown>,
+      metadata: { variant_count: variants.length, result: 'generated' },
       latency_ms: Date.now() - llmStart,
     });
 
@@ -81,13 +81,13 @@ export async function POST(req: NextRequest) {
     try {
       await redis.setex(cacheKey, 2592000, JSON.stringify(variants));
     } catch (cacheSetErr) {
-      console.error('[Copywriter Cache Set Error] Redis write failed:', cacheSetErr);
+      logError('[Copywriter Cache Set Error] Redis write failed:', cacheSetErr);
     }
 
     return NextResponse.json({ success: true, source: 'model', variants });
 
   } catch (err) {
-    console.error('[Copywriter Exception] Unhandled exception:', err);
+    logError('[Copywriter Exception] Unhandled exception:', err);
     const errMsg = err instanceof Error ? err.message : 'Internal server error';
     return NextResponse.json({ error: errMsg }, { status: 500 });
   }

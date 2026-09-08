@@ -1,3 +1,4 @@
+import { logError } from '@/lib/observability/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { redis } from '@/lib/redis';
@@ -37,14 +38,14 @@ export async function GET(req: NextRequest) {
       .maybeSingle();
 
     if (error) {
-      console.error('[Digest GET Error] Supabase query failed:', error);
+      logError('[Digest GET Error] Supabase query failed:', error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
     return NextResponse.json({ digest: latestDigest || null });
 
   } catch (error) {
-    console.error('[Digest GET Exception] Error:', error);
+    logError('[Digest GET Exception] Error:', error);
     const errMsg = error instanceof Error ? error.message : 'Internal server error';
     return NextResponse.json({ error: errMsg }, { status: 500 });
   }
@@ -77,7 +78,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ digest: parsed, source: 'cache' });
       }
     } catch (cacheErr) {
-      console.error('[Digest Cache Read Error]:', cacheErr);
+      logError('[Digest Cache Read Error]:', cacheErr);
     }
 
     const { data: scheduledDigest, error: scheduledLookupError } = await supabaseAdmin
@@ -104,7 +105,7 @@ export async function POST(req: NextRequest) {
     );
     const aggregate = parseDigestAggregate(aggregateData);
     if (aggregateError || !aggregate) {
-      console.error('[Digest POST Error] Aggregate calculation failed:', aggregateError);
+      logError('[Digest POST Error] Aggregate calculation failed:', aggregateError);
       return NextResponse.json({ error: 'Unable to calculate digest metrics' }, { status: 500 });
     }
 
@@ -135,7 +136,7 @@ export async function POST(req: NextRequest) {
         .maybeSingle();
 
       if (ruleDetailsError) {
-        console.error('[Digest POST Error] Best rule lookup failed:', ruleDetailsError);
+        logError('[Digest POST Error] Best rule lookup failed:', ruleDetailsError);
       }
 
       if (ruleDetails) {
@@ -161,7 +162,7 @@ export async function POST(req: NextRequest) {
         pipelineHealthLine = `\n- Pipeline health (Scout): pressure score ${snap.pressure_score}/100, ${atRisk} of ${snap.total_deals} open deals flagged at risk (RED/AMBER).`;
       }
     } catch (e) {
-      console.error('[Digest] pipeline health fetch failed (non-fatal):', e);
+      logError('[Digest] pipeline health fetch failed (non-fatal):', e);
     }
 
     const performanceData = {
@@ -195,7 +196,7 @@ Output only a JSON object with keys: summary, top_signal, rep_spotlight, recomme
     const llmStart = Date.now();
     let rawText = '{}';
     try { rawText = (await generateText(digestPrompt, { maxTokens: 1500, context: { feature: 'weekly_digest_manual', scope: 'customer', clientId } })) || '{}'; }
-    catch (error) { console.error('[Digest AI] unavailable; using deterministic summary:', error instanceof Error ? error.message : 'unknown'); rawText = JSON.stringify({ summary: `This week recorded ${aggregate.current.triggers} personalization triggers and ${aggregate.current.conversions} conversions.`, top_signal: `Top signal: ${topSignal}.`, rep_spotlight: performanceData.best_converting_rep === 'None' ? 'No rep conversion data was available.' : `Top rep: ${performanceData.best_converting_rep}.`, recommendation: 'Review your highest-volume signal and keep its best-performing rule active.' }); }
+    catch (error) { logError('[Digest AI] unavailable; using deterministic summary:', error instanceof Error ? error.message : 'unknown'); rawText = JSON.stringify({ summary: `This week recorded ${aggregate.current.triggers} personalization triggers and ${aggregate.current.conversions} conversions.`, top_signal: `Top signal: ${topSignal}.`, rep_spotlight: performanceData.best_converting_rep === 'None' ? 'No rep conversion data was available.' : `Top rep: ${performanceData.best_converting_rep}.`, recommendation: 'Review your highest-volume signal and keep its best-performing rule active.' }); }
 
     let cleanedText = rawText.trim();
     if (cleanedText.startsWith('```')) {
@@ -206,15 +207,14 @@ Output only a JSON object with keys: summary, top_signal, rep_spotlight, recomme
     try {
       digestJson = weeklyDigestOutputSchema.parse(JSON.parse(cleanedText));
     } catch (parseErr) {
-      console.error('[Digest Parse Error] Falling back to deterministic digest:', parseErr);
+      logError('[Digest Parse Error] Falling back to deterministic digest:', parseErr);
       digestJson = { summary: `This week recorded ${aggregate.current.triggers} personalization triggers and ${aggregate.current.conversions} conversions.`, top_signal: `Top signal: ${topSignal}.`, rep_spotlight: performanceData.best_converting_rep === 'None' ? 'No rep conversion data was available.' : `Top rep: ${performanceData.best_converting_rep}.`, recommendation: 'Review your highest-volume signal and keep its best-performing rule active.' };
     }
 
     logLLMCall({
       client_id: clientId,
       feature: 'weekly_digest',
-      input_payload: performanceData as unknown as Record<string, unknown>,
-      output_payload: digestJson as unknown as Record<string, unknown>,
+      metadata: { result: 'generated', has_top_signal: Boolean(performanceData.top_signal_this_week) },
       latency_ms: Date.now() - llmStart,
     });
 
@@ -247,7 +247,7 @@ Output only a JSON object with keys: summary, top_signal, rep_spotlight, recomme
     }
 
     if (insertErr || !savedDigest) {
-      console.error('[Digest Save Error] Failed inserting weekly digest:', insertErr);
+      logError('[Digest Save Error] Failed inserting weekly digest:', insertErr);
       return NextResponse.json({ error: insertErr?.message || 'Unable to save digest' }, { status: 500 });
     }
 
@@ -255,13 +255,13 @@ Output only a JSON object with keys: summary, top_signal, rep_spotlight, recomme
     try {
       await redis.setex(cacheKey, 86400, JSON.stringify(savedDigest));
     } catch (cacheSetErr) {
-      console.error('[Digest Cache Write Error]:', cacheSetErr);
+      logError('[Digest Cache Write Error]:', cacheSetErr);
     }
 
     return NextResponse.json({ digest: savedDigest });
 
   } catch (error) {
-    console.error('[Digest POST Exception] Error:', error);
+    logError('[Digest POST Exception] Error:', error);
     const errMsg = error instanceof Error ? error.message : 'Internal server error';
     return NextResponse.json({ error: errMsg }, { status: 500 });
   }

@@ -1,6 +1,8 @@
+import { logError, logWarn, logInfo } from '../observability/logger';
 import { supabaseAdmin } from '@/lib/supabase'
 import { claimBackgroundJobs, completeBackgroundJob, enqueueJob, failBackgroundJob, reconcileWeeklyDigestRun, type BackgroundJob } from '@/lib/background/queue'
 import { processScheduledDigest } from '@/lib/digest/scheduled'
+import { safeErrorMessage } from '@/lib/observability/redact'
 
 const PAGE_SIZE = 250
 export function parseWorkerConcurrency(value = process.env.BACKGROUND_WORKER_CONCURRENCY) {
@@ -76,7 +78,7 @@ export async function runBackgroundWorker(options: { deadlineMs?: number; batchS
       const runIds = new Set<string>()
       const { data: activeRuns } = await supabaseAdmin.from('weekly_digest_runs').select('id').eq('status', 'running').limit(50)
       for (const run of activeRuns || []) runIds.add(run.id)
-      for (const runId of runIds) { try { await reconcileWeeklyDigestRun(runId) } catch (error) { console.error('[background-worker] run reconciliation failed:', error) } }
+      for (const runId of runIds) { try { await reconcileWeeklyDigestRun(runId) } catch (error) { logError('[background-worker] run reconciliation failed:', error) } }
       break
     }
     counts.claimed += jobs.length
@@ -87,18 +89,18 @@ export async function runBackgroundWorker(options: { deadlineMs?: number; batchS
         try {
           const result = await processBackgroundJob(job)
           const completed = await completeBackgroundJob(job.id, job.lock_token, result && typeof result === 'object' ? result as Record<string, unknown> : {})
-          if (!completed) { console.warn('[background-worker]', { event: 'lease_lost', job_id: job.id, job_type: job.job_type }); return }
-          if (job.run_id) { try { await reconcileWeeklyDigestRun(job.run_id) } catch (error) { console.error('[background-worker] run reconciliation failed:', error) } }
+          if (!completed) { logWarn('[background-worker]', { event: 'lease_lost', job_id: job.id, job_type: job.job_type }); return }
+          if (job.run_id) { try { await reconcileWeeklyDigestRun(job.run_id) } catch (error) { logError('[background-worker] run reconciliation failed:', error) } }
           counts.succeeded++
-          console.info('[background-worker]', { event: 'job_succeeded', job_id: job.id, job_type: job.job_type, run_id: job.run_id, client_id: job.client_id, attempt: job.attempts })
+          logInfo('[background-worker]', { event: 'job_succeeded', job_id: job.id, job_type: job.job_type, run_id: job.run_id, client_id: job.client_id, attempt: job.attempts })
         } catch (error) {
-          const message = error instanceof Error ? error.message : 'background job failed'
+          const message = safeErrorMessage(error)
           const dead = job.attempts >= job.max_attempts
           const failed = await failBackgroundJob(job.id, job.lock_token, message, retryAt(job.attempts))
-          if (!failed) { console.warn('[background-worker]', { event: 'lease_lost', job_id: job.id, job_type: job.job_type }); return }
-          if (job.run_id) { try { await reconcileWeeklyDigestRun(job.run_id) } catch (error) { console.error('[background-worker] run reconciliation failed:', error) } }
+          if (!failed) { logWarn('[background-worker]', { event: 'lease_lost', job_id: job.id, job_type: job.job_type }); return }
+          if (job.run_id) { try { await reconcileWeeklyDigestRun(job.run_id) } catch (error) { logError('[background-worker] run reconciliation failed:', error) } }
           if (dead) counts.dead++; else counts.retried++
-          console.error('[background-worker]', { event: dead ? 'job_dead' : 'job_retry', job_id: job.id, job_type: job.job_type, run_id: job.run_id, client_id: job.client_id, attempt: job.attempts, error: message.slice(0, 200) })
+          logError('[background-worker]', { event: dead ? 'job_dead' : 'job_retry', job_id: job.id, job_type: job.job_type, run_id: job.run_id, client_id: job.client_id, attempt: job.attempts, error: message.slice(0, 200) })
         }
       }))
     }

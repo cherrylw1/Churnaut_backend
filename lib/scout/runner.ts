@@ -1,3 +1,4 @@
+import { logError } from '../observability/logger';
 import { buildNormalizedDeals } from '@/lib/scout/assemble';
 import { analyzeDealWithScout } from '@/lib/scout/analyst';
 import type { ScoutAnalysis, ScoutBrief, NormalizedDeal } from '@/lib/scout/types';
@@ -8,7 +9,7 @@ async function analyzeOne(deal: NormalizedDeal, clientId: string): Promise<Scout
   try {
     return await analyzeDealWithScout(deal, clientId);
   } catch (e) {
-    console.error('[runScoutPipeline] analyst failed for deal', deal.crm.deal_id, e);
+    logError('[runScoutPipeline] analyst failed for deal', deal.crm.deal_id, e);
     return {
       deal_id: deal.crm.deal_id,
       deal_name: deal.crm.deal_name,

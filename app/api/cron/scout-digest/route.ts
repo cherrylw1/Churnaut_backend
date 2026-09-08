@@ -1,6 +1,10 @@
+import { logError } from '@/lib/observability/logger';
 import { NextRequest, NextResponse } from 'next/server'
 import { getPreviousUtcWeekRange } from '@/lib/time'
 import { startWeeklyDigestRun } from '@/lib/background/queue'
+import { recordOpsEvent } from '@/lib/monitoring/events'
+import { touchHeartbeat, touchHeartbeatAttempt } from '@/lib/monitoring/heartbeat'
+import { stagingCronsEnabled } from '@/lib/environment'
 
 // Per-client metrics continue to use the event-timed digest_v2_aggregate RPC;
 // the worker executes it after this route enqueues the run.
@@ -12,13 +16,19 @@ export const maxDuration = 30
 export async function GET(req: NextRequest) {
   const cronSecret = process.env.CRON_SECRET
   if (!cronSecret || req.headers.get('authorization') !== `Bearer ${cronSecret}`) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!stagingCronsEnabled()) return NextResponse.json({ success: true, disabled: true })
   const { periodStart, periodEnd, weekStart: weekStartStr } = getPreviousUtcWeekRange()
   const previousStart = new Date(new Date(periodStart).getTime() - 7 * 24 * 60 * 60 * 1000).toISOString()
   try {
+    await touchHeartbeatAttempt('scout-digest')
     const run = await startWeeklyDigestRun({ weekStart: weekStartStr, periodStart, periodEnd, previousStart })
+    await recordOpsEvent({ component: 'cron', eventCode: 'cron_succeeded', severity: 'info', metadata: { job_type: 'scout-digest' } })
+    await touchHeartbeat('scout-digest', 'ok')
     return NextResponse.json({ success: true, run_id: run.runId, created: run.created, status: 'queued' })
   } catch (error) {
-    console.error('[scout-digest cron] Failed to enqueue weekly digest run:', error)
+    await touchHeartbeat('scout-digest', 'failed', { failure_category: 'enqueue_failed' })
+    logError('[scout-digest cron] Failed to enqueue weekly digest run:', error)
+    await recordOpsEvent({ component: 'cron', eventCode: 'cron_failed', severity: 'error', metadata: { job_type: 'scout-digest', failure_category: 'enqueue_failed' } })
     return NextResponse.json({ error: 'Failed to enqueue weekly digest run' }, { status: 500 })
   }
 }

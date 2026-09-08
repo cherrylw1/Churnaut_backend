@@ -1,3 +1,4 @@
+import { logError } from '@/lib/observability/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { ipAddress } from '@vercel/functions';
@@ -6,6 +7,7 @@ import { getAuthedClientId } from '@/lib/auth';
 import { ratelimit } from '@/lib/redis';
 import { readJson, signupRequestSchema } from '@/lib/validation';
 import { normalizeEmail } from '@/lib/email-normalization';
+import { isStaging } from '@/lib/environment';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,7 +23,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
       }
     } catch (rlError) {
-      console.error('[RateLimit Error] Failed to enforce rate limiting on signup:', rlError);
+      logError('[RateLimit Error] Failed to enforce rate limiting on signup:', rlError);
     }
 
     // 2. Authenticate Client
@@ -72,10 +74,11 @@ export async function POST(req: NextRequest) {
         email: normalizeEmail(email),
         plan: 'starter',
         active: true,
-      }, { onConflict: 'id', ignoreDuplicates: true });
+        is_test_data: isStaging(),
+    }, { onConflict: 'id', ignoreDuplicates: false });
 
     if (error) {
-      console.error('[DB Signup Error] Failed to insert client profile:', error);
+      logError('[DB Signup Error] Failed to insert client profile:', error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
@@ -83,7 +86,7 @@ export async function POST(req: NextRequest) {
 
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : 'Server error occurred';
-    console.error('[Signup Exception] Unhandled signup API error:', err);
+    logError('[Signup Exception] Unhandled signup API error:', err);
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

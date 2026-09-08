@@ -28,8 +28,9 @@ interface WebhookLog {
   metadata?: {
     webhook_action?: string;
     webhook_auth_method?: 'bearer' | 'signature' | 'legacy_query';
-    payload?: unknown;
-    transformed?: unknown;
+    payload_key_count?: number;
+    transformed_field_count?: number;
+    result_category?: string;
   };
 }
 
@@ -474,20 +475,18 @@ export default function WebhooksSettingsPage() {
                       {isExpanded && (
                         <div className="p-4 bg-[#080B0F] border-t border-[var(--border-subtle)] text-xs font-mono space-y-4">
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {/* Raw payload */}
+                            {/* Operational metadata only */}
                             <div className="space-y-1.5">
-                              <span className="text-[10px] text-[var(--text-muted)] uppercase block">Raw Payload</span>
+                              <span className="text-[10px] text-[var(--text-muted)] uppercase block">Operational metadata</span>
                               <pre className="p-3 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded text-[var(--text-secondary)] max-h-48 overflow-y-auto text-[11px] leading-relaxed">
-                                {JSON.stringify(log.metadata?.payload || {}, null, 2)}
+                                {JSON.stringify({ action: log.metadata?.webhook_action || 'unknown', auth_method: log.metadata?.webhook_auth_method || 'unknown', source_fields: log.metadata?.payload_key_count || 0, mapped_fields: log.metadata?.transformed_field_count || 0, result: log.metadata?.result_category || 'unknown' }, null, 2)}
                               </pre>
                             </div>
 
-                            {/* Transformed format */}
+                            {/* Privacy note */}
                             <div className="space-y-1.5">
-                              <span className="text-[10px] text-[var(--text-muted)] uppercase block">Transformed Format</span>
-                              <pre className="p-3 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded text-[#C2683D] max-h-48 overflow-y-auto text-[11px] leading-relaxed">
-                                {JSON.stringify(log.metadata?.transformed || {}, null, 2)}
-                              </pre>
+                              <span className="text-[10px] text-[var(--text-muted)] uppercase block">Privacy</span>
+                              <p className="p-3 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded text-[11px] leading-relaxed text-[var(--text-secondary)]">Payload values are intentionally not retained.</p>
                             </div>
                           </div>
                         </div>

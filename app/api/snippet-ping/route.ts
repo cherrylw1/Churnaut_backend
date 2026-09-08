@@ -1,3 +1,4 @@
+import { logError, logWarn } from '@/lib/observability/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { ratelimit } from '@/lib/redis';
@@ -27,7 +28,7 @@ export async function POST(req: NextRequest) {
     const clientId = parsed.data.client_id;
     const { data: client, error: clientError } = await supabaseAdmin.from('clients').select('id').eq('snippet_key', clientId).maybeSingle();
     if (clientError) {
-      console.error('[Snippet Ping] Client lookup failed:', clientError);
+      logError('[Snippet Ping] Client lookup failed:', clientError);
       return json({ error: 'Unable to verify snippet client' }, 503);
     }
     if (!client) return json({ error: 'Unknown client' }, 401);
@@ -37,13 +38,13 @@ export async function POST(req: NextRequest) {
       const { success } = await ratelimit.limit(`snippet-ping:${client.id}:${ip}`);
       if (!success) return json({ error: 'Rate limit exceeded' }, 429);
     } catch (error) {
-      console.warn('[Snippet Ping] Rate limit unavailable:', error);
+      logWarn('[Snippet Ping] Rate limit unavailable:', error);
     }
     const { error } = await supabaseAdmin.rpc('record_snippet_ping', { client_id_input: client.id });
     if (error) return json({ error: 'Unable to record snippet ping' }, 503);
     return json({ ok: true });
   } catch (error) {
-    console.error('[Snippet Ping] Request failed:', error);
+    logError('[Snippet Ping] Request failed:', error);
     return json({ error: 'Snippet verification unavailable' }, 503);
   }
 }

@@ -1,3 +1,4 @@
+import { logError } from '@/lib/observability/logger';
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { getAuthedClientId } from '@/lib/auth'
@@ -50,10 +51,10 @@ export async function POST(req: NextRequest) {
         if (!searchError) {
           chunks = data || [];
         } else {
-          console.error('[Chat] Vector search error:', searchError)
+          logError('[Chat] Vector search error:', searchError)
         }
     } catch (err) {
-      console.error('[Chat] Embedding exception:', err)
+      logError('[Chat] Embedding exception:', err)
     }
 
     const context = chunks && chunks.length > 0
@@ -81,7 +82,7 @@ export async function POST(req: NextRequest) {
 
     let answer: string
     try { answer = await generateChat(messages, { maxTokens: 1024, temperature: 0.3, context: { feature: 'codebase_chat', scope: 'internal' } }) || 'No response generated.' }
-    catch (error) { console.error('[Chat] AI provider unavailable:', error instanceof Error ? error.message : 'unknown'); return NextResponse.json({ error: 'AI inference failed' }, { status: 503 }) }
+    catch (error) { logError('[Chat] AI provider unavailable:', error instanceof Error ? error.message : 'unknown'); return NextResponse.json({ error: 'AI inference failed' }, { status: 503 }) }
 
     const sourcesUsed = chunks
       ? Array.from(new Set(chunks.map((c: { file_path: string }) => c.file_path)))
@@ -91,7 +92,7 @@ export async function POST(req: NextRequest) {
 
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : 'Internal server error'
-    console.error('[Chat] Unhandled error:', errMsg)
+    logError('[Chat] Unhandled error:', errMsg)
     return NextResponse.json({ error: errMsg }, { status: 500 })
   }
 }

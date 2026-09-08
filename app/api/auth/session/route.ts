@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { authSessionRequestSchema, readJson } from '@/lib/validation';
+import { recordOpsEvent } from '@/lib/monitoring/events';
 
 const SESSION_COOKIE = 'churnaut-session';
 
@@ -9,7 +10,10 @@ export async function POST(req: NextRequest) {
   if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
 
   const { data: { user }, error } = await supabaseAdmin.auth.getUser(parsed.data.access_token);
-  if (error || !user) return NextResponse.json({ error: 'Invalid session' }, { status: 401 });
+  if (error || !user) {
+    await recordOpsEvent({ component: 'auth', eventCode: 'auth_session_failed', severity: 'warning', metadata: { failure_category: 'invalid_session' } });
+    return NextResponse.json({ error: 'Invalid session' }, { status: 401 });
+  }
 
   const response = NextResponse.json({ success: true });
   const maxAge = parsed.data.expires_at

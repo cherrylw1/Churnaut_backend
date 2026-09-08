@@ -30,6 +30,9 @@ describe('AI reliability policy', () => {
     expect(source).toContain('if (repairAlreadyAttempted || usedFallback) throw new AIError');
     expect(source).toContain('Return ONLY valid minified JSON');
     expect(source).toContain("throw new AIError('invalid_response', 'AI provider returned invalid JSON')");
+    const generateJson = source.slice(source.indexOf('export async function generateJSON'))
+    expect(generateJson).toContain('requestId: id')
+    expect(generateJson).not.toContain('requestId: crypto.randomUUID()')
   });
   it('caps transient JSON recovery at three fetches and does not retry auth errors', async () => {
     const originalFetch = globalThis.fetch;

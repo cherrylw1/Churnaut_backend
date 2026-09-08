@@ -1,3 +1,4 @@
+import { logError } from '@/lib/observability/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getAuthedClientId } from '@/lib/auth';
@@ -21,13 +22,13 @@ export async function GET(req: NextRequest) {
       .order('created_at', { ascending: true });
 
     if (error) {
-      console.error('[GET Webhook Mappings Error] Database error:', error);
+      logError('[GET Webhook Mappings Error] Database error:', error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
     return NextResponse.json({ mappings: mappings || [] });
   } catch (err) {
-    console.error('[GET Webhook Mappings Exception] Unhandled exception:', err);
+    logError('[GET Webhook Mappings Exception] Unhandled exception:', err);
     const errMsg = err instanceof Error ? err.message : 'Internal server error';
     return NextResponse.json({ error: errMsg }, { status: 500 });
   }
@@ -57,13 +58,13 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (insertError) {
-      console.error('[POST Webhook Mappings Error] Insertion failed:', insertError);
+      logError('[POST Webhook Mappings Error] Insertion failed:', insertError);
       return NextResponse.json({ error: insertError.message }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, mapping });
   } catch (err) {
-    console.error('[POST Webhook Mappings Exception] Unhandled exception:', err);
+    logError('[POST Webhook Mappings Exception] Unhandled exception:', err);
     const errMsg = err instanceof Error ? err.message : 'Internal server error';
     return NextResponse.json({ error: errMsg }, { status: 500 });
   }
@@ -92,13 +93,13 @@ export async function DELETE(req: NextRequest) {
       .eq('client_id', clientId);
 
     if (deleteError) {
-      console.error('[DELETE Webhook Mapping Error] Deletion failed:', deleteError);
+      logError('[DELETE Webhook Mapping Error] Deletion failed:', deleteError);
       return NextResponse.json({ error: deleteError.message }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });
   } catch (err) {
-    console.error('[DELETE Webhook Mapping Exception] Unhandled exception:', err);
+    logError('[DELETE Webhook Mapping Exception] Unhandled exception:', err);
     const errMsg = err instanceof Error ? err.message : 'Internal server error';
     return NextResponse.json({ error: errMsg }, { status: 500 });
   }

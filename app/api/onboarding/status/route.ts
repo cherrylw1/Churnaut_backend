@@ -1,3 +1,4 @@
+import { logError } from '@/lib/observability/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getAuthedClientId } from '@/lib/auth';
@@ -19,7 +20,7 @@ export async function GET(req: NextRequest) {
 
   const queryError = clientRes.error || sessionsRes.error || rulesRes.error || crmRes.error || ruleTriggeredRes.error;
   if (queryError) {
-    console.error('[Onboarding Status Error] Database query failed:', queryError);
+    logError('[Onboarding Status Error] Database query failed:', queryError);
     return NextResponse.json({ error: 'Unable to load onboarding status' }, { status: 500 });
   }
   if (!clientRes.data) return NextResponse.json({ error: 'Client profile not found' }, { status: 404 });

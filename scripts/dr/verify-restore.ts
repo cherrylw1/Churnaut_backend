@@ -1,6 +1,5 @@
 import 'dotenv/config'
 import { createClient } from '@supabase/supabase-js'
-import { decrypt } from '../../lib/crypto.ts'
 import { Redis } from '@upstash/redis'
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -29,7 +28,7 @@ for (const table of ['code_embeddings', 'support_embeddings']) {
 const { data: tokenRow, error: tokenError } = await supabase.from('crm_tokens').select('access_token').limit(1).maybeSingle()
 if (tokenError) failures.push(`crm_tokens decryption lookup: ${tokenError.message}`)
 else if (tokenRow?.access_token) {
-  try { decrypt(tokenRow.access_token); console.log('OAuth encryption: PASS') }
+  try { const { decrypt } = await import('../../lib/crypto.ts'); decrypt(tokenRow.access_token); console.log('OAuth encryption: PASS') }
   catch { failures.push('OAuth encryption: FAIL (token could not be decrypted)') }
 } else console.log('OAuth encryption: SKIPPED (no encrypted CRM token available)')
 

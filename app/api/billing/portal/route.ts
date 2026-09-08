@@ -1,10 +1,13 @@
+import { logError } from '@/lib/observability/logger';
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthedClientId } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase'
+import { billingMode, isStaging } from '@/lib/environment'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
+  if (isStaging() && billingMode() === 'disabled') return NextResponse.json({ url: null, disabled: true })
   const clientId = await getAuthedClientId(req)
   if (!clientId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -15,7 +18,7 @@ export async function GET(req: NextRequest) {
     .maybeSingle()
 
   if (clientError) {
-    console.error('[Billing Portal] Client lookup failed:', clientError)
+    logError('[Billing Portal] Client lookup failed:', clientError)
     return NextResponse.json({ error: 'Unable to load billing account' }, { status: 500 })
   }
   if (!client) return NextResponse.json({ error: 'Client profile not found' }, { status: 404 })
@@ -26,7 +29,7 @@ export async function GET(req: NextRequest) {
 
   const apiKey = process.env.LEMONSQUEEZY_API_KEY
   if (!apiKey) {
-    console.error('[Billing Portal] LEMONSQUEEZY_API_KEY not set')
+    logError('[Billing Portal] LEMONSQUEEZY_API_KEY not set')
     return NextResponse.json({ url: null })
   }
 
@@ -42,7 +45,7 @@ export async function GET(req: NextRequest) {
     )
 
     if (!res.ok) {
-      console.error('[Billing Portal] LS API error:', res.status, await res.text())
+      logError('[Billing Portal] LS API error', { status: res.status, error_category: 'provider_rejected' })
       return NextResponse.json({ url: null })
     }
 
@@ -50,7 +53,7 @@ export async function GET(req: NextRequest) {
     const portalUrl = data?.data?.attributes?.urls?.customer_portal ?? null
     return NextResponse.json({ url: portalUrl })
   } catch (err) {
-    console.error('[Billing Portal] Exception:', err)
+    logError('[Billing Portal] Exception:', err)
     return NextResponse.json({ url: null })
   }
 }

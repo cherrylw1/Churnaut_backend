@@ -1,8 +1,10 @@
+import { logError, logWarn } from '@/lib/observability/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getAuthedClientId } from '@/lib/auth';
 import { hasScoutAdapter } from '@/lib/scout/crm-adapters';
 import { redis } from '@/lib/redis';
+import { recordOpsEvent } from '@/lib/monitoring/events';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,7 +38,7 @@ export async function GET(req: NextRequest) {
       .maybeSingle();
 
     if (tokenError) {
-      console.error('[CRM Status GET Error] Token lookup failed:', tokenError);
+      logError('[CRM Status GET Error] Token lookup failed:', tokenError);
       return NextResponse.json({ error: 'Unable to verify CRM connection' }, { status: 500 });
     }
 
@@ -52,7 +54,7 @@ export async function GET(req: NextRequest) {
       reason: !tokenData ? 'missing_token' : tokenData.connection_status === 'unhealthy' ? 'refresh_failed' : !hasUsableToken ? 'invalid_token' : !supported ? 'unsupported_provider' : null,
     });
   } catch (err) {
-    console.error('[CRM Status GET Error] Exception:', err);
+    logError('[CRM Status GET Error] Exception:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -66,7 +68,7 @@ export async function DELETE(req: NextRequest) {
 
     const { data: currentClient, error: clientError } = await supabaseAdmin.from('clients').select('crm_type').eq('id', clientId).maybeSingle();
     if (clientError) {
-      console.error('[CRM Disconnect Error] Client lookup failed:', clientError);
+      logError('[CRM Disconnect Error] Client lookup failed:', clientError);
       return NextResponse.json({ error: 'Unable to verify CRM connection' }, { status: 500 });
     }
     if (!currentClient) return NextResponse.json({ error: 'Client profile not found' }, { status: 404 });
@@ -78,17 +80,18 @@ export async function DELETE(req: NextRequest) {
       crm_type_input: crmType,
     });
     if (disconnectError) {
-      console.error('[CRM Disconnect Error] Transaction failed:', disconnectError);
+      logError('[CRM Disconnect Error] Transaction failed:', disconnectError);
       return NextResponse.json({ error: 'Failed to disconnect CRM' }, { status: 500 });
     }
     await Promise.all([
       redis.del(`scout:pipeline:${clientId}`),
       redis.del(`scout:pipeline_api:${clientId}`),
-    ]).catch((error) => console.warn('[CRM Disconnect Warning] Cache clear failed:', error));
+    ]).catch((error) => logWarn('[CRM Disconnect Warning] Cache clear failed:', error));
+    await recordOpsEvent({ component: 'crm', eventCode: 'crm_reconnected', severity: 'info', clientId, metadata: { crm_type: crmType, status: 'disconnected' } });
 
     return NextResponse.json({ success: true });
   } catch (err) {
-    console.error('[CRM Disconnect Exception] Unhandled error:', err);
+    logError('[CRM Disconnect Exception] Unhandled error:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

@@ -6,7 +6,7 @@ const PRODUCTION_ORIGIN = 'https://app.churnaut.com'
  * use their own hostname without changing provider integration code.
  */
 export function getAppOrigin(): string {
-  const configured = process.env.APP_ORIGIN?.trim()
+  const configured = process.env.APP_ORIGIN?.trim() || process.env.NEXT_PUBLIC_APP_ORIGIN?.trim()
   const fallback = process.env.NODE_ENV === 'production' ? PRODUCTION_ORIGIN : 'http://localhost:3000'
   const value = configured || fallback
   let parsed: URL

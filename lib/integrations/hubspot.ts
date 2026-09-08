@@ -1,3 +1,4 @@
+import { logError, logWarn } from '../observability/logger';
 import { redis } from '@/lib/redis';
 import { getValidHubSpotToken } from '@/lib/integrations/hubspot-pipeline';
 
@@ -37,7 +38,7 @@ export async function enrichSessionFromHubSpot(
       return parsed as HubSpotEnrichment;
     }
   } catch (err) {
-    console.error('[HubSpot Cache Read Error] Failed to read from Redis:', err);
+    logError('[HubSpot Cache Read Error] Failed to read from Redis:', err);
   }
 
   try {
@@ -70,7 +71,7 @@ export async function enrichSessionFromHubSpot(
 
     if (!searchResponse.ok) {
       const errBody = await searchResponse.json().catch(() => ({}));
-      console.error(
+      logError(
         `[HubSpot API Error] Contact search returned status ${searchResponse.status}:`,
         errBody
       );
@@ -83,7 +84,7 @@ export async function enrichSessionFromHubSpot(
       try {
         await redis.set(cacheKey, JSON.stringify({ contact_not_found: true }), { ex: 300 });
       } catch (err) {
-        console.error('[HubSpot Cache Set Error] Failed to write not-found status to Redis:', err);
+        logError('[HubSpot Cache Set Error] Failed to write not-found status to Redis:', err);
       }
       return null;
     }
@@ -122,12 +123,12 @@ export async function enrichSessionFromHubSpot(
           dealId = assocData.results[0].id;
         }
       } else {
-        console.warn(
+        logWarn(
           `[HubSpot API Warning] Associations returned status ${assocResponse.status} for contact ${contactId}`
         );
       }
     } catch (err) {
-      console.error('[HubSpot API Exception] Failed to query deals associations:', err);
+      logError('[HubSpot API Exception] Failed to query deals associations:', err);
     }
 
     // 6. Fetch Deal details
@@ -152,10 +153,10 @@ export async function enrichSessionFromHubSpot(
           enrichment.deal_amount = dealProps.amount || null;
           ownerId = dealProps.hubspot_owner_id || null;
         } else {
-          console.warn(`[HubSpot API Warning] Deal details returned status ${dealResponse.status} for deal ${dealId}`);
+          logWarn(`[HubSpot API Warning] Deal details returned status ${dealResponse.status} for deal ${dealId}`);
         }
       } catch (err) {
-        console.error('[HubSpot API Exception] Failed to query deal details:', err);
+        logError('[HubSpot API Exception] Failed to query deal details:', err);
       }
     }
 
@@ -174,10 +175,10 @@ export async function enrichSessionFromHubSpot(
           enrichment.rep_name = `${ownerData.firstName || ''} ${ownerData.lastName || ''}`.trim() || null;
           enrichment.rep_email = ownerData.email || null;
         } else {
-          console.warn(`[HubSpot API Warning] Owner details returned status ${ownerResponse.status} for owner ${ownerId}`);
+          logWarn(`[HubSpot API Warning] Owner details returned status ${ownerResponse.status} for owner ${ownerId}`);
         }
       } catch (err) {
-        console.error('[HubSpot API Exception] Failed to query owner details:', err);
+        logError('[HubSpot API Exception] Failed to query owner details:', err);
       }
     }
 
@@ -185,12 +186,12 @@ export async function enrichSessionFromHubSpot(
     try {
       await redis.set(cacheKey, JSON.stringify(enrichment), { ex: 300 });
     } catch (err) {
-      console.error('[HubSpot Cache Set Error] Failed to cache enrichment in Redis:', err);
+      logError('[HubSpot Cache Set Error] Failed to cache enrichment in Redis:', err);
     }
 
     return enrichment;
   } catch (err) {
-    console.error('[HubSpot Enrichment Exception] Unexpected error during enrichment:', err);
+    logError('[HubSpot Enrichment Exception] Unexpected error during enrichment:', err);
     return null;
   }
 }

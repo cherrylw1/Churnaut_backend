@@ -1,3 +1,4 @@
+import { logError } from '@/lib/observability/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getAuthedClientId } from '@/lib/auth';
@@ -20,7 +21,7 @@ export async function GET(req: NextRequest) {
       .maybeSingle();
 
     if (error) {
-      console.error('[Calendly Status GET Error] Database error:', error);
+      logError('[Calendly Status GET Error] Database error:', error);
       return NextResponse.json({ error: 'Database query failed' }, { status: 500 });
     }
 
@@ -35,7 +36,7 @@ export async function GET(req: NextRequest) {
       connected_at: connectedAt,
     });
   } catch (err) {
-    console.error('[Calendly Status GET Error] Exception:', err);
+    logError('[Calendly Status GET Error] Exception:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -49,13 +50,13 @@ export async function DELETE(req: NextRequest) {
 
     const { error: disconnectError } = await supabaseAdmin.rpc('disconnect_calendly', { client_id_input: clientId });
     if (disconnectError) {
-      console.error('[Calendly Disconnect Error] Transaction failed:', disconnectError);
+      logError('[Calendly Disconnect Error] Transaction failed:', disconnectError);
       return NextResponse.json({ error: 'Failed to disconnect Calendly' }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });
   } catch (err) {
-    console.error('[Calendly Disconnect Exception] Unhandled error:', err);
+    logError('[Calendly Disconnect Exception] Unhandled error:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

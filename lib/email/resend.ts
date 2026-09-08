@@ -1,4 +1,15 @@
+import { logError, logWarn, logInfo } from '../observability/logger';
 import { Resend } from 'resend';
+import { recordOpsEvent } from '../monitoring/events';
+import { canSendEmail } from '../environment';
+import { getAppOrigin } from '../app-origin';
+
+const appOrigin = () => getAppOrigin();
+
+const recordEmail = (ok: boolean, kind: string) => void recordOpsEvent({
+  component: 'email', eventCode: ok ? 'email_delivery_succeeded' : 'email_delivery_failed',
+  severity: ok ? 'info' : 'error', metadata: { email_kind: kind, status: ok ? 'sent' : 'failed' },
+});
 
 const resend = new Resend(process.env.RESEND_API_KEY || 're_placeholder_key');
 
@@ -18,9 +29,10 @@ export async function sendNudgeEmail(
   draftEmail: string | null,
   nextAction: string
 ) {
+  if (!canSendEmail(to)) { logWarn('[Resend] Non-production recipient blocked'); return { success: false, error: 'non-production email blocked' }; }
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey || apiKey === 're_placeholder_key') {
-    console.warn(`[Resend] Skipping sendNudgeEmail: RESEND_API_KEY is not configured.`);
+    logWarn(`[Resend] Skipping sendNudgeEmail: RESEND_API_KEY is not configured.`);
     return { success: false, error: 'RESEND_API_KEY not configured' };
   }
 
@@ -120,7 +132,7 @@ export async function sendNudgeEmail(
       </div>
       ` : ''}
       <div class="footer">
-        Sent automatically by Churnaut. Personalize your pipeline at app.churnaut.com.
+        Sent automatically by Churnaut. Personalize your pipeline at ${appOrigin()}.
       </div>
     </div>
   </body>
@@ -135,13 +147,16 @@ export async function sendNudgeEmail(
       html,
     });
     if (data.error) {
-      console.error(`[Resend nudge] API rejected email to ${to}:`, data.error);
+      recordEmail(false, 'nudge');
+      logError(`[Resend nudge] API rejected email to ${to}:`, data.error);
       return { success: false, error: data.error };
     }
-    console.log(`[Resend nudge] Email sent successfully to ${to}:`, data);
+    logInfo(`[Resend nudge] Email sent successfully to ${to}:`, data);
+    recordEmail(true, 'nudge');
     return { success: true, data };
   } catch (error) {
-    console.error(`[Resend nudge] Error sending email to ${to}:`, error);
+    recordEmail(false, 'nudge');
+    logError(`[Resend nudge] Error sending email to ${to}:`, error);
     return { success: false, error };
   }
 }
@@ -159,9 +174,10 @@ export async function sendWeeklyDigest(
   },
   idempotencyKey?: string,
 ) {
+  if (!canSendEmail(to)) { logWarn('[Resend] Non-production recipient blocked'); return { success: false, error: 'non-production email blocked' }; }
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey || apiKey === 're_placeholder_key') {
-    console.warn(`[Resend] Skipping sendWeeklyDigest: RESEND_API_KEY is not configured.`);
+    logWarn(`[Resend] Skipping sendWeeklyDigest: RESEND_API_KEY is not configured.`);
     return { success: false, error: 'RESEND_API_KEY not configured' };
   }
 
@@ -274,7 +290,7 @@ export async function sendWeeklyDigest(
       </div>
       
       <div class="footer">
-        Sent automatically by Churnaut. Personalize your pipeline at app.churnaut.com.
+        Sent automatically by Churnaut. Personalize your pipeline at ${appOrigin()}.
       </div>
     </div>
   </body>
@@ -289,13 +305,16 @@ export async function sendWeeklyDigest(
       html,
     }, idempotencyKey ? { idempotencyKey } : undefined);
     if (data.error) {
-      console.error('[Resend digest] API rejected weekly digest:', { name: data.error.name, statusCode: data.error.statusCode });
+      recordEmail(false, 'weekly_digest');
+      logError('[Resend digest] API rejected weekly digest:', { name: data.error.name, statusCode: data.error.statusCode });
       return { success: false, error: data.error };
     }
-    console.log('[Resend digest] Weekly digest sent successfully:', { id: data.data?.id ?? null });
+    logInfo('[Resend digest] Weekly digest sent successfully:', { id: data.data?.id ?? null });
+    recordEmail(true, 'weekly_digest');
     return { success: true, data };
   } catch (error) {
-    console.error('[Resend digest] Error sending weekly digest:', { category: error instanceof Error ? error.name : 'unknown' });
+    recordEmail(false, 'weekly_digest');
+    logError('[Resend digest] Error sending weekly digest:', { category: error instanceof Error ? error.name : 'unknown' });
     return { success: false, error };
   }
 }
@@ -307,9 +326,10 @@ export async function sendClickNotification(
   signalType: string | null,
   sessionId: string
 ) {
+  if (!canSendEmail(to)) { logWarn('[Resend] Non-production recipient blocked'); return { success: false, error: 'non-production email blocked' }; }
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey || apiKey === 're_placeholder_key') {
-    console.warn('[Resend] Skipping sendClickNotification: RESEND_API_KEY is not configured.');
+    logWarn('[Resend] Skipping sendClickNotification: RESEND_API_KEY is not configured.');
     return { success: false, error: 'RESEND_API_KEY not configured' };
   }
 
@@ -344,7 +364,7 @@ export async function sendClickNotification(
       <div class="label">Session ID</div>
       <div class="value" style="font-family: monospace; font-size: 13px; color: #9494a8;">${escapeHtml(sessionId)}</div>
       <div style="margin-top: 10px;">
-        <a href="https://app.churnaut.com/dashboard/links" class="cta">VIEW IN CHURNAUT →</a>
+        <a href="${appOrigin()}/dashboard/links" class="cta">VIEW IN CHURNAUT →</a>
       </div>
       <div class="footer">Sent automatically by Churnaut when a prospect clicks your tracked link.</div>
     </div>
@@ -360,13 +380,16 @@ export async function sendClickNotification(
       html,
     });
     if (data.error) {
-      console.error(`[Resend click] API rejected notification to ${to}:`, data.error);
+      recordEmail(false, 'click_notification');
+      logError(`[Resend click] API rejected notification to ${to}:`, data.error);
       return { success: false, error: data.error };
     }
-    console.log(`[Resend click] Notification sent to ${to} for session ${sessionId}`);
+    logInfo(`[Resend click] Notification sent to ${to} for session ${sessionId}`);
+    recordEmail(true, 'click_notification');
     return { success: true, data };
   } catch (error) {
-    console.error(`[Resend click] Error sending notification to ${to}:`, error);
+    recordEmail(false, 'click_notification');
+    logError(`[Resend click] Error sending notification to ${to}:`, error);
     return { success: false, error };
   }
 }
@@ -378,6 +401,7 @@ export async function sendVisitLimitWarningEmail(
   plan: string,
   upgradeUrl: string
 ) {
+  if (!canSendEmail(to)) { logWarn('[Resend] Non-production recipient blocked'); return { success: false, error: 'non-production email blocked' }; }
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey || apiKey === 're_placeholder_key') return { success: false };
 
@@ -412,7 +436,7 @@ export async function sendVisitLimitWarningEmail(
         }
       </div>
       <a href="${upgradeUrl}" class="cta">UPGRADE YOUR PLAN →</a>
-      <div class="footer">Sent by Churnaut · <a href="https://app.churnaut.com/dashboard/billing" style="color: #5a5a72;">Manage billing</a></div>
+      <div class="footer">Sent by Churnaut · <a href="${appOrigin()}/dashboard/billing" style="color: #5a5a72;">Manage billing</a></div>
     </div>
   </body>
 </html>`;
@@ -425,12 +449,15 @@ export async function sendVisitLimitWarningEmail(
       html,
     });
     if (result.error) {
-      console.error('[Resend] sendVisitLimitWarningEmail rejected:', result.error);
+      recordEmail(false, 'visit_limit');
+      logError('[Resend] sendVisitLimitWarningEmail rejected:', result.error);
       return { success: false, error: result.error };
     }
+    recordEmail(true, 'visit_limit');
     return { success: true };
   } catch (err) {
-    console.error('[Resend] sendVisitLimitWarningEmail error:', err);
+    recordEmail(false, 'visit_limit');
+    logError('[Resend] sendVisitLimitWarningEmail error:', err);
     return { success: false };
   }
 }

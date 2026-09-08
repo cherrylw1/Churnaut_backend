@@ -1,8 +1,11 @@
+import { logError } from '@/lib/observability/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { encrypt } from '@/lib/crypto';
 import { redis } from '@/lib/redis';
 import { getAppOrigin } from '@/lib/app-origin';
+import { recordOpsEvent } from '@/lib/monitoring/events';
+import { stagingIntegrationsEnabled } from '@/lib/environment';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,7 +15,7 @@ export async function GET(req: NextRequest) {
   const state = searchParams.get('state'); // State contains Churnaut client's dynamic nonce
 
   if (!code || !state) {
-    console.error('[Hubspot OAuth Callback Error] Missing code or state parameters');
+    logError('[Hubspot OAuth Callback Error] Missing code or state parameters');
     return NextResponse.redirect(new URL('/dashboard/integrations/crm?error=missing_parameters', req.url));
   }
 
@@ -20,16 +23,18 @@ export async function GET(req: NextRequest) {
   const redisKey = `oauth_state:${state}`;
   const clientId = await redis.getdel<string>(redisKey);
   if (!clientId) {
-    console.error('[Hubspot OAuth Callback Error] Invalid or expired state nonce');
+    logError('[Hubspot OAuth Callback Error] Invalid or expired state nonce');
+    await recordOpsEvent({ component: 'crm', eventCode: 'oauth_failure', severity: 'warning', metadata: { crm_type: 'hubspot', failure_category: 'invalid_state' } });
     return NextResponse.redirect(new URL('/dashboard/integrations/crm?error=invalid_state', req.url));
   }
+  if (!stagingIntegrationsEnabled()) return NextResponse.redirect(new URL('/dashboard/integrations/crm?error=integrations_disabled', req.url));
 
   try {
     const hubspotClientId = process.env.HUBSPOT_CLIENT_ID;
     const hubspotClientSecret = process.env.HUBSPOT_CLIENT_SECRET;
 
     if (!hubspotClientId || !hubspotClientSecret) {
-      console.error('[Hubspot OAuth Callback Error] HubSpot credentials are not configured in environment');
+      logError('[Hubspot OAuth Callback Error] HubSpot credentials are not configured in environment');
       return NextResponse.redirect(new URL('/dashboard/integrations/crm?error=server_configuration_error', req.url));
     }
 
@@ -52,7 +57,8 @@ export async function GET(req: NextRequest) {
     });
 
     if (!tokenResponse.ok) {
-      console.error('[Hubspot OAuth Callback Error] Token exchange failed with status:', tokenResponse.status);
+      await recordOpsEvent({ component: 'crm', eventCode: 'oauth_failure', severity: 'error', clientId, metadata: { crm_type: 'hubspot', failure_category: 'token_exchange' } });
+      logError('[Hubspot OAuth Callback Error] Token exchange failed with status:', tokenResponse.status);
       return NextResponse.redirect(
         new URL('/dashboard/integrations/crm?error=token_exchange_failed', req.url)
       );
@@ -62,7 +68,7 @@ export async function GET(req: NextRequest) {
     const { access_token, refresh_token, expires_in } = tokenData;
 
     if (!access_token || !refresh_token) {
-      console.error('[Hubspot OAuth Callback Error] Token exchange response missing tokens');
+      logError('[Hubspot OAuth Callback Error] Token exchange response missing tokens');
       return NextResponse.redirect(new URL('/dashboard/integrations/crm?error=missing_tokens', req.url));
     }
 
@@ -79,14 +85,17 @@ export async function GET(req: NextRequest) {
       expires_at_input: expiresAt,
     });
     if (oauthError) {
-      console.error('[Hubspot OAuth Callback Error] Transaction failed:', oauthError);
+      await recordOpsEvent({ component: 'crm', eventCode: 'oauth_failure', severity: 'error', clientId, metadata: { crm_type: 'hubspot', failure_category: 'token_storage' } });
+      logError('[Hubspot OAuth Callback Error] Transaction failed:', oauthError);
       return NextResponse.redirect(new URL('/dashboard/integrations/crm?error=token_storage_failed', req.url));
     }
 
     // 6. Redirect to settings page with connected flag
+    await recordOpsEvent({ component: 'crm', eventCode: 'oauth_success', severity: 'info', clientId, metadata: { crm_type: 'hubspot', status: 'connected' } });
     return NextResponse.redirect(new URL('/dashboard/integrations/crm?connected=hubspot', req.url));
   } catch (err) {
-    console.error('[Hubspot OAuth Callback Exception] Unhandled callback error:', err);
+    await recordOpsEvent({ component: 'crm', eventCode: 'oauth_failure', severity: 'error', clientId, metadata: { crm_type: 'hubspot', failure_category: 'callback_error' } });
+    logError('[Hubspot OAuth Callback Exception] Unhandled callback error:', err);
     return NextResponse.redirect(new URL('/dashboard/integrations/crm?error=internal_server_error', req.url));
   }
 }

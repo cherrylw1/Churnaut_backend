@@ -111,4 +111,17 @@ describe('Supabase advisory guardrails', () => {
     expect(vectorMigration).toContain('SET search_path = public, extensions, pg_temp')
     expect(baseline).toContain('ALTER EXTENSION vector SET SCHEMA extensions')
   })
+
+  it('includes a service-role-only live advisor verifier and release gate', () => {
+    const migration = read('supabase/migrations/20260909014000_supabase_advisor_verification.sql')
+    expect(migration).toContain('verify_supabase_advisor_state')
+    expect(migration).toContain('REVOKE ALL ON FUNCTION')
+    expect(migration).toContain('GRANT EXECUTE ON FUNCTION public.verify_supabase_advisor_state() TO service_role')
+    expect(read('.github/workflows/staging-smoke.yml')).toContain('supabase:verify-advisors')
+    expect(migration).toContain('expected_tenant_policies')
+    expect(migration).toContain('init_plan_auth_uid')
+    expect(migration).toContain("permissive = 'PERMISSIVE'")
+    expect(migration).toContain("ARRAY['SELECT','INSERT','UPDATE','DELETE']")
+    for (const table of ['analytics_events', 'anomaly_alerts', 'processed_webhooks', 'playbook_templates', 'code_embeddings', 'support_embeddings']) expect(migration).toContain(`'${table}'`)
+  })
 })

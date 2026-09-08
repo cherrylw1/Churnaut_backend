@@ -1,8 +1,12 @@
+import { logError } from '@/lib/observability/logger';
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { redis } from '@/lib/redis'
 import { sendVisitLimitWarningEmail } from '@/lib/email/resend'
 import { PLAN_LIMITS } from '@/lib/plans'
+import { touchHeartbeat, touchHeartbeatAttempt } from '@/lib/monitoring/heartbeat'
+import { stagingCronsEnabled } from '@/lib/environment'
+import { getAppOrigin } from '@/lib/app-origin'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,6 +15,8 @@ export async function GET(req: NextRequest) {
   if (!cronSecret || req.headers.get('authorization') !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+  if (!stagingCronsEnabled()) return NextResponse.json({ success: true, disabled: true })
+  await touchHeartbeatAttempt('check-visit-limits')
 
   const { data: clients, error } = await supabaseAdmin
     .from('clients')
@@ -19,13 +25,14 @@ export async function GET(req: NextRequest) {
     .neq('plan', 'pro')
 
   if (error || !clients) {
-    console.error('[check-visit-limits] Failed to fetch clients:', error)
+    logError('[check-visit-limits] Failed to fetch clients:', error)
+    await touchHeartbeat('check-visit-limits', 'failed', { failure_category: 'client_query' })
     return NextResponse.json({ error: 'Failed to fetch clients' }, { status: 500 })
   }
 
   const now = new Date()
   const monthKey = `${now.getFullYear()}-${now.getMonth() + 1}`
-  const upgradeUrl = 'https://app.churnaut.com/dashboard/billing'
+  const upgradeUrl = `${getAppOrigin()}/dashboard/billing`
 
   let warned80 = 0
   let warnedLimit = 0
@@ -46,7 +53,7 @@ export async function GET(req: NextRequest) {
           await redis.setex(key, 60 * 60 * 24 * 35, '1') // 35 days TTL
           warnedLimit++
         }
-      } catch (e) { console.error('[check-visit-limits] limit warn error:', e) }
+      } catch (e) { logError('[check-visit-limits] limit warn error:', e) }
     }
     // 80–99% — approaching warning (once per month)
     else if (pct >= 80) {
@@ -58,9 +65,10 @@ export async function GET(req: NextRequest) {
           await redis.setex(key, 60 * 60 * 24 * 35, '1')
           warned80++
         }
-      } catch (e) { console.error('[check-visit-limits] 80% warn error:', e) }
+      } catch (e) { logError('[check-visit-limits] 80% warn error:', e) }
     }
   }
 
+  await touchHeartbeat('check-visit-limits', 'ok', { count: clients.length })
   return NextResponse.json({ success: true, warned80, warnedLimit, checked: clients.length })
 }

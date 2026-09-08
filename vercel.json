@@ -15,6 +15,14 @@
     {
       "path": "/api/cron/background-worker",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/log-retention",
+      "schedule": "30 2 * * *"
+    },
+    {
+      "path": "/api/cron/health-monitor",
+      "schedule": "*/5 * * * *"
     }
   ]
 }

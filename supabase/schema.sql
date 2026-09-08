@@ -29,6 +29,88 @@ BEGIN
 END $$;
 
 -- ==========================================
+-- REPRODUCIBLE RAG EMBEDDINGS (1024 dimensions)
+-- ==========================================
+CREATE TABLE IF NOT EXISTS code_embeddings (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    file_path text NOT NULL,
+    file_type text NOT NULL,
+    chunk_index integer NOT NULL CHECK (chunk_index >= 0),
+    content text NOT NULL,
+    token_count integer NOT NULL DEFAULT 0 CHECK (token_count >= 0),
+    embedding extensions.vector(1024) NOT NULL,
+    last_indexed_at timestamptz NOT NULL DEFAULT now(),
+    UNIQUE (file_path, chunk_index)
+);
+CREATE TABLE IF NOT EXISTS support_embeddings (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    doc_name text NOT NULL,
+    doc_type text NOT NULL,
+    chunk_index integer NOT NULL CHECK (chunk_index >= 0),
+    content text NOT NULL,
+    token_count integer NOT NULL DEFAULT 0 CHECK (token_count >= 0),
+    embedding extensions.vector(1024) NOT NULL,
+    last_indexed_at timestamptz NOT NULL DEFAULT now(),
+    UNIQUE (doc_name, chunk_index)
+);
+CREATE INDEX IF NOT EXISTS code_embeddings_embedding_hnsw ON code_embeddings USING hnsw (embedding extensions.vector_cosine_ops);
+CREATE INDEX IF NOT EXISTS support_embeddings_embedding_hnsw ON support_embeddings USING hnsw (embedding extensions.vector_cosine_ops);
+ALTER TABLE code_embeddings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE support_embeddings ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE code_embeddings, support_embeddings FROM PUBLIC, anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE code_embeddings, support_embeddings TO service_role;
+
+CREATE OR REPLACE FUNCTION public.match_code_chunks(
+    query_embedding extensions.vector(1024), match_threshold float, match_count integer
+) RETURNS TABLE (id uuid, file_path text, content text, similarity float)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, extensions, pg_temp AS $$
+    SELECT e.id, e.file_path, e.content, 1 - (e.embedding <=> query_embedding) AS similarity
+    FROM public.code_embeddings e
+    WHERE 1 - (e.embedding <=> query_embedding) >= match_threshold
+    ORDER BY e.embedding <=> query_embedding
+    LIMIT LEAST(GREATEST(match_count, 1), 50)
+$$;
+CREATE OR REPLACE FUNCTION public.match_support_chunks(
+    query_embedding extensions.vector(1024), match_threshold float, match_count integer
+) RETURNS TABLE (id uuid, doc_name text, content text, similarity float)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, extensions, pg_temp AS $$
+    SELECT e.id, e.doc_name, e.content, 1 - (e.embedding <=> query_embedding) AS similarity
+    FROM public.support_embeddings e
+    WHERE 1 - (e.embedding <=> query_embedding) >= match_threshold
+    ORDER BY e.embedding <=> query_embedding
+    LIMIT LEAST(GREATEST(match_count, 1), 50)
+$$;
+REVOKE ALL ON FUNCTION public.match_code_chunks, public.match_support_chunks FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.match_code_chunks, public.match_support_chunks TO service_role;
+
+CREATE OR REPLACE FUNCTION public.verify_rag_schema()
+RETURNS TABLE (object_name text, ready boolean, detail text)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, extensions, pg_temp AS $$
+  WITH tables AS (
+    SELECT t.table_name, CASE WHEN t.table_name = 'code_embeddings' THEN 'file_path' ELSE 'doc_name' END AS key_col,
+           CASE WHEN t.table_name = 'code_embeddings' THEN 'file_type' ELSE 'doc_type' END AS secondary_col
+    FROM (VALUES ('code_embeddings'::text), ('support_embeddings'::text)) t(table_name)
+  ), checks AS (
+    SELECT table_name,
+      to_regclass(format('public.%I', table_name)) IS NOT NULL AS exists_ok,
+      NOT EXISTS (SELECT 1 FROM (VALUES ('id'),(key_col),(secondary_col),('chunk_index'),('content'),('token_count'),('embedding'),('last_indexed_at')) req(column_name) WHERE NOT EXISTS (SELECT 1 FROM information_schema.columns c WHERE c.table_schema='public' AND c.table_name=t.table_name AND c.column_name=req.column_name)) AS columns_ok,
+      NOT EXISTS (SELECT 1 FROM information_schema.columns c WHERE c.table_schema='public' AND c.table_name=t.table_name AND c.column_name IN ('id', key_col, secondary_col, 'chunk_index', 'content', 'token_count', 'embedding', 'last_indexed_at') AND c.is_nullable='YES') AS nullability_ok,
+      NOT EXISTS (SELECT 1 FROM information_schema.columns c WHERE c.table_schema='public' AND c.table_name=t.table_name AND ((c.column_name IN (key_col, secondary_col, 'content') AND c.data_type <> 'text') OR (c.column_name IN ('chunk_index','token_count') AND c.data_type <> 'integer') OR (c.column_name='id' AND c.data_type <> 'uuid'))) AS types_ok,
+      NOT EXISTS (SELECT 1 FROM information_schema.columns c WHERE c.table_schema='public' AND c.table_name=t.table_name AND c.column_name='last_indexed_at' AND c.data_type <> 'timestamp with time zone') AS timestamp_ok,
+      EXISTS (SELECT 1 FROM pg_attribute a JOIN pg_class cl ON cl.oid=a.attrelid JOIN pg_namespace n ON n.oid=cl.relnamespace WHERE n.nspname='public' AND cl.relname=t.table_name AND a.attname='embedding' AND format_type(a.atttypid,a.atttypmod) LIKE '%vector(1024)') AS dimension_ok,
+      EXISTS (SELECT 1 FROM pg_constraint con JOIN pg_class cl ON cl.oid=con.conrelid JOIN pg_namespace n ON n.oid=cl.relnamespace WHERE n.nspname='public' AND cl.relname=t.table_name AND con.contype='u' AND con.conkey = ARRAY[(SELECT a.attnum FROM pg_attribute a WHERE a.attrelid=cl.oid AND a.attname=key_col),(SELECT a.attnum FROM pg_attribute a WHERE a.attrelid=cl.oid AND a.attname='chunk_index')]::smallint[]) AS unique_ok,
+      EXISTS (SELECT 1 FROM pg_constraint con JOIN pg_class cl ON cl.oid=con.conrelid JOIN pg_namespace n ON n.oid=cl.relnamespace WHERE n.nspname='public' AND cl.relname=t.table_name AND con.contype='p' AND con.conkey=ARRAY[(SELECT a.attnum FROM pg_attribute a WHERE a.attrelid=cl.oid AND a.attname='id')]::smallint[]) AND EXISTS (SELECT 1 FROM pg_attrdef d JOIN pg_class cl ON cl.oid=d.adrelid JOIN pg_attribute a ON a.attrelid=cl.oid AND a.attnum=d.adnum JOIN pg_namespace n ON n.oid=cl.relnamespace WHERE n.nspname='public' AND cl.relname=t.table_name AND a.attname='id' AND pg_get_expr(d.adbin,d.adrelid) ILIKE '%gen_random_uuid%') AS primary_ok,
+      EXISTS (SELECT 1 FROM pg_class i JOIN pg_namespace n ON n.oid=i.relnamespace JOIN pg_am am ON am.oid=i.relam JOIN pg_index ix ON ix.indexrelid=i.oid JOIN pg_opclass op ON op.oid=ANY(ix.indclass) WHERE n.nspname='public' AND i.relname=format('%s_embedding_hnsw',table_name) AND ix.indrelid=format('public.%I',table_name)::regclass AND ix.indkey[0]=(SELECT a.attnum FROM pg_attribute a WHERE a.attrelid=ix.indrelid AND a.attname='embedding') AND am.amname='hnsw' AND op.opcname='vector_cosine_ops') AS index_ok
+    FROM tables t
+  )
+  SELECT table_name || '.shape', exists_ok AND columns_ok AND nullability_ok AND types_ok AND timestamp_ok AND dimension_ok AND unique_ok AND primary_ok AND index_ok, format('exists=%s columns=%s nullability=%s types=%s timestamp=%s dimension=%s unique=%s primary=%s index=%s', exists_ok, columns_ok, nullability_ok, types_ok, timestamp_ok, dimension_ok, unique_ok, primary_ok, index_ok) FROM checks
+  UNION ALL SELECT 'match_code_chunks.rpc', EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname='match_code_chunks'), 'RPC is installed'
+  UNION ALL SELECT 'match_support_chunks.rpc', EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname='match_support_chunks'), 'RPC is installed'
+$$;
+REVOKE ALL ON FUNCTION public.verify_rag_schema() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.verify_rag_schema() TO service_role;
+
+-- ==========================================
 -- 1. CLIENTS TABLE
 -- ==========================================
 CREATE TABLE IF NOT EXISTS clients (
@@ -55,8 +137,10 @@ CREATE TABLE IF NOT EXISTS clients (
     trial_ends_at timestamptz,
     visits_reset_at timestamptz,
     last_snippet_ping_at timestamptz,
+    is_test_data boolean NOT NULL DEFAULT false,
     active boolean DEFAULT true
 );
+CREATE INDEX IF NOT EXISTS idx_clients_test_data ON clients(is_test_data);
 
 CREATE UNIQUE INDEX IF NOT EXISTS clients_webhook_secret_unique
   ON clients (webhook_secret) WHERE webhook_secret IS NOT NULL;
@@ -694,18 +778,33 @@ CREATE TABLE IF NOT EXISTS llm_logs (
     feature text NOT NULL,
     model_used text NOT NULL,
     prompt_version text DEFAULT 'v1.0',
-    system_prompt text,
-    input_payload jsonb NOT NULL,
-    output_payload jsonb NOT NULL,
+    metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
     latency_ms integer,
     input_tokens integer,
     output_tokens integer,
     feedback_score integer,
     feedback_type text,
-    feedback_edited_output jsonb,
     feedback_at timestamptz,
     feedback_source text
 );
+ALTER TABLE llm_logs ADD COLUMN IF NOT EXISTS record_type text NOT NULL DEFAULT 'interaction';
+ALTER TABLE llm_logs ADD COLUMN IF NOT EXISTS scope text;
+CREATE OR REPLACE FUNCTION public.purge_sensitive_logs(interaction_days integer DEFAULT 30, telemetry_days integer DEFAULT 180)
+RETURNS TABLE (llm_deleted bigint, webhook_deleted bigint)
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
+DECLARE a bigint; b bigint;
+BEGIN
+  IF interaction_days < 7 OR interaction_days > 365 OR telemetry_days < 30 OR telemetry_days > 730 THEN RAISE EXCEPTION 'Retention windows are outside approved bounds'; END IF;
+  DELETE FROM public.llm_logs WHERE created_at < now() - make_interval(days => CASE WHEN record_type = 'provider_attempt' THEN telemetry_days ELSE interaction_days END); GET DIAGNOSTICS a = ROW_COUNT;
+  DELETE FROM public.analytics_events WHERE event_type = 'webhook_received' AND created_at < now() - make_interval(days => interaction_days); GET DIAGNOSTICS b = ROW_COUNT;
+  RETURN QUERY SELECT a, b;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.purge_sensitive_logs(integer, integer) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.purge_sensitive_logs(integer, integer) TO service_role;
+ALTER TABLE llm_logs ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE llm_logs FROM PUBLIC, anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE llm_logs TO service_role;
 
 CREATE INDEX IF NOT EXISTS idx_llm_logs_client_id ON llm_logs(client_id);
 CREATE INDEX IF NOT EXISTS idx_llm_logs_feature ON llm_logs(feature);
@@ -726,8 +825,6 @@ ALTER TABLE llm_logs ADD COLUMN IF NOT EXISTS status text;
 ALTER TABLE llm_logs ADD COLUMN IF NOT EXISTS error_code text;
 ALTER TABLE llm_logs ADD COLUMN IF NOT EXISTS usage_source text;
 ALTER TABLE llm_logs ADD COLUMN IF NOT EXISTS finish_reason text;
-ALTER TABLE llm_logs ALTER COLUMN input_payload SET DEFAULT '{}'::jsonb;
-ALTER TABLE llm_logs ALTER COLUMN output_payload SET DEFAULT '{}'::jsonb;
 CREATE TABLE IF NOT EXISTS ai_plan_limits (plan text PRIMARY KEY, monthly_cost_limit_micros bigint NOT NULL, monthly_token_limit bigint NOT NULL, created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now());
 INSERT INTO ai_plan_limits(plan,monthly_cost_limit_micros,monthly_token_limit) VALUES ('starter',10000000,2000000),('growth',50000000,10000000),('pro',200000000,40000000) ON CONFLICT DO NOTHING;
 CREATE TABLE IF NOT EXISTS ai_client_limit_overrides (client_id uuid PRIMARY KEY REFERENCES clients(id) ON DELETE CASCADE, monthly_cost_limit_micros bigint, monthly_token_limit bigint, created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now());
@@ -736,6 +833,21 @@ CREATE TABLE IF NOT EXISTS ai_usage_monthly (client_id uuid NOT NULL REFERENCES 
 CREATE TABLE IF NOT EXISTS ai_budget_reservations (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), client_id uuid NOT NULL REFERENCES clients(id) ON DELETE CASCADE, request_id uuid NOT NULL UNIQUE, feature text NOT NULL, provider text NOT NULL, model text NOT NULL, month_start date NOT NULL, reserved_cost_micros bigint NOT NULL DEFAULT 0, reserved_tokens bigint NOT NULL, status text NOT NULL DEFAULT 'reserved', expires_at timestamptz NOT NULL DEFAULT(now()+interval '10 minutes'), created_at timestamptz NOT NULL DEFAULT now(), settled_at timestamptz);
 ALTER TABLE ai_plan_limits ENABLE ROW LEVEL SECURITY; ALTER TABLE ai_client_limit_overrides ENABLE ROW LEVEL SECURITY; ALTER TABLE ai_model_pricing ENABLE ROW LEVEL SECURITY; ALTER TABLE ai_usage_monthly ENABLE ROW LEVEL SECURITY; ALTER TABLE ai_budget_reservations ENABLE ROW LEVEL SECURITY;
 CREATE INDEX IF NOT EXISTS idx_llm_logs_record_type_created ON llm_logs(record_type, created_at DESC);
+
+-- Privacy-safe operational monitoring state (service-role only).
+CREATE TABLE IF NOT EXISTS ops_events (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), created_at timestamptz NOT NULL DEFAULT now(), environment text NOT NULL DEFAULT 'production', component text NOT NULL, event_code text NOT NULL, severity text NOT NULL CHECK (severity IN ('info','warning','error','critical')), client_id uuid REFERENCES clients(id) ON DELETE SET NULL, metadata jsonb NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS service_heartbeats (service_name text PRIMARY KEY, last_attempt_at timestamptz NOT NULL DEFAULT now(), last_success_at timestamptz, status text NOT NULL DEFAULT 'ok' CHECK (status IN ('ok','failed','paused')), metadata jsonb NOT NULL DEFAULT '{}', updated_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS ops_alert_state (alert_key text PRIMARY KEY, component text NOT NULL, severity text NOT NULL, status text NOT NULL DEFAULT 'open' CHECK (status IN ('open','resolved')), summary text NOT NULL, first_seen_at timestamptz NOT NULL DEFAULT now(), last_seen_at timestamptz NOT NULL DEFAULT now(), occurrence_count integer NOT NULL DEFAULT 1, resolved_at timestamptz, last_notified_at timestamptz, notification_claimed_at timestamptz, metadata jsonb NOT NULL DEFAULT '{}');
+ALTER TABLE ops_events ENABLE ROW LEVEL SECURITY; ALTER TABLE service_heartbeats ENABLE ROW LEVEL SECURITY; ALTER TABLE ops_alert_state ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE ops_events, service_heartbeats, ops_alert_state FROM PUBLIC, anon, authenticated; GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE ops_events, service_heartbeats, ops_alert_state TO service_role;
+CREATE INDEX IF NOT EXISTS idx_ops_events_code_created ON ops_events(event_code, created_at DESC); CREATE INDEX IF NOT EXISTS idx_ops_events_component_created ON ops_events(component, created_at DESC); CREATE INDEX IF NOT EXISTS idx_ops_events_client_created ON ops_events(client_id, created_at DESC);
+CREATE OR REPLACE FUNCTION public.touch_service_heartbeat(service_name_input text, status_input text, metadata_input jsonb DEFAULT '{}') RETURNS void LANGUAGE sql SECURITY DEFINER SET search_path=public,pg_temp AS $$ INSERT INTO service_heartbeats(service_name,last_attempt_at,last_success_at,status,metadata,updated_at) VALUES(service_name_input,now(),CASE WHEN status_input='ok' THEN now() ELSE NULL END,status_input,COALESCE(metadata_input,'{}'),now()) ON CONFLICT(service_name) DO UPDATE SET last_attempt_at=now(),last_success_at=CASE WHEN status_input='ok' THEN now() ELSE service_heartbeats.last_success_at END,status=status_input,metadata=COALESCE(metadata_input,'{}'),updated_at=now(); $$;
+CREATE OR REPLACE FUNCTION public.touch_service_attempt(service_name_input text, metadata_input jsonb DEFAULT '{}') RETURNS void LANGUAGE sql SECURITY DEFINER SET search_path=public,pg_temp AS $$ INSERT INTO service_heartbeats(service_name,last_attempt_at,status,metadata,updated_at) VALUES(service_name_input,now(),'failed',COALESCE(metadata_input,'{}'),now()) ON CONFLICT(service_name) DO UPDATE SET last_attempt_at=now(),status=CASE WHEN service_heartbeats.status='paused' THEN 'paused' ELSE 'failed' END,metadata=COALESCE(metadata_input,'{}'),updated_at=now(); $$;
+CREATE OR REPLACE FUNCTION public.reconcile_ops_alert(alert_key_input text, component_input text, severity_input text, summary_input text, active_input boolean, metadata_input jsonb DEFAULT '{}') RETURNS public.ops_alert_state LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp AS $$ DECLARE r public.ops_alert_state; BEGIN INSERT INTO ops_alert_state(alert_key,component,severity,status,summary,resolved_at,metadata) VALUES(alert_key_input,component_input,severity_input,CASE WHEN active_input THEN 'open' ELSE 'resolved' END,summary_input,CASE WHEN active_input THEN NULL ELSE now() END,COALESCE(metadata_input,'{}')) ON CONFLICT(alert_key) DO UPDATE SET component=EXCLUDED.component,severity=EXCLUDED.severity,summary=EXCLUDED.summary,status=CASE WHEN active_input THEN 'open' ELSE 'resolved' END,last_seen_at=CASE WHEN active_input THEN now() ELSE ops_alert_state.last_seen_at END,occurrence_count=ops_alert_state.occurrence_count+CASE WHEN active_input THEN 1 ELSE 0 END,resolved_at=CASE WHEN active_input THEN NULL ELSE COALESCE(ops_alert_state.resolved_at, now()) END,metadata=EXCLUDED.metadata RETURNING * INTO r; RETURN r; END; $$;
+CREATE OR REPLACE FUNCTION public.claim_ops_alert_notification(alert_key_input text, cooldown_minutes integer DEFAULT 30) RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp AS $$ DECLARE affected integer; BEGIN UPDATE ops_alert_state SET notification_claimed_at=now() WHERE alert_key=alert_key_input AND status='open' AND (last_notified_at IS NULL OR last_notified_at < now()-make_interval(mins=>cooldown_minutes)) AND (notification_claimed_at IS NULL OR notification_claimed_at < now()-interval '10 minutes'); GET DIAGNOSTICS affected=ROW_COUNT; RETURN affected > 0; END; $$;
+CREATE OR REPLACE FUNCTION public.complete_ops_alert_notification(alert_key_input text, sent_input boolean) RETURNS void LANGUAGE sql SECURITY DEFINER SET search_path=public,pg_temp AS $$ UPDATE ops_alert_state SET last_notified_at=CASE WHEN sent_input THEN now() ELSE last_notified_at END,notification_claimed_at=NULL WHERE alert_key=alert_key_input; $$;
+CREATE OR REPLACE FUNCTION public.purge_ops_monitoring(events_days integer DEFAULT 30, resolved_alert_days integer DEFAULT 90) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp AS $$ BEGIN IF events_days<7 OR events_days>365 OR resolved_alert_days<30 OR resolved_alert_days>730 THEN RAISE EXCEPTION 'Retention outside bounds'; END IF; DELETE FROM ops_events WHERE created_at < now()-make_interval(days=>events_days); DELETE FROM ops_alert_state WHERE status='resolved' AND resolved_at < now()-make_interval(days=>resolved_alert_days); END; $$;
+REVOKE ALL ON FUNCTION public.touch_service_heartbeat(text,text,jsonb), public.touch_service_attempt(text,jsonb), public.reconcile_ops_alert(text,text,text,text,boolean,jsonb), public.claim_ops_alert_notification(text,integer), public.complete_ops_alert_notification(text,boolean), public.purge_ops_monitoring(integer,integer) FROM PUBLIC, anon, authenticated; GRANT EXECUTE ON FUNCTION public.touch_service_heartbeat(text,text,jsonb), public.touch_service_attempt(text,jsonb), public.reconcile_ops_alert(text,text,text,text,boolean,jsonb), public.claim_ops_alert_notification(text,integer), public.complete_ops_alert_notification(text,boolean), public.purge_ops_monitoring(integer,integer) TO service_role;
 CREATE INDEX IF NOT EXISTS idx_llm_logs_client_created ON llm_logs(client_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_llm_logs_status_created ON llm_logs(status, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_llm_logs_provider_model_created ON llm_logs(provider, model_used, created_at DESC);
@@ -1275,3 +1387,264 @@ $$;
 
 REVOKE ALL ON FUNCTION public.rotate_webhook_secret(uuid, uuid) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rotate_webhook_secret(uuid, uuid) TO service_role;
+-- Authoritative, service-role-only checks for the Supabase security-advisor contract.
+CREATE OR REPLACE FUNCTION public.verify_supabase_advisor_state()
+RETURNS TABLE(check_name text, ready boolean, detail text)
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public, extensions, pg_temp
+AS $$
+DECLARE
+  table_name text;
+  managed text[] := ARRAY['clients','sessions','routing_rules','client_domains','webhook_mappings','crm_tokens','weekly_digests','deal_scores','pipeline_snapshots','scout_nudges','company_deal_patterns','deal_obituaries','icp_profiles'];
+  relation record;
+  overlap_count integer;
+BEGIN
+  RETURN QUERY SELECT 'vector_in_extensions', EXISTS (SELECT 1 FROM pg_extension e JOIN pg_namespace n ON n.oid = e.extnamespace WHERE e.extname = 'vector' AND n.nspname = 'extensions'), 'pgvector must be installed in extensions';
+  RETURN QUERY SELECT 'vector_not_public', NOT EXISTS (SELECT 1 FROM pg_extension e JOIN pg_namespace n ON n.oid = e.extnamespace WHERE e.extname = 'vector' AND n.nspname = 'public'), 'pgvector must not remain in public';
+  FOREACH table_name IN ARRAY managed LOOP
+    SELECT c.relrowsecurity INTO relation FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = table_name;
+    RETURN QUERY SELECT 'rls_' || table_name, COALESCE(relation.relrowsecurity, false), 'tenant table must have RLS enabled';
+    SELECT count(*) INTO overlap_count FROM pg_policies p WHERE p.schemaname = 'public' AND p.tablename = table_name AND p.roles @> ARRAY['authenticated']::name[] AND p.cmd IN ('ALL','SELECT') AND p.qual IS NOT NULL;
+    RETURN QUERY SELECT 'policy_' || table_name, overlap_count <= 1, format('authenticated SELECT/ALL policy count: %s', overlap_count);
+  END LOOP;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.verify_supabase_advisor_state() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.verify_supabase_advisor_state() TO service_role;
+-- Authoritative, service-role-only checks for the Supabase security-advisor contract.
+CREATE OR REPLACE FUNCTION public.verify_supabase_advisor_state()
+RETURNS TABLE(check_name text, ready boolean, detail text)
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public, extensions, pg_temp
+AS $$
+DECLARE
+  table_name text;
+  managed text[] := ARRAY['clients','sessions','routing_rules','client_domains','webhook_mappings','crm_tokens','weekly_digests','deal_scores','pipeline_snapshots','scout_nudges','company_deal_patterns','deal_obituaries','icp_profiles'];
+  relation record;
+  overlap_count integer;
+  missing_count integer;
+  slow_count integer;
+BEGIN
+  RETURN QUERY SELECT 'vector_in_extensions', EXISTS (SELECT 1 FROM pg_extension e JOIN pg_namespace n ON n.oid = e.extnamespace WHERE e.extname = 'vector' AND n.nspname = 'extensions'), 'pgvector must be installed in extensions';
+  RETURN QUERY SELECT 'vector_not_public', NOT EXISTS (SELECT 1 FROM pg_extension e JOIN pg_namespace n ON n.oid = e.extnamespace WHERE e.extname = 'vector' AND n.nspname = 'public'), 'pgvector must not remain in public';
+  SELECT count(*) INTO missing_count
+  FROM unnest(managed) expected(name)
+  WHERE NOT EXISTS (SELECT 1 FROM pg_policies p WHERE p.schemaname = 'public' AND p.tablename = expected.name AND p.permissive = 'PERMISSIVE' AND (p.roles @> ARRAY['authenticated']::name[] OR p.roles @> ARRAY['public']::name[]));
+  RETURN QUERY SELECT 'expected_tenant_policies', missing_count = 0, format('tenant tables missing permissive authenticated/public policy: %s', missing_count);
+
+  SELECT count(*) INTO slow_count FROM pg_policies p
+  WHERE p.schemaname = 'public' AND (p.qual::text ~ 'auth\.uid\(\)' OR p.with_check::text ~ 'auth\.uid\(\)')
+    AND (p.qual::text !~ '\\(select auth\.uid\(\)' AND p.with_check::text !~ '\\(select auth\.uid\(\)');
+  RETURN QUERY SELECT 'init_plan_auth_uid', slow_count = 0, format('policies using per-row auth.uid(): %s', slow_count);
+
+  SELECT count(*) INTO overlap_count FROM (
+    SELECT p.tablename, role_name, operation
+    FROM pg_policies p
+    CROSS JOIN unnest(p.roles) AS roles(role_name)
+    CROSS JOIN unnest(ARRAY['SELECT','INSERT','UPDATE','DELETE']::text[]) AS ops(operation)
+    WHERE p.schemaname = 'public' AND p.permissive = 'PERMISSIVE'
+      AND (role_name IN ('authenticated','public') OR role_name = '"public"')
+      AND (p.cmd = 'ALL' OR p.cmd = operation)
+    GROUP BY p.tablename, role_name, operation
+    HAVING count(*) > 1
+  ) duplicates;
+  RETURN QUERY SELECT 'permissive_policy_overlap', overlap_count = 0, format('overlapping effective policies: %s', overlap_count);
+
+  FOREACH table_name IN ARRAY managed LOOP
+    SELECT c.relrowsecurity INTO relation FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = table_name;
+    RETURN QUERY SELECT 'rls_' || table_name, COALESCE(relation.relrowsecurity, false), 'tenant table must have RLS enabled';
+  END LOOP;
+  FOREACH table_name IN ARRAY ARRAY['analytics_events','anomaly_alerts','processed_webhooks','playbook_templates','code_embeddings','support_embeddings'] LOOP
+    SELECT c.relrowsecurity INTO relation FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = table_name;
+    RETURN QUERY SELECT 'rls_' || table_name, COALESCE(relation.relrowsecurity, false), 'protected table must have RLS enabled';
+  END LOOP;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.verify_supabase_advisor_state() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.verify_supabase_advisor_state() TO service_role;
+-- Authoritative, service-role-only checks for the Supabase security-advisor contract.
+CREATE OR REPLACE FUNCTION public.verify_supabase_advisor_state()
+RETURNS TABLE(check_name text, ready boolean, detail text)
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public, extensions, pg_temp
+AS $$
+DECLARE
+  table_name text;
+  managed text[] := ARRAY['clients','sessions','routing_rules','client_domains','webhook_mappings','crm_tokens','weekly_digests','deal_scores','pipeline_snapshots','scout_nudges','company_deal_patterns','deal_obituaries','icp_profiles'];
+  relation record;
+  overlap_count integer;
+  missing_count integer;
+  slow_count integer;
+BEGIN
+  RETURN QUERY SELECT 'vector_in_extensions', EXISTS (SELECT 1 FROM pg_extension e JOIN pg_namespace n ON n.oid = e.extnamespace WHERE e.extname = 'vector' AND n.nspname = 'extensions'), 'pgvector must be installed in extensions';
+  RETURN QUERY SELECT 'vector_not_public', NOT EXISTS (SELECT 1 FROM pg_extension e JOIN pg_namespace n ON n.oid = e.extnamespace WHERE e.extname = 'vector' AND n.nspname = 'public'), 'pgvector must not remain in public';
+  SELECT count(*) INTO missing_count
+  FROM unnest(managed) expected(name)
+  WHERE NOT EXISTS (SELECT 1 FROM pg_policies p WHERE p.schemaname = 'public' AND p.tablename = expected.name AND p.permissive = 'PERMISSIVE' AND (p.roles @> ARRAY['authenticated']::name[] OR p.roles @> ARRAY['public']::name[]));
+  RETURN QUERY SELECT 'expected_tenant_policies', missing_count = 0, format('tenant tables missing permissive authenticated/public policy: %s', missing_count);
+
+  SELECT count(*) INTO slow_count FROM pg_policies p
+  WHERE p.schemaname = 'public' AND (p.qual::text LIKE '%auth.uid()%' OR p.with_check::text LIKE '%auth.uid()%')
+    AND (p.qual::text NOT LIKE '%(select auth.uid()%' AND p.with_check::text NOT LIKE '%(select auth.uid()%');
+  RETURN QUERY SELECT 'init_plan_auth_uid', slow_count = 0, format('policies using per-row auth.uid(): %s', slow_count);
+
+  SELECT count(*) INTO overlap_count FROM (
+    SELECT p.tablename, role_name, operation
+    FROM pg_policies p
+    CROSS JOIN unnest(p.roles) AS roles(role_name)
+    CROSS JOIN unnest(ARRAY['SELECT','INSERT','UPDATE','DELETE']::text[]) AS ops(operation)
+    WHERE p.schemaname = 'public' AND p.permissive = 'PERMISSIVE'
+      AND (role_name IN ('authenticated','public') OR role_name = '"public"')
+      AND (p.cmd = 'ALL' OR p.cmd = operation)
+    GROUP BY p.tablename, role_name, operation
+    HAVING count(*) > 1
+  ) duplicates;
+  RETURN QUERY SELECT 'permissive_policy_overlap', overlap_count = 0, format('overlapping effective policies: %s', overlap_count);
+
+  FOREACH table_name IN ARRAY managed LOOP
+    SELECT c.relrowsecurity INTO relation FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = table_name;
+    RETURN QUERY SELECT 'rls_' || table_name, COALESCE(relation.relrowsecurity, false), 'tenant table must have RLS enabled';
+  END LOOP;
+  FOREACH table_name IN ARRAY ARRAY['analytics_events','anomaly_alerts','processed_webhooks','playbook_templates','code_embeddings','support_embeddings'] LOOP
+    SELECT c.relrowsecurity INTO relation FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = table_name;
+    RETURN QUERY SELECT 'rls_' || table_name, COALESCE(relation.relrowsecurity, false), 'protected table must have RLS enabled';
+  END LOOP;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.verify_supabase_advisor_state() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.verify_supabase_advisor_state() TO service_role;
+-- Authoritative, service-role-only checks for the Supabase security-advisor contract.
+CREATE OR REPLACE FUNCTION public.verify_supabase_advisor_state()
+RETURNS TABLE(check_name text, ready boolean, detail text)
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public, extensions, pg_temp
+AS $$
+DECLARE
+  table_name text;
+  managed text[] := ARRAY['sessions','routing_rules','client_domains','webhook_mappings','crm_tokens','weekly_digests','deal_scores','pipeline_snapshots','scout_nudges','company_deal_patterns','deal_obituaries','icp_profiles'];
+  relation record;
+  overlap_count integer;
+  missing_count integer;
+  slow_count integer;
+BEGIN
+  RETURN QUERY SELECT 'vector_in_extensions', EXISTS (SELECT 1 FROM pg_extension e JOIN pg_namespace n ON n.oid = e.extnamespace WHERE e.extname = 'vector' AND n.nspname = 'extensions'), 'pgvector must be installed in extensions';
+  RETURN QUERY SELECT 'vector_not_public', NOT EXISTS (SELECT 1 FROM pg_extension e JOIN pg_namespace n ON n.oid = e.extnamespace WHERE e.extname = 'vector' AND n.nspname = 'public'), 'pgvector must not remain in public';
+  SELECT count(*) INTO missing_count FROM (VALUES
+    ('clients','SELECT'),('clients','UPDATE'),('analytics_events','SELECT'),('anomaly_alerts','SELECT'),('anomaly_alerts','UPDATE'),
+    ('sessions','SELECT'),('sessions','INSERT'),('sessions','UPDATE'),('sessions','DELETE'),('routing_rules','SELECT'),('routing_rules','INSERT'),('routing_rules','UPDATE'),('routing_rules','DELETE'),
+    ('client_domains','SELECT'),('client_domains','INSERT'),('client_domains','UPDATE'),('client_domains','DELETE'),('webhook_mappings','SELECT'),('webhook_mappings','INSERT'),('webhook_mappings','UPDATE'),('webhook_mappings','DELETE'),
+    ('crm_tokens','SELECT'),('crm_tokens','INSERT'),('crm_tokens','UPDATE'),('crm_tokens','DELETE'),('weekly_digests','SELECT'),('weekly_digests','INSERT'),('weekly_digests','UPDATE'),('weekly_digests','DELETE'),
+    ('deal_scores','SELECT'),('deal_scores','INSERT'),('deal_scores','UPDATE'),('deal_scores','DELETE'),('pipeline_snapshots','SELECT'),('pipeline_snapshots','INSERT'),('pipeline_snapshots','UPDATE'),('pipeline_snapshots','DELETE'),
+    ('scout_nudges','SELECT'),('scout_nudges','INSERT'),('scout_nudges','UPDATE'),('scout_nudges','DELETE'),('company_deal_patterns','SELECT'),('company_deal_patterns','INSERT'),('company_deal_patterns','UPDATE'),('company_deal_patterns','DELETE'),
+    ('deal_obituaries','SELECT'),('deal_obituaries','INSERT'),('deal_obituaries','UPDATE'),('deal_obituaries','DELETE'),('icp_profiles','SELECT'),('icp_profiles','INSERT'),('icp_profiles','UPDATE'),('icp_profiles','DELETE')
+  ) expected(tab, operation)
+  WHERE NOT EXISTS (
+    SELECT 1 FROM pg_policies p CROSS JOIN unnest(p.roles) r(role_name)
+    WHERE p.schemaname = 'public' AND p.tablename = expected.tab AND p.permissive = 'PERMISSIVE'
+      AND (r.role_name IN ('authenticated','public')) AND (p.cmd = 'ALL' OR p.cmd = expected.operation)
+  );
+  RETURN QUERY SELECT 'expected_tenant_policies', missing_count = 0, format('missing expected tenant operations: %s', missing_count);
+
+  SELECT count(*) INTO slow_count FROM pg_policies p
+  WHERE p.schemaname = 'public' AND (
+    (lower(coalesce(p.qual::text, '')) LIKE '%auth.uid()%' AND lower(coalesce(p.qual::text, '')) NOT LIKE '%select%auth.uid()%') OR
+    (lower(coalesce(p.with_check::text, '')) LIKE '%auth.uid()%' AND lower(coalesce(p.with_check::text, '')) NOT LIKE '%select%auth.uid()%')
+  );
+  RETURN QUERY SELECT 'init_plan_auth_uid', slow_count = 0, format('policies using per-row auth.uid(): %s', slow_count);
+
+  SELECT count(*) INTO overlap_count FROM (
+    SELECT p.tablename, role_name, operation
+    FROM pg_policies p
+    CROSS JOIN unnest(p.roles) AS roles(role_name)
+    CROSS JOIN unnest(ARRAY['SELECT','INSERT','UPDATE','DELETE']::text[]) AS ops(operation)
+    WHERE p.schemaname = 'public' AND p.permissive = 'PERMISSIVE'
+      AND role_name IN ('authenticated','public')
+      AND (p.cmd = 'ALL' OR p.cmd = operation)
+    GROUP BY p.tablename, operation
+    HAVING count(*) > 1
+  ) duplicates;
+  RETURN QUERY SELECT 'permissive_policy_overlap', overlap_count = 0, format('overlapping effective policies: %s', overlap_count);
+
+  FOREACH table_name IN ARRAY managed LOOP
+    SELECT c.relrowsecurity INTO relation FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = table_name;
+    RETURN QUERY SELECT 'rls_' || table_name, COALESCE(relation.relrowsecurity, false), 'tenant table must have RLS enabled';
+  END LOOP;
+  FOREACH table_name IN ARRAY ARRAY['analytics_events','anomaly_alerts','processed_webhooks','playbook_templates','code_embeddings','support_embeddings'] LOOP
+    SELECT c.relrowsecurity INTO relation FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = table_name;
+    RETURN QUERY SELECT 'rls_' || table_name, COALESCE(relation.relrowsecurity, false), 'protected table must have RLS enabled';
+  END LOOP;
+  SELECT count(*) INTO missing_count FROM pg_policies p CROSS JOIN unnest(p.roles) r(role_name)
+  WHERE p.schemaname = 'public' AND p.tablename IN ('processed_webhooks','playbook_templates','code_embeddings','support_embeddings')
+    AND p.permissive = 'PERMISSIVE' AND r.role_name IN ('authenticated','public');
+  RETURN QUERY SELECT 'service_only_policies', missing_count = 0, format('service-only tables have browser policies: %s', missing_count);
+END;
+$$;
+REVOKE ALL ON FUNCTION public.verify_supabase_advisor_state() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.verify_supabase_advisor_state() TO service_role;
+-- Authoritative, service-role-only checks for the Supabase security-advisor contract.
+CREATE OR REPLACE FUNCTION public.verify_supabase_advisor_state()
+RETURNS TABLE(check_name text, ready boolean, detail text)
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public, extensions, pg_temp
+AS $$
+DECLARE
+  table_name text;
+  managed text[] := ARRAY['sessions','routing_rules','client_domains','webhook_mappings','crm_tokens','weekly_digests','deal_scores','pipeline_snapshots','scout_nudges','company_deal_patterns','deal_obituaries','icp_profiles'];
+  relation record;
+  overlap_count integer;
+  missing_count integer;
+  slow_count integer;
+BEGIN
+  RETURN QUERY SELECT 'vector_in_extensions', EXISTS (SELECT 1 FROM pg_extension e JOIN pg_namespace n ON n.oid = e.extnamespace WHERE e.extname = 'vector' AND n.nspname = 'extensions'), 'pgvector must be installed in extensions';
+  RETURN QUERY SELECT 'vector_not_public', NOT EXISTS (SELECT 1 FROM pg_extension e JOIN pg_namespace n ON n.oid = e.extnamespace WHERE e.extname = 'vector' AND n.nspname = 'public'), 'pgvector must not remain in public';
+  SELECT count(*) INTO missing_count FROM (VALUES
+    ('clients','SELECT'),('clients','UPDATE'),('analytics_events','SELECT'),('anomaly_alerts','SELECT'),('anomaly_alerts','UPDATE'),
+    ('sessions','SELECT'),('sessions','INSERT'),('sessions','UPDATE'),('sessions','DELETE'),('routing_rules','SELECT'),('routing_rules','INSERT'),('routing_rules','UPDATE'),('routing_rules','DELETE'),
+    ('client_domains','SELECT'),('client_domains','INSERT'),('client_domains','UPDATE'),('client_domains','DELETE'),('webhook_mappings','SELECT'),('webhook_mappings','INSERT'),('webhook_mappings','UPDATE'),('webhook_mappings','DELETE'),
+    ('crm_tokens','SELECT'),('crm_tokens','INSERT'),('crm_tokens','UPDATE'),('crm_tokens','DELETE'),('weekly_digests','SELECT'),('weekly_digests','INSERT'),('weekly_digests','UPDATE'),('weekly_digests','DELETE'),
+    ('deal_scores','SELECT'),('deal_scores','INSERT'),('deal_scores','UPDATE'),('deal_scores','DELETE'),('pipeline_snapshots','SELECT'),('pipeline_snapshots','INSERT'),('pipeline_snapshots','UPDATE'),('pipeline_snapshots','DELETE'),
+    ('scout_nudges','SELECT'),('scout_nudges','INSERT'),('scout_nudges','UPDATE'),('scout_nudges','DELETE'),('company_deal_patterns','SELECT'),('company_deal_patterns','INSERT'),('company_deal_patterns','UPDATE'),('company_deal_patterns','DELETE'),
+    ('deal_obituaries','SELECT'),('deal_obituaries','INSERT'),('deal_obituaries','UPDATE'),('deal_obituaries','DELETE'),('icp_profiles','SELECT'),('icp_profiles','INSERT'),('icp_profiles','UPDATE'),('icp_profiles','DELETE')
+  ) expected(tab, operation)
+  WHERE NOT EXISTS (
+    SELECT 1 FROM pg_policies p CROSS JOIN unnest(p.roles) r(role_name)
+    WHERE p.schemaname = 'public' AND p.tablename = expected.tab AND p.permissive = 'PERMISSIVE'
+      AND (r.role_name IN ('authenticated','public')) AND (p.cmd = 'ALL' OR p.cmd = expected.operation)
+  );
+  RETURN QUERY SELECT 'expected_tenant_policies', missing_count = 0, format('missing expected tenant operations: %s', missing_count);
+
+  SELECT count(*) INTO slow_count FROM pg_policies p
+  WHERE p.schemaname = 'public' AND (
+    (lower(coalesce(p.qual::text, '')) LIKE '%auth.uid()%' AND lower(coalesce(p.qual::text, '')) NOT LIKE '%select%auth.uid()%') OR
+    (lower(coalesce(p.with_check::text, '')) LIKE '%auth.uid()%' AND lower(coalesce(p.with_check::text, '')) NOT LIKE '%select%auth.uid()%')
+  );
+  RETURN QUERY SELECT 'init_plan_auth_uid', slow_count = 0, format('policies using per-row auth.uid(): %s', slow_count);
+
+  SELECT count(*) INTO overlap_count FROM (
+    SELECT p.tablename, operation
+    FROM (SELECT DISTINCT schemaname, tablename, policyname, cmd, roles, permissive FROM pg_policies) p
+    CROSS JOIN unnest(ARRAY['SELECT','INSERT','UPDATE','DELETE']::text[]) AS ops(operation)
+    WHERE p.schemaname = 'public' AND p.permissive = 'PERMISSIVE'
+      AND (p.roles @> ARRAY['authenticated']::name[] OR p.roles @> ARRAY['public']::name[])
+      AND (p.cmd = 'ALL' OR p.cmd = operation)
+    GROUP BY p.tablename, operation
+    HAVING count(*) > 1
+  ) duplicates;
+  RETURN QUERY SELECT 'permissive_policy_overlap', overlap_count = 0, format('overlapping effective policies: %s', overlap_count);
+
+  FOREACH table_name IN ARRAY ARRAY['clients'] || managed LOOP
+    SELECT c.relrowsecurity INTO relation FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = table_name;
+    RETURN QUERY SELECT 'rls_' || table_name, COALESCE(relation.relrowsecurity, false), 'tenant table must have RLS enabled';
+  END LOOP;
+  FOREACH table_name IN ARRAY ARRAY['analytics_events','anomaly_alerts','processed_webhooks','playbook_templates','code_embeddings','support_embeddings'] LOOP
+    SELECT c.relrowsecurity INTO relation FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = table_name;
+    RETURN QUERY SELECT 'rls_' || table_name, COALESCE(relation.relrowsecurity, false), 'protected table must have RLS enabled';
+  END LOOP;
+  SELECT count(*) INTO missing_count FROM pg_policies p CROSS JOIN unnest(p.roles) r(role_name)
+  WHERE p.schemaname = 'public' AND p.tablename IN ('processed_webhooks','playbook_templates','code_embeddings','support_embeddings')
+    AND (p.roles @> ARRAY['authenticated']::name[] OR p.roles @> ARRAY['public']::name[]);
+  RETURN QUERY SELECT 'service_only_policies', missing_count = 0, format('service-only tables have browser policies: %s', missing_count);
+END;
+$$;
+REVOKE ALL ON FUNCTION public.verify_supabase_advisor_state() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.verify_supabase_advisor_state() TO service_role;

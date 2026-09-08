@@ -1,3 +1,4 @@
+import { logError } from '@/lib/observability/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { redis } from '@/lib/redis';
@@ -18,7 +19,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // console.log('[Scout Pipeline GET] Authenticated client ID:', clientId);
+    // logInfo('[Scout Pipeline GET] Authenticated client ID:', clientId);
 
     const { searchParams } = new URL(req.url);
     const refresh = searchParams.get('refresh') === 'true';
@@ -28,16 +29,16 @@ export async function GET(req: NextRequest) {
       try {
         const cached = await redis.get(cacheKey);
         if (cached) {
-          // console.log('[Scout Pipeline GET] Cache hit for client:', clientId);
+          // logInfo('[Scout Pipeline GET] Cache hit for client:', clientId);
           return NextResponse.json(typeof cached === 'string' ? JSON.parse(cached) : cached);
         }
       } catch (cacheErr) {
-        console.error('[Scout Pipeline GET Cache Error] Failed to read from Redis:', cacheErr);
+        logError('[Scout Pipeline GET Cache Error] Failed to read from Redis:', cacheErr);
       }
     }
 
     // 2. Fetch the latest snapshot for this client
-    // console.log('[Scout Pipeline GET] Fetching latest snapshot...');
+    // logInfo('[Scout Pipeline GET] Fetching latest snapshot...');
     const snapshotRes = await supabaseAdmin
       .from('pipeline_snapshots')
       .select('*')
@@ -46,26 +47,26 @@ export async function GET(req: NextRequest) {
       .limit(1)
       .maybeSingle();
 
-    // console.log('[Scout Pipeline GET] Raw snapshot query response:', JSON.stringify(snapshotRes, null, 2));
+    // logInfo('[Scout Pipeline GET] Raw snapshot query response:', JSON.stringify(snapshotRes, null, 2));
     const { data: latestSnapshot, error: snapshotError } = snapshotRes;
 
     if (snapshotError) {
-      console.error('[Scout Pipeline GET] Error fetching latest snapshot:', snapshotError);
+      logError('[Scout Pipeline GET] Error fetching latest snapshot:', snapshotError);
       return NextResponse.json({ error: 'Database error fetching pipeline snapshot' }, { status: 500 });
     }
 
     // 3. Fetch deal scores for this client
-    // console.log('[Scout Pipeline GET] Fetching deal scores...');
+    // logInfo('[Scout Pipeline GET] Fetching deal scores...');
     const dealScoresRes = await supabaseAdmin
       .from('deal_scores')
       .select('*')
       .eq('client_id', clientId);
 
-    // console.log('[Scout Pipeline GET] Raw deal scores query response:', JSON.stringify(dealScoresRes, null, 2));
+    // logInfo('[Scout Pipeline GET] Raw deal scores query response:', JSON.stringify(dealScoresRes, null, 2));
     const { data: dealScores, error: scoresError } = dealScoresRes;
 
     if (scoresError) {
-      console.error('[Scout Pipeline GET] Error fetching deal scores:', scoresError);
+      logError('[Scout Pipeline GET] Error fetching deal scores:', scoresError);
       return NextResponse.json({ error: 'Database error fetching deal scores' }, { status: 500 });
     }
 
@@ -77,7 +78,7 @@ export async function GET(req: NextRequest) {
       .not('crm_deal_id', 'is', null);
 
     if (sessionsError) {
-      console.error('[Scout Pipeline GET] Error fetching sessions for rep mapping:', sessionsError);
+      logError('[Scout Pipeline GET] Error fetching sessions for rep mapping:', sessionsError);
       return NextResponse.json({ error: 'Database error fetching session mappings' }, { status: 500 });
     }
 
@@ -100,7 +101,7 @@ export async function GET(req: NextRequest) {
       .eq('client_id', clientId)
       .order('scored_at', { ascending: true });
     if (historyError) {
-      console.error('[Scout Pipeline GET] Error fetching score history:', historyError);
+      logError('[Scout Pipeline GET] Error fetching score history:', historyError);
       return NextResponse.json({ error: 'Database error fetching score history' }, { status: 500 });
     }
     const historyMap = new Map<string, { scored_at: string; score: string }[]>();
@@ -146,7 +147,7 @@ export async function GET(req: NextRequest) {
       .gte('created_at', twentyFourHoursAgo.toISOString());
 
     if (eventsError) {
-      console.error('[Scout Pipeline GET] Error fetching recent events:', eventsError);
+      logError('[Scout Pipeline GET] Error fetching recent events:', eventsError);
       return NextResponse.json({ error: 'Database error fetching recent activity' }, { status: 500 });
     }
 
@@ -173,7 +174,7 @@ export async function GET(req: NextRequest) {
         .not('crm_deal_id', 'is', null);
 
       if (matchSessionsError) {
-        console.error('[Scout Pipeline GET] Error fetching matching sessions:', matchSessionsError);
+        logError('[Scout Pipeline GET] Error fetching matching sessions:', matchSessionsError);
         return NextResponse.json({ error: 'Database error fetching acceleration triggers' }, { status: 500 });
       }
 
@@ -225,13 +226,13 @@ export async function GET(req: NextRequest) {
     try {
       await redis.set(cacheKey, JSON.stringify(responsePayload), { ex: 60 });
     } catch (cacheErr) {
-      console.error('[Scout Pipeline GET Cache Write Error] Failed to write to Redis:', cacheErr);
+      logError('[Scout Pipeline GET Cache Write Error] Failed to write to Redis:', cacheErr);
     }
 
     return NextResponse.json(responsePayload);
 
   } catch (error) {
-    console.error('[Scout Pipeline GET Exception] Unhandled error:', error);
+    logError('[Scout Pipeline GET Exception] Unhandled error:', error);
     const errMsg = error instanceof Error ? error.message : 'Internal server error';
     return NextResponse.json({ error: errMsg }, { status: 500 });
   }

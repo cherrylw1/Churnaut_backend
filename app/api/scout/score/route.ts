@@ -1,3 +1,4 @@
+import { logError } from '@/lib/observability/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { buildNormalizedDeals } from '@/lib/scout/assemble';
@@ -50,7 +51,7 @@ export async function POST(req: NextRequest) {
         .delete()
         .eq('client_id', clientId)
         .in('deal_id', staleDealIds.slice(index, index + 100));
-      if (deleteError) { console.error('[Scout Score POST] Stale cleanup error:', deleteError); throw deleteError; }
+      if (deleteError) { logError('[Scout Score POST] Stale cleanup error:', deleteError); throw deleteError; }
     }
 
     // 3. Analyze with the new Scout engine
@@ -65,8 +66,7 @@ export async function POST(req: NextRequest) {
         client_id: clientId,
         deal_id: b.deal_id,
         feature: 'scout_score',
-        input_payload: (dealMap.get(b.deal_id) || {}) as unknown as Record<string, unknown>,
-        output_payload: b as unknown as Record<string, unknown>,
+        metadata: { deal_id_present: Boolean(dealMap.get(b.deal_id)), result: 'scored' },
         latency_ms: latency,
       });
     });
@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
         client_id: clientId, total_deals: 0, red_count: 0, amber_count: 0, green_count: 0,
         total_pipeline_value: 0, pressure_score: 0,
       });
-      if (snapErr) console.error('[Scout Score POST] Empty snapshot insert failed:', snapErr);
+      if (snapErr) logError('[Scout Score POST] Empty snapshot insert failed:', snapErr);
       return NextResponse.json({ pipeline_pressure_score: 0, deals: [], ai_status: 'full' });
     }
 
@@ -115,7 +115,7 @@ export async function POST(req: NextRequest) {
     // 5. Upsert deal_scores (insert new / update existing), split in JS
     const { data: existing, error: existingErr } = await supabaseAdmin
       .from('deal_scores').select('id, deal_id').eq('client_id', clientId);
-    if (existingErr) { console.error('[Scout Score POST] Read existing error:', existingErr); throw existingErr; }
+    if (existingErr) { logError('[Scout Score POST] Read existing error:', existingErr); throw existingErr; }
     const existingMap = new Map(existing?.map((e) => [e.deal_id, e.id]) || []);
     const toInsert: Record<string, unknown>[] = [];
     const toUpdate: Record<string, unknown>[] = [];
@@ -126,7 +126,7 @@ export async function POST(req: NextRequest) {
     }
     if (toInsert.length > 0) {
       const insRes = await supabaseAdmin.from('deal_scores').insert(toInsert);
-      if (insRes.error) { console.error('[Scout Score POST] Insert error:', insRes.error); throw insRes.error; }
+      if (insRes.error) { logError('[Scout Score POST] Insert error:', insRes.error); throw insRes.error; }
     }
     for (const updateRec of toUpdate) {
       const updRes = await supabaseAdmin
@@ -134,7 +134,7 @@ export async function POST(req: NextRequest) {
         .update(updateRec)
         .eq('id', updateRec.id as string)
         .eq('client_id', clientId);
-      if (updRes.error) { console.error('[Scout Score POST] Update error:', updRes.error); throw updRes.error; }
+      if (updRes.error) { logError('[Scout Score POST] Update error:', updRes.error); throw updRes.error; }
     }
 
     // 5b. Append to score history (append-only; powers score trajectory over time)
@@ -147,7 +147,7 @@ export async function POST(req: NextRequest) {
       scored_at: d.scored_at,
     }));
     const { error: historyErr } = await supabaseAdmin.from('deal_score_history').insert(historyRows);
-    if (historyErr) console.error('[Scout Score POST] history insert failed (non-fatal):', historyErr);
+    if (historyErr) logError('[Scout Score POST] history insert failed (non-fatal):', historyErr);
 
     // 6. Pipeline snapshot
     const redCount = scoredDeals.filter((d) => d.score === 'RED').length;
@@ -159,17 +159,17 @@ export async function POST(req: NextRequest) {
       amber_count: amberCount, green_count: greenCount, total_pipeline_value: totalPipelineValue,
       pressure_score: pipeline_pressure_score,
     });
-    if (snapshotErr) { console.error('[Scout Score POST] Snapshot error:', snapshotErr); throw snapshotErr; }
+    if (snapshotErr) { logError('[Scout Score POST] Snapshot error:', snapshotErr); throw snapshotErr; }
 
     // 7. Keep company_deal_patterns fresh for next run (best-effort)
     try { await calculateDealPatterns(clientId); }
-    catch (e) { console.error('[Scout Score POST] calculateDealPatterns failed (non-fatal):', e); }
+    catch (e) { logError('[Scout Score POST] calculateDealPatterns failed (non-fatal):', e); }
 
     return NextResponse.json({ pipeline_pressure_score, deals: scoredDeals, ai_status });
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : 'Internal server error';
     const errStack = error instanceof Error ? error.stack : 'No stack trace';
-    console.error(`[Scout Score POST Exception] ${errMsg}\nStack:\n${errStack}`);
+    logError(`[Scout Score POST Exception] ${errMsg}\nStack:\n${errStack}`);
     return NextResponse.json({ error: errMsg }, { status: 500 });
   }
 }

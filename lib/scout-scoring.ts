@@ -1,3 +1,4 @@
+import { logError, logInfo } from './observability/logger';
 import { redis } from '@/lib/redis';
 import { ScoutDeal, ScoutClosedLostDeal, ScoutClosedWonDeal, fetchClosedWonDeals } from './integrations/hubspot-pipeline';
 import { generateText } from '@/lib/llm/complete';
@@ -84,7 +85,7 @@ export async function scoreDealsWithScout(
         return parseScoutScoreResult(value, deals.map((deal) => deal.deal_id));
       }
     } catch (cacheErr) {
-      console.error('[Scout Scoring Cache Read Error] Failed to read from Redis:', cacheErr);
+      logError('[Scout Scoring Cache Read Error] Failed to read from Redis:', cacheErr);
     }
   }
 
@@ -98,7 +99,7 @@ export async function scoreDealsWithScout(
     try {
       await redis.set(cacheKey, JSON.stringify(emptyResult), { ex: 3600 });
     } catch (cacheErr) {
-      console.error('[Scout Scoring Cache Write Error] Failed to write empty result:', cacheErr);
+      logError('[Scout Scoring Cache Write Error] Failed to write empty result:', cacheErr);
     }
     return emptyResult;
   }
@@ -168,7 +169,7 @@ Return ONLY the JSON. No markdown wrappers, no conversational text, no explanati
   const rawText = await generateText(prompt, { maxTokens: 3000, context: { feature: 'scout_batch_legacy', scope: 'customer', clientId } });
 
   if (!rawText) {
-    console.error('[Scout Scoring Error] Empty response structure from AI model');
+    logError('[Scout Scoring Error] Empty response structure from AI model');
     throw new Error('Invalid response structure from AI model');
   }
 
@@ -185,7 +186,7 @@ Return ONLY the JSON. No markdown wrappers, no conversational text, no explanati
   } catch (parseErr) {
     const parseErrMsg = parseErr instanceof Error ? parseErr.message : String(parseErr);
     const parseErrStack = parseErr instanceof Error ? parseErr.stack : '';
-    console.error(`[Scout Scoring Parse Error Details] Error: ${parseErrMsg}\nStack: ${parseErrStack}`);
+    logError(`[Scout Scoring Parse Error Details] Error: ${parseErrMsg}\nStack: ${parseErrStack}`);
     throw new Error('Failed to parse Scout AI scoring response as valid JSON object');
   }
   const result = parsed as ScoutScoreResult;
@@ -194,7 +195,7 @@ Return ONLY the JSON. No markdown wrappers, no conversational text, no explanati
   try {
     await redis.set(cacheKey, JSON.stringify(result), { ex: 3600 });
   } catch (cacheErr) {
-    console.error('[Scout Scoring Cache Set Error] Failed to cache scores in Redis:', cacheErr);
+    logError('[Scout Scoring Cache Set Error] Failed to cache scores in Redis:', cacheErr);
   }
 
   return result;
@@ -208,19 +209,19 @@ export async function calculateDealPatterns(clientId: string) {
   if (!clientId) return null;
 
   try {
-    console.log(`[calculateDealPatterns] Starting pattern calculation for client: ${clientId}`);
+    logInfo(`[calculateDealPatterns] Starting pattern calculation for client: ${clientId}`);
     const { data: dealScores, error } = await supabaseAdmin
       .from('deal_scores')
       .select('*')
       .eq('client_id', clientId);
 
     if (error) {
-      console.error('[calculateDealPatterns] Error fetching deal scores:', error);
+      logError('[calculateDealPatterns] Error fetching deal scores:', error);
       return null;
     }
 
     if (!dealScores || dealScores.length < 5) {
-      console.log(`[calculateDealPatterns] Not enough data for client ${clientId} (${dealScores?.length || 0} deals)`);
+      logInfo(`[calculateDealPatterns] Not enough data for client ${clientId} (${dealScores?.length || 0} deals)`);
       return null;
     }
 
@@ -286,7 +287,7 @@ export async function calculateDealPatterns(clientId: string) {
       calculated_at: new Date().toISOString(),
     };
 
-    console.log(`[calculateDealPatterns] Upserting patterns for client ${clientId}:`, JSON.stringify(patternData));
+    logInfo(`[calculateDealPatterns] Upserting patterns for client ${clientId}:`, JSON.stringify(patternData));
     const { data: upsertData, error: upsertError } = await supabaseAdmin
       .from('company_deal_patterns')
       .upsert(patternData, { onConflict: 'client_id' })
@@ -294,12 +295,12 @@ export async function calculateDealPatterns(clientId: string) {
       .maybeSingle();
 
     if (upsertError) {
-      console.error('[calculateDealPatterns] Error upserting pattern:', upsertError);
+      logError('[calculateDealPatterns] Error upserting pattern:', upsertError);
     }
 
     return upsertData || patternData;
   } catch (err) {
-    console.error('[calculateDealPatterns] Exception in calculation:', err);
+    logError('[calculateDealPatterns] Exception in calculation:', err);
     return null;
   }
 }
@@ -321,11 +322,11 @@ export async function generateDealObituary(
     .maybeSingle();
 
   if (findError) {
-    console.error(`[Scout Obituary] Error searching for existing obituary for deal ${deal.deal_id}:`, findError);
+    logError(`[Scout Obituary] Error searching for existing obituary for deal ${deal.deal_id}:`, findError);
   }
 
   if (existing) {
-    console.log(`[Scout Obituary] Obituary already exists for deal ${deal.deal_id}, skipping generation.`);
+    logInfo(`[Scout Obituary] Obituary already exists for deal ${deal.deal_id}, skipping generation.`);
     return existing;
   }
 
@@ -371,8 +372,8 @@ Return ONLY the JSON. No markdown wrappers (no \`\`\`json block), no conversatio
 
   try {
     parsed = JSON.parse(cleanedText);
-  } catch (parseErr) {
-    console.error('[Scout Obituary Parse Error] Failed to parse JSON:', cleanedText, parseErr);
+  } catch {
+    logError('[Scout Obituary Parse Error] Failed to parse JSON', { error_category: 'invalid_json', response_length: cleanedText.length });
     throw new Error('Failed to parse Scout AI obituary response as valid JSON');
   }
 
@@ -398,7 +399,7 @@ Return ONLY the JSON. No markdown wrappers (no \`\`\`json block), no conversatio
     .maybeSingle();
 
   if (upsertError) {
-    console.error('[Scout Obituary] Error upserting obituary:', upsertError);
+    logError('[Scout Obituary] Error upserting obituary:', upsertError);
     throw upsertError;
   }
 
@@ -474,7 +475,7 @@ Your response must be a single, plain-text string containing exactly the 3-sente
 
   let icpSummary = '';
   try { icpSummary = (await generateText(prompt, { maxTokens: 1500, context: { feature: 'scout_icp', scope: 'customer', clientId } })) || ''; }
-  catch (error) { console.error('[Scout ICP] AI unavailable; using deterministic summary:', error instanceof Error ? error.message : 'unknown'); icpSummary = `${winCount} closed-won deals averaging $${avgDealValue.toFixed(0)} with an average ${avgDaysToClose}-day sales cycle.`; }
+  catch (error) { logError('[Scout ICP] AI unavailable; using deterministic summary:', error instanceof Error ? error.message : 'unknown'); icpSummary = `${winCount} closed-won deals averaging $${avgDealValue.toFixed(0)} with an average ${avgDaysToClose}-day sales cycle.`; }
   icpSummary = icpSummary.trim();
 
   // Remove potential markdown code blocks if AI wrapped it
@@ -502,7 +503,7 @@ Your response must be a single, plain-text string containing exactly the 3-sente
     .maybeSingle();
 
   if (upsertError) {
-    console.error('[Scout ICP] Error upserting ICP profile:', upsertError);
+    logError('[Scout ICP] Error upserting ICP profile:', upsertError);
     throw upsertError;
   }
 
@@ -520,7 +521,7 @@ Your response must be a single, plain-text string containing exactly the 3-sente
       .eq('client_id', clientId);
 
     if (rulesFetchError) {
-      console.error('[Scout ICP] Error fetching existing routing rules:', rulesFetchError);
+      logError('[Scout ICP] Error fetching existing routing rules:', rulesFetchError);
     }
 
     const existingConditions = new Set(
@@ -565,7 +566,7 @@ Your response must be a single, plain-text string containing exactly the 3-sente
           .insert(newRule);
 
         if (ruleInsertError) {
-          console.error(`[Scout ICP] Error inserting auto-rule for ${jt}:`, ruleInsertError);
+          logError(`[Scout ICP] Error inserting auto-rule for ${jt}:`, ruleInsertError);
         } else {
           rulesCreated++;
         }

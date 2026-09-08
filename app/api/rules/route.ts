@@ -1,3 +1,4 @@
+import { logError } from '@/lib/observability/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getClientPlan, planGate } from '@/lib/gate';
@@ -23,13 +24,13 @@ export async function GET(req: NextRequest) {
       .order('priority', { ascending: true });
 
     if (error) {
-      console.error('[GET Rules Error] Database error:', error);
+      logError('[GET Rules Error] Database error:', error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
     return NextResponse.json({ rules: rules || [] });
   } catch (err) {
-    console.error('[GET Rules Exception] Unhandled exception:', err);
+    logError('[GET Rules Exception] Unhandled exception:', err);
     const errMsg = err instanceof Error ? err.message : 'Internal server error';
     return NextResponse.json({ error: errMsg }, { status: 500 });
   }
@@ -52,7 +53,7 @@ export async function POST(req: NextRequest) {
       .eq('client_id', clientId)
 
     if (existingRulesError) {
-      console.error('[POST Rules Error] Rule limit lookup failed:', existingRulesError)
+      logError('[POST Rules Error] Rule limit lookup failed:', existingRulesError)
       return NextResponse.json({ error: 'Unable to verify the routing rule limit' }, { status: 503 })
     }
 
@@ -76,7 +77,7 @@ export async function POST(req: NextRequest) {
       .eq('client_id', clientId);
 
     if (countError) {
-      console.error('[POST Rules Error] Priority count fetch failed:', countError);
+      logError('[POST Rules Error] Priority count fetch failed:', countError);
       return NextResponse.json({ error: countError.message }, { status: 500 });
     }
 
@@ -100,13 +101,13 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (insertError) {
-      console.error('[POST Rules Error] Insertion failed:', insertError);
+      logError('[POST Rules Error] Insertion failed:', insertError);
       return NextResponse.json({ error: insertError.message }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, rule: newRule });
   } catch (err) {
-    console.error('[POST Rules Exception] Unhandled exception:', err);
+    logError('[POST Rules Exception] Unhandled exception:', err);
     const errMsg = err instanceof Error ? err.message : 'Internal server error';
     return NextResponse.json({ error: errMsg }, { status: 500 });
   }
@@ -131,7 +132,7 @@ export async function PATCH(req: NextRequest) {
         { client_id_input: clientId, rules_input: body.rules }
       );
       if (reorderError || updatedCount !== body.rules.length) {
-        console.error('[PATCH Rules Error] Atomic reorder failed:', reorderError);
+        logError('[PATCH Rules Error] Atomic reorder failed:', reorderError);
         return NextResponse.json({ error: 'Unable to reorder routing rules' }, { status: 500 });
       }
       return NextResponse.json({ success: true });
@@ -195,13 +196,13 @@ export async function PATCH(req: NextRequest) {
       .single();
 
     if (updateError) {
-      console.error('[PATCH Rules Error] Update failed:', updateError);
+      logError('[PATCH Rules Error] Update failed:', updateError);
       return NextResponse.json({ error: updateError.message }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, rule: updatedRule });
   } catch (err) {
-    console.error('[PATCH Rules Exception] Unhandled exception:', err);
+    logError('[PATCH Rules Exception] Unhandled exception:', err);
     const errMsg = err instanceof Error ? err.message : 'Internal server error';
     return NextResponse.json({ error: errMsg }, { status: 500 });
   }
@@ -227,7 +228,7 @@ export async function DELETE(req: NextRequest) {
       { client_id_input: clientId, rule_id_input: id }
     );
     if (deleteError) {
-      console.error('[DELETE Rule Error] Atomic delete failed:', deleteError);
+      logError('[DELETE Rule Error] Atomic delete failed:', deleteError);
       return NextResponse.json({ error: 'Unable to delete routing rule' }, { status: 500 });
     }
     if (!deleted) {
@@ -236,7 +237,7 @@ export async function DELETE(req: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (err) {
-    console.error('[DELETE Rule Exception] Unhandled exception:', err);
+    logError('[DELETE Rule Exception] Unhandled exception:', err);
     const errMsg = err instanceof Error ? err.message : 'Internal server error';
     return NextResponse.json({ error: errMsg }, { status: 500 });
   }

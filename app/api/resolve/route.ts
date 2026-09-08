@@ -1,3 +1,4 @@
+import { logError, logWarn } from '@/lib/observability/logger';
 // Next.js and Vercel functions imports
 import { NextRequest, NextResponse } from 'next/server'
 import { waitUntil } from '@vercel/functions'
@@ -95,7 +96,7 @@ export async function POST(req: NextRequest) {
       .maybeSingle();
 
     if (clientError || !clientData) {
-      console.error('[Resolve Error] Client lookup failed for key:', clientIdParam, clientError);
+      logError('[Resolve Error] Client lookup failed for key:', clientIdParam, clientError);
       return NextResponse.json(
         { error: 'Unauthorized: invalid client key' },
         { status: 401, headers: corsHeaders }
@@ -120,7 +121,7 @@ export async function POST(req: NextRequest) {
         );
       }
     } catch (rlError) {
-      console.error('[RateLimit Error] Failed to enforce resolve rate limiting:', rlError);
+      logError('[RateLimit Error] Failed to enforce resolve rate limiting:', rlError);
       // Keep the public snippet available if Redis is temporarily unavailable.
     }
 
@@ -159,7 +160,7 @@ export async function POST(req: NextRequest) {
                 { session_id_input: session!.id }
               );
               if (clickError) {
-                console.error('[Click Count Error] Failed to increment click count:', clickError);
+                logError('[Click Count Error] Failed to increment click count:', clickError);
                 return;
               }
 
@@ -171,7 +172,7 @@ export async function POST(req: NextRequest) {
                 created_at: new Date().toISOString(),
                 metadata: { schema_version: 2 },
               });
-              if (clickEventError) console.error('[Analytics Error] Failed to log link click:', clickEventError);
+              if (clickEventError) logError('[Analytics Error] Failed to log link click:', clickEventError);
 
               // Only the request that atomically changes 0 -> 1 sends the first
               // click notification. Concurrent resolves cannot duplicate it.
@@ -189,7 +190,7 @@ export async function POST(req: NextRequest) {
                 );
               }
             } catch (err) {
-              console.error('[Click Notification Error] Failed to send click notification:', err);
+              logError('[Click Notification Error] Failed to send click notification:', err);
             }
           })()
         );
@@ -235,7 +236,7 @@ export async function POST(req: NextRequest) {
         { client_id_input: client_id, visit_limit_input: visitLimit }
       );
       if (quotaError) {
-        console.error('[Visit Counter Error] Failed to consume monthly quota:', quotaError);
+        logError('[Visit Counter Error] Failed to consume monthly quota:', quotaError);
         return NextResponse.json({ error: 'Visit quota service unavailable' }, { status: 503, headers: corsHeaders });
       }
       if (!quotaAvailable) {
@@ -263,9 +264,9 @@ export async function POST(req: NextRequest) {
           })
         )
           .then(({ error }) => {
-            if (error) console.error('[Analytics Error] Failed to log analytics event:', error);
+            if (error) logError('[Analytics Error] Failed to log analytics event:', error);
           })
-          .catch((err: unknown) => console.error('[Analytics Exception] Failed to execute analytics log:', err))
+          .catch((err: unknown) => logError('[Analytics Exception] Failed to execute analytics log:', err))
       );
     };
 
@@ -303,7 +304,7 @@ export async function POST(req: NextRequest) {
         .select('*')
         .single();
       if (!insertError && inserted) session = inserted as Session;
-      else if (insertError) console.error('[Resolve Error] Anonymous session insert failed:', insertError);
+      else if (insertError) logError('[Resolve Error] Anonymous session insert failed:', insertError);
     }
 
     // Store the utms object in the session metadata
@@ -323,9 +324,9 @@ export async function POST(req: NextRequest) {
         metadata: { schema_version: 2, page_url: page_url || null },
       }))
         .then(({ error }) => {
-          if (error) console.error('[Analytics Error] Failed to log page view:', error);
+          if (error) logError('[Analytics Error] Failed to log page view:', error);
         })
-        .catch((error) => console.error('[Analytics Error] Failed to log page view:', error))
+        .catch((error) => logError('[Analytics Error] Failed to log page view:', error))
     );
 
     // 3.5 Live HubSpot CRM Session Enrichment
@@ -347,7 +348,7 @@ export async function POST(req: NextRequest) {
         } | null;
 
         if (enrichment === null) {
-          console.warn('[Enrichment Timeout] HubSpot live enrichment timed out after 1.2s');
+          logWarn('[Enrichment Timeout] HubSpot live enrichment timed out after 1.2s');
         } else if (enrichment) {
           session.prospect_name = enrichment.contact_name || session.prospect_name;
           session.job_title = enrichment.job_title || session.job_title;
@@ -363,7 +364,7 @@ export async function POST(req: NextRequest) {
           sessionRecord.contact_name = enrichment.contact_name;
         }
       } catch (enrichError) {
-        console.error('[Enrichment Error] HubSpot live enrichment failed:', enrichError);
+        logError('[Enrichment Error] HubSpot live enrichment failed:', enrichError);
       }
     }
 
@@ -376,7 +377,7 @@ export async function POST(req: NextRequest) {
       .order('priority', { ascending: true });
 
     if (rulesError) {
-      console.error('[Resolve Error] Rules lookup failed:', rulesError);
+      logError('[Resolve Error] Rules lookup failed:', rulesError);
     }
 
     const rules = rulesData || [];
@@ -453,7 +454,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(instructions, { headers: corsHeaders });
 
   } catch (error) {
-    console.error('[Resolve Error] Unhandled exception occurred:', error);
+    logError('[Resolve Error] Unhandled exception occurred:', error);
     return NextResponse.json(
       { error: 'Internal server error occurred' },
       { status: 500, headers: corsHeaders }

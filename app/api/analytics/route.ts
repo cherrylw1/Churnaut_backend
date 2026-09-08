@@ -1,3 +1,4 @@
+import { logError } from '@/lib/observability/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getAuthedClientId } from '@/lib/auth';
@@ -33,7 +34,7 @@ export async function GET(req: NextRequest) {
       supabaseAdmin.from('analytics_events').select('id, session_id, event_type, signal_type, created_at').eq('client_id', clientId).gte('created_at', fromDate).order('created_at', { ascending: false }).limit(20),
     ]);
     if (aggregateError || rulesError || recentError || !aggregateData) {
-      console.error('[GET Analytics Error] Aggregate query failed:', aggregateError || rulesError || recentError);
+      logError('[GET Analytics Error] Aggregate query failed:', aggregateError || rulesError || recentError);
       return NextResponse.json({ error: 'Analytics query failed' }, { status: 500 });
     }
 
@@ -70,7 +71,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ analyticsVersion: 2, historicalNote: 'Exact click timing is available only for Analytics v2 events; legacy cumulative click counts are not backfilled.', summaryStats: aggregate.summaryStats, signalBreakdown: aggregate.signalBreakdown || [], rulePerformance, recentEvents, repPerformance: aggregate.repPerformance || [], dailyVolume, liftReport: { ...aggregate.liftReport, rules: liftRules } });
   } catch (error) {
-    console.error('[GET Analytics Exception]:', error);
+    logError('[GET Analytics Exception]:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

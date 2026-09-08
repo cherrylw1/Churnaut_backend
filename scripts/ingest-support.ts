@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import * as dotenv from 'dotenv'
 import { embed } from '../lib/llm/complete'
+import { assertEmbeddingVector } from '../lib/embeddings'
 
 dotenv.config({ path: '.env.local' })
 
@@ -427,6 +428,7 @@ async function ingestSupport() {
       const contextualChunk = `Document: ${doc.name}\nType: ${doc.type}\n\n${chunks[i]}`
       try {
         const embedding = await embedText(contextualChunk)
+        assertEmbeddingVector(embedding, `${doc.name} chunk ${i}`)
         const { error } = await supabase.from('support_embeddings').insert({
           doc_name: doc.name,
           doc_type: doc.type,

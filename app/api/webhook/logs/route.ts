@@ -1,3 +1,4 @@
+import { logError } from '@/lib/observability/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getAuthedClientId } from '@/lib/auth';
@@ -13,21 +14,31 @@ export async function GET(req: NextRequest) {
 
     const { data: logs, error } = await supabaseAdmin
       .from('analytics_events')
-      .select('*')
+      .select('id, created_at, event_type, signal_type, metadata')
       .eq('client_id', clientId)
       .eq('event_type', 'webhook_received')
       .order('created_at', { ascending: false })
       .limit(15);
 
     if (error) {
-      console.error('[GET Webhook Logs Error] Database error:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      logError('[GET Webhook Logs Error] Database error:', error);
+      return NextResponse.json({ error: 'Unable to load webhook logs' }, { status: 500 });
     }
 
-    return NextResponse.json({ logs: logs || [] });
+    const safeLogs = (logs || []).map((log) => ({
+      ...log,
+      metadata: {
+        schema_version: log.metadata?.schema_version,
+        webhook_action: log.metadata?.webhook_action,
+        webhook_auth_method: log.metadata?.webhook_auth_method,
+        payload_key_count: Number(log.metadata?.payload_key_count || 0),
+        transformed_field_count: Number(log.metadata?.transformed_field_count || 0),
+        result_category: typeof log.metadata?.result_category === 'string' ? log.metadata.result_category : 'unknown',
+      },
+    }));
+    return NextResponse.json({ logs: safeLogs });
   } catch (err) {
-    console.error('[GET Webhook Logs Exception] Unhandled exception:', err);
-    const errMsg = err instanceof Error ? err.message : 'Internal server error';
-    return NextResponse.json({ error: errMsg }, { status: 500 });
+    logError('[GET Webhook Logs Exception] Unhandled exception:', err);
+    return NextResponse.json({ error: 'Unable to load webhook logs' }, { status: 500 });
   }
 }

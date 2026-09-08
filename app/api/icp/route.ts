@@ -1,3 +1,4 @@
+import { logError } from '@/lib/observability/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { buildICPFromWins } from '@/lib/scout-scoring';
@@ -25,13 +26,13 @@ export async function GET(req: NextRequest) {
       .maybeSingle();
 
     if (error) {
-      console.error('[Scout ICP GET] Error fetching ICP profile:', error);
+      logError('[Scout ICP GET] Error fetching ICP profile:', error);
       return NextResponse.json({ error: 'Failed to fetch ICP profile' }, { status: 500 });
     }
 
     return NextResponse.json(icpProfile || null);
   } catch (err) {
-    console.error('[Scout ICP GET] Exception:', err);
+    logError('[Scout ICP GET] Exception:', err);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
@@ -66,7 +67,7 @@ export async function POST(req: NextRequest) {
       rules_created: result.rules_created,
     });
   } catch (err) {
-    console.error('[Scout ICP POST] Exception:', err);
+    logError('[Scout ICP POST] Exception:', err);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

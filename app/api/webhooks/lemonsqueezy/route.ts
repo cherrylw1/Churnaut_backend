@@ -1,8 +1,12 @@
+import { logError, logInfo } from '@/lib/observability/logger';
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { normalizeEmail } from '@/lib/email-normalization'
 import { verifyWebhookSignature, getVariantId, getCustomerId, getSubscriptionId, getTrialEndsAt, getStatus, getCustomClientId } from '@/lib/lemonsqueezy'
 import { VARIANT_TO_PLAN } from '@/lib/plans'
+import { recordOpsEvent } from '@/lib/monitoring/events'
+import { safeErrorMessage } from '@/lib/observability/redact'
+import { billingMode, isStaging } from '@/lib/environment'
 
 export const dynamic = 'force-dynamic';
 
@@ -77,12 +81,14 @@ export async function POST(req: NextRequest) {
   let claimedEventId: string | null = null
   let ownsClaim = false
   try {
+    if (isStaging() && billingMode() === 'disabled') return NextResponse.json({ received: true, disabled: true }, { status: 202 })
     const rawBody = await req.text()
     const signature = req.headers.get('x-signature') ?? ''
     const secret = process.env.LEMONSQUEEZY_WEBHOOK_SECRET ?? ''
 
     if (!verifyWebhookSignature(rawBody, signature, secret)) {
-      console.error('Invalid webhook signature')
+      logError('Invalid webhook signature')
+      await recordOpsEvent({ component: 'billing', eventCode: 'webhook_rejected', severity: 'warning', metadata: { failure_category: 'invalid_signature', provider: 'lemonsqueezy' } })
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
     }
 
@@ -107,7 +113,7 @@ export async function POST(req: NextRequest) {
     // server crash cannot cause a webhook to be discarded forever.
     const claimState = await claimWebhookEvent(eventId)
     if (claimState === 'completed') {
-      console.log(`Webhook already processed: ${eventId}`)
+      logInfo(`Webhook already processed: ${eventId}`)
       return NextResponse.json({ received: true, alreadyProcessed: true }, { status: 200 })
     }
     if (claimState === 'busy') {
@@ -116,7 +122,7 @@ export async function POST(req: NextRequest) {
     ownsClaim = true
 
     // Process event
-    console.log(`Webhook received: ${eventName}`, { subscriptionId, customerId, variantId, status })
+    logInfo(`Webhook received: ${eventName}`, { subscriptionId, customerId, variantId, status })
 
     switch (eventName) {
       case 'subscription_created': {
@@ -149,7 +155,7 @@ export async function POST(req: NextRequest) {
         }
 
         if (!clientUser) {
-          console.error('No client profile found for subscription_created. email:', email, 'client_id:', customClientId)
+          logError('No client profile found for subscription_created. email:', email, 'client_id:', customClientId)
           throw new Error('Client not found for subscription_created')
         }
 
@@ -166,7 +172,7 @@ export async function POST(req: NextRequest) {
           if (mappedPlan) {
             updateData.plan = mappedPlan
           } else {
-            console.error(`Unknown variant ID in subscription_created: ${variantId}`)
+            logError(`Unknown variant ID in subscription_created: ${variantId}`)
           }
         }
 
@@ -195,7 +201,7 @@ export async function POST(req: NextRequest) {
           if (mappedPlan) {
             updateData.plan = mappedPlan
           } else {
-            console.error(`Unknown variant ID in subscription_updated: ${variantId}`)
+            logError(`Unknown variant ID in subscription_updated: ${variantId}`)
           }
         }
 
@@ -224,7 +230,16 @@ export async function POST(req: NextRequest) {
       }
 
       default:
-        console.log(`Unhandled event: ${eventName}`)
+        logInfo(`Unhandled event: ${eventName}`)
+    }
+
+    const { data: billingClient } = subscriptionId
+      ? await supabaseAdmin.from('clients').select('id').eq('lemonsqueezy_subscription_id', subscriptionId).maybeSingle()
+      : { data: null }
+    if (eventName === 'subscription_payment_failed') {
+      await recordOpsEvent({ component: 'billing', eventCode: 'billing_payment_failed', severity: 'error', clientId: billingClient?.id, metadata: { provider: 'lemonsqueezy', status: 'past_due' } })
+    } else if (['subscription_resumed', 'subscription_updated', 'subscription_created'].includes(eventName) && status !== 'past_due') {
+      await recordOpsEvent({ component: 'billing', eventCode: 'billing_recovered', severity: 'info', clientId: billingClient?.id, metadata: { provider: 'lemonsqueezy', status: status ?? 'active' } })
     }
 
     const { data: completedClaim, error: completionError } = await supabaseAdmin
@@ -244,7 +259,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ received: true }, { status: 200 })
 
   } catch (err) {
-    console.error('Webhook error:', err)
+    logError('Webhook error:', err)
+    await recordOpsEvent({ component: 'billing', eventCode: 'webhook_failed', severity: 'error', metadata: { failure_category: 'processing_error', provider: 'lemonsqueezy' } })
     // Keep a recoverable failure record. The next delivery may reclaim it
     // immediately; stale in-progress claims can be reclaimed after a crash.
     try {
@@ -253,7 +269,7 @@ export async function POST(req: NextRequest) {
           .from('processed_webhooks')
           .update({
             status: 'failed',
-            last_error: err instanceof Error ? err.message.slice(0, 2000) : 'Unknown webhook processing error',
+            last_error: safeErrorMessage(err),
           })
           .eq('event_id', claimedEventId)
           .eq('status', 'processing')

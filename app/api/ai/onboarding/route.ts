@@ -1,3 +1,4 @@
+import { logError } from '@/lib/observability/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getAuthedClientId } from '@/lib/auth';
@@ -55,10 +56,10 @@ export async function POST(req: NextRequest) {
 
     let rawText: string;
     try { rawText = await generateText(prompt, { maxTokens: 1500, context: { feature: 'onboarding_rules', scope: 'customer', clientId } }); }
-    catch (error) { console.error('[Onboarding AI] unavailable:', error instanceof Error ? error.message : 'unknown'); return NextResponse.json({ success: false, degraded: true, error: 'ai_unavailable', canContinueManually: true }); }
+    catch (error) { logError('[Onboarding AI] unavailable:', error instanceof Error ? error.message : 'unknown'); return NextResponse.json({ success: false, degraded: true, error: 'ai_unavailable', canContinueManually: true }); }
 
     if (!rawText) {
-      console.error('[Onboarding Error] Empty response structure');
+      logError('[Onboarding Error] Empty response structure');
       return NextResponse.json({ error: 'Invalid response from AI model' }, { status: 502 });
     }
 
@@ -78,7 +79,7 @@ export async function POST(req: NextRequest) {
       const priorities = rules.map((rule) => rule.priority);
       if (new Set(priorities).size !== priorities.length) throw new Error('Rule priorities must be unique');
     } catch (parseErr) {
-      console.error('[Onboarding Rule Parse Error] Failed to validate generated rules:', parseErr);
+      logError('[Onboarding Rule Parse Error] Failed to validate generated rules:', parseErr);
       return NextResponse.json({ error: 'AI generated invalid routing rule structure' }, { status: 502 });
     }
 
@@ -102,14 +103,14 @@ export async function POST(req: NextRequest) {
     });
 
     if (insertErr) {
-      console.error('[Onboarding DB Error] Failed to insert rules:', insertErr);
+      logError('[Onboarding DB Error] Failed to insert rules:', insertErr);
       return NextResponse.json({ error: `Database save failed: ${insertErr.message}` }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, count: replacedCount ?? insertPayload.length });
 
   } catch (err) {
-    console.error('[Onboarding Exception] Unhandled error:', err);
+    logError('[Onboarding Exception] Unhandled error:', err);
     const errMsg = err instanceof Error ? err.message : 'Internal server error';
     return NextResponse.json({ error: errMsg }, { status: 500 });
   }

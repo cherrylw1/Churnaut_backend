@@ -1,3 +1,4 @@
+import { logError } from '@/lib/observability/logger';
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthedClientId } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase'
@@ -98,7 +99,7 @@ async function searchCodebase(query: string, matchCount = 8) {
     if (error) throw error
     return data || []
   } catch (err) {
-    console.error('[Founder Chat] Codebase search failed, bypassing RAG context:', err)
+    logError('[Founder Chat] Codebase search failed, bypassing RAG context:', err)
     return []
   }
 }
@@ -161,14 +162,14 @@ export async function POST(req: NextRequest) {
 
     let answer: string
     try { answer = await generateChat(messages, { maxTokens: 1500, temperature: 0.3, context: { feature: 'founder_chat', scope: 'internal' } }) || 'No response generated.' }
-    catch (error) { console.error('[Founder Chat] AI provider unavailable:', error instanceof Error ? error.message : 'unknown'); return NextResponse.json({ error: 'AI inference failed' }, { status: 503 }) }
+    catch (error) { logError('[Founder Chat] AI provider unavailable:', error instanceof Error ? error.message : 'unknown'); return NextResponse.json({ error: 'AI inference failed' }, { status: 503 }) }
     const sourcesUsed = chunks.map(c => c.file_path).filter((v, i, a) => a.indexOf(v) === i)
 
     return NextResponse.json({ answer, sources: sourcesUsed })
 
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : 'Internal server error'
-    console.error('[Founder Chat] Error:', errMsg)
+    logError('[Founder Chat] Error:', errMsg)
     return NextResponse.json({ error: errMsg }, { status: 500 })
   }
 }

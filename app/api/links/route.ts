@@ -1,3 +1,4 @@
+import { logError } from '@/lib/observability/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { supabaseAdmin } from '@/lib/supabase';
@@ -52,7 +53,7 @@ export async function GET(req: NextRequest) {
       .range(offset, offset + limit - 1);
 
     if (error) {
-      console.error('[GET Links Error] Failed to fetch sessions:', error);
+      logError('[GET Links Error] Failed to fetch sessions:', error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
@@ -62,7 +63,7 @@ export async function GET(req: NextRequest) {
       supabaseAdmin.from('clients').select('domain').eq('id', clientId).maybeSingle(),
     ]);
     if (primaryDomainResult.error || clientResult.error) {
-      console.error('[GET Links Error] Destination lookup failed:', primaryDomainResult.error || clientResult.error);
+      logError('[GET Links Error] Destination lookup failed:', primaryDomainResult.error || clientResult.error);
       return NextResponse.json({ error: 'Unable to resolve link destinations' }, { status: 500 });
     }
     const primaryDomain = primaryDomainResult.data;
@@ -86,7 +87,7 @@ export async function GET(req: NextRequest) {
       totalPages: Math.ceil(total / limit),
     });
   } catch (err) {
-    console.error('[GET Links Exception] Unhandled exception:', err);
+    logError('[GET Links Exception] Unhandled exception:', err);
     const errorMessage = err instanceof Error ? err.message : 'Internal server error';
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
@@ -127,7 +128,7 @@ export async function POST(req: NextRequest) {
         .maybeSingle();
 
       if (uniquenessError) {
-        console.error('[POST Links Error] Session ID availability check failed:', uniquenessError);
+        logError('[POST Links Error] Session ID availability check failed:', uniquenessError);
         return NextResponse.json({ error: 'Unable to allocate a tracked link ID' }, { status: 503 });
       }
 
@@ -181,7 +182,7 @@ export async function POST(req: NextRequest) {
       });
 
     if (error) {
-      console.error('[POST Links Error] Failed to insert session:', error);
+      logError('[POST Links Error] Failed to insert session:', error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
@@ -195,7 +196,7 @@ export async function POST(req: NextRequest) {
     });
 
   } catch (err) {
-    console.error('[POST Links Exception] Unhandled exception:', err);
+    logError('[POST Links Exception] Unhandled exception:', err);
     const errorMessage = err instanceof Error ? err.message : 'Internal server error';
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }

@@ -1,3 +1,4 @@
+import { logError } from '@/lib/observability/logger';
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { getAuthedClientId } from '@/lib/auth'
@@ -196,7 +197,7 @@ async function createRule(clientId: string, intent: ReturnType<typeof parseRuleI
   }
   const { data: existing, error: priorityError } = await supabaseAdmin.from('routing_rules').select('priority').eq('client_id', clientId).order('priority', { ascending: false }).limit(1)
   if (priorityError) {
-    console.error('[Support Chat] Rule priority lookup failed:', priorityError)
+    logError('[Support Chat] Rule priority lookup failed:', priorityError)
     return { success: false, id: undefined, error: 'Unable to determine the next rule priority' }
   }
   const nextPriority = existing && existing.length > 0 ? existing[0].priority + 1 : 1
@@ -234,7 +235,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
       }
     } catch (e) {
-      console.error('[Support Chat] Ratelimit error', e)
+      logError('[Support Chat] Ratelimit error', e)
     }
 
     const parsedBody = await readJson(req, chatRequestSchema)
@@ -308,11 +309,11 @@ export async function POST(req: NextRequest) {
     // RAG search
     let queryEmbedding: number[] = []
     try { queryEmbedding = await embedQuery(message, clientId) }
-    catch (error) { console.error('[Support Chat] Embedding unavailable; continuing without RAG:', error instanceof Error ? error.message : 'unknown') }
+    catch (error) { logError('[Support Chat] Embedding unavailable; continuing without RAG:', error instanceof Error ? error.message : 'unknown') }
     const { data: chunks, error: searchError } = queryEmbedding.length
       ? await supabaseAdmin.rpc('match_support_chunks', { query_embedding: JSON.stringify(queryEmbedding), match_count: 6, match_threshold: 0.3 })
       : { data: [], error: null }
-    if (searchError) console.error('[Support Chat] Search error:', searchError)
+    if (searchError) logError('[Support Chat] Search error:', searchError)
 
     const docContext = chunks && chunks.length > 0
       ? chunks.map((c: { content: string }) => c.content).join('\n\n')
@@ -331,12 +332,12 @@ export async function POST(req: NextRequest) {
 
     let answer: string
     try { answer = await generateChat(messages, { maxTokens: 1000, temperature: 0.5, context: { feature: 'support_chat', scope: 'customer', clientId } }) || 'Sorry, I could not generate a response.' }
-    catch (error) { console.error('[Support Chat] AI provider unavailable:', error instanceof Error ? error.message : 'unknown'); answer = ruleCreated ? 'The routing rule was created successfully; automated follow-up text is temporarily unavailable. Please email support@churnaut.com if you need help.' : 'Automated support is temporarily unavailable. Please email support@churnaut.com and the team will help.' }
+    catch (error) { logError('[Support Chat] AI provider unavailable:', error instanceof Error ? error.message : 'unknown'); answer = ruleCreated ? 'The routing rule was created successfully; automated follow-up text is temporarily unavailable. Please email support@churnaut.com if you need help.' : 'Automated support is temporarily unavailable. Please email support@churnaut.com and the team will help.' }
     return NextResponse.json({ answer, ruleCreated, degraded: answer.startsWith('Automated support is temporarily unavailable') })
 
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : 'Internal server error'
-    console.error('[Support Chat] Error:', errMsg)
+    logError('[Support Chat] Error:', errMsg)
     return NextResponse.json({ error: errMsg }, { status: 500 })
   }
 }

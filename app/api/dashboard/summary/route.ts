@@ -1,3 +1,4 @@
+import { logError } from '@/lib/observability/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getAuthedClientId } from '@/lib/auth';
@@ -175,7 +176,7 @@ export async function GET(req: NextRequest) {
       recent_activity: recentEvents || [],
     });
   } catch (error) {
-    console.error('[Dashboard Summary GET Exception] Unhandled error:', error);
+    logError('[Dashboard Summary GET Exception] Unhandled error:', error);
     const errMsg = error instanceof Error ? error.message : 'Internal server error';
     return NextResponse.json({ error: errMsg }, { status: 500 });
   }

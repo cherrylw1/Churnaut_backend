@@ -1,3 +1,4 @@
+import { logError } from '../observability/logger';
 import { supabaseAdmin } from '@/lib/supabase'
 import { generateText } from '@/lib/llm/complete'
 import { sendWeeklyDigest } from '@/lib/email/resend'
@@ -29,7 +30,7 @@ export async function processScheduledDigest(client: ScheduledDigestClient, run:
     const pipelineLine = snap && snap.total_deals > 0 ? `Pipeline: ${snap.total_deals} open deals, pressure score ${snap.pressure_score}/100. ${snap.red_count} RED, ${snap.amber_count} AMBER, ${snap.green_count} GREEN.` : 'No Scout pipeline data for this period.'
     const prompt = `You are generating a weekly performance digest for a B2B SaaS customer using Churnaut. Weekly data: links ${current.links_created}, clicks ${current.clicks}, conversions ${current.conversions}, rule fires ${current.triggers}. Top signal: ${topSignal ? `${topSignal.signal} (${topSignal.converted}/${topSignal.total})` : 'none'}. Best rep: ${bestRep ? `${bestRep.rep} with ${bestRep.conversions}` : 'none'}. ${pipelineLine} Return ONLY JSON keys summary, top_signal, rep_spotlight, recommendation.`
     let raw = ''
-    try { raw = await generateText(prompt, { temperature: 0.4, maxTokens: 600, context: { feature: 'weekly_digest_scheduled', scope: 'customer', clientId: client.id } }) } catch (error) { console.error('[Scheduled Digest] AI unavailable; using deterministic summary:', error instanceof Error ? error.message : 'unknown') }
+    try { raw = await generateText(prompt, { temperature: 0.4, maxTokens: 600, context: { feature: 'weekly_digest_scheduled', scope: 'customer', clientId: client.id } }) } catch (error) { logError('[Scheduled Digest] AI unavailable; using deterministic summary:', error instanceof Error ? error.message : 'unknown') }
     if (raw) {
       try { digestJson = weeklyDigestOutputSchema.parse(JSON.parse(raw.replace(/\`\`\`json|\`\`\`/g, '').trim())) } catch { raw = '' }
     }

@@ -1,3 +1,4 @@
+import { logError } from '@/lib/observability/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { redis } from '@/lib/redis';
@@ -33,7 +34,7 @@ async function handleAnomalyRequest(req: NextRequest, runDetection: boolean) {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('[Anomaly Get Error] Supabase query failed:', error);
+        logError('[Anomaly Get Error] Supabase query failed:', error);
         return NextResponse.json({ error: error.message }, { status: 500 });
       }
 
@@ -49,7 +50,7 @@ async function handleAnomalyRequest(req: NextRequest, runDetection: boolean) {
         return NextResponse.json({ alerts: parsed, source: 'cache' });
       }
     } catch (cacheErr) {
-      console.error('[Anomaly Cache Read Error]:', cacheErr);
+      logError('[Anomaly Cache Read Error]:', cacheErr);
     }
 
     const sevenDaysAgo = new Date();
@@ -65,7 +66,7 @@ async function handleAnomalyRequest(req: NextRequest, runDetection: boolean) {
       .eq('active', true);
 
     if (rulesErr) {
-      console.error('[Anomaly Detection Error] Fetching rules failed:', rulesErr);
+      logError('[Anomaly Detection Error] Fetching rules failed:', rulesErr);
       return NextResponse.json({ error: rulesErr.message }, { status: 500 });
     }
 
@@ -82,7 +83,7 @@ async function handleAnomalyRequest(req: NextRequest, runDetection: boolean) {
     );
     const aggregate = parseAnomalyAggregate(aggregateData);
     if (aggregateError || !aggregate) {
-      console.error('[Anomaly Detection Error] Aggregate calculation failed:', aggregateError);
+      logError('[Anomaly Detection Error] Aggregate calculation failed:', aggregateError);
       return NextResponse.json({ error: 'Unable to calculate anomaly metrics' }, { status: 500 });
     }
 
@@ -163,7 +164,7 @@ async function handleAnomalyRequest(req: NextRequest, runDetection: boolean) {
       try {
         await redis.setex(cacheKey, 3600, JSON.stringify([]));
       } catch (cacheSetErr) {
-        console.error('[Anomaly Cache Write Error]:', cacheSetErr);
+        logError('[Anomaly Cache Write Error]:', cacheSetErr);
       }
       return NextResponse.json({ alerts: [] });
     }
@@ -184,7 +185,7 @@ Example of the exact format required:
       const { parsed } = await generateJSON(prompt, { maxTokens: 1200, context: { feature: 'anomaly_summary', scope: 'customer', clientId } });
       alertTexts = generatedAlertsSchema.parse(parsed);
     } catch (parseErr) {
-      console.error('[Anomaly Parse Error] Falling back to deterministic alerts:', parseErr);
+      logError('[Anomaly Parse Error] Falling back to deterministic alerts:', parseErr);
       alertTexts = anomalies.slice(0, 3);
     }
 
@@ -209,7 +210,7 @@ Example of the exact format required:
       .insert(alertRows)
       .select();
     if (saveError || !savedAlerts) {
-      console.error('[Anomaly Save Error] Failed inserting alert set:', saveError);
+      logError('[Anomaly Save Error] Failed inserting alert set:', saveError);
       return NextResponse.json({ error: 'Unable to save anomaly alerts' }, { status: 500 });
     }
 
@@ -217,13 +218,13 @@ Example of the exact format required:
     try {
       await redis.setex(cacheKey, 3600, JSON.stringify(savedAlerts));
     } catch (cacheSetErr) {
-      console.error('[Anomaly Cache Write Error]:', cacheSetErr);
+      logError('[Anomaly Cache Write Error]:', cacheSetErr);
     }
 
     return NextResponse.json({ alerts: savedAlerts });
 
   } catch (error) {
-    console.error('[Anomaly Exception] Error:', error);
+    logError('[Anomaly Exception] Error:', error);
     const errMsg = error instanceof Error ? error.message : 'Internal server error';
     return NextResponse.json({ error: errMsg }, { status: 500 });
   }
@@ -260,7 +261,7 @@ export async function PATCH(req: NextRequest) {
       .single();
 
     if (error) {
-      console.error('[Anomaly PATCH Error] Supabase update failed:', error);
+      logError('[Anomaly PATCH Error] Supabase update failed:', error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
@@ -269,13 +270,13 @@ export async function PATCH(req: NextRequest) {
     try {
       await redis.del(cacheKey);
     } catch (cacheDelErr) {
-      console.error('[Anomaly Cache Clear Error]:', cacheDelErr);
+      logError('[Anomaly Cache Clear Error]:', cacheDelErr);
     }
 
     return NextResponse.json({ success: true, alert: data });
 
   } catch (error) {
-    console.error('[Anomaly PATCH Exception] Error:', error);
+    logError('[Anomaly PATCH Exception] Error:', error);
     const errMsg = error instanceof Error ? error.message : 'Internal server error';
     return NextResponse.json({ error: errMsg }, { status: 500 });
   }

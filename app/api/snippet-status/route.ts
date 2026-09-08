@@ -1,3 +1,4 @@
+import { logError } from '@/lib/observability/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getAuthedClientId } from '@/lib/auth';
@@ -25,7 +26,7 @@ export async function GET(req: NextRequest) {
       .maybeSingle();
 
     if (queryErr) {
-      console.error('[GET Snippet Status Error] Database query failed:', queryErr);
+      logError('[GET Snippet Status Error] Database query failed:', queryErr);
       return NextResponse.json({ error: queryErr.message }, { status: 500 });
     }
 
@@ -42,7 +43,7 @@ export async function GET(req: NextRequest) {
     }
 
   } catch (err) {
-    console.error('[GET Snippet Status Exception] Unhandled error:', err);
+    logError('[GET Snippet Status Exception] Unhandled error:', err);
     const errMsg = err instanceof Error ? err.message : 'Internal server error';
     return NextResponse.json({ error: errMsg }, { status: 500 });
   }

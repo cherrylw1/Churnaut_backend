@@ -1,4 +1,9 @@
 /** @type {import('next').NextConfig} */
+// Hosted deployments must declare their environment at build time. Keeping
+// this check in Next's config makes the rule global for every route and page.
+if (process.env.VERCEL && !process.env.APP_ENV) {
+  throw new Error('APP_ENV must be explicitly configured on hosted deployments')
+}
 const securityHeaders = [
   { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
   { key: 'X-Content-Type-Options', value: 'nosniff' },

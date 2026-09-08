@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import * as dotenv from 'dotenv'
 import { embed } from '../lib/llm/complete'
+import { assertEmbeddingVector } from '../lib/embeddings'
 
 dotenv.config({ path: '.env.local' })
 
@@ -161,7 +162,7 @@ weekly_digests — AI weekly digest
 Key fields: client_id, week_start, summary, top_signal, rep_spotlight, recommendation
 
 llm_logs — Every LLM inference call (for fine-tuning dataset)
-Key fields: id (uuid), created_at, client_id, feature (scout_score/copywriter/weekly_digest), model_used, prompt_version, system_prompt, input_payload (jsonb), output_payload (jsonb), latency_ms, input_tokens, output_tokens, feedback_score, feedback_type (accepted/rejected), feedback_edited_output, feedback_source (explicit_rating/rep_action/inferred/synthetic)
+Key fields: id (uuid), created_at, client_id, feature (scout_score/copywriter/weekly_digest), model_used, prompt_version, metadata (bounded operational summary), latency_ms, input_tokens, output_tokens, feedback_score, feedback_type (accepted/rejected), feedback_source (explicit_rating/rep_action/inferred/synthetic). Prompts and model outputs are never retained.
 
 code_embeddings — RAG vector store for codebase chat
 Key fields: id (uuid), file_path, file_type, chunk_index, content (text), token_count, embedding (vector 768), last_indexed_at
@@ -398,6 +399,7 @@ async function ingestContext() {
       const contextualChunk = `Document: ${doc.name}\nType: context\n\n${chunks[i]}`
       try {
         const embedding = await embedText(contextualChunk)
+        assertEmbeddingVector(embedding, `${doc.name} chunk ${i}`)
         const { error } = await supabase.from('code_embeddings').insert({
           file_path: `context/${doc.name}`,
           file_type: 'context',

@@ -1,3 +1,4 @@
+import { logError } from '@/lib/observability/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { supabaseAdmin } from '@/lib/supabase';
@@ -6,6 +7,7 @@ import { webhookPayloadSchema } from '@/lib/validation';
 import { authenticateWebhookRequest } from '@/lib/webhook-auth';
 import { normalizeEmail } from '@/lib/email-normalization';
 import { normalizeEmbedUrl } from '@/lib/url';
+import { recordOpsEvent } from '@/lib/monitoring/events';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,6 +29,7 @@ function generateSessionId(length: number = 6): string {
 }
 
 export async function POST(req: NextRequest) {
+  let observedClientId: string | undefined;
   try {
     // Read the exact bytes once so signed requests can be verified before JSON
     // parsing or re-serialization. Credentials are never logged.
@@ -39,10 +42,14 @@ export async function POST(req: NextRequest) {
 
     const authResult = await authenticateWebhookRequest(req, rawBody);
     // Preserve the existing 503 contract: "Webhook authentication service unavailable".
-    if (!authResult.ok) return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+    if (!authResult.ok) {
+      await recordOpsEvent({ component: 'webhook', eventCode: 'webhook_rejected', severity: 'warning', metadata: { failure_category: 'authentication_rejected' } });
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+    }
     const { client, method: webhookAuthMethod } = authResult;
 
     const clientId = client.id;
+    observedClientId = clientId;
 
     // Rate Limiting by client ID
     try {
@@ -51,7 +58,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
       }
     } catch (rlError) {
-      console.error('[RateLimit Error] Failed to enforce rate limiting on webhook:', rlError);
+      logError('[RateLimit Error] Failed to enforce rate limiting on webhook:', rlError);
     }
 
     // 2. Parse Incoming Payload after authentication.
@@ -72,7 +79,7 @@ export async function POST(req: NextRequest) {
       .eq('client_id', clientId);
 
     if (mappingsErr) {
-      console.error('[Webhook Mapping Error] Mappings fetch failed:', mappingsErr);
+      logError('[Webhook Mapping Error] Mappings fetch failed:', mappingsErr);
       return NextResponse.json({ error: 'Webhook mapping service unavailable' }, { status: 503 });
     }
 
@@ -164,7 +171,7 @@ export async function POST(req: NextRequest) {
           .eq('client_id', clientId)
           .maybeSingle();
         if (sessionLookupError) {
-          console.error('[Webhook Session Lookup Error] ID lookup failed:', sessionLookupError);
+          logError('[Webhook Session Lookup Error] ID lookup failed:', sessionLookupError);
           return NextResponse.json({ error: 'Session lookup unavailable' }, { status: 503 });
         }
         session = data;
@@ -180,7 +187,7 @@ export async function POST(req: NextRequest) {
           .limit(1)
           .maybeSingle();
         if (emailLookupError) {
-          console.error('[Webhook Session Lookup Error] Email lookup failed:', emailLookupError);
+          logError('[Webhook Session Lookup Error] Email lookup failed:', emailLookupError);
           return NextResponse.json({ error: 'Session lookup unavailable' }, { status: 503 });
         }
         session = data;
@@ -220,7 +227,7 @@ export async function POST(req: NextRequest) {
           .eq('client_id', clientId);
 
         if (updateErr) {
-          console.error('[Webhook Session Update Error] Failed to update session:', updateErr);
+          logError('[Webhook Session Update Error] Failed to update session:', updateErr);
           return NextResponse.json({ error: `Update failed: ${updateErr.message}` }, { status: 500 });
         }
       }
@@ -232,7 +239,7 @@ export async function POST(req: NextRequest) {
           converted_input: true,
         });
         if (conversionError) {
-          console.error('[Webhook Conversion Error] Atomic transition failed:', conversionError);
+          logError('[Webhook Conversion Error] Atomic transition failed:', conversionError);
           return NextResponse.json({ error: 'Conversion update failed' }, { status: 500 });
         }
         void transitioned;
@@ -246,7 +253,7 @@ export async function POST(req: NextRequest) {
         .eq('client_id', clientId)
         .single();
       if (updatedSessionError || !updatedSession) {
-        console.error('[Webhook Session Update Error] Updated row could not be reloaded:', updatedSessionError);
+        logError('[Webhook Session Update Error] Updated row could not be reloaded:', updatedSessionError);
         return NextResponse.json({ error: 'Unable to verify the updated session' }, { status: 500 });
       }
       session = updatedSession;
@@ -266,7 +273,7 @@ export async function POST(req: NextRequest) {
           .maybeSingle();
 
         if (uniquenessError) {
-          console.error('[Webhook Session Insert Error] Session ID availability check failed:', uniquenessError);
+          logError('[Webhook Session Insert Error] Session ID availability check failed:', uniquenessError);
           return NextResponse.json({ error: 'Unable to allocate a webhook session ID' }, { status: 503 });
         }
 
@@ -316,7 +323,7 @@ export async function POST(req: NextRequest) {
         .single();
 
       if (insertErr) {
-        console.error('[Webhook Session Insert Error] Failed to create session:', insertErr);
+        logError('[Webhook Session Insert Error] Failed to create session:', insertErr);
         return NextResponse.json({ error: `Session creation failed: ${insertErr.message}` }, { status: 500 });
       }
 
@@ -328,7 +335,7 @@ export async function POST(req: NextRequest) {
           converted_input: true,
         });
         if (conversionError) {
-          console.error('[Webhook Conversion Error] Failed to record new-session conversion:', conversionError);
+          logError('[Webhook Conversion Error] Failed to record new-session conversion:', conversionError);
           return NextResponse.json({ error: 'Conversion event update failed' }, { status: 500 });
         }
       }
@@ -349,12 +356,13 @@ export async function POST(req: NextRequest) {
           schema_version: 2,
           webhook_action: isNewSession ? 'create_session' : 'update_session',
           webhook_auth_method: webhookAuthMethod,
-          payload,
-          transformed,
+          payload_key_count: Object.keys(payload).length,
+          transformed_field_count: Object.keys(transformed).length,
+          result_category: isNewSession ? 'created' : 'updated',
         },
       });
     if (webhookEventError) {
-      console.error('[Webhook Ingestion Error] Failed to log webhook event:', webhookEventError);
+      logError('[Webhook Ingestion Error] Failed to log webhook event:', webhookEventError);
       return NextResponse.json({ error: 'Webhook event logging failed' }, { status: 503 });
     }
 
@@ -379,10 +387,12 @@ export async function POST(req: NextRequest) {
       responseObj.churnaut_link = trackedUrl;
     }
 
+    await recordOpsEvent({ component: 'webhook', eventCode: 'webhook_processed', severity: 'info', clientId, metadata: { status: 'processed', auth_method: webhookAuthMethod } });
     return NextResponse.json(responseObj);
 
   } catch (err) {
-    console.error('[Webhook Route Exception] Unhandled error:', err);
+    logError('[Webhook Route Exception] Unhandled error:', err);
+    await recordOpsEvent({ component: 'webhook', eventCode: 'webhook_failed', severity: 'error', clientId: observedClientId, metadata: { failure_category: 'processing_error' } });
     const errMsg = err instanceof Error ? err.message : 'Internal server error';
     return NextResponse.json({ error: errMsg }, { status: 500 });
   }

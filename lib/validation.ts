@@ -158,6 +158,12 @@ export const authSessionRequestSchema = z.object({
   expires_at: z.number().int().positive().optional(),
 }).strict();
 
+// Client-side login telemetry intentionally accepts only a coarse category.
+// Never send credentials, email addresses, provider messages, or tokens.
+export const authFailureRequestSchema = z.object({
+  category: z.enum(['invalid_credentials', 'rate_limited', 'provider_error', 'unknown']),
+}).strict();
+
 export const linksRequestSchema = z.object({
   prospect_name: z.string().trim().max(200).nullable().optional(),
   prospect_email: z.string().email().max(320).nullable().optional().or(z.literal('')),

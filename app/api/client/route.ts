@@ -1,3 +1,4 @@
+import { logError } from '@/lib/observability/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getAuthedClientId } from '@/lib/auth';
@@ -21,7 +22,7 @@ export async function GET(req: NextRequest) {
       .maybeSingle();
 
     if (error) {
-      console.error('[GET Client Error] Database error:', error);
+      logError('[GET Client Error] Database error:', error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
@@ -31,7 +32,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ client });
   } catch (err) {
-    console.error('[GET Client Exception] Unhandled exception:', err);
+    logError('[GET Client Exception] Unhandled exception:', err);
     const errMsg = err instanceof Error ? err.message : 'Internal server error';
     return NextResponse.json({ error: errMsg }, { status: 500 });
   }
@@ -61,13 +62,13 @@ export async function PATCH(req: NextRequest) {
     });
 
     if (error) {
-      console.error('[PATCH Client Error] Failed to update domain:', error);
+      logError('[PATCH Client Error] Failed to update domain:', error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, domain: normalizedDomain });
   } catch (err) {
-    console.error('[PATCH Client Exception] Unhandled exception:', err);
+    logError('[PATCH Client Exception] Unhandled exception:', err);
     const errMsg = err instanceof Error ? err.message : 'Internal server error';
     return NextResponse.json({ error: errMsg }, { status: 500 });
   }

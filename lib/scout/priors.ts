@@ -1,3 +1,4 @@
+import { logError } from '../observability/logger';
 import { supabaseAdmin } from '@/lib/supabase';
 import type { Priors, LossPattern, ScoreTrajectoryPoint, ScoutScore } from './types';
 
@@ -22,7 +23,7 @@ export async function buildPriors(clientId: string): Promise<Priors> {
         typical_won_cycle_days: typeof row.avg_days_to_close === 'number' ? row.avg_days_to_close : undefined,
       };
     }
-  } catch (e) { console.error('[buildPriors] icp_profiles read failed:', e); }
+  } catch (e) { logError('[buildPriors] icp_profiles read failed:', e); }
 
   try {
     const { data } = await supabaseAdmin
@@ -34,7 +35,7 @@ export async function buildPriors(clientId: string): Promise<Priors> {
         single_contact_close_rate: typeof row.single_contact_close_rate === 'number' ? row.single_contact_close_rate : undefined,
       };
     }
-  } catch (e) { console.error('[buildPriors] company_deal_patterns read failed:', e); }
+  } catch (e) { logError('[buildPriors] company_deal_patterns read failed:', e); }
 
   try {
     const { data } = await supabaseAdmin
@@ -46,7 +47,7 @@ export async function buildPriors(clientId: string): Promise<Priors> {
         likely_cause: r.likely_cause ?? undefined,
       }));
     }
-  } catch (e) { console.error('[buildPriors] deal_obituaries read failed:', e); }
+  } catch (e) { logError('[buildPriors] deal_obituaries read failed:', e); }
 
   return priors;
 }
@@ -69,7 +70,7 @@ export async function getScoreTrajectory(clientId: string, dealId: string): Prom
       })
       .filter((x): x is ScoreTrajectoryPoint => x !== null);
   } catch (e) {
-    console.error('[getScoreTrajectory] read failed:', e);
+    logError('[getScoreTrajectory] read failed:', e);
     return [];
   }
 }

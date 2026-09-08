@@ -73,3 +73,6 @@ The Monday digest cron now creates one durable weekly run; a Vercel worker proce
 The recovery procedure is maintained in [docs/runbooks/disaster-recovery.md](docs/runbooks/disaster-recovery.md). Run `npm run dr:audit` before a release or restore drill, and run `npm run dr:verify-restore` only against an isolated recovery target. Hosted backup/PITR settings, secret-vault custody, OAuth applications, and DNS remain outside Git and must be verified by their owners.
 
 For operations, inspect `weekly_digest_runs` and `background_jobs` with the service role, review rows where `status = 'dead'`, and requeue an individual job with `select public.requeue_background_job('<job-id>')`. Apply the queue migration before enabling the worker cron, verify it in staging, and never run the former sequential sender alongside queued delivery jobs.
+## Staging
+
+Use a dedicated Vercel/Supabase/Upstash stack with `APP_ENV=staging` and synthetic data only. See [docs/runbooks/staging.md](docs/runbooks/staging.md), then run `npm run staging:verify` before testing or applying migrations.
