@@ -17,6 +17,12 @@ import { motion } from 'framer-motion';
 import { toast } from '@/hooks/useToast';
 import ErrorState from '@/components/ui/ErrorState';
 import { PLAN_LIMITS } from '@/lib/plans';
+import { PageHeader } from '@/components/dashboard/PageHeader';
+import { Surface } from '@/components/dashboard/Surface';
+import { MetricCard } from '@/components/dashboard/MetricCard';
+import { StatusBadge } from '@/components/dashboard/StatusBadge';
+import { SectionHeader } from '@/components/dashboard/SectionHeader';
+import { ProgressBar } from '@/components/dashboard/ProgressBar';
 
 interface ScoutInboxData {
   top_red_deal: { deal_name: string; next_action: string } | null;
@@ -207,12 +213,6 @@ export default function DashboardPage() {
     return `${diffDays}d ago`;
   };
 
-  const getStatusColorClass = (status: string) => {
-    if (status === 'HEALTHY') return 'text-[var(--green)]';
-    if (status === 'NEEDS ATTENTION') return 'text-[var(--amber)]';
-    return 'text-[var(--red)]';
-  };
-
   if (error) {
     return (
       <div className="py-12">
@@ -222,34 +222,24 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-8 max-w-4xl mx-auto text-[var(--text-secondary)] font-sans">
-      {/* SECTION 1: HEADER */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-[28px] font-bold text-[var(--text-primary)] leading-tight">
-            {getGreeting()}{firstName ? `, ${firstName}.` : '.'}
-          </h1>
-          <p className="text-[15px] text-[var(--text-secondary)] mt-1">
-            {"Here's your pipeline and personalization summary."}
-          </p>
-        </div>
-        {lastUpdated && (
-          <div className="text-[10px] font-mono text-[var(--text-muted)] uppercase tracking-widest">
-            Last Updated: {lastUpdated}
-          </div>
-        )}
-      </div>
+    <div className="mx-auto w-full max-w-[1560px] space-y-8 text-[var(--text-secondary)] font-sans">
+      <PageHeader
+        eyebrow="Revenue intelligence"
+        title={`${getGreeting()}${firstName ? `, ${firstName}` : ''}.`}
+        description="A focused view of pipeline pressure, personalization, and the next action worth taking."
+        actions={lastUpdated ? <span className="dashboard-status dashboard-status-neutral">Updated {lastUpdated}</span> : undefined}
+      />
 
 
 
       {onboarding && !onboardingDismissed && !allComplete && (
-        <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-[12px] p-6 space-y-5">
+        <Surface className="p-5 md:p-6 space-y-5">
           {/* Header row */}
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <h2 className="text-sm font-bold font-mono uppercase tracking-wider text-[var(--text-primary)]">GET STARTED WITH CHURNAUT
+              <h2 className="text-base font-bold text-[var(--text-primary)]">Get started with Churnaut
               </h2>
-              <p className="text-xs font-mono text-[var(--text-secondary)]">
+              <p className="text-sm text-[var(--text-secondary)]">
                 Complete these steps to start personalizing your website.
               </p>
             </div>
@@ -264,7 +254,8 @@ export default function DashboardPage() {
                   localStorage.setItem('churnaut_onboarding_dismissed', 'true');
                   setOnboardingDismissed(true);
                 }}
-                className="text-[var(--text-muted)] hover:text-[var(--text-secondary)] font-mono text-xs transition-colors"
+                aria-label="Dismiss onboarding checklist"
+                className="min-h-10 rounded-lg px-2 text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-secondary)] text-xs transition-colors"
               >
                 [DISMISS]
               </button>
@@ -272,12 +263,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Progress bar */}
-          <div className="h-0.5 bg-[var(--border-subtle)] rounded-full overflow-hidden">
-            <div
-              className="h-full bg-[var(--accent)] rounded-full transition-all duration-500"
-              style={{ width: `${([onboarding.snippet_installed, onboarding.first_link_created, onboarding.first_rule_created, onboarding.crm_connected, onboarding.first_personalized_visit].filter(Boolean).length / 5) * 100}%` }}
-            />
-          </div>
+          <ProgressBar value={([onboarding.snippet_installed, onboarding.first_link_created, onboarding.first_rule_created, onboarding.crm_connected, onboarding.first_personalized_visit].filter(Boolean).length / 5) * 100} label="Setup progress" />
 
           {/* Steps list */}
           <div className="space-y-3">
@@ -325,7 +311,7 @@ export default function DashboardPage() {
             ].map((step) => (
               <div
                 key={step.key}
-                className={`flex items-center justify-between gap-4 p-3.5 rounded-lg border transition-all ${
+                className={`flex items-center justify-between gap-4 p-3.5 rounded-lg border transition-colors ${
                   step.done
                     ? 'border-[var(--green)]/30 bg-[var(--green)]/10 opacity-50'
                     : 'border-[var(--border-subtle)] bg-[var(--bg-elevated)]/30 hover:border-[var(--accent)]/40'
@@ -354,7 +340,7 @@ export default function DashboardPage() {
                 {!step.done && (
                   <Link
                     href={step.href}
-                    className="flex-shrink-0 text-[10px] font-mono text-[var(--accent)] hover:text-white border border-[var(--accent)]/30 hover:border-[var(--accent)] px-3 py-1.5 rounded transition-all whitespace-nowrap"
+                    className="flex min-h-10 flex-shrink-0 items-center text-sm font-semibold text-[var(--accent)] hover:text-[var(--accent-hover)] border border-[var(--accent)]/30 hover:border-[var(--accent)] px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap"
                   >
                     {step.cta}
                   </Link>
@@ -362,22 +348,22 @@ export default function DashboardPage() {
               </div>
             ))}
           </div>
-        </div>
+        </Surface>
       )}
 
       {onboarding && !onboardingDismissed && allComplete && (
-        <div className="border border-[var(--green)]/30 bg-[var(--green)]/10 rounded-[12px] p-4 flex items-center gap-3">
+        <Surface tone="subtle" className="border-[var(--green)]/30 p-4 flex items-center gap-3">
           <span className="w-2 h-2 rounded-full bg-[var(--green)] animate-pulse flex-shrink-0" />
-          <p className="text-xs font-mono text-[var(--green)] font-bold uppercase tracking-wider">
+          <p className="text-sm text-[var(--green)] font-semibold">
             Setup complete — Churnaut is fully configured and running.
           </p>
-        </div>
+        </Surface>
       )}
 
       {loading ? (
         <div className="space-y-8 animate-pulse">
           {/* Skeleton stats grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
             <Skeleton variant="card" height={112} />
             <Skeleton variant="card" height={112} />
             <Skeleton variant="card" height={112} />
@@ -392,64 +378,19 @@ export default function DashboardPage() {
         <div className="space-y-8">
           {/* SECTION 2: KEY STATS */}
           {summary && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {/* Stat 1: Pipeline Pressure */}
-              <div className="stat-card border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-6 py-5 rounded-[12px] flex flex-col justify-between h-28">
-                <div className="text-[12px] text-[var(--text-muted)] uppercase font-semibold tracking-wider">
-                  Pipeline Pressure
-                </div>
-                <div className="flex items-baseline justify-between mt-auto">
-                  <span className="text-[32px] font-bold text-[var(--text-primary)] leading-none font-sans">
-                    <CountUp value={summary.pressure_score} />
-                  </span>
-                  <span className={`text-[12px] font-bold uppercase ${getStatusColorClass(summary.pipeline_status)}`}>
-                    {summary.pipeline_status}
-                  </span>
-                </div>
-              </div>
-
-              {/* Stat 2: Active Rules */}
-              <div className="stat-card border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-6 py-5 rounded-[12px] flex flex-col justify-between h-28">
-                <div className="text-[12px] text-[var(--text-muted)] uppercase font-semibold tracking-wider">
-                  Active Rules
-                </div>
-                <div className="mt-auto">
-                  <span className="text-[32px] font-bold text-[var(--text-primary)] leading-none font-sans">
-                    <CountUp value={summary.active_rules_count} />
-                  </span>
-                </div>
-              </div>
-
-              {/* Stat 3: Tracked Links */}
-              <div className="stat-card border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-6 py-5 rounded-[12px] flex flex-col justify-between h-28">
-                <div className="text-[12px] text-[var(--text-muted)] uppercase font-semibold tracking-wider">
-                  Tracked Links
-                </div>
-                <div className="mt-auto">
-                  <span className="text-[32px] font-bold text-[var(--text-primary)] leading-none font-sans">
-                    <CountUp value={summary.tracked_links_count} />
-                  </span>
-                </div>
-              </div>
-
-              {/* Stat 4: Sessions This Week */}
-              <div className="stat-card border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-6 py-5 rounded-[12px] flex flex-col justify-between h-28">
-                <div className="text-[12px] text-[var(--text-muted)] uppercase font-semibold tracking-wider">
-                  Sessions This Week
-                </div>
-                <div className="mt-auto">
-                  <span className="text-[32px] font-bold text-[var(--text-primary)] leading-none font-sans">
-                    <CountUp value={summary.sessions_this_week} />
-                  </span>
-                </div>
-              </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+              <MetricCard label="Pipeline pressure" value={<CountUp value={summary.pressure_score} />} detail={<StatusBadge tone={summary.pipeline_status === 'HEALTHY' ? 'success' : summary.pipeline_status === 'AT RISK' ? 'danger' : 'warning'}>{summary.pipeline_status}</StatusBadge>} emphasis="primary" icon={<Zap className="h-4 w-4" />} />
+              <MetricCard label="Active rules" value={<CountUp value={summary.active_rules_count} />} detail="Personalization logic currently running" />
+              <MetricCard label="Tracked links" value={<CountUp value={summary.tracked_links_count} />} detail="Prospect paths you can measure" />
+              <MetricCard label="Sessions this week" value={<CountUp value={summary.sessions_this_week} />} detail="Engagement captured by Churnaut" />
             </div>
           )}
 
           {/* SECTION 3: SCOUT INBOX */}
           {summary && (
-            <div className="card border border-[var(--border-subtle)] border-l-[3px] border-l-[var(--amber)] bg-[var(--bg-elevated)] rounded-[12px] p-5">
-              <div className="flex items-center gap-2 text-[var(--text-primary)] font-bold tracking-wider uppercase text-[12px]">
+            <Surface tone="subtle" className="border-l-4 border-l-[var(--amber)] p-5">
+              <SectionHeader title="Scout attention" description="The highest-priority signal from your pipeline today." />
+              <div className="flex items-center gap-2 text-[var(--text-primary)] font-semibold text-sm">
                 <Zap className="text-[var(--amber)] w-4 h-4 fill-[var(--amber)]/20" />
                 SCOUT INBOX — TODAY
               </div>
@@ -487,13 +428,14 @@ export default function DashboardPage() {
                   View full Scout analysis <ArrowRight className="w-3.5 h-3.5" />
                 </Link>
               </div>
-            </div>
+            </Surface>
           )}
 
           {/* SECTION 4: RECENT ACTIVITY */}
           {summary && (
-            <div className="card border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 rounded-[12px]">
-              <div className="flex items-center gap-2 text-[var(--text-primary)] font-bold tracking-wider uppercase text-[12px] border-b border-[var(--border-subtle)] pb-3">
+            <Surface className="p-5 md:p-6">
+              <SectionHeader title="Recent activity" description="The latest signals captured across your workspace." />
+              <div className="flex items-center gap-2 text-[var(--text-primary)] font-semibold text-sm border-b border-[var(--border-subtle)] pb-3">
                 <Activity className="text-[var(--accent)] w-4 h-4" />
                 RECENT ACTIVITY
               </div>
@@ -537,7 +479,7 @@ export default function DashboardPage() {
                   View full analytics <ArrowRight className="w-3.5 h-3.5" />
                 </Link>
               </div>
-            </div>
+            </Surface>
           )}
 
           {/* SECTION 4B: VISIT USAGE BAR */}
@@ -571,13 +513,13 @@ export default function DashboardPage() {
                     ) : (
                       `You've used ${Math.round(pct)}% of your monthly limit.`
                     )}
-                    {' '}<a href="/dashboard/billing" className="underline hover:text-white transition-colors">Upgrade to Growth for 10× more visits &rarr;</a>
+                    {' '}<a href="/dashboard/billing" className="underline hover:text-[#A8552F] transition-colors">Upgrade to Growth for 10× more visits &rarr;</a>
                   </p>
                 )}
                 {pct >= 80 && plan === 'growth' && (
                   <p className="text-[10px] font-mono text-[var(--amber)]">
                     {pct >= 100 ? 'Visit limit reached.' : `You've used ${Math.round(pct)}% of your monthly limit.`}
-                    {' '}<a href="/dashboard/billing" className="underline hover:text-white transition-colors">Upgrade to Pro for unlimited visits &rarr;</a>
+                    {' '}<a href="/dashboard/billing" className="underline hover:text-[#A8552F] transition-colors">Upgrade to Pro for unlimited visits &rarr;</a>
                   </p>
                 )}
               </div>

@@ -10,23 +10,24 @@ interface ErrorStateProps {
 
 export default function ErrorState({ message, onRetry }: ErrorStateProps) {
   return (
-    <div className="border border-[var(--red)]/30 bg-[var(--red)]/10 rounded-lg p-6 max-w-md mx-auto text-center font-sans space-y-4 shadow-lg">
+    <div className="border border-[var(--red)]/30 bg-[var(--red)]/8 rounded-xl p-6 max-w-md mx-auto text-center font-sans space-y-4">
       <div className="flex justify-center">
         <div className="p-3 bg-[var(--red)]/10 border border-[var(--red)]/30 rounded-full text-[var(--red)]">
           <AlertTriangle className="w-6 h-6" />
         </div>
       </div>
       <div className="space-y-1.5">
-        <h3 className="text-xs font-bold text-[var(--red)] uppercase tracking-widest font-mono">
+        <h3 className="text-sm font-bold text-[var(--red)] uppercase tracking-widest">
           DATA SYNC FAILURE
         </h3>
-        <p className="text-xs text-[var(--text-secondary)] leading-normal font-mono">
+        <p className="text-sm text-[var(--text-secondary)] leading-normal">
           {message}
         </p>
       </div>
       <button
         onClick={onRetry}
-        className="inline-flex items-center gap-1.5 border border-[var(--red)]/30 hover:bg-[var(--red)]/10 text-[var(--red)] text-xs py-1.5 px-3 rounded-[6px] transition-all active:scale-[0.98] font-mono font-semibold"
+        aria-label="Retry"
+        className="inline-flex min-h-10 items-center gap-1.5 border border-[var(--red)]/30 hover:bg-[var(--red)]/10 text-[var(--red)] text-sm py-2 px-3 rounded-lg transition-colors font-semibold"
       >
         <RefreshCw className="w-3.5 h-3.5" />
         TRY AGAIN

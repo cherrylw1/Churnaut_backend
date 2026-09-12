@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from '@/hooks/useToast';
+import { PageHeader } from '@/components/dashboard/PageHeader';
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -94,7 +95,8 @@ export default function OnboardingPage() {
   ];
 
   return (
-    <div className="max-w-2xl mx-auto my-8">
+    <div className="max-w-3xl mx-auto my-8 space-y-6">
+      <PageHeader eyebrow="Workspace setup" title="Initialize personalization" description="Answer five quick questions so Churnaut can tailor your first routing rules." />
       {/* Outer Card Container */}
       <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-lg overflow-hidden shadow-2xl flex flex-col min-h-[450px]">
         {/* Card Header & Progress Bar */}
@@ -103,9 +105,9 @@ export default function OnboardingPage() {
             <span className="text-[10px] font-mono text-[#C2683D] tracking-widest uppercase">
               AI Setup Assistant
             </span>
-            <h1 className="text-sm font-bold font-mono text-white mt-0.5">
+            <h2 className="text-sm font-bold font-mono text-[var(--text-primary)] mt-0.5">
               INITIALIZE WORKSPACE PERSONALIZATION
-            </h1>
+            </h2>
           </div>
           <div className="text-right">
             <span className="text-xs font-mono text-[var(--text-secondary)]">
@@ -131,7 +133,7 @@ export default function OnboardingPage() {
                 ✓
               </div>
               <div className="text-center space-y-2">
-                <h2 className="text-sm font-mono font-bold text-white uppercase tracking-wider">
+                <h2 className="text-sm font-mono font-bold text-[var(--text-primary)] uppercase tracking-wider">
                   WORKSPACE INITIALIZED
                 </h2>
                 <p className="text-xs font-mono text-[var(--text-secondary)] max-w-sm mx-auto leading-relaxed">
@@ -179,7 +181,7 @@ export default function OnboardingPage() {
                         onClick={() => setCrm(opt)}
                         className={`border rounded p-3 text-left font-mono text-xs transition-all ${
                           crm === opt
-                            ? 'border-[#C2683D] bg-[#C2683D]/5 text-white'
+                            ? 'border-[#C2683D] bg-[#C2683D]/5 text-[var(--text-primary)]'
                             : 'border-[var(--border-subtle)] bg-[#080B0F]/30 text-[var(--text-secondary)] hover:border-gray-500'
                         }`}
                       >
@@ -236,7 +238,7 @@ export default function OnboardingPage() {
                         onClick={() => setCompanySize(opt)}
                         className={`border rounded p-3 text-left font-mono text-xs transition-all ${
                           companySize === opt
-                            ? 'border-[#C2683D] bg-[#C2683D]/5 text-white'
+                            ? 'border-[#C2683D] bg-[#C2683D]/5 text-[var(--text-primary)]'
                             : 'border-[var(--border-subtle)] bg-[#080B0F]/30 text-[var(--text-secondary)] hover:border-gray-500'
                         }`}
                       >
@@ -268,7 +270,7 @@ export default function OnboardingPage() {
                           onClick={() => handleChannelToggle(opt)}
                           className={`border rounded p-3 text-left font-mono text-xs transition-all flex justify-between items-center ${
                             isChecked
-                              ? 'border-[#C2683D] bg-[#C2683D]/5 text-white'
+                              ? 'border-[#C2683D] bg-[#C2683D]/5 text-[var(--text-primary)]'
                               : 'border-[var(--border-subtle)] bg-[#080B0F]/30 text-[var(--text-secondary)] hover:border-gray-500'
                           }`}
                         >
@@ -308,7 +310,7 @@ export default function OnboardingPage() {
                         onClick={() => setProblem(opt)}
                         className={`border rounded p-3 text-left font-mono text-xs transition-all ${
                           problem === opt
-                            ? 'border-[#C2683D] bg-[#C2683D]/5 text-white'
+                            ? 'border-[#C2683D] bg-[#C2683D]/5 text-[var(--text-primary)]'
                             : 'border-[var(--border-subtle)] bg-[#080B0F]/30 text-[var(--text-secondary)] hover:border-gray-500'
                         }`}
                       >
@@ -328,7 +330,7 @@ export default function OnboardingPage() {
                 type="button"
                 disabled={step === 1}
                 onClick={handlePrev}
-                className="border border-[var(--border-subtle)] hover:border-gray-500 text-xs font-mono py-2 px-6 rounded text-[var(--text-secondary)] hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                className="border border-[var(--border-subtle)] hover:border-gray-500 text-xs font-mono py-2 px-6 rounded text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 BACK
               </button>

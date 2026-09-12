@@ -1,6 +1,7 @@
 'use client'
 import React, { useState, useRef, useEffect } from 'react'
-import { Bot, Send, Loader2, HelpCircle } from 'lucide-react'
+import { Bot, Send, Loader2 } from 'lucide-react'
+import { PageHeader } from '@/components/dashboard/PageHeader'
 
 interface Message {
   id: string
@@ -70,20 +71,8 @@ export default function SupportPage() {
 
   return (
     <div className="max-w-3xl mx-auto flex flex-col h-[calc(100vh-80px)]">
-      <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-5 mb-4 flex-shrink-0">
-        <div>
-          <h1 className="text-[24px] font-bold text-[var(--text-primary)] font-sans flex items-center gap-2.5">
-            <HelpCircle className="text-[var(--accent)] w-6 h-6" />
-            SUPPORT
-          </h1>
-          <p className="text-xs text-[var(--text-muted)] mt-1 font-mono uppercase tracking-wider">
-            Ask anything about Churnaut
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Bot className="w-3.5 h-3.5 text-[var(--accent)]" />
-          <span className="text-[10px] font-mono text-[var(--text-muted)] uppercase tracking-wider">AI Support</span>
-        </div>
+      <div className="flex-shrink-0 mb-4">
+        <PageHeader eyebrow="Workspace" title="Support" description="Ask anything about Churnaut." actions={<div className="flex items-center gap-2 text-xs text-[var(--text-muted)]"><Bot className="h-4 w-4 text-[var(--accent)]" aria-hidden="true" />AI support</div>} />
       </div>
 
       <div className="flex-1 overflow-y-auto space-y-4 pr-1 pb-4">
@@ -140,7 +129,7 @@ export default function SupportPage() {
             rows={1} disabled={loading}
             className="flex-1 bg-[var(--bg-surface)] border border-[var(--border-subtle)] focus:border-[var(--accent)]/50 rounded-[10px] px-4 py-3 text-sm font-sans text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none resize-none transition-all disabled:opacity-50"
             style={{ minHeight: '46px', maxHeight: '120px' }} />
-          <button onClick={handleSend} disabled={loading || !input.trim()}
+          <button onClick={handleSend} disabled={loading || !input.trim()} aria-label="Send message" aria-busy={loading}
             className="bg-[#C2683D] hover:bg-[#A8552F] disabled:opacity-40 disabled:cursor-not-allowed text-white p-3 rounded-[10px] transition-all active:scale-[0.97] flex-shrink-0">
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           </button>

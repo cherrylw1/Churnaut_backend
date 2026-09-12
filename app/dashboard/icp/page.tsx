@@ -6,6 +6,7 @@ import { Target, Lock, RefreshCw, ArrowRight, CheckCircle2 } from 'lucide-react'
 import Skeleton from '@/components/ui/Skeleton';
 import EmptyState from '@/components/ui/EmptyState';
 import ErrorState from '@/components/ui/ErrorState';
+import { PageHeader } from '@/components/dashboard/PageHeader';
 
 interface JobTitleFreq {
   title: string;
@@ -99,27 +100,14 @@ export default function IcpBuilderPage() {
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto text-[var(--text-secondary)]">
-      {/* HEADER SECTION */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-wider font-mono text-[var(--text-primary)] flex items-center gap-2.5">
-            <Target className="text-[var(--accent)] w-6 h-6" />
-            ICP BUILDER
-          </h1>
-          <p className="text-xs font-mono text-[var(--text-secondary)] mt-1">
-            Built from your closed-won deals in HubSpot
-          </p>
-        </div>
-
-        <button
-          onClick={handleBuildIcp}
-          disabled={building}
-          className="bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-mono text-xs font-bold py-2.5 px-4.5 rounded uppercase tracking-wider flex items-center gap-2 transition-all disabled:opacity-50 active:scale-[0.98]"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${building ? 'animate-spin' : ''}`} />
-          {building ? 'ANALYZING...' : 'BUILD MY ICP'}
-        </button>
-      </div>
+      <PageHeader eyebrow="Intelligence" title="ICP builder" description="Built from your closed-won deals in HubSpot." actions={<button
+        onClick={handleBuildIcp}
+        disabled={building}
+        className="min-h-10 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-sans text-sm font-semibold py-2.5 px-4 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
+      >
+        <RefreshCw className={`w-3.5 h-3.5 ${building ? 'animate-spin' : ''}`} />
+        {building ? 'ANALYZING...' : 'BUILD MY ICP'}
+      </button>} />
 
       {errorMsg && (
         <div className="p-4 bg-[var(--red)]/10 border border-[var(--red)]/30 rounded-lg text-[var(--red)] text-xs font-mono">

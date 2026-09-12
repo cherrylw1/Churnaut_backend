@@ -5,6 +5,7 @@ import { supabaseBrowser } from '@/lib/supabase';
 import { Check, AlertTriangle } from 'lucide-react';
 import { PLAN_LIMITS, PLAN_PRICING } from '@/lib/plans';
 import Skeleton from '@/components/ui/Skeleton';
+import { PageHeader } from '@/components/dashboard/PageHeader';
 
 interface ClientProfile {
   plan: string;
@@ -133,13 +134,7 @@ export default function BillingPage() {
   return (
     <div className="space-y-8 max-w-4xl mx-auto font-sans">
 
-      {/* Page header */}
-      <div>
-        <h1 className="text-[24px] font-bold text-[var(--text-primary)]">Billing & Plan</h1>
-        <p className="text-sm text-[var(--text-secondary)] mt-1">
-          Manage your Churnaut subscription. Changes take effect immediately after payment.
-        </p>
-      </div>
+      <PageHeader eyebrow="Workspace" title="Billing & plan" description="Manage your Churnaut subscription. Changes take effect immediately after payment." />
 
       {/* Past due / cancelled warning */}
       {(planStatus === 'past_due' || planStatus === 'cancelled' || planStatus === 'expired') && (
@@ -154,7 +149,7 @@ export default function BillingPage() {
                 ? 'Your subscription has been cancelled. You can resubscribe below.'
                 : 'Your last payment failed. Please update your billing details to avoid losing access.'}
               {' '}
-              <a href="mailto:support@churnaut.com" className="text-[var(--red)] underline hover:text-white transition-colors">
+              <a href="mailto:support@churnaut.com" className="text-[var(--red)] underline hover:text-[#991b1b] transition-colors">
                 Contact support &rarr;
               </a>
             </p>
@@ -192,6 +187,9 @@ export default function BillingPage() {
         </span>
         <button
           onClick={() => setYearly(v => !v)}
+          role="switch"
+          aria-label="Switch between monthly and yearly billing"
+          aria-checked={yearly}
           className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none ${yearly ? 'bg-[#C2683D]' : 'bg-[var(--border-subtle)]'}`}
         >
           <span

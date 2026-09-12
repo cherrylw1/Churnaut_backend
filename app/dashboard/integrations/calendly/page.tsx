@@ -99,13 +99,13 @@ export default function CalendlySettingsPage() {
       <div className="border-b border-[var(--border-subtle)] pb-5 flex justify-between items-end">
         <div>
           <div className="flex items-center space-x-2 text-[10px] font-mono text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
-            <Link href="/dashboard/integrations" className="hover:text-white transition-colors">
+            <Link href="/dashboard/integrations" className="hover:text-[var(--accent)] transition-colors">
               INTEGRATIONS
             </Link>
             <span>/</span>
             <span className="text-[var(--text-secondary)]">CALENDLY</span>
           </div>
-          <h1 className="text-xl font-bold tracking-wider font-mono uppercase text-white">
+          <h1 className="text-xl font-bold tracking-wider font-mono uppercase text-[var(--text-primary)]">
             CALENDLY
           </h1>
           <p className="text-xs font-mono text-[var(--text-secondary)] mt-1">
@@ -115,7 +115,7 @@ export default function CalendlySettingsPage() {
         <div>
           <Link
             href="/dashboard/integrations"
-            className="text-xs font-mono text-[var(--text-secondary)] hover:text-white border border-[var(--border-subtle)] px-4 py-2 rounded transition-colors"
+            className="text-xs font-mono text-[var(--text-secondary)] hover:text-[var(--accent)] border border-[var(--border-subtle)] px-4 py-2 rounded transition-colors"
           >
             ← BACK TO INTEGRATIONS
           </Link>
@@ -139,7 +139,7 @@ export default function CalendlySettingsPage() {
           </div>
           <button
             onClick={() => setMessage(null)}
-            className="text-[var(--text-secondary)] hover:text-white transition-colors font-bold text-xs px-2"
+            className="text-[var(--text-secondary)] hover:text-[var(--accent)] transition-colors font-bold text-xs px-2"
           >
             [X]
           </button>
@@ -151,7 +151,7 @@ export default function CalendlySettingsPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-2">
             <div className="flex items-center space-x-3">
-              <h3 className="text-sm font-mono font-bold text-white uppercase tracking-wider">
+              <h3 className="text-sm font-mono font-bold text-[var(--text-primary)] uppercase tracking-wider">
                 Calendly Integration Status
               </h3>
               {isConnected ? (

@@ -16,7 +16,8 @@ import {
   Menu,
   Plug,
   HelpCircle,
-  CreditCard
+  CreditCard,
+  Search,
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ToastContainer } from '@/components/ui/Toast';
@@ -24,6 +25,7 @@ import KeyboardShortcutsModal from '@/components/ui/KeyboardShortcutsModal';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import SupportWidget from '@/components/SupportWidget';
 import { supabaseBrowser } from '@/lib/supabase';
+import { CommandPalette } from '@/components/dashboard/CommandPalette';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -35,6 +37,60 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [authReady, setAuthReady] = useState(false);
+  const [commandOpen, setCommandOpen] = useState(false);
+  const menuButtonRef = React.useRef<HTMLButtonElement>(null);
+  const mobileNavRef = React.useRef<HTMLElement>(null);
+
+  React.useEffect(() => {
+    if (!sidebarOpen) return;
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    const previousOverflow = document.body.style.overflow;
+    const main = document.getElementById('main-content');
+    const drawer = mobileNavRef.current;
+    const trigger = menuButtonRef.current;
+    document.body.style.overflow = 'hidden';
+    main?.setAttribute('inert', '');
+    const getFocusable = () => Array.from(drawer?.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])') ?? []);
+    const focusTimer = window.setTimeout(() => getFocusable()[0]?.focus(), 20);
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setSidebarOpen(false);
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const focusable = getFocusable();
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.clearTimeout(focusTimer);
+      window.removeEventListener('keydown', onKeyDown);
+      document.body.style.overflow = previousOverflow;
+      main?.removeAttribute('inert');
+      (previouslyFocused ?? trigger)?.focus();
+    };
+  }, [sidebarOpen]);
+
+  React.useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        setCommandOpen(true);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
 
   // Keep the server-side HttpOnly session cookie aligned when Supabase refreshes
   // the browser session in localStorage.
@@ -164,6 +220,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               key={item.label}
               href={item.href}
               onClick={() => setSidebarOpen(false)}
+              aria-current={isActive ? 'page' : undefined}
               className={`flex items-center gap-2.5 px-4 py-2 rounded-md text-[14px] font-sans font-medium transition-all duration-150 relative overflow-hidden ${
                 isActive
                   ? 'bg-[var(--bg-elevated)] text-[var(--text-primary)] font-semibold'
@@ -210,7 +267,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[var(--green)]"></span>
           </span>
           <span className="text-[12px] font-sans font-medium text-[var(--text-secondary)]">
-            Edge: <span className="text-[var(--green)] font-semibold">Active</span>
+            Workspace <span className="text-[var(--green)] font-semibold">ready</span>
           </span>
         </div>
       </nav>
@@ -229,9 +286,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--bg-base)] text-[var(--text-primary)] flex">
+    <div className="dashboard-app min-h-screen bg-[var(--bg-base)] text-[var(--text-primary)] flex">
       {/* Sidebar Panel - Desktop */}
-      <aside className="hidden md:flex w-64 bg-[var(--bg-surface)] border-r border-[var(--border-subtle)] flex-col select-none flex-shrink-0">
+      <aside aria-label="Primary navigation" className="hidden md:flex w-60 bg-[var(--bg-surface)] border-r border-[var(--border-subtle)] flex-col select-none flex-shrink-0">
         {renderSidebarContent()}
       </aside>
 
@@ -253,7 +310,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               animate={{ x: 0 }}
               exit={{ x: -280 }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed top-0 bottom-0 left-0 w-64 bg-[var(--bg-surface)] border-r border-[var(--border-subtle)] z-50 md:hidden flex flex-col select-none shadow-2xl"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Primary navigation"
+              id="mobile-navigation"
+              ref={mobileNavRef}
+              className="fixed top-0 bottom-0 left-0 w-72 max-w-[calc(100vw-2rem)] bg-[var(--bg-surface)] border-r border-[var(--border-subtle)] z-50 md:hidden flex flex-col select-none shadow-2xl"
             >
               {renderSidebarContent()}
             </motion.aside>
@@ -264,12 +326,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-h-screen overflow-x-hidden bg-[var(--bg-base)]">
         {/* Top Header */}
-        <header className="h-16 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] flex items-center justify-between px-4 md:px-8 flex-shrink-0">
+        <header className="h-16 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] flex items-center justify-between px-4 md:px-8 flex-shrink-0" aria-label="Workspace toolbar">
           <div className="flex items-center space-x-3">
             {/* Hamburger Button */}
             <button
+              ref={menuButtonRef}
               onClick={() => setSidebarOpen(true)}
-              className="md:hidden text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors focus:outline-none"
+              aria-label="Open navigation"
+              aria-expanded={sidebarOpen}
+              aria-controls="mobile-navigation"
+              className="md:hidden inline-flex h-10 w-10 items-center justify-center rounded-lg text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)] transition-colors"
             >
               <Menu className="w-5 h-5" />
             </button>
@@ -283,7 +349,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               )}
             </div>
           </div>
-          <div>
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={() => setCommandOpen(true)} className="hidden sm:inline-flex h-10 items-center gap-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 text-xs text-[var(--text-muted)] hover:border-[var(--accent)]/40 hover:text-[var(--text-primary)]" aria-label="Search workspace">
+              <Search className="h-4 w-4" aria-hidden="true" />
+              <span>Search</span><kbd className="ml-2 rounded border border-[var(--border-default)] px-1.5 py-0.5 text-[10px]">⌘K</kbd>
+            </button>
             <button
               type="button"
               onClick={async () => {
@@ -292,7 +362,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 router.push('/login');
                 router.refresh();
               }}
-              className="text-[14px] font-sans font-normal text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all"
+              className="min-h-10 rounded-lg px-3 text-[14px] font-sans font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)] transition-colors"
             >
               Sign Out
             </button>
@@ -300,7 +370,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         </header>
 
         {/* Dynamic Children Panel */}
-        <main className="flex-1 p-4 md:p-8 bg-[var(--bg-base)]">
+        <main className="flex-1 p-4 md:p-8 bg-[var(--bg-base)]" id="main-content">
           <AnimatePresence mode="wait">
             <motion.div
               key={pathname}
@@ -326,6 +396,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
       {/* Support widget helper */}
       <SupportWidget />
+      <CommandPalette open={commandOpen} onClose={() => setCommandOpen(false)} items={allItems.map((item) => ({ ...item, group: item.href.startsWith('/dashboard/scout') || item.href.startsWith('/dashboard/icp') || item.href.startsWith('/dashboard/ai-insights') || item.href.startsWith('/dashboard/analytics') ? 'Intelligence' : item.href.startsWith('/dashboard/integrations') || item.href.startsWith('/dashboard/snippet') ? 'Connect' : item.href.startsWith('/dashboard/settings') || item.href.startsWith('/dashboard/billing') || item.href.startsWith('/dashboard/support') ? 'Workspace' : 'Engage' }))} />
     </div>
   );
 }

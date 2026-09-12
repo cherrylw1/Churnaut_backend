@@ -1,12 +1,14 @@
 'use client';
 
-import React, { useState, useEffect, FormEvent } from 'react';
+import React, { useState, useEffect, useRef, FormEvent } from 'react';
 import { RoutingRule } from '@/types';
 import { Sliders } from 'lucide-react';
 import { toast } from '@/hooks/useToast';
 import EmptyState from '@/components/ui/EmptyState';
 import ErrorState from '@/components/ui/ErrorState';
 import { isCanonicalRuleConfiguration } from '@/lib/validation';
+import { PageHeader } from '@/components/dashboard/PageHeader';
+import { ModalShell } from '@/components/dashboard/ModalShell';
 
 interface PlaybookInput {
   field_name: string;
@@ -166,6 +168,49 @@ export default function RulesPage() {
 
   // Drag and drop local state
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const ruleTriggerRef = useRef<HTMLElement | null>(null);
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 1023px)');
+    const update = () => setIsMobileViewport(media.matches);
+    update();
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
+
+  // Keep the mobile inspector usable as a real dialog while leaving the desktop
+  // master/detail layout unchanged.
+  useEffect(() => {
+    if (!selectedRule || typeof window === 'undefined' || !isMobileViewport) return;
+    const dialog = document.getElementById('rule-editor-dialog');
+    const previousFocus = ruleTriggerRef.current || (document.activeElement as HTMLElement | null);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const focusable = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+    const first = dialog?.querySelector<HTMLElement>(focusable);
+    window.requestAnimationFrame(() => first?.focus());
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setSelectedRule(null);
+      } else if (event.key === 'Tab' && dialog) {
+        const nodes = Array.from(dialog.querySelectorAll<HTMLElement>(focusable));
+        if (nodes.length) {
+          const firstNode = nodes[0];
+          const lastNode = nodes[nodes.length - 1];
+          if (event.shiftKey && document.activeElement === firstNode) { event.preventDefault(); lastNode.focus(); }
+          else if (!event.shiftKey && document.activeElement === lastNode) { event.preventDefault(); firstNode.focus(); }
+        }
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      document.body.style.overflow = previousOverflow;
+      previousFocus?.focus();
+    };
+  }, [selectedRule, isMobileViewport]);
 
   // Helper: Get human-readable action label
   const getActionLabel = (actionType: string) => {
@@ -671,13 +716,7 @@ export default function RulesPage() {
 
   return (
     <div className="space-y-6">
-      {/* Top Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-[var(--border-subtle)] pb-5">
-        <div>
-          <h1 className="text-xl font-bold tracking-wider font-mono">ROUTING RULES</h1>
-          <p className="text-xs font-mono text-[var(--text-secondary)] mt-1">Configure personalized web variants based on inbound context</p>
-        </div>
-
+      <PageHeader eyebrow="Engage" title="Routing rules" ariaLabel="ROUTING RULES" description="Configure personalized web variants based on inbound context" actions={
         <div className="flex border-b border-[var(--border-subtle)] mt-4 md:mt-0">
           <button
             onClick={() => setActiveTab('rules')}
@@ -700,14 +739,14 @@ export default function RulesPage() {
             Playbook Library
           </button>
         </div>
-      </div>
+      } />
 
       {activeTab === 'rules' && (
         <>
 
-      <div className="flex flex-row gap-6 items-start w-full min-w-0">
+      <div className="flex flex-col lg:flex-row gap-6 items-start w-full min-w-0">
         {/* Left Side: Rule Cards Drag Area */}
-        <div className={`${selectedRule ? 'w-[calc(60%-12px)]' : 'w-full'} space-y-4 flex-shrink-0 min-w-0 transition-all duration-200`}>
+        <div className={`${selectedRule ? 'w-full lg:w-[calc(60%-12px)]' : 'w-full'} space-y-4 flex-shrink-0 min-w-0 transition-all duration-200`}>
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-mono text-[var(--accent)] tracking-widest uppercase bg-[var(--border-subtle)]/40 py-1 px-2.5 rounded border border-[var(--border-subtle)]">
               Priority List (Drag to Reorder)
@@ -740,13 +779,12 @@ export default function RulesPage() {
                     onDragOver={handleDragOver}
                     onDrop={(e) => handleDrop(e, index)}
                     onDragEnd={() => setDraggedIndex(null)}
-                    onClick={() => setSelectedRule(rule)}
-                    className={`border rounded-lg p-4 bg-[var(--bg-elevated)] flex items-start gap-4 transition-all cursor-pointer hover:border-gray-500 relative select-none ${
+                    className={`border rounded-lg p-4 bg-[var(--bg-elevated)] flex items-start gap-4 transition-all hover:border-gray-500 relative select-none ${
                       isSelected ? 'border-[var(--accent)] bg-[var(--border-subtle)]/10' : 'border-[var(--border-subtle)]'
                     } ${!rule.active ? 'opacity-65' : ''}`}
                   >
                     {/* Drag Handle Indicator */}
-                    <div className="flex flex-col justify-center items-center h-full text-[var(--text-muted)] hover:text-white cursor-move pt-1">
+                    <div className="flex flex-col justify-center items-center h-full text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-move pt-1">
                       <span className="text-sm tracking-widest font-mono">::</span>
                     </div>
 
@@ -779,6 +817,14 @@ export default function RulesPage() {
                       )}
                     </div>
 
+                    <button
+                      type="button"
+                      onClick={(event) => { ruleTriggerRef.current = event.currentTarget; setSelectedRule(rule); }}
+                      className="rounded border border-[var(--accent)] bg-[var(--bg-surface)] px-2 py-1 text-[10px] font-mono text-[var(--accent)] hover:bg-[var(--accent)] hover:text-white"
+                    >
+                      Edit rule
+                    </button>
+
                     {/* Active/Inactive Switch */}
                     <div 
                       onClick={(e) => e.stopPropagation()} 
@@ -787,6 +833,8 @@ export default function RulesPage() {
                       <button
                         onClick={() => handleToggleActive(rule)}
                         disabled={!isValidStoredRule(rule)}
+                        role="switch"
+                        aria-checked={Boolean(rule.active && isValidStoredRule(rule))}
                         title={!isValidStoredRule(rule) ? 'Repair this invalid configuration before activation' : undefined}
                         className={`w-10 h-5 rounded-full p-0.5 transition-colors focus:outline-none border ${
                           rule.active && isValidStoredRule(rule)
@@ -828,15 +876,15 @@ export default function RulesPage() {
 
         {/* Right Side: Edit Panel */}
         {selectedRule && (
-          <div className="w-[calc(40%-12px)] flex-shrink-0 min-w-0">
-            <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/50 rounded-lg p-6 space-y-6">
+          <div id="rule-editor-dialog" role={isMobileViewport ? 'dialog' : undefined} aria-modal={isMobileViewport ? true : undefined} aria-labelledby={isMobileViewport ? 'rule-editor-title' : undefined} onClick={(event) => { if (event.target === event.currentTarget) setSelectedRule(null); }} className="fixed inset-0 z-40 bg-black/35 p-3 overflow-y-auto lg:static lg:z-auto lg:bg-transparent lg:p-0 lg:overflow-visible w-full lg:w-[calc(40%-12px)] flex-shrink-0 min-w-0">
+            <div className="max-w-2xl lg:max-w-none lg:sticky lg:top-6 ml-auto lg:ml-0 border border-[var(--border-subtle)] bg-[var(--bg-elevated)] rounded-lg p-5 md:p-6 space-y-6 shadow-2xl lg:shadow-none">
               {!isValidStoredRule(selectedRule) && (
                 <div className="rounded border border-[var(--red)]/40 bg-[var(--red)]/10 p-3 text-xs text-[var(--red)]">
                   Invalid configuration: this rule cannot execute. Choose a supported action and valid condition, then save to repair it.
                 </div>
               )}
               <div className="flex justify-between items-center border-b border-[var(--border-subtle)] pb-4">
-                <h2 className="text-sm font-bold tracking-wider font-mono text-[var(--accent)] uppercase">
+                <h2 id="rule-editor-title" className="text-sm font-bold tracking-wider font-mono text-[var(--accent)] uppercase">
                   Edit Rule #{selectedRule.priority}
                 </h2>
                 <button
@@ -867,7 +915,7 @@ export default function RulesPage() {
                 </div>
 
                 {/* Conditions Row */}
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <label className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
                       Condition Type
@@ -900,7 +948,7 @@ export default function RulesPage() {
                 </div>
 
                 {/* Actions Row */}
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <label className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
                       Action Type
@@ -1035,14 +1083,14 @@ export default function RulesPage() {
                         </button>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <div className="space-y-1">
                           <label className="block text-[9px] text-[var(--text-secondary)] uppercase">Signal Type</label>
                           <input
                             type="text"
                             value={aiSignalType}
                             onChange={(e) => setAiSignalType(e.target.value)}
-                            className="w-full bg-[var(--bg-surface)] border border-[var(--border-subtle)] focus:border-[var(--accent)] outline-none px-2 py-1.5 rounded text-white text-[11px]"
+                            className="w-full bg-[var(--bg-surface)] border border-[var(--border-subtle)] focus:border-[var(--accent)] outline-none px-2 py-1.5 rounded text-[var(--text-primary)] text-[11px]"
                           />
                         </div>
                         <div className="space-y-1">
@@ -1052,12 +1100,12 @@ export default function RulesPage() {
                             value={aiJobTitle}
                             onChange={(e) => setAiJobTitle(e.target.value)}
                             placeholder="e.g. VP of Marketing"
-                            className="w-full bg-[var(--bg-surface)] border border-[var(--border-subtle)] focus:border-[var(--accent)] outline-none px-2 py-1.5 rounded text-white text-[11px]"
+                            className="w-full bg-[var(--bg-surface)] border border-[var(--border-subtle)] focus:border-[var(--accent)] outline-none px-2 py-1.5 rounded text-[var(--text-primary)] text-[11px]"
                           />
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-3 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                         <div className="space-y-1">
                           <label className="block text-[9px] text-[var(--text-secondary)] uppercase">Industry</label>
                           <input
@@ -1065,7 +1113,7 @@ export default function RulesPage() {
                             value={aiIndustry}
                             onChange={(e) => setAiIndustry(e.target.value)}
                             placeholder="e.g. SaaS"
-                            className="w-full bg-[var(--bg-surface)] border border-[var(--border-subtle)] focus:border-[var(--accent)] outline-none px-2 py-1.5 rounded text-white text-[11px]"
+                            className="w-full bg-[var(--bg-surface)] border border-[var(--border-subtle)] focus:border-[var(--accent)] outline-none px-2 py-1.5 rounded text-[var(--text-primary)] text-[11px]"
                           />
                         </div>
                         <div className="space-y-1">
@@ -1073,7 +1121,7 @@ export default function RulesPage() {
                           <select
                             value={aiCompanySize}
                             onChange={(e) => setAiCompanySize(e.target.value)}
-                            className="w-full bg-[var(--bg-surface)] border border-[var(--border-subtle)] focus:border-[var(--accent)] outline-none px-1.5 py-1.5 rounded text-white text-[11px]"
+                            className="w-full bg-[var(--bg-surface)] border border-[var(--border-subtle)] focus:border-[var(--accent)] outline-none px-1.5 py-1.5 rounded text-[var(--text-primary)] text-[11px]"
                           >
                             <option value="1-50">1-50</option>
                             <option value="50-200">50-200</option>
@@ -1087,7 +1135,7 @@ export default function RulesPage() {
                           <select
                             value={aiTone}
                             onChange={(e) => setAiTone(e.target.value)}
-                            className="w-full bg-[var(--bg-surface)] border border-[var(--border-subtle)] focus:border-[var(--accent)] outline-none px-1.5 py-1.5 rounded text-white text-[11px]"
+                          className="w-full bg-[var(--bg-surface)] border border-[var(--border-subtle)] focus:border-[var(--accent)] outline-none px-1.5 py-1.5 rounded text-[var(--text-primary)] text-[11px]"
                           >
                             <option value="direct">direct</option>
                             <option value="warm">warm</option>
@@ -1156,23 +1204,10 @@ export default function RulesPage() {
 
       {/* CREATE RULE MODAL */}
       {createModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fadeIn">
-          <div className="w-full max-w-xl bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-            {/* Modal Header */}
-            <div className="flex justify-between items-center px-6 py-4 border-b border-[var(--border-subtle)]">
-              <h2 className="text-sm font-bold tracking-widest font-mono text-[var(--accent)] uppercase">
-                Add New Routing Rule
-              </h2>
-              <button
-                onClick={() => setCreateModalOpen(false)}
-                className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors text-sm font-mono"
-              >
-                [ESC]
-              </button>
-            </div>
+        <ModalShell open={createModalOpen} onClose={() => setCreateModalOpen(false)} title="Add New Routing Rule" className="max-w-xl bg-[var(--bg-elevated)]" contentClassName="p-6">
 
             {/* Modal Content Form */}
-            <form onSubmit={handleCreateRule} className="p-6 space-y-4 overflow-y-auto">
+            <form onSubmit={handleCreateRule} className="space-y-4">
               {/* Signal Type */}
               <div className="space-y-1.5">
                 <label className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
@@ -1192,7 +1227,7 @@ export default function RulesPage() {
               </div>
 
               {/* Conditions Row */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
                     Condition Type
@@ -1225,7 +1260,7 @@ export default function RulesPage() {
               </div>
 
               {/* Actions Row */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
                     Action Type
@@ -1348,8 +1383,7 @@ export default function RulesPage() {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
+        </ModalShell>
       )}
         </>
       )}
@@ -1398,7 +1432,7 @@ export default function RulesPage() {
             <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
               <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-lg max-w-lg w-full overflow-hidden shadow-2xl">
                 <div className="h-14 flex items-center justify-between px-6 border-b border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-primary)]">
-                  <span className="font-mono text-xs font-bold text-white uppercase tracking-wider">
+                  <span className="font-mono text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider">
                     Install Playbook
                   </span>
                   <button
@@ -1416,7 +1450,7 @@ export default function RulesPage() {
                         ✓
                       </div>
                       <div className="space-y-2">
-                        <h3 className="font-mono text-sm font-bold text-white uppercase">
+                        <h3 className="font-mono text-sm font-bold text-[var(--text-primary)] uppercase">
                           Playbook Installed Successfully
                         </h3>
                         <p className="font-mono text-xs text-[var(--text-secondary)] max-w-xs mx-auto leading-relaxed">
@@ -1426,7 +1460,7 @@ export default function RulesPage() {
                       <div className="flex flex-col sm:flex-row gap-3 pt-2">
                         <button
                           onClick={closeInstallModal}
-                          className="flex-1 bg-[var(--border-subtle)] hover:bg-[#252b3e] text-white font-mono text-xs py-2.5 px-4 rounded transition-all active:scale-[0.98]"
+                          className="flex-1 bg-[var(--border-subtle)] hover:bg-[#252b3e] text-[var(--text-primary)] hover:text-white font-mono text-xs py-2.5 px-4 rounded transition-all active:scale-[0.98]"
                         >
                           Close Window
                         </button>
@@ -1441,7 +1475,7 @@ export default function RulesPage() {
                   ) : (
                     <form onSubmit={handleInstallSubmit} className="space-y-5">
                       <div className="space-y-1.5">
-                        <h3 className="font-mono text-sm font-bold text-white uppercase">
+                        <h3 className="font-mono text-sm font-bold text-[var(--text-primary)] uppercase">
                           {selectedPlaybook.name}
                         </h3>
                         <p className="font-mono text-xs text-[var(--text-secondary)] leading-relaxed">
@@ -1479,7 +1513,7 @@ export default function RulesPage() {
                         <button
                           type="button"
                           onClick={closeInstallModal}
-                          className="bg-[var(--border-subtle)] hover:bg-[#252b3e] text-white font-mono text-xs py-2.5 px-5 rounded transition-all active:scale-[0.98]"
+                          className="bg-[var(--border-subtle)] hover:bg-[#252b3e] text-[var(--text-primary)] hover:text-white font-mono text-xs py-2.5 px-5 rounded transition-all active:scale-[0.98]"
                         >
                           Cancel
                         </button>
@@ -1551,7 +1585,7 @@ function PlaybookCard({ playbook, onInstall }: PlaybookCardProps) {
         </div>
         
         <div className="space-y-1.5">
-          <h3 className="text-xs font-mono font-bold text-white uppercase group-hover:text-[var(--accent)] transition-colors leading-tight">
+          <h3 className="text-xs font-mono font-bold text-[var(--text-primary)] uppercase group-hover:text-[var(--accent)] transition-colors leading-tight">
             {playbook.name}
           </h3>
           <p className="text-[11px] font-mono text-[var(--text-secondary)] leading-relaxed min-h-[48px]">
@@ -1566,7 +1600,7 @@ function PlaybookCard({ playbook, onInstall }: PlaybookCardProps) {
         </span>
         <button
           onClick={() => onInstall(playbook)}
-          className="bg-[var(--border-subtle)] hover:bg-[var(--accent)] text-white font-mono text-[10px] py-1.5 px-4 rounded transition-all active:scale-[0.98]"
+          className="bg-[var(--border-subtle)] hover:bg-[var(--accent)] text-[var(--text-primary)] hover:text-white font-mono text-[10px] py-1.5 px-4 rounded transition-all active:scale-[0.98]"
         >
           Install
         </button>

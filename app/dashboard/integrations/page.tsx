@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { PageHeader } from '@/components/dashboard/PageHeader';
 
 export default function IntegrationsPage() {
   const [plan, setPlan] = useState<string>('starter');
@@ -47,13 +48,7 @@ export default function IntegrationsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex justify-between items-center border-b border-[var(--border-subtle)] pb-5">
-        <div>
-          <h1 className="text-xl font-bold tracking-wider font-mono uppercase">INTEGRATIONS</h1>
-          <p className="text-xs font-mono text-[var(--text-secondary)] mt-1">Connect your tools. Set up once, run forever.</p>
-        </div>
-      </div>
+      <PageHeader eyebrow="Connect" title="Integrations" description="Connect your tools. Set up once, run forever." />
 
       {/* Section 1 Label: CRM PLATFORMS */}
       <div className="flex items-center pt-2">

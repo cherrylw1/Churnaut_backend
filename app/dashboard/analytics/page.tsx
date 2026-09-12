@@ -17,6 +17,11 @@ import {
 import { BarChart3 } from 'lucide-react';
 import EmptyState from '@/components/ui/EmptyState';
 import ErrorState from '@/components/ui/ErrorState';
+import { PageHeader } from '@/components/dashboard/PageHeader';
+import { Surface } from '@/components/dashboard/Surface';
+import { MetricCard } from '@/components/dashboard/MetricCard';
+import { DataTable } from '@/components/dashboard/DataTable';
+import { SectionHeader } from '@/components/dashboard/SectionHeader';
 
 interface SummaryStats {
   totalLinksCreatedThisMonth: number;
@@ -155,14 +160,8 @@ export default function AnalyticsPage() {
   } = data;
 
   return (
-    <div className="space-y-6 bg-[var(--bg-base)] text-[var(--text-primary)] min-h-screen">
-      {/* Top Header */}
-      <div className="flex justify-between items-center border-b border-[var(--border-subtle)] pb-5">
-        <div>
-          <h1 className="text-xl font-bold tracking-wider font-mono">ANALYTICS</h1>
-          <p className="text-xs font-mono text-[var(--text-secondary)] mt-1">Real-time performance metrics and signal conversions logs</p>
-        </div>
-      </div>
+    <div className="mx-auto w-full max-w-[1560px] space-y-6 bg-[var(--bg-base)] text-[var(--text-primary)] min-h-screen">
+      <PageHeader eyebrow="Measure impact" title="Analytics" description="Understand which signals, rules, and links are moving the pipeline." />
 
       {recentEvents.length === 0 ? (
         <EmptyState
@@ -176,74 +175,17 @@ export default function AnalyticsPage() {
         <>
           {/* Summary Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1 */}
-        <div className="stat-card border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 rounded-lg flex flex-col justify-between space-y-2">
-          <span className="text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-widest">
-            Links Created (MTD)
-          </span>
-          <div className="flex justify-between items-end">
-            <span className="text-2xl font-bold font-mono text-white">
-              <CountUp value={summaryStats.totalLinksCreatedThisMonth} />
-            </span>
-            <span className="text-[10px] font-mono text-[var(--accent)] bg-[var(--accent)]/20 px-2 py-0.5 rounded border border-[var(--accent)]/40">
-              Active
-            </span>
-          </div>
-        </div>
-
-        {/* Card 2 */}
-        <div className="stat-card border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 rounded-lg flex flex-col justify-between space-y-2">
-          <span className="text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-widest">
-            Click Events (MTD)
-          </span>
-          <div className="flex justify-between items-end">
-            <span className="text-2xl font-bold font-mono text-white">
-              <CountUp value={summaryStats.totalClicksThisMonth} />
-            </span>
-            <span className="text-[10px] font-mono text-[var(--green)] bg-[var(--green)]/10 px-2 py-0.5 rounded border border-[var(--green)]/30">
-              Engaged
-            </span>
-          </div>
-        </div>
-
-        {/* Card 3 */}
-        <div className="stat-card border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 rounded-lg flex flex-col justify-between space-y-2">
-          <span className="text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-widest">
-            Trigger Rate
-          </span>
-          <div className="flex justify-between items-end">
-            <span className="text-2xl font-bold font-mono text-[#C2683D]">
-              <CountUp value={summaryStats.personalizationTriggerRate} suffix="%" />
-            </span>
-            <span className="text-[9px] font-mono text-[var(--text-muted)]">
-              Personalized
-            </span>
-          </div>
-        </div>
-
-        {/* Card 4 */}
-        <div className="stat-card border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 rounded-lg flex flex-col justify-between space-y-2">
-          <span className="text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-widest">
-            Overall Conversion
-          </span>
-          <div className="flex justify-between items-end">
-            <span className="text-2xl font-bold font-mono text-[var(--green)]">
-              <CountUp value={summaryStats.overallConversionRate} suffix="%" />
-            </span>
-            <span className="text-[9px] font-mono text-[var(--text-muted)]">
-              Converted
-            </span>
-          </div>
-        </div>
+        <MetricCard label="Links created (MTD)" value={<CountUp value={summaryStats.totalLinksCreatedThisMonth} />} detail="Active tracked links" />
+        <MetricCard label="Click events (MTD)" value={<CountUp value={summaryStats.totalClicksThisMonth} />} detail="Engagement captured" />
+        <MetricCard label="Trigger rate" value={<CountUp value={summaryStats.personalizationTriggerRate} suffix="%" />} detail="Personalized sessions" emphasis="primary" />
+        <MetricCard label="Overall conversion" value={<CountUp value={summaryStats.overallConversionRate} suffix="%" />} detail="Converted sessions" />
       </div>
 
       {/* Visual Graphs Row */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         {/* Line Chart: Daily personalization volume */}
-        <div className="lg:col-span-3 border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/50 p-5 rounded-lg space-y-4">
-          <h2 className="text-xs font-bold tracking-widest font-mono text-[#C2683D] uppercase">
-            Personalization Volume (Past 30 Days)
-          </h2>
+        <Surface tone="subtle" className="lg:col-span-3 p-5 space-y-4">
+          <SectionHeader title="Personalization volume" description="Past 30 days" />
           <div className="h-64">
             {mounted && (
               <ResponsiveContainer width="100%" height="100%">
@@ -269,7 +211,7 @@ export default function AnalyticsPage() {
                     contentStyle={{
                       backgroundColor: 'var(--bg-surface)',
                       borderColor: 'var(--border-subtle)',
-                      color: '#ffffff',
+                      color: 'var(--text-primary)',
                       fontFamily: 'monospace',
                       fontSize: 11,
                     }}
@@ -287,13 +229,11 @@ export default function AnalyticsPage() {
               </ResponsiveContainer>
             )}
           </div>
-        </div>
+        </Surface>
 
         {/* Bar Chart: Signal Breakdown comparison */}
-        <div className="lg:col-span-2 border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/50 p-5 rounded-lg space-y-4">
-          <h2 className="text-xs font-bold tracking-widest font-mono text-[#C2683D] uppercase">
-            Signal Conversion Comparison
-          </h2>
+        <Surface tone="subtle" className="lg:col-span-2 p-5 space-y-4">
+          <SectionHeader title="Signal conversion" description="Links compared with conversions" />
           <div className="h-64">
             {mounted && (
               <ResponsiveContainer width="100%" height="100%">
@@ -319,7 +259,7 @@ export default function AnalyticsPage() {
                     contentStyle={{
                       backgroundColor: 'var(--bg-surface)',
                       borderColor: 'var(--border-subtle)',
-                      color: '#ffffff',
+                      color: 'var(--text-primary)',
                       fontFamily: 'monospace',
                       fontSize: 11,
                     }}
@@ -337,18 +277,16 @@ export default function AnalyticsPage() {
               </ResponsiveContainer>
             )}
           </div>
-        </div>
+        </Surface>
       </div>
 
       {/* Tables Row: Rule Performance & Rep Conversion */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left: Rule Performance Table */}
-        <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/50 p-5 rounded-lg space-y-4">
-          <h2 className="text-xs font-bold tracking-widest font-mono text-[var(--text-secondary)] uppercase">
-            Rule Conversion Triggers
-          </h2>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs font-mono">
+        <Surface tone="subtle" className="p-5 space-y-4">
+          <SectionHeader title="Rule conversion" description="Which rules are creating movement" />
+          <DataTable label="Rule conversion performance">
+            <table aria-label="Rule conversion performance" className="dashboard-table w-full text-left border-collapse text-xs font-mono">
               <thead>
                 <tr className="border-b border-[var(--border-subtle)] text-[var(--text-secondary)] uppercase">
                   <th className="py-2 pb-3 font-normal">Rule</th>
@@ -391,16 +329,14 @@ export default function AnalyticsPage() {
                 )}
               </tbody>
             </table>
-          </div>
-        </div>
+          </DataTable>
+        </Surface>
 
         {/* Right: Rep Performance Table */}
-        <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/50 p-5 rounded-lg space-y-4">
-          <h2 className="text-xs font-bold tracking-widest font-mono text-[var(--text-secondary)] uppercase">
-            Representative Conversions
-          </h2>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs font-mono">
+        <Surface tone="subtle" className="p-5 space-y-4">
+          <SectionHeader title="Representative conversions" description="Links sent and outcomes" />
+          <DataTable label="Representative conversion performance">
+            <table aria-label="Representative conversion performance" className="dashboard-table w-full text-left border-collapse text-xs font-mono">
               <thead>
                 <tr className="border-b border-[var(--border-subtle)] text-[var(--text-secondary)] uppercase">
                   <th className="py-2 pb-3 font-normal">Representative</th>
@@ -430,15 +366,15 @@ export default function AnalyticsPage() {
                 )}
               </tbody>
             </table>
-          </div>
-        </div>
+          </DataTable>
+        </Surface>
       </div>
 
       {/* Personalization Lift Report */}
       {liftReport && liftReport.personalized_sessions > 0 && (
-        <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/50 p-5 rounded-lg space-y-5">
+        <Surface tone="subtle" className="p-5 space-y-5">
           <div>
-            <h2 className="text-sm font-bold font-mono uppercase tracking-wider text-white">Personalization Lift</h2>
+            <h2 className="text-base font-bold text-[var(--text-primary)]">Personalization lift</h2>
             <p className="text-[10px] font-mono text-[var(--text-muted)] mt-1">
               Conversion rate of personalized visitors vs unmatched visitors (control group)
             </p>
@@ -448,7 +384,7 @@ export default function AnalyticsPage() {
           <div className="grid grid-cols-3 gap-4">
             <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 rounded-lg text-center">
               <p className="text-[10px] font-mono text-[var(--text-muted)] uppercase tracking-wider mb-1">Personalized</p>
-              <p className="text-2xl font-bold font-mono text-white">{liftReport.personalized_rate}%</p>
+              <p className="text-2xl font-bold font-mono text-[var(--text-primary)]">{liftReport.personalized_rate}%</p>
               <p className="text-[10px] font-mono text-[var(--text-muted)] mt-1">{liftReport.personalized_sessions} sessions</p>
             </div>
             <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 rounded-lg text-center">
@@ -468,7 +404,7 @@ export default function AnalyticsPage() {
           {/* Per-rule lift table */}
           {liftReport.rules.length > 0 && (
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs font-mono">
+              <table className="dashboard-table w-full text-left border-collapse text-xs font-mono">
                 <thead>
                   <tr className="border-b border-[var(--border-subtle)]">
                     <th className="py-2 pr-4 text-[10px] text-[var(--text-muted)] uppercase tracking-wider font-normal">Signal</th>
@@ -481,9 +417,9 @@ export default function AnalyticsPage() {
                 <tbody>
                   {liftReport.rules.map((rule, idx) => (
                     <tr key={rule.rule_id} className={idx < liftReport.rules.length - 1 ? 'border-b border-[var(--border-subtle)]/50' : ''}>
-                      <td className="py-2.5 pr-4 text-white">{rule.signal_type}</td>
+                      <td className="py-2.5 pr-4 text-[var(--text-primary)]">{rule.signal_type}</td>
                       <td className="py-2.5 pr-4 text-[var(--text-secondary)]">{rule.action_type}</td>
-                      <td className="py-2.5 pr-4 text-white text-right">{rule.personalized_rate}% <span className="text-[var(--text-muted)]">({rule.personalized_sessions})</span></td>
+                      <td className="py-2.5 pr-4 text-[var(--text-primary)] text-right">{rule.personalized_rate}% <span className="text-[var(--text-muted)]">({rule.personalized_sessions})</span></td>
                       <td className="py-2.5 pr-4 text-[var(--text-secondary)] text-right">{rule.baseline_rate}%</td>
                       <td className={`py-2.5 text-right font-bold ${rule.lift_pp > 0 ? 'text-[var(--green)]' : rule.lift_pp < 0 ? 'text-[var(--red)]' : 'text-[var(--text-muted)]'}`}>
                         {rule.lift_pp > 0 ? '+' : ''}{rule.lift_pp}pp
@@ -494,16 +430,14 @@ export default function AnalyticsPage() {
               </table>
             </div>
           )}
-        </div>
+        </Surface>
       )}
 
       {/* Bottom Table: Recent Activity Log */}
-      <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/50 p-5 rounded-lg space-y-4">
-        <h2 className="text-xs font-bold tracking-widest font-mono text-[var(--text-secondary)] uppercase">
-          Recent Activity Logs
-        </h2>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs font-mono">
+      <Surface tone="subtle" className="p-5 space-y-4">
+        <SectionHeader title="Recent activity" description="The latest personalized sessions" />
+        <DataTable label="Recent analytics activity">
+          <table aria-label="Recent analytics activity" className="dashboard-table w-full text-left border-collapse text-xs font-mono">
             <thead>
               <tr className="border-b border-[var(--border-subtle)] text-[var(--text-secondary)] uppercase">
                 <th className="py-2 pb-3 font-normal">Prospect Name</th>
@@ -537,8 +471,8 @@ export default function AnalyticsPage() {
               )}
             </tbody>
           </table>
-        </div>
-      </div>
+        </DataTable>
+      </Surface>
       </>)}
     </div>
   );

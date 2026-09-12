@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { PageHeader } from '@/components/dashboard/PageHeader';
 
 interface ClientProfile {
   id: string;
@@ -79,11 +80,7 @@ export default function SnippetPage() {
 
   return (
     <div className="space-y-8 max-w-4xl">
-      {/* Header */}
-      <div className="border-b border-[var(--border-subtle)] pb-5">
-        <h1 className="text-xl font-bold tracking-wider font-mono">SNIPPET INSTALLATION</h1>
-        <p className="text-xs font-mono text-[var(--text-secondary)] mt-1">Connect your website to Churnaut to enable real-time content personalizations</p>
-      </div>
+      <PageHeader eyebrow="Connect" title="Snippet installation" description="Connect your website to Churnaut to enable real-time content personalizations." />
 
       {/* STEP 1: Installation Code */}
       <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-lg p-6 space-y-4">
@@ -207,13 +204,15 @@ export default function SnippetPage() {
           <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/30 rounded-lg overflow-hidden">
             <button
               onClick={() => toggleGuide('custom')}
+              aria-expanded={openGuide === 'custom'}
+              aria-controls="snippet-guide-custom"
               className="w-full text-left p-4 font-mono text-xs font-bold text-[var(--text-secondary)] uppercase hover:bg-[var(--border-subtle)]/20 transition-all flex justify-between items-center"
             >
               <span>Custom HTML Layouts</span>
               <span>{openGuide === 'custom' ? '[-]' : '[+]'}</span>
             </button>
             {openGuide === 'custom' && (
-              <div className="p-4 border-t border-[var(--border-subtle)] text-xs font-mono text-[var(--text-secondary)] space-y-2.5 leading-relaxed bg-[var(--bg-elevated)]/20">
+              <div id="snippet-guide-custom" className="p-4 border-t border-[var(--border-subtle)] text-xs font-mono text-[var(--text-secondary)] space-y-2.5 leading-relaxed bg-[var(--bg-elevated)]/20">
                 <p>
                   {"To install the snippet on a custom server-side or static website, paste the script tags directly inside the head block, after other third-party dependencies:"}
                 </p>
@@ -228,13 +227,15 @@ export default function SnippetPage() {
           <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/30 rounded-lg overflow-hidden">
             <button
               onClick={() => toggleGuide('webflow')}
+              aria-expanded={openGuide === 'webflow'}
+              aria-controls="snippet-guide-webflow"
               className="w-full text-left p-4 font-mono text-xs font-bold text-[var(--text-secondary)] uppercase hover:bg-[var(--border-subtle)]/20 transition-all flex justify-between items-center"
             >
               <span>Webflow Setup</span>
               <span>{openGuide === 'webflow' ? '[-]' : '[+]'}</span>
             </button>
             {openGuide === 'webflow' && (
-              <div className="p-4 border-t border-[var(--border-subtle)] text-xs font-mono text-[var(--text-secondary)] space-y-2.5 leading-relaxed bg-[var(--bg-elevated)]/20">
+              <div id="snippet-guide-webflow" className="p-4 border-t border-[var(--border-subtle)] text-xs font-mono text-[var(--text-secondary)] space-y-2.5 leading-relaxed bg-[var(--bg-elevated)]/20">
                 <p>{"1. Go to your Webflow Dashboard and select your project Project Settings."}</p>
                 <p>{"2. Navigate to the Custom Code tab."}</p>
                 <p>{"3. Paste your two-line script tag into the Head Code block text field."}</p>
@@ -247,13 +248,15 @@ export default function SnippetPage() {
           <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/30 rounded-lg overflow-hidden">
             <button
               onClick={() => toggleGuide('wordpress')}
+              aria-expanded={openGuide === 'wordpress'}
+              aria-controls="snippet-guide-wordpress"
               className="w-full text-left p-4 font-mono text-xs font-bold text-[var(--text-secondary)] uppercase hover:bg-[var(--border-subtle)]/20 transition-all flex justify-between items-center"
             >
               <span>WordPress Setup</span>
               <span>{openGuide === 'wordpress' ? '[-]' : '[+]'}</span>
             </button>
             {openGuide === 'wordpress' && (
-              <div className="p-4 border-t border-[var(--border-subtle)] text-xs font-mono text-[var(--text-secondary)] space-y-2.5 leading-relaxed bg-[var(--bg-elevated)]/20">
+              <div id="snippet-guide-wordpress" className="p-4 border-t border-[var(--border-subtle)] text-xs font-mono text-[var(--text-secondary)] space-y-2.5 leading-relaxed bg-[var(--bg-elevated)]/20">
                 <p>{"1. Log in to your WordPress Dashboard."}</p>
                 <p>{"2. Go to Plugins > Add New and install a header injection plugin like Insert Headers and Footers."}</p>
                 <p>{"3. Go to Settings > Insert Headers and Footers."}</p>
@@ -267,13 +270,15 @@ export default function SnippetPage() {
           <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/30 rounded-lg overflow-hidden">
             <button
               onClick={() => toggleGuide('shopify')}
+              aria-expanded={openGuide === 'shopify'}
+              aria-controls="snippet-guide-shopify"
               className="w-full text-left p-4 font-mono text-xs font-bold text-[var(--text-secondary)] uppercase hover:bg-[var(--border-subtle)]/20 transition-all flex justify-between items-center"
             >
               <span>Shopify Setup</span>
               <span>{openGuide === 'shopify' ? '[-]' : '[+]'}</span>
             </button>
             {openGuide === 'shopify' && (
-              <div className="p-4 border-t border-[var(--border-subtle)] text-xs font-mono text-[var(--text-secondary)] space-y-2.5 leading-relaxed bg-[var(--bg-elevated)]/20">
+              <div id="snippet-guide-shopify" className="p-4 border-t border-[var(--border-subtle)] text-xs font-mono text-[var(--text-secondary)] space-y-2.5 leading-relaxed bg-[var(--bg-elevated)]/20">
                 <p>{"1. In your Shopify Admin, navigate to Online Store > Themes."}</p>
                 <p>{"2. Click Actions (...) > Edit Code under your active theme."}</p>
                 <p>{"3. Open the Layout directory and select the theme.liquid template."}</p>

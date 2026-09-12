@@ -82,15 +82,17 @@ function ToastCard({ item }: { item: ToastItem }) {
       animate={{ opacity: 1, x: 0, scale: 1 }}
       exit={{ opacity: 0, x: 100, scale: 0.9 }}
       transition={{ type: 'spring', damping: 25, stiffness: 250 }}
-      className={`pointer-events-auto w-full bg-[#0d1117] border border-[var(--border-subtle)] ${getBorderClass()} rounded-r-md p-3 shadow-2xl relative overflow-hidden flex gap-3 items-start select-none`}
+      role="status"
+      className={`pointer-events-auto w-full bg-[var(--bg-surface)] border border-[var(--border-subtle)] ${getBorderClass()} rounded-xl p-3.5 shadow-lg relative overflow-hidden flex gap-3 items-start select-none`}
     >
       {getIcon()}
-      <div className="flex-1 font-mono text-xs text-gray-200 pr-4 leading-normal break-words">
+      <div className="flex-1 font-sans text-sm text-[var(--text-primary)] pr-4 leading-normal break-words">
         {item.message}
       </div>
       <button
         onClick={() => toastManager.remove(item.id)}
-        className="text-[var(--text-muted)] hover:text-white transition-colors focus:outline-none"
+        aria-label="Dismiss notification"
+        className="inline-flex h-8 w-8 items-center justify-center rounded-md text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)] transition-colors"
       >
         <X className="w-3.5 h-3.5" />
       </button>

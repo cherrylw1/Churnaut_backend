@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { PageHeader } from '@/components/dashboard/PageHeader';
 
 const VISIT_LIMITS: Record<string, number> = { starter: 500, growth: 5000, pro: Infinity };
 const PLAN_LABELS: Record<string, string> = { starter: 'Starter', growth: 'Growth', pro: 'Pro' };
@@ -116,13 +117,7 @@ export default function SettingsPage() {
   return (
     <div className="space-y-8 max-w-4xl font-sans">
 
-      {/* Page header */}
-      <div>
-        <h1 className="text-[24px] font-bold text-[var(--text-primary)]">Settings</h1>
-        <p className="text-sm text-[var(--text-secondary)] mt-1">
-          Manage your account, workspace, and plan.
-        </p>
-      </div>
+      <PageHeader eyebrow="Workspace" title="Settings" description="Manage your account, workspace, and plan." />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
@@ -233,7 +228,7 @@ export default function SettingsPage() {
 
               <Link
                 href="/dashboard/billing"
-                className="block w-full text-center border border-[#C2683D]/30 hover:border-[#C2683D] hover:bg-[#C2683D]/5 text-[#C2683D] hover:text-white text-xs font-semibold font-sans py-2.5 rounded-[8px] transition-all"
+                className="block w-full text-center border border-[#C2683D]/30 hover:border-[#C2683D] hover:bg-[#C2683D]/5 text-[#C2683D] hover:text-[#A8552F] text-xs font-semibold font-sans py-2.5 rounded-[8px] transition-all"
               >
                 Manage Billing &rarr;
               </Link>

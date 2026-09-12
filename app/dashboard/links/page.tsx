@@ -6,6 +6,8 @@ import { Link2 } from 'lucide-react';
 import { toast } from '@/hooks/useToast';
 import EmptyState from '@/components/ui/EmptyState';
 import ErrorState from '@/components/ui/ErrorState';
+import { PageHeader } from '@/components/dashboard/PageHeader';
+import { ModalShell } from '@/components/dashboard/ModalShell';
 
 // Signal type options as requested
 const SIGNAL_OPTIONS = [
@@ -256,24 +258,17 @@ export default function LinksPage() {
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex justify-between items-center border-b border-[var(--border-subtle)] pb-5">
-        <div>
-          <h1 className="text-xl font-bold tracking-wider font-mono">TRACKED LINKS</h1>
-          <p className="text-xs font-mono text-[var(--text-secondary)] mt-1">Generate personalized redirect URLs for outbound links</p>
-        </div>
-        <button
+      <PageHeader eyebrow="Engage" title="Tracked links" description="Generate personalized redirect URLs for outbound links" actions={<button
           onClick={() => {
             setGeneratedUrl(null);
             setBulkResults(null);
             setBulkError(null);
             setModalOpen(true);
           }}
-          className="bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-mono text-xs py-2 px-4 rounded transition-all active:scale-[0.98]"
+          className="min-h-10 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-sans text-sm font-semibold py-2 px-4 rounded-lg transition-colors"
         >
           + NEW LINK
-        </button>
-      </div>
+        </button>} />
 
       {/* Main Table */}
       {loading ? (
@@ -295,8 +290,8 @@ export default function LinksPage() {
         />
       ) : (
         <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/50 rounded-lg overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+          <div className="hidden md:block overflow-x-auto">
+            <table className="dashboard-table w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-xs font-mono text-[var(--text-secondary)] uppercase">
                   <th className="py-3.5 px-4 font-normal">Prospect Name</th>
@@ -357,6 +352,27 @@ export default function LinksPage() {
               </tbody>
             </table>
           </div>
+          <div className="md:hidden divide-y divide-[var(--border-subtle)]">
+            {links.map((link) => {
+              const status = getStatus(link.expires_at);
+              const displayUrl = link.tracked_url || '';
+              return (
+                <article key={link.id} className="p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <h2 className="truncate text-sm font-semibold text-[var(--text-primary)]">{link.prospect_name || 'Unnamed prospect'}</h2>
+                      <p className="truncate text-xs text-[var(--text-secondary)]">{link.company_name || 'No company'} · {link.signal_type || 'Other'}</p>
+                    </div>
+                    <span className={`shrink-0 text-[10px] uppercase font-mono px-2 py-1 rounded border ${status === 'Active' ? 'bg-[var(--green)]/10 text-[var(--green)] border-[var(--green)]/30' : status === 'Permanent' ? 'bg-[var(--accent)]/10 text-[var(--accent)] border-[var(--accent)]/30' : 'bg-[var(--red)]/10 text-[var(--red)] border-[var(--red)]/30'}`}>{status}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 text-xs text-[var(--text-muted)]">
+                    <span>{link.click_count} clicks · {new Date(link.created_at).toLocaleDateString()}</span>
+                    <button onClick={() => displayUrl && handleCopy(displayUrl, link.id)} disabled={!displayUrl} className="min-h-9 border border-[var(--border-subtle)] hover:border-[var(--accent)] hover:text-[var(--accent)] px-3 rounded font-mono text-[10px] disabled:opacity-40">{copiedId === link.id ? 'COPIED!' : 'COPY'}</button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
           {totalPages > 1 && (
             <div className="flex items-center justify-end gap-3 border-t border-[var(--border-subtle)] px-4 py-3 font-mono text-xs">
               <button disabled={page <= 1} onClick={() => fetchLinks(page - 1)} className="disabled:opacity-40">← PREVIOUS</button>
@@ -369,24 +385,13 @@ export default function LinksPage() {
 
       {/* Creation Modal */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fadeIn">
-          <div className="w-full max-w-2xl bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-            {/* Modal Header */}
-            <div className="flex justify-between items-center px-6 py-4 border-b border-[var(--border-subtle)]">
-              <h2 className="text-sm font-bold tracking-widest font-mono text-[var(--accent)] uppercase">
-                Generate Tracked Link
-              </h2>
-              <button
-                onClick={() => setModalOpen(false)}
-                className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors text-sm font-mono"
-              >
-                [ESC]
-              </button>
-            </div>
+        <ModalShell open={modalOpen} onClose={() => setModalOpen(false)} title="Generate Tracked Link" className="max-w-2xl bg-[var(--bg-elevated)]" contentClassName="p-0">
 
             {/* Modal Tabs */}
-            <div className="flex border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]">
+            <div className="flex border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]" role="tablist" aria-label="Link generation mode">
               <button
+                role="tab"
+                aria-selected={activeTab === 'single'}
                 onClick={() => {
                   setGeneratedUrl(null);
                   setActiveTab('single');
@@ -400,6 +405,8 @@ export default function LinksPage() {
                 Single Link
               </button>
               <button
+                role="tab"
+                aria-selected={activeTab === 'bulk'}
                 disabled={plan === 'starter'}
                 onClick={() => {
                   setBulkResults(null);
@@ -460,7 +467,7 @@ export default function LinksPage() {
                   ) : (
                     /* FORM SCREEN */
                     <form onSubmit={handleSingleSubmit} className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-1.5">
                           <label className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
                             Prospect Name
@@ -487,7 +494,7 @@ export default function LinksPage() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-1.5">
                           <label className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
                             Company Name
@@ -514,7 +521,7 @@ export default function LinksPage() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-1.5">
                           <label className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
                             Signal Type
@@ -545,8 +552,8 @@ export default function LinksPage() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-3 gap-4">
-                        <div className="col-span-2 space-y-1.5">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div className="sm:col-span-2 space-y-1.5">
                           <label className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
                             Destination URL (Required)
                           </label>
@@ -653,8 +660,7 @@ export default function LinksPage() {
                 </div>
               )}
             </div>
-          </div>
-        </div>
+        </ModalShell>
       )}
     </div>
   );

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from '@/hooks/useToast';
 import UpgradeGate from '@/components/UpgradeGate';
+import { PageHeader } from '@/components/dashboard/PageHeader';
 
 
 interface AnomalyAlert {
@@ -161,13 +162,7 @@ export default function AiInsightsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Top Header Brand */}
-      <div className="flex justify-between items-center border-b border-[var(--border-subtle)] pb-5">
-        <div>
-          <h1 className="text-xl font-bold tracking-wider font-mono">AI REVENUE INSIGHTS</h1>
-          <p className="text-xs font-mono text-[var(--text-secondary)] mt-1">Autonomous performance digests and routing rule anomaly detection</p>
-        </div>
-      </div>
+      <PageHeader eyebrow="Intelligence" title="AI revenue insights" description="Autonomous performance digests and routing-rule anomaly detection." />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left / Middle: Weekly Digest Panel */}

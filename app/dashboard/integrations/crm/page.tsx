@@ -95,13 +95,13 @@ export default function CrmIndexPage() {
       <div className="border-b border-[var(--border-subtle)] pb-5 flex justify-between items-end">
         <div>
           <div className="flex items-center space-x-2 text-[10px] font-mono text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
-            <Link href="/dashboard/integrations" className="hover:text-white transition-colors">
+            <Link href="/dashboard/integrations" className="hover:text-[var(--accent)] transition-colors">
               INTEGRATIONS
             </Link>
             <span>/</span>
             <span className="text-[var(--text-secondary)]">CRM INTEGRATIONS</span>
           </div>
-          <h1 className="text-xl font-bold tracking-wider font-mono uppercase text-white">
+          <h1 className="text-xl font-bold tracking-wider font-mono uppercase text-[var(--text-primary)]">
             CRM INTEGRATIONS
           </h1>
           <p className="text-xs font-mono text-[var(--text-secondary)] mt-1">
@@ -127,7 +127,7 @@ export default function CrmIndexPage() {
           </div>
           <button
             onClick={() => setMessage(null)}
-            className="text-[var(--text-secondary)] hover:text-white transition-colors font-bold text-xs px-2"
+            className="text-[var(--text-secondary)] hover:text-[var(--accent)] transition-colors font-bold text-xs px-2"
           >
             [X]
           </button>
@@ -155,7 +155,7 @@ export default function CrmIndexPage() {
             <div>
               <Link
                 href="/dashboard/integrations/crm/hubspot"
-                className="block w-full py-2 px-3 border border-[var(--border-subtle)] hover:border-[#C2683D] hover:text-white text-[var(--text-secondary)] font-mono text-xs rounded text-center transition-all hover:bg-[#C2683D]/5 active:scale-[0.98]"
+                className="block w-full py-2 px-3 border border-[var(--border-subtle)] hover:border-[#C2683D] hover:text-[#A8552F] text-[var(--text-secondary)] font-mono text-xs rounded text-center transition-all hover:bg-[#C2683D]/5 active:scale-[0.98]"
               >
                 MANAGE →
               </Link>

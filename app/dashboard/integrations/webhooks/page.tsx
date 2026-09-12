@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { toast } from '@/hooks/useToast';
+import { PageHeader } from '@/components/dashboard/PageHeader';
 
 interface ClientProfile {
   id: string;
@@ -75,6 +76,7 @@ export default function WebhooksSettingsPage() {
   const [draggedField, setDraggedField] = useState<string | null>(null);
   const [hoveredTarget, setHoveredTarget] = useState<string | null>(null);
   const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
+  const [selectedSourceField, setSelectedSourceField] = useState('');
 
   // Fetch client details, mappings, and logs
   const fetchData = async () => {
@@ -198,6 +200,28 @@ export default function WebhooksSettingsPage() {
     }
   };
 
+  const handleKeyboardMap = async (internalField: string) => {
+    if (!selectedSourceField) return;
+    try {
+      const res = await fetch('/api/webhook/mappings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ external_field: selectedSourceField, internal_field: internalField }),
+      });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to save webhook mapping');
+      }
+      const data = await res.json();
+      setMappings((prev) => [...prev.filter((m) => m.internal_field !== internalField), data.mapping || { id: crypto.randomUUID(), external_field: selectedSourceField, internal_field: internalField }]);
+      toast.success('Webhook mapping saved');
+      setSelectedSourceField('');
+    } catch (error) {
+      console.error(error);
+      toast.error(error instanceof Error ? error.message : 'An error occurred while saving the mapping.');
+    }
+  };
+
   // Remove a webhook mapping
   const handleRemoveMapping = async (mappingId: string) => {
     try {
@@ -228,11 +252,7 @@ export default function WebhooksSettingsPage() {
 
   return (
     <div className="space-y-8 bg-[var(--bg-base)] text-[var(--text-primary)] min-h-screen">
-      {/* Header */}
-      <div className="border-b border-[var(--border-subtle)] pb-5">
-        <h1 className="text-xl font-bold tracking-wider font-mono">WEBHOOK SETTINGS</h1>
-        <p className="text-xs font-mono text-[var(--text-secondary)] mt-1">Configure field mappings and receive incoming events from Hubspot, Salesforce, or other CRMs</p>
-      </div>
+      <PageHeader eyebrow="Connect" title="Webhook settings" description="Configure field mappings and receive incoming events from your CRM." />
 
       {loading ? (
         <div className="text-center py-12 text-[var(--text-muted)] font-mono text-sm bg-[var(--bg-base)] text-[var(--text-primary)] min-h-screen">RETRIEVING WEBHOOK SYSTEM STATUS...</div>
@@ -407,8 +427,13 @@ export default function WebhooksSettingsPage() {
                             </button>
                           </div>
                         ) : (
-                          <div className="text-[10px] font-mono text-[var(--text-muted)] border border-dashed border-[var(--border-subtle)] px-4 py-2 rounded">
-                            DROP EXTERNAL FIELD HERE
+                          <div className="flex items-center gap-2">
+                            <span className="hidden sm:block text-[10px] font-mono text-[var(--text-muted)] border border-dashed border-[var(--border-subtle)] px-3 py-2 rounded">DROP FIELD</span>
+                            <select aria-label={`Map ${field.label}`} value={selectedSourceField} onChange={(e) => setSelectedSourceField(e.target.value)} className="max-w-[150px] bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border-subtle)] text-[10px] px-2 py-2 rounded font-mono">
+                              <option value="">Select field…</option>
+                              {sourceFields.map((source) => <option key={source} value={source}>{source}</option>)}
+                            </select>
+                            <button type="button" onClick={() => handleKeyboardMap(field.key)} disabled={!selectedSourceField} className="border border-[var(--accent)]/40 text-[var(--accent)] text-[10px] font-mono px-2 py-2 rounded disabled:opacity-40">MAP</button>
                           </div>
                         )}
                       </div>
@@ -445,11 +470,15 @@ export default function WebhooksSettingsPage() {
                   return (
                     <div key={log.id} className="transition-colors hover:bg-[var(--border-subtle)]/10">
                       {/* Log Header Row */}
-                      <div
+                      <button
+                        type="button"
                         onClick={() => setExpandedLogId(isExpanded ? null : log.id)}
-                        className="p-3.5 flex items-center justify-between text-xs font-mono cursor-pointer"
+                        aria-expanded={isExpanded}
+                        aria-controls={`webhook-log-${log.id}`}
+                        className="w-full text-left"
                       >
-                        <div className="flex items-center gap-3">
+                        <span className="p-3.5 flex items-center justify-between text-xs font-mono">
+                        <span className="flex items-center gap-3">
                           <span className="text-[10px] bg-[var(--green)]/10 text-[var(--green)] border border-[var(--green)]/30 px-2 py-0.5 rounded uppercase">
                             POST
                           </span>
@@ -464,16 +493,17 @@ export default function WebhooksSettingsPage() {
                               SID: <span className="text-[#C2683D]">{log.session_id}</span>
                             </span>
                           )}
-                        </div>
-                        <div className="flex items-center gap-3 text-[var(--text-secondary)]">
+                        </span>
+                        <span className="flex items-center gap-3 text-[var(--text-secondary)]">
                           <span>{dateStr}</span>
-                          <span className="text-[var(--text-muted)] font-bold">{isExpanded ? '[-]' : '[+]'}</span>
-                        </div>
-                      </div>
+                          <span aria-hidden="true" className="text-[var(--text-muted)] font-bold">{isExpanded ? '[-]' : '[+]'}</span>
+                        </span>
+                        </span>
+                      </button>
 
                       {/* Log Details JSON */}
                       {isExpanded && (
-                        <div className="p-4 bg-[#080B0F] border-t border-[var(--border-subtle)] text-xs font-mono space-y-4">
+                        <div id={`webhook-log-${log.id}`} className="p-4 bg-[#080B0F] border-t border-[var(--border-subtle)] text-xs font-mono space-y-4">
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {/* Operational metadata only */}
                             <div className="space-y-1.5">

@@ -22,14 +22,14 @@ export default function EmptyState({
   onClick,
 }: EmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center text-center py-16 px-6 border border-[var(--border-subtle)] rounded-lg bg-[var(--bg-surface)] max-w-md mx-auto font-sans shadow-[0_1px_4px_rgba(0,0,0,0.2)]">
-      <div className="p-3.5 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-full text-[var(--text-muted)] mb-4">
+    <div className="dashboard-empty-panel flex flex-col items-center justify-center text-center py-16 px-6 max-w-md mx-auto font-sans">
+      <div className="dashboard-empty-icon mb-4">
         <Icon className="w-6 h-6" />
       </div>
-      <h3 className="text-sm font-bold text-[var(--text-primary)] uppercase tracking-wider font-mono mb-2">
+      <h3 className="text-base font-bold text-[var(--text-primary)] mb-2">
         {title}
       </h3>
-      <p className="text-xs text-[var(--text-secondary)] max-w-xs leading-normal mb-6 font-mono">
+      <p className="text-sm text-[var(--text-secondary)] max-w-xs leading-normal mb-6">
         {description}
       </p>
       {ctaLabel && (
@@ -37,14 +37,14 @@ export default function EmptyState({
           {ctaHref ? (
             <Link
               href={ctaHref}
-              className="bg-[#C2683D] hover:bg-[#A8552F] text-white font-mono text-xs font-semibold py-2 px-4 rounded-[6px] transition-all active:scale-[0.98]"
+              className="min-h-10 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-sans text-sm font-semibold py-2 px-4 rounded-lg transition-colors"
             >
               {ctaLabel}
             </Link>
           ) : onClick ? (
             <button
               onClick={onClick}
-              className="bg-[#C2683D] hover:bg-[#A8552F] text-white font-mono text-xs font-semibold py-2 px-4 rounded-[6px] transition-all active:scale-[0.98]"
+              className="min-h-10 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-sans text-sm font-semibold py-2 px-4 rounded-lg transition-colors"
             >
               {ctaLabel}
             </button>

@@ -11,7 +11,7 @@ interface SkeletonProps {
 
 export default function Skeleton({ variant = 'line', height, width, className = '' }: SkeletonProps) {
   // Base classes with shimmer gradient
-  const baseClass = "animate-shimmer bg-gradient-to-r from-[var(--bg-elevated)] via-[var(--border-default)] to-[var(--bg-elevated)] bg-[length:200%_100%] rounded-md";
+  const baseClass = "animate-shimmer bg-gradient-to-r from-[var(--bg-elevated)] via-[var(--border-default)] to-[var(--bg-elevated)] bg-[length:200%_100%] rounded-lg";
 
   if (variant === 'line') {
     return (

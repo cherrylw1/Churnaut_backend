@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  Sparkles,
   AlertTriangle,
   RefreshCw,
   Send,
@@ -22,6 +21,8 @@ import { toast } from '@/hooks/useToast';
 import EmptyState from '@/components/ui/EmptyState';
 import ErrorState from '@/components/ui/ErrorState';
 import UpgradeGate from '@/components/UpgradeGate';
+import { PageHeader } from '@/components/dashboard/PageHeader';
+import { ModalShell } from '@/components/dashboard/ModalShell';
 
 
 interface ScoutDealDetail {
@@ -510,21 +511,11 @@ export default function ScoutDashboard() {
 
   return (
     <div className="space-y-6 text-[var(--text-secondary)]">
-      {/* 1. HEADER SECTION */}
-      <div className="flex justify-between items-center border-b border-[var(--border-subtle)] pb-6 gap-4">
-        <div>
-          <h1 className="text-[24px] font-bold text-[var(--text-primary)] font-sans flex items-center gap-2.5">
-            <Sparkles className="text-[var(--accent)] w-6 h-6 animate-pulse" />
-            SCOUT AI
-          </h1>
-          <p className="text-xs text-[var(--text-muted)] mt-1 font-sans">Pipeline Intelligence — Powered by AI</p>
-        </div>
-
-        <div className="flex flex-col items-end gap-1.5">
+      <PageHeader eyebrow="Intelligence" title="Scout AI" description="Pipeline intelligence that highlights what needs attention next." actions={<div className="flex flex-col items-end gap-1.5">
           <button
             onClick={handleRunAnalysis}
             disabled={runningScout || loading}
-            className="bg-[var(--accent)] hover:bg-[var(--accent-hover)] disabled:opacity-50 text-white font-sans text-xs font-semibold py-2 px-4 rounded-[8px] transition-all active:scale-[0.98] flex items-center gap-2"
+            className="min-h-10 bg-[var(--accent)] hover:bg-[var(--accent-hover)] disabled:opacity-50 text-white font-sans text-sm font-semibold py-2 px-4 rounded-lg transition-colors flex items-center gap-2"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${runningScout ? 'animate-spin' : ''}`} />
             {runningScout ? 'Analyzing...' : 'RUN SCOUT ANALYSIS'}
@@ -534,8 +525,7 @@ export default function ScoutDashboard() {
               Last Analyzed: {new Date(snapshot.created_at).toLocaleString()}
             </span>
           )}
-        </div>
-      </div>
+        </div>} />
 
       {loading ? (
         <div className="space-y-6 max-w-5xl mx-auto animate-pulse">
@@ -683,6 +673,8 @@ export default function ScoutDashboard() {
           <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-[12px] overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.25)]">
             <button
               onClick={() => toggleSection('triggers')}
+              aria-expanded={!collapsedSections.triggers}
+              aria-controls="scout-triggers-panel"
               className="w-full flex justify-between items-center p-4 bg-transparent hover:bg-[var(--bg-elevated)] border-b border-[var(--border-subtle)] transition-colors select-none text-left"
             >
               <span className="font-sans text-[13px] font-semibold tracking-[0.06em] text-[var(--text-secondary)] uppercase flex items-center gap-2">
@@ -699,6 +691,7 @@ export default function ScoutDashboard() {
             <AnimatePresence initial={false}>
               {!collapsedSections.triggers && (
                 <motion.div
+                  id="scout-triggers-panel"
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: 'auto', opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
@@ -753,6 +746,8 @@ export default function ScoutDashboard() {
           <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-[12px] overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.25)]">
             <button
               onClick={() => toggleSection('pipelineHealth')}
+              aria-expanded={!collapsedSections.pipelineHealth}
+              aria-controls="scout-pipeline-health-panel"
               className="w-full flex justify-between items-center p-4 bg-transparent hover:bg-[var(--bg-elevated)] border-b border-[var(--border-subtle)] transition-colors select-none text-left"
             >
               <span className="font-sans text-[13px] font-semibold tracking-[0.06em] text-[var(--text-secondary)] uppercase flex items-center gap-2">
@@ -769,6 +764,7 @@ export default function ScoutDashboard() {
             <AnimatePresence initial={false}>
               {!collapsedSections.pipelineHealth && (
                 <motion.div
+                  id="scout-pipeline-health-panel"
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: 'auto', opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
@@ -1061,6 +1057,8 @@ export default function ScoutDashboard() {
           <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-[12px] overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.25)]">
             <button
               onClick={() => toggleSection('repIntelligence')}
+              aria-expanded={!collapsedSections.repIntelligence}
+              aria-controls="scout-rep-intelligence-panel"
               className="w-full flex justify-between items-center p-4 bg-transparent hover:bg-[var(--bg-elevated)] border-b border-[var(--border-subtle)] transition-colors select-none text-left"
             >
               <span className="font-sans text-[13px] font-semibold tracking-[0.06em] text-[var(--text-secondary)] uppercase flex items-center gap-2">
@@ -1077,6 +1075,7 @@ export default function ScoutDashboard() {
             <AnimatePresence initial={false}>
               {!collapsedSections.repIntelligence && (
                 <motion.div
+                  id="scout-rep-intelligence-panel"
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: 'auto', opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
@@ -1150,6 +1149,8 @@ export default function ScoutDashboard() {
           <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-[12px] overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.25)]">
             <button
               onClick={() => toggleSection('obituaries')}
+              aria-expanded={!collapsedSections.obituaries}
+              aria-controls="scout-obituaries-panel"
               className="w-full flex justify-between items-center p-4 bg-transparent hover:bg-[var(--bg-elevated)] border-b border-[var(--border-subtle)] transition-colors select-none text-left"
             >
               <span className="font-sans text-[13px] font-semibold tracking-[0.06em] text-[var(--text-secondary)] uppercase flex items-center gap-2">
@@ -1166,6 +1167,7 @@ export default function ScoutDashboard() {
             <AnimatePresence initial={false}>
               {!collapsedSections.obituaries && (
                 <motion.div
+                  id="scout-obituaries-panel"
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: 'auto', opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
@@ -1248,15 +1250,13 @@ export default function ScoutDashboard() {
 
       {/* 6. NUDGE / NOTIFY REPRESENTATIVE MODAL */}
       {showModal && modalData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          {/* Overlay backdrop */}
-          <div
-            onClick={() => setShowModal(false)}
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm cursor-pointer"
-          />
-
-          {/* Modal Container */}
-          <div className="relative border border-[var(--border-subtle)] bg-[var(--bg-surface)] w-full max-w-lg rounded-[12px] overflow-hidden shadow-2xl p-6 space-y-4 font-sans">
+        <ModalShell
+          open={showModal}
+          onClose={() => setShowModal(false)}
+          title={modalData.type === 'nudge' ? 'Nudge deal representative' : 'Send alerts notification'}
+          className="max-w-lg"
+          contentClassName="p-6"
+        >
             
             {/* Title header */}
             <div className="border-b border-[var(--border-subtle)] pb-3">
@@ -1316,8 +1316,7 @@ export default function ScoutDashboard() {
                 {sendingNudge ? 'SENDING...' : 'SEND NUDGE'}
               </button>
             </div>
-          </div>
-        </div>
+        </ModalShell>
       )}
     </div>
   );

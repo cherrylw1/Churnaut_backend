@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { PageHeader } from '@/components/dashboard/PageHeader';
+import { ModalShell } from '@/components/dashboard/ModalShell';
 
 interface PlaybookInput {
   field_name: string;
@@ -191,16 +193,7 @@ CREATE TABLE IF NOT EXISTS playbook_templates (
 
   return (
     <div className="space-y-8 max-w-6xl bg-[var(--bg-base)] text-[var(--text-primary)] min-h-screen">
-      {/* Page Header */}
-      <div className="border-b border-[var(--border-subtle)] pb-5">
-        <h1 className="text-xl font-bold tracking-wider font-mono uppercase text-white">
-          PLAYBOOK LIBRARY
-        </h1>
-        <p className="text-xs font-mono text-[var(--text-secondary)] mt-1">
-          Deploy pre-configured high-converting routing rules and personalization flows in one click.
-        </p>
-      </div>
-
+      <PageHeader eyebrow="Configure" title="Playbook library" description="Install proven routing patterns and tailor them to your workflow." />
       {/* Seeding Warning Alert */}
       {showSeedingWarning && (
         <div className="border border-[var(--amber)]/30 bg-[var(--amber)]/10 text-[var(--amber)] p-6 rounded-lg font-mono text-xs space-y-3">
@@ -210,13 +203,7 @@ CREATE TABLE IF NOT EXISTS playbook_templates (
           </p>
           <div className="relative group border border-yellow-950 bg-[#080B0F] rounded p-3 font-mono text-[10px] text-[var(--text-secondary)] overflow-x-auto">
             <pre>{seedSql}</pre>
-            <Link
-              href="file:///Users/macbook/Movie%20review%20website/TEST%20frontend%20for%20router/Churnaut_backend/supabase/playbooks.sql"
-              className="absolute top-2 right-2 text-[var(--accent)] hover:text-white underline font-bold"
-              target="_blank"
-            >
-              VIEW SQL FILE
-            </Link>
+            <span className="absolute top-2 right-2 text-[var(--accent)] font-bold" aria-label="SQL migration file">supabase/playbooks.sql</span>
           </div>
         </div>
       )}
@@ -284,30 +271,17 @@ CREATE TABLE IF NOT EXISTS playbook_templates (
 
       {/* INSTALLATION MODAL */}
       {selectedPlaybook && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-lg max-w-lg w-full overflow-hidden shadow-2xl">
-            {/* Modal Header */}
-            <div className="h-14 flex items-center justify-between px-6 border-b border-[var(--border-subtle)] bg-[#090d12]">
-              <span className="font-mono text-xs font-bold text-white uppercase tracking-wider">
-                Install Playbook
-              </span>
-              <button
-                onClick={closeInstallModal}
-                className="text-[var(--text-secondary)] hover:text-white transition-colors text-xs font-mono"
-              >
-                [CLOSE]
-              </button>
-            </div>
+        <ModalShell open={Boolean(selectedPlaybook)} onClose={closeInstallModal} title="Install Playbook" className="max-w-lg" contentClassName="p-6">
 
             {/* Modal Content */}
-            <div className="p-6">
+            <div>
               {success ? (
                 <div className="space-y-6 text-center py-4">
                   <div className="inline-flex items-center justify-center h-12 w-12 rounded-full bg-[var(--green)]/10 text-[var(--green)] border border-[var(--green)]/30 mb-2">
                     ✓
                   </div>
                   <div className="space-y-2">
-                    <h3 className="font-mono text-sm font-bold text-white uppercase">
+                      <h3 className="font-mono text-sm font-bold text-[var(--text-primary)] uppercase">
                       Playbook Installed Successfully
                     </h3>
                     <p className="font-mono text-xs text-[var(--text-secondary)] max-w-xs mx-auto leading-relaxed">
@@ -332,7 +306,7 @@ CREATE TABLE IF NOT EXISTS playbook_templates (
               ) : (
                 <form onSubmit={handleInstallSubmit} className="space-y-5">
                   <div className="space-y-1.5">
-                    <h3 className="font-mono text-sm font-bold text-white uppercase">
+                    <h3 className="font-mono text-sm font-bold text-[var(--text-primary)] uppercase">
                       {selectedPlaybook.name}
                     </h3>
                     <p className="font-mono text-xs text-[var(--text-secondary)] leading-relaxed">
@@ -385,8 +359,7 @@ CREATE TABLE IF NOT EXISTS playbook_templates (
                 </form>
               )}
             </div>
-          </div>
-        </div>
+        </ModalShell>
       )}
     </div>
   );
@@ -442,7 +415,7 @@ function PlaybookCard({ playbook, onInstall }: PlaybookCardProps) {
         </div>
         
         <div className="space-y-1.5">
-          <h3 className="text-xs font-mono font-bold text-white uppercase group-hover:text-[#C2683D] transition-colors leading-tight">
+          <h3 className="text-xs font-mono font-bold text-[var(--text-primary)] uppercase group-hover:text-[#C2683D] transition-colors leading-tight">
             {playbook.name}
           </h3>
           <p className="text-[11px] font-mono text-[var(--text-secondary)] leading-relaxed min-h-[48px]">
@@ -457,7 +430,7 @@ function PlaybookCard({ playbook, onInstall }: PlaybookCardProps) {
         </span>
         <button
           onClick={() => onInstall(playbook)}
-          className="bg-[var(--border-subtle)] hover:bg-[#C2683D] text-white font-mono text-[10px] py-1.5 px-4 rounded transition-all active:scale-[0.98]"
+          className="bg-[var(--border-subtle)] hover:bg-[#C2683D] text-[var(--text-primary)] hover:text-white font-mono text-[10px] py-1.5 px-4 rounded transition-all active:scale-[0.98]"
         >
           Install
         </button>
