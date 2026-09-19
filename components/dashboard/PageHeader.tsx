@@ -12,7 +12,7 @@ export function PageHeader({ eyebrow, title, ariaLabel, description, actions }: 
   return (
     <div className="dashboard-page-header">
       <div className="min-w-0">
-        {eyebrow ? <p className="dashboard-eyebrow">{eyebrow}</p> : null}
+        {eyebrow ? <p className="dashboard-eyebrow font-mono">{eyebrow}</p> : null}
         <h1 className="dashboard-title" aria-label={ariaLabel}>{title}</h1>
         {description ? <p className="dashboard-description">{description}</p> : null}
       </div>

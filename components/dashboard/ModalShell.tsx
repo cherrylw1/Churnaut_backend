@@ -87,7 +87,7 @@ export function ModalShell({
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className={cn('relative w-full max-w-2xl max-h-[90vh] overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-2xl', className)}
+        className={cn('relative w-full max-w-2xl max-h-[90vh] overflow-hidden rounded-[10px] border border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-2xl', className)}
       >
         <div className="flex items-center justify-between gap-4 border-b border-[var(--border-subtle)] px-5 py-4">
           <h2 id={titleId} className="text-sm font-semibold text-[var(--text-primary)]">{title}</h2>

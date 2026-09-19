@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, FormEvent } from 'react';
+import React, { useState, useEffect, useRef, FormEvent } from 'react';
 import { Session } from '@/types';
 import { Link2 } from 'lucide-react';
 import { toast } from '@/hooks/useToast';
@@ -29,6 +29,34 @@ export default function LinksPage() {
   const [error, setError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'single' | 'bulk'>('single');
+  const linkTabRefs = useRef<Record<'single' | 'bulk', HTMLButtonElement | null>>({ single: null, bulk: null });
+  const linkTabs: Array<'single' | 'bulk'> = ['single', 'bulk'];
+
+  const selectLinkTab = (next: 'single' | 'bulk') => {
+    if (next === 'bulk' && plan === 'starter') return;
+    setGeneratedUrl(null);
+    if (next === 'bulk') {
+      setBulkResults(null);
+      setBulkError(null);
+    }
+    setActiveTab(next);
+  };
+
+  const handleLinkTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, current: 'single' | 'bulk') => {
+    const availableTabs = plan === 'starter' ? ['single'] as const : linkTabs;
+    const currentIndex = availableTabs.indexOf(current as never);
+    if (currentIndex < 0) return;
+    let nextIndex = currentIndex;
+    if (event.key === 'ArrowRight') nextIndex = (currentIndex + 1) % availableTabs.length;
+    else if (event.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + availableTabs.length) % availableTabs.length;
+    else if (event.key === 'Home') nextIndex = 0;
+    else if (event.key === 'End') nextIndex = availableTabs.length - 1;
+    else return;
+    event.preventDefault();
+    const next = availableTabs[nextIndex];
+    selectLinkTab(next);
+    window.requestAnimationFrame(() => linkTabRefs.current[next]?.focus());
+  };
 
   // Form states for single link generation
   const [prospectName, setProspectName] = useState('');
@@ -258,7 +286,7 @@ export default function LinksPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader eyebrow="Engage" title="Tracked links" description="Generate personalized redirect URLs for outbound links" actions={<button
+      <PageHeader eyebrow="Signal Room · Activation ledger" title="Tracked links" description="Generate personalized redirect URLs for outbound links" actions={<button
           onClick={() => {
             setGeneratedUrl(null);
             setBulkResults(null);
@@ -290,7 +318,7 @@ export default function LinksPage() {
         />
       ) : (
         <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/50 rounded-lg overflow-hidden">
-          <div className="hidden md:block overflow-x-auto">
+          <div className="hidden md:block overflow-x-auto" role="region" aria-label="Tracked links ledger">
             <table className="dashboard-table w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-xs font-mono text-[var(--text-secondary)] uppercase">
@@ -319,7 +347,7 @@ export default function LinksPage() {
                         </span>
                       </td>
                       <td className="py-3 px-4 text-[var(--text-secondary)] font-mono">{link.assigned_rep || '-'}</td>
-                      <td className="py-3 px-4 text-center font-mono text-gray-200">{link.click_count}</td>
+                      <td className="py-3 px-4 text-center font-mono text-[var(--text-primary)] tabular-nums">{link.click_count}</td>
                       <td className="py-3 px-4 text-center">
                         <span
                           className={`text-[10px] uppercase font-mono px-2 py-0.5 rounded border ${
@@ -366,7 +394,7 @@ export default function LinksPage() {
                     <span className={`shrink-0 text-[10px] uppercase font-mono px-2 py-1 rounded border ${status === 'Active' ? 'bg-[var(--green)]/10 text-[var(--green)] border-[var(--green)]/30' : status === 'Permanent' ? 'bg-[var(--accent)]/10 text-[var(--accent)] border-[var(--accent)]/30' : 'bg-[var(--red)]/10 text-[var(--red)] border-[var(--red)]/30'}`}>{status}</span>
                   </div>
                   <div className="flex items-center justify-between gap-3 text-xs text-[var(--text-muted)]">
-                    <span>{link.click_count} clicks · {new Date(link.created_at).toLocaleDateString()}</span>
+                    <span>{link.assigned_rep || 'Unassigned'} · {link.click_count} clicks · {new Date(link.created_at).toLocaleDateString()}</span>
                     <button onClick={() => displayUrl && handleCopy(displayUrl, link.id)} disabled={!displayUrl} className="min-h-9 border border-[var(--border-subtle)] hover:border-[var(--accent)] hover:text-[var(--accent)] px-3 rounded font-mono text-[10px] disabled:opacity-40">{copiedId === link.id ? 'COPIED!' : 'COPY'}</button>
                   </div>
                 </article>
@@ -391,11 +419,15 @@ export default function LinksPage() {
             <div className="flex border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]" role="tablist" aria-label="Link generation mode">
               <button
                 role="tab"
+                id="single-link-tab"
+                aria-controls="single-link-panel"
                 aria-selected={activeTab === 'single'}
                 onClick={() => {
-                  setGeneratedUrl(null);
-                  setActiveTab('single');
+                  selectLinkTab('single');
                 }}
+                tabIndex={activeTab === 'single' ? 0 : -1}
+                ref={(node) => { linkTabRefs.current.single = node; }}
+                onKeyDown={(event) => handleLinkTabKeyDown(event, 'single')}
                 className={`flex-1 py-3 font-mono text-xs tracking-wider uppercase border-b-2 text-center transition-all ${
                   activeTab === 'single'
                     ? 'border-[var(--accent)] text-[var(--accent)] bg-[var(--bg-elevated)]'
@@ -406,13 +438,14 @@ export default function LinksPage() {
               </button>
               <button
                 role="tab"
+                id="bulk-link-tab"
+                aria-controls="bulk-link-panel"
                 aria-selected={activeTab === 'bulk'}
                 disabled={plan === 'starter'}
-                onClick={() => {
-                  setBulkResults(null);
-                  setBulkError(null);
-                  setActiveTab('bulk');
-                }}
+                onClick={() => selectLinkTab('bulk')}
+                tabIndex={activeTab === 'bulk' ? 0 : -1}
+                ref={(node) => { linkTabRefs.current.bulk = node; }}
+                onKeyDown={(event) => handleLinkTabKeyDown(event, 'bulk')}
                 className={`flex-1 py-3 font-mono text-xs tracking-wider uppercase border-b-2 text-center transition-all disabled:opacity-40 ${
                   activeTab === 'bulk'
                     ? 'border-[var(--accent)] text-[var(--accent)] bg-[var(--bg-elevated)]'
@@ -427,7 +460,7 @@ export default function LinksPage() {
             <div className="p-6 overflow-y-auto flex-1 space-y-6">
               {activeTab === 'single' ? (
                 /* SINGLE LINK TAB */
-                <div>
+                <div id="single-link-panel" role="tabpanel" aria-labelledby="single-link-tab">
                   {generatedUrl ? (
                     /* SUCCESS SCREEN */
                     <div className="space-y-4 border border-[var(--border-subtle)] p-6 rounded-lg bg-[var(--bg-elevated)]/50">
@@ -437,11 +470,12 @@ export default function LinksPage() {
                         </span>
                       </div>
                       <div className="space-y-2">
-                        <label className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
+                        <label htmlFor="tracked-link-url" className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
                           Tracked Link URL
                         </label>
                         <div className="flex gap-2">
                           <input
+                            id="tracked-link-url"
                             type="text"
                             readOnly
                             value={generatedUrl}
@@ -458,7 +492,7 @@ export default function LinksPage() {
                       <div className="pt-4 flex justify-end">
                         <button
                           onClick={() => setGeneratedUrl(null)}
-                          className="border border-[var(--border-subtle)] hover:border-gray-500 text-xs font-mono py-2 px-4 rounded text-[var(--text-secondary)] transition-all"
+                          className="border border-[var(--border-subtle)] hover:border-[var(--border-default)] text-xs font-mono py-2 px-4 rounded text-[var(--text-secondary)] transition-all"
                         >
                           Generate Another
                         </button>
@@ -469,10 +503,11 @@ export default function LinksPage() {
                     <form onSubmit={handleSingleSubmit} className="space-y-4">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-1.5">
-                          <label className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
+                          <label htmlFor="tracked-link-prospect-name" className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
                             Prospect Name
                           </label>
                           <input
+                            id="tracked-link-prospect-name"
                             type="text"
                             value={prospectName}
                             onChange={(e) => setProspectName(e.target.value)}
@@ -481,10 +516,11 @@ export default function LinksPage() {
                           />
                         </div>
                         <div className="space-y-1.5">
-                          <label className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
+                          <label htmlFor="tracked-link-prospect-email" className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
                             Prospect Email
                           </label>
                           <input
+                            id="tracked-link-prospect-email"
                             type="email"
                             value={prospectEmail}
                             onChange={(e) => setProspectEmail(e.target.value)}
@@ -496,10 +532,11 @@ export default function LinksPage() {
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-1.5">
-                          <label className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
+                          <label htmlFor="tracked-link-company-name" className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
                             Company Name
                           </label>
                           <input
+                            id="tracked-link-company-name"
                             type="text"
                             value={companyName}
                             onChange={(e) => setCompanyName(e.target.value)}
@@ -508,10 +545,11 @@ export default function LinksPage() {
                           />
                         </div>
                         <div className="space-y-1.5">
-                          <label className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
+                          <label htmlFor="tracked-link-job-title" className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
                             Job Title
                           </label>
                           <input
+                            id="tracked-link-job-title"
                             type="text"
                             value={jobTitle}
                             onChange={(e) => setJobTitle(e.target.value)}
@@ -523,10 +561,11 @@ export default function LinksPage() {
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-1.5">
-                          <label className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
+                          <label htmlFor="tracked-link-signal-type" className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
                             Signal Type
                           </label>
                           <select
+                            id="tracked-link-signal-type"
                             value={signalType}
                             onChange={(e) => setSignalType(e.target.value)}
                             className="w-full bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-subtle)] focus:border-[var(--accent)] outline-none text-xs px-3 py-2.5 rounded  font-mono"
@@ -539,10 +578,11 @@ export default function LinksPage() {
                           </select>
                         </div>
                         <div className="space-y-1.5">
-                          <label className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
+                          <label htmlFor="tracked-link-assigned-rep" className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
                             Assigned Rep
                           </label>
                           <input
+                            id="tracked-link-assigned-rep"
                             type="text"
                             value={assignedRep}
                             onChange={(e) => setAssignedRep(e.target.value)}
@@ -554,10 +594,11 @@ export default function LinksPage() {
 
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div className="sm:col-span-2 space-y-1.5">
-                          <label className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
+                          <label htmlFor="tracked-link-destination" className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
                             Destination URL (Required)
                           </label>
                           <input
+                            id="tracked-link-destination"
                             type="url"
                             required
                             value={destinationUrl}
@@ -567,10 +608,11 @@ export default function LinksPage() {
                           />
                         </div>
                         <div className="space-y-1.5">
-                          <label className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
+                          <label htmlFor="tracked-link-expiry" className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
                             Expiry (Days)
                           </label>
                           <input
+                            id="tracked-link-expiry"
                             type="number"
                             min="1"
                             value={expiresInDays}
@@ -595,7 +637,7 @@ export default function LinksPage() {
                 </div>
               ) : (
                 /* BULK CSV TAB */
-                <div className="space-y-4">
+                <div id="bulk-link-panel" role="tabpanel" aria-labelledby="bulk-link-tab" className="space-y-4">
                   <div className="border border-dashed border-[var(--border-subtle)] p-8 rounded-lg text-center bg-[var(--bg-elevated)]/30">
                     <p className="text-xs font-mono text-[var(--text-secondary)] mb-2">
                       Upload a CSV file containing your prospects. Required columns:
@@ -613,7 +655,7 @@ export default function LinksPage() {
                       />
                       <label
                         htmlFor="csv-file-input"
-                        className="border border-[var(--border-subtle)] hover:border-gray-500 text-xs font-mono py-2 px-6 rounded cursor-pointer text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all inline-block"
+                        className="border border-[var(--border-subtle)] hover:border-[var(--border-default)] text-xs font-mono py-2 px-6 rounded cursor-pointer text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all inline-block"
                       >
                         {csvFile ? `Selected: ${csvFile.name}` : 'CHOOSE CSV FILE'}
                       </label>

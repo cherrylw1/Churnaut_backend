@@ -1,23 +1,18 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Target, Lock, RefreshCw, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Lock, RefreshCw, Target } from 'lucide-react';
 import Skeleton from '@/components/ui/Skeleton';
-import EmptyState from '@/components/ui/EmptyState';
 import ErrorState from '@/components/ui/ErrorState';
+import { EmptyPanel } from '@/components/dashboard/EmptyPanel';
+import { MetricCard } from '@/components/dashboard/MetricCard';
 import { PageHeader } from '@/components/dashboard/PageHeader';
+import { SectionHeader } from '@/components/dashboard/SectionHeader';
+import { Surface } from '@/components/dashboard/Surface';
 
-interface JobTitleFreq {
-  title: string;
-  count: number;
-}
-
-interface DealStageFreq {
-  sequence: string;
-  count: number;
-}
-
+interface JobTitleFreq { title: string; count: number }
+interface DealStageFreq { sequence: string; count: number }
 interface IcpProfile {
   id: string;
   client_id: string;
@@ -59,9 +54,7 @@ export default function IcpBuilderPage() {
     }
   };
 
-  useEffect(() => {
-    fetchProfile();
-  }, []);
+  useEffect(() => { fetchProfile(); }, []);
 
   const handleBuildIcp = async () => {
     if (building) return;
@@ -69,14 +62,10 @@ export default function IcpBuilderPage() {
     setErrorMsg(null);
     setRulesCreated(null);
     try {
-      const res = await fetch('/api/icp', {
-        method: 'POST',
-      });
+      const res = await fetch('/api/icp', { method: 'POST' });
       const data = await res.json();
-
-      if (!res.ok) {
-        setErrorMsg(data.error || 'Failed to analyze wins and generate ICP profile.');
-      } else {
+      if (!res.ok) setErrorMsg(data.error || 'Failed to analyze wins and generate ICP profile.');
+      else {
         setProfile(data.icp_profile);
         setRulesCreated(data.rules_created);
       }
@@ -88,173 +77,75 @@ export default function IcpBuilderPage() {
     }
   };
 
-  const formatCurrency = (val: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      maximumFractionDigits: 0,
-    }).format(val);
-  };
+  const formatCurrency = (val: number) => new Intl.NumberFormat('en-US', {
+    style: 'currency', currency: 'USD', maximumFractionDigits: 0,
+  }).format(val);
 
   const hasNotEnoughDeals = errorMsg?.includes('at least 3') || (profile === null && !loading) || (profile !== null && profile.win_count < 3);
 
   return (
-    <div className="space-y-8 max-w-4xl mx-auto text-[var(--text-secondary)]">
-      <PageHeader eyebrow="Intelligence" title="ICP builder" description="Built from your closed-won deals in HubSpot." actions={<button
-        onClick={handleBuildIcp}
-        disabled={building}
-        className="min-h-10 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-sans text-sm font-semibold py-2.5 px-4 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
-      >
-        <RefreshCw className={`w-3.5 h-3.5 ${building ? 'animate-spin' : ''}`} />
-        {building ? 'ANALYZING...' : 'BUILD MY ICP'}
-      </button>} />
+    <div className="space-y-8 max-w-5xl mx-auto text-[var(--text-secondary)]">
+      <PageHeader
+        eyebrow="Signal Room · ICP model"
+        title="ICP builder"
+        description="Turn closed-won evidence into a practical model for who to route and why."
+        actions={<button onClick={handleBuildIcp} disabled={building} className="min-h-10 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-sans text-sm font-semibold py-2.5 px-4 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50">
+          <RefreshCw aria-hidden="true" className={`w-3.5 h-3.5 ${building ? 'animate-spin' : ''}`} />
+          {building ? 'ANALYZING...' : 'BUILD MY ICP'}
+        </button>}
+      />
 
-      {errorMsg && (
-        <div className="p-4 bg-[var(--red)]/10 border border-[var(--red)]/30 rounded-lg text-[var(--red)] text-xs font-mono">
-          {errorMsg}
-        </div>
-      )}
+      {errorMsg ? <div role="alert" className="p-4 bg-[var(--red)]/10 border border-[var(--red)]/30 rounded-lg text-[var(--red)] text-xs font-mono">{errorMsg}</div> : null}
+      {rulesCreated !== null ? <div role="status" aria-live="polite" className="p-4 bg-[var(--green)]/10 border border-[var(--green)]/30 rounded-lg text-[var(--green)] text-xs font-mono flex items-center gap-2">
+        <CheckCircle2 aria-hidden="true" className="w-4 h-4 flex-shrink-0" />
+        <span>Profile generated · <strong className="text-[var(--text-primary)]">{rulesCreated}</strong> routing rules created.</span>
+      </div> : null}
 
-      {rulesCreated !== null && (
-        <div className="p-4 bg-[var(--green)]/10 border border-[var(--green)]/30 rounded-lg text-[var(--green)] text-xs font-mono flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 text-[var(--green)] flex-shrink-0" />
-          <span>
-            Success! ICP profile generated and <strong className="text-[var(--text-primary)]">{rulesCreated}</strong> new routing rules created.
-          </span>
-        </div>
-      )}
-
-      {error ? (
-        <div className="py-8">
-          <ErrorState message={error} onRetry={fetchProfile} />
-        </div>
-      ) : loading ? (
-        <div className="space-y-8 animate-pulse">
-          {/* Skeleton ICP Summary Card */}
-          <Skeleton variant="card" height={140} />
-          {/* Skeleton Win Patterns stats grid */}
-          <Skeleton variant="line" height={20} width={120} />
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            <Skeleton variant="card" height={96} />
-            <Skeleton variant="card" height={96} />
-            <Skeleton variant="card" height={96} />
-          </div>
-          {/* Skeleton job titles */}
-          <Skeleton variant="line" height={20} width={120} />
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Skeleton variant="card" height={60} />
-            <Skeleton variant="card" height={60} />
-          </div>
+      {error ? <div className="py-8"><ErrorState message={error} onRetry={fetchProfile} /></div> : loading ? (
+        <div className="space-y-6 animate-pulse" aria-label="Loading ICP evidence">
+          <Skeleton variant="card" height={150} />
+          <Skeleton variant="line" height={20} width={150} />
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4"><Skeleton variant="card" height={112} /><Skeleton variant="card" height={112} /><Skeleton variant="card" height={112} /></div>
+          <Skeleton variant="card" height={120} />
         </div>
       ) : hasNotEnoughDeals ? (
-        <EmptyState
-          icon={Lock}
-          title="Not enough data yet"
-          description="Close at least 3 deals in HubSpot to unlock your ICP"
-        />
+        <EmptyPanel icon={<Lock className="w-5 h-5" />} title="Not enough closed-won evidence" description="Close at least 3 deals in HubSpot to unlock your ICP model." action={<span className="text-xs font-mono text-[var(--text-muted)]">The model will appear here when the evidence is ready.</span>} />
       ) : profile ? (
         <div className="space-y-8">
-          {/* YOUR ICP CARD */}
-          <div className="border border-[var(--border-subtle)] border-l-4 border-l-amber-500 bg-[var(--bg-elevated)] rounded-lg p-5 font-mono">
-            <div className="flex items-center gap-2 text-[var(--text-primary)] font-bold tracking-wider uppercase text-xs"><Target className="text-[var(--amber)] w-4 h-4" />
-              YOUR ICP SUMMARY
-            </div>
-            <p className="mt-4 text-sm text-[var(--text-secondary)] leading-relaxed font-sans">
-              {profile.icp_summary}
-            </p>
-          </div>
-
-          {/* WIN PATTERNS */}
-          <div className="space-y-3">
-            <div className="border-b border-[var(--border-subtle)] pb-1.5">
-              <h2 className="text-xs font-bold font-mono tracking-wider text-[var(--accent)] uppercase">
-                WIN PATTERNS
-              </h2>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-              {/* Stat 1: Win Count */}
-              <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 rounded-lg flex flex-col justify-between h-24 font-mono">
-                <div className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider">
-                  Win Count
-                </div>
-                <div className="mt-auto">
-                  <span className="text-3xl font-extrabold text-[var(--text-primary)]">
-                    {profile.win_count}
-                  </span>
-                </div>
-              </div>
-
-              {/* Stat 2: Avg Deal Value */}
-              <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 rounded-lg flex flex-col justify-between h-24 font-mono">
-                <div className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider">
-                  Avg Deal Value
-                </div>
-                <div className="mt-auto">
-                  <span className="text-3xl font-extrabold text-[var(--text-primary)]">
-                    {formatCurrency(profile.avg_deal_value)}
-                  </span>
-                </div>
-              </div>
-
-              {/* Stat 3: Avg Days to Close */}
-              <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 rounded-lg flex flex-col justify-between h-24 font-mono">
-                <div className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider">
-                  Avg Days to Close
-                </div>
-                <div className="mt-auto">
-                  <span className="text-3xl font-extrabold text-[var(--text-primary)]">
-                    {profile.avg_days_to_close}
-                  </span>
-                </div>
+          <Surface tone="elevated" className="border-l-4 border-l-[var(--amber)]" aria-labelledby="icp-evidence-heading">
+            <div className="flex items-start gap-3">
+              <div className="dashboard-empty-icon shrink-0"><Target aria-hidden="true" className="w-5 h-5" /></div>
+              <div className="min-w-0">
+                <p className="dashboard-eyebrow font-mono">MODEL OUTPUT</p>
+                <h2 id="icp-evidence-heading" className="text-lg font-semibold text-[var(--text-primary)]">ICP evidence</h2>
+                <p className="mt-3 text-sm text-[var(--text-secondary)] leading-relaxed">{profile.icp_summary}</p>
               </div>
             </div>
-          </div>
+          </Surface>
 
-          {/* TOP JOB TITLES */}
-          <div className="space-y-3">
-            <div className="border-b border-[var(--border-subtle)] pb-1.5">
-              <h2 className="text-xs font-bold font-mono tracking-wider text-[var(--accent)] uppercase">
-                TOP JOB TITLES
-              </h2>
+          <section aria-labelledby="evidence-profile-heading">
+            <SectionHeader title="Evidence profile" headingId="evidence-profile-heading" description="The closed-won signals behind the current model." />
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
+              <MetricCard label="Win count" value={profile.win_count} detail="Closed-won deals" emphasis="primary" />
+              <MetricCard label="Avg deal value" value={formatCurrency(profile.avg_deal_value)} detail="Average contract value" />
+              <MetricCard label="Avg days to close" value={profile.avg_days_to_close} detail="Average sales cycle" />
             </div>
-            {profile.top_job_titles && profile.top_job_titles.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {profile.top_job_titles.map((jt, idx) => (
-                  <div
-                    key={idx}
-                    className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-4 rounded-lg flex justify-between items-center font-mono hover:border-[var(--accent)]/30 transition-colors"
-                  >
-                    <span className="text-sm font-bold text-[var(--text-primary)]">{jt.title}</span>
-                    <span className="text-xs text-[var(--text-muted)] uppercase font-bold">
-                      {jt.count} {jt.count === 1 ? 'WIN' : 'WINS'}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="py-6 text-center border border-dashed border-[var(--border-subtle)] rounded bg-[var(--bg-elevated)]/30 text-xs font-mono text-[var(--text-muted)]">
-                No job titles recorded in closed-won contact profiles.
-              </div>
-            )}
-          </div>
+          </section>
 
-          {/* AUTO-GENERATED RULES */}
-          <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/40 rounded-lg p-5 font-mono flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div className="space-y-1">
-              <h3 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider">
-                AUTO-GENERATED RULES
-              </h3>
-              <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
-                Rules swap custom copy based on target job titles when prospects visit.
-              </p>
-            </div>
-            <Link
-              href="/dashboard/rules"
-              className="text-xs text-[var(--accent)] hover:text-[var(--accent-hover)] font-bold uppercase tracking-wider flex items-center gap-1 transition-colors"
-            >
-              View routing rules <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
+          <section aria-labelledby="winning-attributes-heading">
+            <SectionHeader title="Winning attributes" headingId="winning-attributes-heading" description="Job titles appearing most often in your wins." />
+            {profile.top_job_titles && profile.top_job_titles.length > 0 ? <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+              {profile.top_job_titles.map((jt, idx) => <div key={idx} className="dashboard-surface dashboard-surface-subtle p-4 flex justify-between items-center gap-3">
+                <span className="text-sm font-semibold text-[var(--text-primary)]">{jt.title}</span>
+                <span className="text-xs text-[var(--text-muted)] uppercase font-mono">{jt.count} {jt.count === 1 ? 'WIN' : 'WINS'}</span>
+              </div>)}
+            </div> : <EmptyPanel title="No job-title evidence yet" description="Closed-won contact profiles do not include job titles for this model." />}
+          </section>
+
+          <Surface tone="subtle" aria-labelledby="routing-output-heading">
+            <SectionHeader title="Routing output" headingId="routing-output-heading" description="The model can turn these patterns into live website decisions." action={<Link href="/dashboard/rules" className="text-xs text-[var(--accent)] hover:text-[var(--accent-hover)] font-semibold uppercase tracking-wider inline-flex items-center gap-1">View routing rules <ArrowRight aria-hidden="true" className="w-3.5 h-3.5" /></Link>} />
+            <p className="mt-4 text-sm text-[var(--text-secondary)] leading-relaxed">ICP generation creates routing rules that can swap custom copy for high-fit prospects.</p>
+          </Surface>
         </div>
       ) : null}
     </div>

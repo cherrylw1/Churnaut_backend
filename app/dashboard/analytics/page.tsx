@@ -173,20 +173,25 @@ export default function AnalyticsPage() {
         />
       ) : (
         <>
-          {/* Summary Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard label="Links created (MTD)" value={<CountUp value={summaryStats.totalLinksCreatedThisMonth} />} detail="Active tracked links" />
-        <MetricCard label="Click events (MTD)" value={<CountUp value={summaryStats.totalClicksThisMonth} />} detail="Engagement captured" />
-        <MetricCard label="Trigger rate" value={<CountUp value={summaryStats.personalizationTriggerRate} suffix="%" />} detail="Personalized sessions" emphasis="primary" />
-        <MetricCard label="Overall conversion" value={<CountUp value={summaryStats.overallConversionRate} suffix="%" />} detail="Converted sessions" />
-      </div>
+      {/* Outcome telemetry */}
+      <section aria-labelledby="outcome-telemetry-title" className="space-y-3">
+        <SectionHeader headingId="outcome-telemetry-title" title="Outcome telemetry" description="The measures that tell you whether personalization is moving the pipeline." />
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-6">
+          <div className="lg:col-span-2"><MetricCard label="Trigger rate" value={<CountUp value={summaryStats.personalizationTriggerRate} suffix="%" />} detail="Personalized sessions" emphasis="primary" /></div>
+          <div className="lg:col-span-2"><MetricCard label="Overall conversion" value={<CountUp value={summaryStats.overallConversionRate} suffix="%" />} detail="Converted sessions" emphasis="primary" /></div>
+          <div className="lg:col-span-1"><MetricCard label="Links created (MTD)" value={<CountUp value={summaryStats.totalLinksCreatedThisMonth} />} detail="Tracked links" /></div>
+          <div className="lg:col-span-1"><MetricCard label="Click events (MTD)" value={<CountUp value={summaryStats.totalClicksThisMonth} />} detail="Engagement" /></div>
+        </div>
+      </section>
 
       {/* Visual Graphs Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+      <section aria-labelledby="signal-volume-title" className="space-y-3">
+      <SectionHeader headingId="signal-volume-title" title="Signal volume" description="What moved across the last 30 days, and how each signal converted." />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
         {/* Line Chart: Daily personalization volume */}
-        <Surface tone="subtle" className="lg:col-span-3 p-5 space-y-4">
+        <Surface tone="subtle" className="space-y-4 p-5 lg:col-span-3" aria-label="30-day personalization volume chart">
           <SectionHeader title="Personalization volume" description="Past 30 days" />
-          <div className="h-64">
+          <div className="h-64 min-w-0" role="img" aria-label="Line chart of personalization triggers over the past 30 days">
             {mounted && (
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart
@@ -196,13 +201,13 @@ export default function AnalyticsPage() {
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" />
                   <XAxis
                     dataKey="date"
-                    stroke="#4b5563"
+                    stroke="var(--text-muted)"
                     fontSize={10}
                     tickLine={false}
                     fontFamily="monospace"
                   />
                   <YAxis
-                    stroke="#4b5563"
+                    stroke="var(--text-muted)"
                     fontSize={10}
                     tickLine={false}
                     fontFamily="monospace"
@@ -220,7 +225,7 @@ export default function AnalyticsPage() {
                     type="monotone"
                     dataKey="count"
                     name="Personalization Triggers"
-                    stroke="#C2683D"
+                    stroke="var(--accent)"
                     strokeWidth={2}
                     activeDot={{ r: 6 }}
                     dot={{ r: 2 }}
@@ -232,9 +237,9 @@ export default function AnalyticsPage() {
         </Surface>
 
         {/* Bar Chart: Signal Breakdown comparison */}
-        <Surface tone="subtle" className="lg:col-span-2 p-5 space-y-4">
+        <Surface tone="subtle" className="space-y-4 p-5 lg:col-span-2" aria-label="Signal conversion comparison chart">
           <SectionHeader title="Signal conversion" description="Links compared with conversions" />
-          <div className="h-64">
+          <div className="h-64 min-w-0" role="img" aria-label="Bar chart comparing signal links and conversions">
             {mounted && (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
@@ -244,13 +249,13 @@ export default function AnalyticsPage() {
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" />
                   <XAxis
                     dataKey="signal"
-                    stroke="#4b5563"
+                    stroke="var(--text-muted)"
                     fontSize={10}
                     tickLine={false}
                     fontFamily="monospace"
                   />
                   <YAxis
-                    stroke="#4b5563"
+                    stroke="var(--text-muted)"
                     fontSize={10}
                     tickLine={false}
                     fontFamily="monospace"
@@ -271,7 +276,7 @@ export default function AnalyticsPage() {
                       paddingTop: 10,
                     }}
                   />
-                  <Bar dataKey="links" name="Links" fill="#C2683D" radius={[2, 2, 0, 0]} />
+                  <Bar dataKey="links" name="Links" fill="var(--accent)" radius={[2, 2, 0, 0]} />
                   <Bar dataKey="conversions" name="Conversions" fill="var(--green)" radius={[2, 2, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -279,6 +284,7 @@ export default function AnalyticsPage() {
           </div>
         </Surface>
       </div>
+      </section>
 
       {/* Tables Row: Rule Performance & Rep Conversion */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

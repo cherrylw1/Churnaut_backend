@@ -2,6 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Bot, Send, Loader2 } from 'lucide-react'
 import { PageHeader } from '@/components/dashboard/PageHeader'
+import { Surface } from '@/components/dashboard/Surface'
 
 interface Message {
   id: string
@@ -32,7 +33,10 @@ export default function SupportPage() {
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
+  useEffect(() => {
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    bottomRef.current?.scrollIntoView({ behavior: prefersReducedMotion ? 'auto' : 'smooth' })
+  }, [messages])
 
   const getHistory = () => messages.filter(m => !m.loading && m.id !== 'welcome').map(m => ({ role: m.role, content: m.content }))
 
@@ -70,23 +74,23 @@ export default function SupportPage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto flex flex-col h-[calc(100vh-80px)]">
+    <div className="mx-auto flex h-[calc(100vh-80px)] max-w-3xl flex-col">
       <div className="flex-shrink-0 mb-4">
-        <PageHeader eyebrow="Workspace" title="Support" description="Ask anything about Churnaut." actions={<div className="flex items-center gap-2 text-xs text-[var(--text-muted)]"><Bot className="h-4 w-4 text-[var(--accent)]" aria-hidden="true" />AI support</div>} />
+        <PageHeader eyebrow="Signal Room · Support console" title="Support" description="Ask anything about Churnaut." actions={<div className="flex items-center gap-2 text-xs text-[var(--text-muted)]"><Bot className="h-4 w-4 text-[var(--accent)]" aria-hidden="true" />AI support</div>} />
       </div>
 
-      <div className="flex-1 overflow-y-auto space-y-4 pr-1 pb-4">
+      <Surface role="log" aria-label="Support conversation" aria-live="polite" className="flex-1 space-y-4 overflow-y-auto pb-4 pr-1">
         {messages.map(msg => (
           <div key={msg.id} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             {msg.role === 'assistant' && (
               <div className="w-7 h-7 rounded-full bg-[var(--accent)]/10 border border-[var(--accent)]/20 flex items-center justify-center flex-shrink-0 mt-1">
-                <Bot className="w-3.5 h-3.5 text-[var(--accent)]" />
+                <Bot aria-hidden="true" className="w-3.5 h-3.5 text-[var(--accent)]" />
               </div>
             )}
             <div className={`max-w-[80%] ${msg.role === 'user' ? 'items-end flex flex-col' : ''}`}>
               {msg.loading ? (
-                <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-[12px] px-4 py-3 flex items-center gap-2">
-                  <Loader2 className="w-3.5 h-3.5 text-[var(--accent)] animate-spin" />
+                <div role="status" aria-busy="true" className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-[12px] px-4 py-3 flex items-center gap-2">
+                  <Loader2 aria-hidden="true" className="w-3.5 h-3.5 animate-spin text-[var(--accent)]" />
                   <span className="text-xs font-mono text-[var(--text-muted)]">Thinking...</span>
                 </div>
               ) : (
@@ -119,19 +123,19 @@ export default function SupportPage() {
             </div>
           </div>
         )}
-        <div ref={bottomRef} />
-      </div>
+        <div ref={bottomRef} aria-hidden="true" />
+      </Surface>
 
       <div className="flex-shrink-0 border-t border-[var(--border-subtle)] pt-4">
         <div className="flex gap-3 items-end">
-          <textarea ref={inputRef} value={input} onChange={e => setInput(e.target.value)}
+          <label htmlFor="support-message" className="sr-only">Support message</label><textarea id="support-message" ref={inputRef} value={input} onChange={e => setInput(e.target.value)}
             onKeyDown={handleKeyDown} placeholder="Ask a question about Churnaut..."
             rows={1} disabled={loading}
             className="flex-1 bg-[var(--bg-surface)] border border-[var(--border-subtle)] focus:border-[var(--accent)]/50 rounded-[10px] px-4 py-3 text-sm font-sans text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none resize-none transition-all disabled:opacity-50"
             style={{ minHeight: '46px', maxHeight: '120px' }} />
           <button onClick={handleSend} disabled={loading || !input.trim()} aria-label="Send message" aria-busy={loading}
-            className="bg-[#C2683D] hover:bg-[#A8552F] disabled:opacity-40 disabled:cursor-not-allowed text-white p-3 rounded-[10px] transition-all active:scale-[0.97] flex-shrink-0">
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+            className="flex-shrink-0 rounded-[10px] bg-[var(--accent)] p-3 text-white transition-all hover:bg-[var(--accent-hover)] motion-safe:active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-40">
+            {loading ? <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" /> : <Send aria-hidden="true" className="h-4 w-4" />}
           </button>
         </div>
         <p className="text-[10px] font-mono text-[var(--text-muted)] mt-2 text-center uppercase tracking-wider">

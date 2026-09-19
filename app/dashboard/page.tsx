@@ -6,7 +6,6 @@ import {
   Zap,
   RefreshCw,
   ArrowRight,
-  Activity,
   PlusCircle,
   Link2,
 } from 'lucide-react';
@@ -20,9 +19,10 @@ import { PLAN_LIMITS } from '@/lib/plans';
 import { PageHeader } from '@/components/dashboard/PageHeader';
 import { Surface } from '@/components/dashboard/Surface';
 import { MetricCard } from '@/components/dashboard/MetricCard';
-import { StatusBadge } from '@/components/dashboard/StatusBadge';
 import { SectionHeader } from '@/components/dashboard/SectionHeader';
 import { ProgressBar } from '@/components/dashboard/ProgressBar';
+import { PressureInstrument } from '@/components/dashboard/PressureInstrument';
+import { SignalFeed } from '@/components/dashboard/SignalFeed';
 
 interface ScoutInboxData {
   top_red_deal: { deal_name: string; next_action: string } | null;
@@ -224,21 +224,18 @@ export default function DashboardPage() {
   return (
     <div className="mx-auto w-full max-w-[1560px] space-y-8 text-[var(--text-secondary)] font-sans">
       <PageHeader
-        eyebrow="Revenue intelligence"
+        eyebrow="Signal Room"
         title={`${getGreeting()}${firstName ? `, ${firstName}` : ''}.`}
-        description="A focused view of pipeline pressure, personalization, and the next action worth taking."
+        description="Your operating view of pipeline pressure, active signals, and the next action worth taking."
         actions={lastUpdated ? <span className="dashboard-status dashboard-status-neutral">Updated {lastUpdated}</span> : undefined}
       />
 
-
-
       {onboarding && !onboardingDismissed && !allComplete && (
-        <Surface className="p-5 md:p-6 space-y-5">
+        <Surface tone="subtle" className="space-y-5 border-l-2 border-l-[var(--accent)] p-5 md:p-6" aria-labelledby="room-setup-title">
           {/* Header row */}
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <h2 className="text-base font-bold text-[var(--text-primary)]">Get started with Churnaut
-              </h2>
+              <h2 id="room-setup-title" className="text-base font-bold text-[var(--text-primary)]">Room setup</h2>
               <p className="text-sm text-[var(--text-secondary)]">
                 Complete these steps to start personalizing your website.
               </p>
@@ -362,65 +359,73 @@ export default function DashboardPage() {
 
       {loading ? (
         <div className="space-y-8 animate-pulse">
-          {/* Skeleton stats grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-            <Skeleton variant="card" height={112} />
-            <Skeleton variant="card" height={112} />
-            <Skeleton variant="card" height={112} />
-            <Skeleton variant="card" height={112} />
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+            <Skeleton variant="card" height={242} />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 xl:grid-cols-1">
+              <Skeleton variant="card" height={70} />
+              <Skeleton variant="card" height={70} />
+              <Skeleton variant="card" height={70} />
+            </div>
           </div>
-          {/* Skeleton inbox */}
           <Skeleton variant="card" height={150} />
-          {/* Skeleton activity */}
           <Skeleton variant="card" height={220} />
         </div>
       ) : (
         <div className="space-y-8">
-          {/* SECTION 2: KEY STATS */}
+          {/* Primary instrumentation */}
           {summary && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-              <MetricCard label="Pipeline pressure" value={<CountUp value={summary.pressure_score} />} detail={<StatusBadge tone={summary.pipeline_status === 'HEALTHY' ? 'success' : summary.pipeline_status === 'AT RISK' ? 'danger' : 'warning'}>{summary.pipeline_status}</StatusBadge>} emphasis="primary" icon={<Zap className="h-4 w-4" />} />
-              <MetricCard label="Active rules" value={<CountUp value={summary.active_rules_count} />} detail="Personalization logic currently running" />
-              <MetricCard label="Tracked links" value={<CountUp value={summary.tracked_links_count} />} detail="Prospect paths you can measure" />
-              <MetricCard label="Sessions this week" value={<CountUp value={summary.sessions_this_week} />} detail="Engagement captured by Churnaut" />
-            </div>
+            <section aria-labelledby="instrumentation-title" className="space-y-3">
+              <SectionHeader headingId="instrumentation-title" title="Instrumentation" description="The signals shaping this workspace right now." />
+              <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+                <PressureInstrument score={summary.pressure_score} status={summary.pipeline_status} value={<CountUp value={summary.pressure_score} />} />
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 xl:grid-cols-1">
+                  <MetricCard label="Active rules" value={<CountUp value={summary.active_rules_count} />} detail="Personalization logic running" />
+                  <MetricCard label="Tracked links" value={<CountUp value={summary.tracked_links_count} />} detail="Prospect paths measured" />
+                  <MetricCard label="Sessions this week" value={<CountUp value={summary.sessions_this_week} />} detail="Engagement captured" />
+                </div>
+              </div>
+            </section>
           )}
 
-          {/* SECTION 3: SCOUT INBOX */}
+          {/* Needs attention */}
           {summary && (
-            <Surface tone="subtle" className="border-l-4 border-l-[var(--amber)] p-5">
-              <SectionHeader title="Scout attention" description="The highest-priority signal from your pipeline today." />
-              <div className="flex items-center gap-2 text-[var(--text-primary)] font-semibold text-sm">
-                <Zap className="text-[var(--amber)] w-4 h-4 fill-[var(--amber)]/20" />
-                SCOUT INBOX — TODAY
-              </div>
-
-              <div className="mt-4 space-y-2 text-[14px] text-[var(--text-secondary)]">
+            <Surface tone="subtle" className="border-l-2 border-l-[var(--amber)] p-5 md:p-6" aria-labelledby="attention-title">
+              <SectionHeader headingId="attention-title" title="Needs attention" description="The clearest next signal from your pipeline today." />
+              <div className="mt-5 space-y-3">
                 {!summary.scout_inbox.has_red_deals ? (
-                  <p className="text-[var(--text-muted)] italic">No urgent items today.</p>
+                  <div className="flex items-center gap-3 rounded-[8px] border border-[var(--green)]/20 bg-[var(--green)]/5 px-4 py-4">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full border border-[var(--green)]/30 text-[var(--green)]" aria-hidden="true">✓</span>
+                    <div>
+                      <p className="text-sm font-semibold text-[var(--text-primary)]">No urgent items today.</p>
+                      <p className="mt-1 text-xs text-[var(--text-muted)]">Scout will surface the next meaningful change here.</p>
+                    </div>
+                  </div>
                 ) : (
                   <>
                     {summary.scout_inbox.top_red_deal && (
-                      <p className="flex items-start gap-2">
-                        <span className="text-[var(--amber)]">•</span>
-                        <span>
-                          <strong className="text-[var(--text-primary)]">RED Deal Attention:</strong> {summary.scout_inbox.top_red_deal.deal_name} - {summary.scout_inbox.top_red_deal.next_action}
-                        </span>
-                      </p>
+                      <div className="flex items-start gap-3 rounded-[8px] border border-[var(--red)]/25 bg-[var(--red)]/5 px-4 py-4">
+                        <Zap className="mt-0.5 h-4 w-4 flex-shrink-0 text-[var(--red)]" aria-hidden="true" />
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-mono font-semibold uppercase tracking-[0.1em] text-[var(--red)]">Critical signal · deal</p>
+                          <p className="mt-1 text-sm font-semibold text-[var(--text-primary)]">{summary.scout_inbox.top_red_deal.deal_name}</p>
+                          <p className="mt-1 text-xs text-[var(--text-secondary)]">Next action: {summary.scout_inbox.top_red_deal.next_action}</p>
+                        </div>
+                      </div>
                     )}
                     {summary.scout_inbox.top_rep && (
-                      <p className="flex items-start gap-2">
-                        <span className="text-[var(--amber)]">•</span>
-                        <span>
-                          <strong className="text-[var(--text-primary)]">Sales Representative Alert:</strong> {summary.scout_inbox.top_rep.rep_name} has {summary.scout_inbox.top_rep.count} RED deals.
-                        </span>
-                      </p>
+                      <div className="flex items-start gap-3 rounded-[8px] border border-[var(--amber)]/25 bg-[var(--amber)]/5 px-4 py-4">
+                        <Zap className="mt-0.5 h-4 w-4 flex-shrink-0 text-[var(--amber)]" aria-hidden="true" />
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-mono font-semibold uppercase tracking-[0.1em] text-[var(--amber)]">Warning signal · rep</p>
+                          <p className="mt-1 text-sm font-semibold text-[var(--text-primary)]">{summary.scout_inbox.top_rep.rep_name}</p>
+                          <p className="mt-1 text-xs text-[var(--text-secondary)]">{summary.scout_inbox.top_rep.count} red deals need a closer look.</p>
+                        </div>
+                      </div>
                     )}
                   </>
                 )}
               </div>
-
-              <div className="flex justify-end mt-4">
+              <div className="mt-5 flex justify-end">
                 <Link
                   href="/dashboard/scout"
                   className="text-[12px] text-[var(--accent)] hover:text-[var(--accent-hover)] font-bold uppercase tracking-wider flex items-center gap-1 transition-colors font-mono"
@@ -431,47 +436,12 @@ export default function DashboardPage() {
             </Surface>
           )}
 
-          {/* SECTION 4: RECENT ACTIVITY */}
+          {/* Signal feed */}
           {summary && (
-            <Surface className="p-5 md:p-6">
-              <SectionHeader title="Recent activity" description="The latest signals captured across your workspace." />
-              <div className="flex items-center gap-2 text-[var(--text-primary)] font-semibold text-sm border-b border-[var(--border-subtle)] pb-3">
-                <Activity className="text-[var(--accent)] w-4 h-4" />
-                RECENT ACTIVITY
-              </div>
-
-              {summary.recent_activity.length === 0 ? (
-                <div className="py-8 text-center text-xs text-[var(--text-muted)] font-mono">
-                  No recent activities recorded.
-                </div>
-              ) : (
-                <div className="mt-4 overflow-x-auto">
-                  <table className="w-full text-left text-xs border-collapse">
-                    <thead>
-                      <tr className="border-b border-[var(--border-subtle)] text-[var(--text-muted)] uppercase text-[9px] tracking-widest">
-                        <th className="pb-2 font-medium">Event Type</th>
-                        <th className="pb-2 font-medium">Signal</th>
-                        <th className="pb-2 font-medium text-right">Time</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[var(--border-subtle)]/40">
-                      {summary.recent_activity.map((event, idx) => (
-                        <tr key={idx} className="hover:bg-[var(--bg-elevated)] transition-colors">
-                          <td className="py-2.5 font-medium text-[var(--text-primary)] font-sans">{event.event_type}</td>
-                          <td className="py-2.5 text-[var(--text-secondary)] font-mono">
-                            {event.signal_type || 'N/A'}
-                          </td>
-                          <td className="py-2.5 text-right text-[var(--text-muted)] font-mono">
-                            {formatRelativeTime(event.created_at)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-
-              <div className="flex justify-end mt-4">
+            <Surface className="p-5 md:p-6" aria-labelledby="feed-title">
+              <SectionHeader headingId="feed-title" title="Signal feed" description="The latest signals captured across your workspace." />
+              <SignalFeed events={summary.recent_activity} formatRelativeTime={formatRelativeTime} />
+              <div className="mt-4 flex justify-end">
                 <Link
                   href="/dashboard/analytics"
                   className="text-[12px] text-[var(--accent)] hover:text-[var(--accent-hover)] font-bold uppercase tracking-wider flex items-center gap-1 transition-colors font-mono"
@@ -482,30 +452,24 @@ export default function DashboardPage() {
             </Surface>
           )}
 
-          {/* SECTION 4B: VISIT USAGE BAR */}
+          {/* Capacity */}
           {(() => {
             const limit = (PLAN_LIMITS[plan as keyof typeof PLAN_LIMITS]?.tracked_visits) ?? 500;
             if (limit === Infinity) return null;
             const pct = Math.min((monthlyVisits / limit) * 100, 100);
-            const barColor = pct >= 100 ? '#ef4444' : pct >= 90 ? '#ef4444' : pct >= 70 ? '#f59e0b' : '#C2683D';
             const textColor = pct >= 100 ? 'text-[var(--red)]' : pct >= 90 ? 'text-[var(--red)]' : pct >= 70 ? 'text-[var(--amber)]' : 'text-[var(--text-muted)]';
             const atLimit = pct >= 100;
             return (
-              <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-[12px] px-6 py-5 space-y-3">
+              <Surface tone="subtle" className="space-y-3 px-5 py-5 md:px-6" aria-label="Capacity telemetry">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-mono uppercase tracking-wider text-[var(--text-muted)]">
-                    Monthly Tracked Visits
+                    Capacity · monthly tracked visits
                   </span>
                   <span className={`text-[11px] font-mono font-bold ${textColor}`}>
                     {monthlyVisits.toLocaleString()} / {limit.toLocaleString()}
                   </span>
                 </div>
-                <div className="h-1.5 bg-[var(--border-subtle)] rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all duration-700"
-                    style={{ width: `${pct}%`, backgroundColor: barColor }}
-                  />
-                </div>
+                <ProgressBar value={pct} label="Visit capacity" tone={pct >= 90 ? 'danger' : pct >= 70 ? 'warning' : 'accent'} />
                 {pct >= 80 && plan === 'starter' && (
                   <p className="text-[10px] font-mono text-[var(--amber)]">
                     {atLimit ? (
@@ -522,7 +486,7 @@ export default function DashboardPage() {
                     {' '}<a href="/dashboard/billing" className="underline hover:text-[#A8552F] transition-colors">Upgrade to Pro for unlimited visits &rarr;</a>
                   </p>
                 )}
-              </div>
+              </Surface>
             );
           })()}
 
@@ -546,9 +510,11 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* SECTION 5: QUICK ACTIONS */}
+          {/* Command actions */}
+          <section aria-labelledby="command-actions-title">
+          <SectionHeader headingId="command-actions-title" title="Command actions" description="Move from signal to action without leaving the room." />
           <motion.div 
-            className="grid grid-cols-1 sm:grid-cols-3 gap-4"
+            className="grid grid-cols-1 gap-3 sm:grid-cols-3"
             initial="hidden"
             animate="visible"
             variants={{
@@ -569,7 +535,7 @@ export default function DashboardPage() {
             >
               <Link
                 href="/dashboard/links"
-                className="card border border-[var(--border-default)] bg-transparent hover:bg-[var(--bg-elevated)] p-4.5 rounded-[8px] flex items-center justify-between font-sans text-[14px] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all w-full h-full"
+                className="card flex min-h-14 w-full items-center justify-between rounded-[8px] border border-[var(--border-default)] bg-transparent p-4 font-sans text-[13px] font-semibold text-[var(--text-secondary)] transition-all hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)]"
               >
                 <span>CREATE TRACKED LINK</span>
                 <Link2 className="w-4 h-4 text-[var(--accent)]" />
@@ -584,7 +550,7 @@ export default function DashboardPage() {
             >
               <Link
                 href="/dashboard/rules"
-                className="card border border-[var(--border-default)] bg-transparent hover:bg-[var(--bg-elevated)] p-4.5 rounded-[8px] flex items-center justify-between font-sans text-[14px] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all w-full h-full"
+                className="card flex min-h-14 w-full items-center justify-between rounded-[8px] border border-[var(--border-default)] bg-transparent p-4 font-sans text-[13px] font-semibold text-[var(--text-secondary)] transition-all hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)]"
               >
                 <span>ADD ROUTING RULE</span>
                 <PlusCircle className="w-4 h-4 text-[var(--accent)]" />
@@ -600,13 +566,14 @@ export default function DashboardPage() {
               <button
                 onClick={handleRunScout}
                 disabled={runningScout}
-                className="card border border-[var(--border-default)] bg-transparent hover:bg-[var(--bg-elevated)] p-4.5 rounded-[8px] flex items-center justify-between font-sans text-[14px] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all disabled:opacity-50 text-left w-full h-full"
+                className="card flex min-h-14 w-full items-center justify-between rounded-[8px] border border-[var(--border-default)] bg-transparent p-4 text-left font-sans text-[13px] font-semibold text-[var(--text-secondary)] transition-all hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)] disabled:opacity-50"
               >
                 <span>{runningScout ? 'RUNNING...' : 'RUN SCOUT ANALYSIS'}</span>
                 <RefreshCw className={`w-4 h-4 text-[var(--accent)] ${runningScout ? 'animate-spin' : ''}`} />
               </button>
             </motion.div>
           </motion.div>
+          </section>
         </div>
       )}
     </div>

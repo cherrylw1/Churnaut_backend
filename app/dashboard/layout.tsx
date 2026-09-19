@@ -209,7 +209,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const renderNavGroup = (title: string, items: typeof coreGroup) => (
     <div className="space-y-1.5">
-      <div className="px-4 text-[10px] font-sans font-bold uppercase tracking-[0.08em] text-[var(--text-muted)]">
+      <div className="px-4 text-[10px] font-mono font-semibold uppercase tracking-[0.13em] text-[var(--text-muted)]">
         {title}
       </div>
       <div className="space-y-0.5">
@@ -221,14 +221,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               href={item.href}
               onClick={() => setSidebarOpen(false)}
               aria-current={isActive ? 'page' : undefined}
-              className={`flex items-center gap-2.5 px-4 py-2 rounded-md text-[14px] font-sans font-medium transition-all duration-150 relative overflow-hidden ${
+              className={`flex items-center gap-2.5 px-3.5 py-2 rounded-[7px] text-[13px] font-sans font-medium transition-all duration-150 relative overflow-hidden ${
                 isActive
-                  ? 'bg-[var(--bg-elevated)] text-[var(--text-primary)] font-semibold'
+                  ? 'bg-[var(--accent)]/10 text-[var(--text-primary)] font-semibold'
                   : 'text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)]'
               }`}
             >
               <div 
-                className="absolute left-0 top-0 bottom-0 bg-[var(--accent)] transition-[width] duration-150 ease-out"
+                className="absolute left-0 top-1.5 bottom-1.5 rounded-r bg-[var(--accent)] transition-[width] duration-150 ease-out"
                 style={{ width: isActive ? '2px' : '0px' }}
               />
               {item.icon && <item.icon className="w-4 h-4" />}
@@ -243,19 +243,25 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const renderSidebarContent = () => (
     <div className="flex flex-col h-full bg-[var(--bg-surface)]">
       {/* Header Brand */}
-      <div className="h-16 flex items-center px-6 border-b border-[var(--border-subtle)] mb-4 flex-shrink-0">
+      <div className="h-[76px] flex items-center px-6 border-b border-[var(--border-subtle)] mb-4 flex-shrink-0">
         <Link 
           href="/dashboard" 
           onClick={() => setSidebarOpen(false)}
-          className="flex items-center gap-2 font-sans font-bold text-[18px] text-[var(--text-primary)] hover:opacity-80 transition-opacity"
+          className="flex items-center gap-3 font-sans text-[var(--text-primary)] hover:opacity-90 transition-opacity"
         >
-          <span className="w-2.5 h-2.5 rounded-full bg-[var(--accent)]" />
-          CHURNAUT
+          <span className="relative flex h-8 w-8 items-center justify-center rounded-[9px] border border-[var(--accent)]/60 bg-[var(--accent)]/10" aria-hidden="true">
+            <span className="h-2.5 w-2.5 rounded-full bg-[var(--accent)] shadow-[0_0_14px_var(--signal-glow)]" />
+            <span className="absolute inset-[6px] rounded-[5px] border border-[var(--accent)]/40" />
+          </span>
+          <span className="flex flex-col leading-none">
+            <span className="text-[15px] font-semibold tracking-[0.14em]">CHURNAUT</span>
+            <span className="mt-1 font-mono text-[9px] font-medium uppercase tracking-[0.18em] text-[var(--text-muted)]">Signal Room</span>
+          </span>
         </Link>
       </div>
 
       {/* Navigation Links */}
-      <nav className="p-4 space-y-6 flex-1 overflow-y-auto">
+      <nav aria-label="Primary navigation" className="p-4 space-y-7 flex-1 overflow-y-auto">
         {renderNavGroup('CORE', coreGroup)}
         {renderNavGroup('INTELLIGENCE', intelligenceGroup)}
         {renderNavGroup('SETUP', setupGroup)}
@@ -263,11 +269,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         {/* Sidebar Status Indicator */}
         <div className="pt-4 border-t border-[var(--border-subtle)] flex items-center space-x-3">
           <span className="relative flex h-2.5 w-2.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--green)] opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[var(--green)]"></span>
+            <span className="absolute inline-flex h-full w-full rounded-full bg-[var(--green)] opacity-20 motion-safe:animate-ping"></span>
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[var(--green)] shadow-[0_0_12px_rgba(120,184,139,0.35)]"></span>
           </span>
-          <span className="text-[12px] font-sans font-medium text-[var(--text-secondary)]">
-            Workspace <span className="text-[var(--green)] font-semibold">ready</span>
+          <span className="text-[11px] font-mono uppercase tracking-[0.06em] text-[var(--text-muted)]">
+            Workspace <span className="text-[var(--green)]">ready</span>
           </span>
         </div>
       </nav>
@@ -279,7 +285,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   // effects from racing the cookie refresh and failing with a transient 401.
   if (!authReady) {
     return (
-      <div className="min-h-screen bg-[var(--bg-base)] text-[var(--text-secondary)] flex items-center justify-center font-sans">
+      <div className="dashboard-app min-h-screen bg-[var(--bg-base)] text-[var(--text-secondary)] flex items-center justify-center font-sans">
         Securing your workspace…
       </div>
     );
@@ -288,7 +294,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <div className="dashboard-app min-h-screen bg-[var(--bg-base)] text-[var(--text-primary)] flex">
       {/* Sidebar Panel - Desktop */}
-      <aside aria-label="Primary navigation" className="hidden md:flex w-60 bg-[var(--bg-surface)] border-r border-[var(--border-subtle)] flex-col select-none flex-shrink-0">
+      <aside aria-label="Primary navigation" className="hidden md:flex w-60 bg-[var(--bg-surface)] border-r border-[var(--border-subtle)] flex-col select-none flex-shrink-0 shadow-[8px_0_30px_rgba(0,0,0,0.12)]">
         {renderSidebarContent()}
       </aside>
 
@@ -326,7 +332,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-h-screen overflow-x-hidden bg-[var(--bg-base)]">
         {/* Top Header */}
-        <header className="h-16 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] flex items-center justify-between px-4 md:px-8 flex-shrink-0" aria-label="Workspace toolbar">
+        <header className="h-[68px] border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]/95 backdrop-blur-sm flex items-center justify-between px-4 md:px-8 flex-shrink-0" aria-label="Workspace toolbar">
           <div className="flex items-center space-x-3">
             {/* Hamburger Button */}
             <button
@@ -339,20 +345,20 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             >
               <Menu className="w-5 h-5" />
             </button>
-            <div className="flex items-center space-x-2 text-[14px] font-sans text-[var(--text-secondary)] font-medium">
-              <Link href="/dashboard" className="hover:text-[var(--text-primary)] transition-colors">Dashboard</Link>
+            <div className="flex items-center space-x-2 text-[12px] font-mono uppercase tracking-[0.05em] text-[var(--text-muted)] font-medium">
+              <Link href="/dashboard" className="hover:text-[var(--text-primary)] transition-colors">Signal Room</Link>
               {pageLabel !== 'Home' && (
                 <>
-                  <span className="text-[var(--text-muted)] font-normal">/</span>
+                  <span className="text-[var(--border-default)] font-normal">/</span>
                   <span className="text-[var(--text-primary)] font-semibold">{pageLabel}</span>
                 </>
               )}
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button type="button" onClick={() => setCommandOpen(true)} className="hidden sm:inline-flex h-10 items-center gap-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 text-xs text-[var(--text-muted)] hover:border-[var(--accent)]/40 hover:text-[var(--text-primary)]" aria-label="Search workspace">
+            <button type="button" onClick={() => setCommandOpen(true)} className="hidden sm:inline-flex h-9 items-center gap-2 rounded-[8px] border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 text-xs text-[var(--text-muted)] hover:border-[var(--accent)]/60 hover:bg-[var(--accent)]/5 hover:text-[var(--text-primary)]" aria-label="Search workspace">
               <Search className="h-4 w-4" aria-hidden="true" />
-              <span>Search</span><kbd className="ml-2 rounded border border-[var(--border-default)] px-1.5 py-0.5 text-[10px]">⌘K</kbd>
+              <span>Search workspace</span><kbd className="ml-2 rounded border border-[var(--border-default)] px-1.5 py-0.5 text-[10px]">⌘K</kbd>
             </button>
             <button
               type="button"
@@ -362,7 +368,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 router.push('/login');
                 router.refresh();
               }}
-              className="min-h-10 rounded-lg px-3 text-[14px] font-sans font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)] transition-colors"
+              className="min-h-9 rounded-[8px] px-3 text-[12px] font-mono uppercase tracking-[0.05em] font-medium text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)] transition-colors"
             >
               Sign Out
             </button>

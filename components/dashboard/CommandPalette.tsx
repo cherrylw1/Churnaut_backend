@@ -56,15 +56,15 @@ export function CommandPalette({ open, onClose, items }: { open: boolean; onClos
   const go = (href: string) => { onClose(); router.push(href); };
   return (
     <div className="fixed inset-0 z-[100] flex items-start justify-center bg-black/30 p-4 pt-[12vh]" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-      <div ref={dialogRef} className="w-full max-w-xl overflow-hidden rounded-2xl border border-[var(--border-default)] bg-[var(--bg-surface)] shadow-2xl" role="dialog" aria-modal="true" aria-label="Search workspace">
+      <div ref={dialogRef} className="w-full max-w-xl overflow-hidden rounded-[10px] border border-[var(--border-default)] bg-[var(--bg-surface)] shadow-2xl" role="dialog" aria-modal="true" aria-label="Search workspace">
         <div className="flex items-center gap-3 border-b border-[var(--border-subtle)] px-4">
           <Search className="h-5 w-5 text-[var(--text-muted)]" aria-hidden="true" />
-          <input ref={inputRef} value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && filtered[0]) go(filtered[0].href); }} placeholder="Search workspace…" aria-label="Search workspace" className="h-14 flex-1 border-0 bg-transparent text-base text-[var(--text-primary)] outline-none" />
+          <input ref={inputRef} value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && filtered[0]) go(filtered[0].href); }} placeholder="Search workspace…" aria-label="Search workspace" className="h-14 flex-1 border-0 bg-transparent text-base text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]" />
           <button type="button" onClick={onClose} aria-label="Close search" className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-[var(--text-muted)] hover:bg-[var(--bg-elevated)]"><X className="h-4 w-4" /></button>
         </div>
         <div className="max-h-[min(60vh,440px)] overflow-y-auto p-2">
           {filtered.length === 0 ? <p className="px-3 py-10 text-center text-sm text-[var(--text-muted)]">No matching workspace pages.</p> : filtered.map((item) => (
-            <button key={item.href} type="button" onClick={() => go(item.href)} className="flex min-h-12 w-full items-center justify-between rounded-xl px-3 text-left text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)]">
+            <button key={item.href} type="button" onClick={() => go(item.href)} className="flex min-h-12 w-full items-center justify-between rounded-[7px] px-3 text-left text-sm text-[var(--text-secondary)] hover:bg-[var(--accent)]/10 hover:text-[var(--text-primary)]">
               <span><span className="font-semibold text-[var(--text-primary)]">{item.label}</span><span className="ml-2 text-xs text-[var(--text-muted)]">{item.group}</span></span><ArrowRight className="h-4 w-4 text-[var(--accent)]" aria-hidden="true" />
             </button>
           ))}

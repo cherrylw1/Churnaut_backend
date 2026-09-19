@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
   AlertTriangle,
   RefreshCw,
@@ -23,6 +23,9 @@ import ErrorState from '@/components/ui/ErrorState';
 import UpgradeGate from '@/components/UpgradeGate';
 import { PageHeader } from '@/components/dashboard/PageHeader';
 import { ModalShell } from '@/components/dashboard/ModalShell';
+import { PressureInstrument } from '@/components/dashboard/PressureInstrument';
+import { Surface } from '@/components/dashboard/Surface';
+import { SectionHeader } from '@/components/dashboard/SectionHeader';
 
 
 interface ScoutDealDetail {
@@ -180,6 +183,8 @@ export default function ScoutDashboard() {
 
   // Layout States
   const [activeTab, setActiveTab] = useState<'red' | 'amber' | 'green'>('red');
+  const healthTabRefs = useRef<Record<'red' | 'amber' | 'green', HTMLButtonElement | null>>({ red: null, amber: null, green: null });
+  const healthTabs: Array<'red' | 'amber' | 'green'> = ['red', 'amber', 'green'];
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({
     triggers: true,       // Default collapsed
     pipelineHealth: false, // Default expanded
@@ -192,6 +197,20 @@ export default function ScoutDashboard() {
       ...prev,
       [section]: !prev[section],
     }));
+  };
+
+  const handleHealthTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, current: 'red' | 'amber' | 'green') => {
+    const currentIndex = healthTabs.indexOf(current);
+    let nextIndex = currentIndex;
+    if (event.key === 'ArrowRight') nextIndex = (currentIndex + 1) % healthTabs.length;
+    else if (event.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + healthTabs.length) % healthTabs.length;
+    else if (event.key === 'Home') nextIndex = 0;
+    else if (event.key === 'End') nextIndex = healthTabs.length - 1;
+    else return;
+    event.preventDefault();
+    const next = healthTabs[nextIndex];
+    setActiveTab(next);
+    window.requestAnimationFrame(() => healthTabRefs.current[next]?.focus());
   };
 
   // Nudge/Notify Modal State
@@ -511,7 +530,7 @@ export default function ScoutDashboard() {
 
   return (
     <div className="space-y-6 text-[var(--text-secondary)]">
-      <PageHeader eyebrow="Intelligence" title="Scout AI" description="Pipeline intelligence that highlights what needs attention next." actions={<div className="flex flex-col items-end gap-1.5">
+      <PageHeader eyebrow="Signal Room · Intervention console" title="Scout AI" description="Pipeline intelligence that highlights what needs attention next." actions={<div className="flex flex-col items-end gap-1.5">
           <button
             onClick={handleRunAnalysis}
             disabled={runningScout || loading}
@@ -560,15 +579,10 @@ export default function ScoutDashboard() {
         </div>
       ) : (
         <div className="space-y-6 max-w-5xl mx-auto">
-          {/* SECTION 1 — PIPELINE OVERVIEW (always expanded, not collapsible) */}
-          <div className="space-y-3">
-            <div className="border-b border-[var(--border-subtle)] pb-1.5">
-              <h2 className="text-[13px] font-semibold tracking-[0.06em] text-[var(--text-secondary)] uppercase font-sans">
-                PIPELINE OVERVIEW
-              </h2>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* SECTION 1 — PIPELINE STATE (always expanded, not collapsible) */}
+          <section aria-labelledby="pipeline-state-title" className="space-y-3">
+            <SectionHeader headingId="pipeline-state-title" title="Pipeline state" description="The current pressure and value distribution across scored deals." />
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {/* Card 1: Pressure Score Display */}
               {runningScout ? (
                 <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 rounded-[12px] flex items-center justify-between gap-4 h-[108px]">
@@ -582,20 +596,11 @@ export default function ScoutDashboard() {
                   </div>
                 </div>
               ) : snapshot && pressureStatus ? (
-                <div className={`border rounded-[12px] p-5 flex items-center justify-between gap-4 bg-[var(--bg-surface)] ${pressureStatus.borderClass} shadow-[0_1px_4px_rgba(0,0,0,0.25)]`}>
-                  <div>
-                    <span className="text-[12px] font-sans font-medium text-[var(--text-muted)] block uppercase tracking-wider">Pressure Score</span>
-                    <span className="text-[48px] font-extrabold font-sans text-[var(--text-primary)] block mt-1 leading-none">
-                      <CountUp value={snapshot.pressure_score} />
-                    </span>
-                  </div>
-                  <div className="border-l border-[var(--border-subtle)] pl-6 flex-1">
-                    <span className="text-[12px] font-sans font-medium text-[var(--text-muted)] block uppercase tracking-wider">Status</span>
-                    <span className={`text-xs font-sans font-bold block mt-1 uppercase ${pressureStatus.textClass}`}>
-                      {pressureStatus.label}
-                    </span>
-                  </div>
-                </div>
+                <PressureInstrument
+                  score={snapshot.pressure_score}
+                  status={snapshot.pressure_score <= 30 ? 'HEALTHY' : snapshot.pressure_score <= 60 ? 'NEEDS ATTENTION' : 'AT RISK'}
+                  value={<CountUp value={snapshot.pressure_score} />}
+                />
               ) : (
                 <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 rounded-[12px] text-center text-xs font-mono text-[var(--text-muted)]">
                   No snapshot data available.
@@ -604,7 +609,7 @@ export default function ScoutDashboard() {
 
               {/* Card 2: Scout Pipeline Diagnostics */}
               {snapshot ? (
-                <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-[12px] p-5 flex flex-col justify-between gap-4 shadow-[0_1px_4px_rgba(0,0,0,0.25)]">
+                <Surface className="flex flex-col justify-between gap-4 p-5">
                   <div className="flex justify-between items-center border-b border-[var(--border-subtle)] pb-2">
                     <span className="text-[12px] font-sans font-medium text-[var(--text-muted)] uppercase tracking-wider">Total Pipeline Value</span>
                     <span className="text-lg font-bold font-sans text-[var(--green)]">
@@ -632,22 +637,18 @@ export default function ScoutDashboard() {
                       </span>
                     </div>
                   </div>
-                </div>
+                </Surface>
               ) : (
                 <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 rounded-[12px] text-center text-xs font-mono text-[var(--text-muted)]">
                   No diagnostics available.
                 </div>
               )}
             </div>
-          </div>
+          </section>
 
-          {/* SECTION 2 — SCOUT INBOX (always expanded, not collapsible) */}
-          <div className="space-y-3">
-            <div className="border-b border-[var(--border-subtle)] pb-1.5">
-              <h2 className="text-[13px] font-semibold tracking-[0.06em] text-[var(--text-secondary)] uppercase font-sans">
-                SCOUT INBOX
-              </h2>
-            </div>
+          {/* SECTION 2 — ACTION QUEUE (always expanded, not collapsible) */}
+          <section aria-labelledby="action-queue-title" className="space-y-3">
+            <SectionHeader headingId="action-queue-title" title="Action queue" description="The next interventions surfaced from Scout’s current snapshot." />
             
             <div className="border border-[var(--border-subtle)] border-l-[3px] border-l-[var(--amber)] bg-[var(--bg-elevated)] rounded-[12px] p-5 shadow-[0_1px_4px_rgba(0,0,0,0.25)] font-sans text-xs space-y-2">
               <div className="flex items-center gap-2 text-[var(--text-primary)] font-bold tracking-wider uppercase text-[12px]">
@@ -667,7 +668,7 @@ export default function ScoutDashboard() {
                 )}
               </div>
             </div>
-          </div>
+          </section>
 
           {/* SECTION 3 — DEAL ACCELERATION TRIGGERS (collapsible, default collapsed) */}
           <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-[12px] overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.25)]">
@@ -773,8 +774,15 @@ export default function ScoutDashboard() {
                 >
                   <div className="p-5 space-y-4">
                 {/* Tabs Header */}
-                <div className="flex border-b border-[var(--border-subtle)] font-sans text-xs mb-4">
+                <div role="tablist" aria-label="Pipeline health states" className="flex border-b border-[var(--border-subtle)] font-sans text-xs mb-4">
                   <button
+                    role="tab"
+                    id="scout-tab-red"
+                    aria-selected={activeTab === 'red'}
+                    aria-controls="scout-panel-red"
+                    tabIndex={activeTab === 'red' ? 0 : -1}
+                    ref={(node) => { healthTabRefs.current.red = node; }}
+                    onKeyDown={(event) => handleHealthTabKeyDown(event, 'red')}
                     onClick={() => setActiveTab('red')}
                     className={`flex-1 py-3 text-center border-b-2 font-bold transition-all uppercase ${
                       activeTab === 'red'
@@ -785,6 +793,13 @@ export default function ScoutDashboard() {
                     AT RISK ({redDeals.length})
                   </button>
                   <button
+                    role="tab"
+                    id="scout-tab-amber"
+                    aria-selected={activeTab === 'amber'}
+                    aria-controls="scout-panel-amber"
+                    tabIndex={activeTab === 'amber' ? 0 : -1}
+                    ref={(node) => { healthTabRefs.current.amber = node; }}
+                    onKeyDown={(event) => handleHealthTabKeyDown(event, 'amber')}
                     onClick={() => setActiveTab('amber')}
                     className={`flex-1 py-3 text-center border-b-2 font-bold transition-all uppercase ${
                       activeTab === 'amber'
@@ -795,6 +810,13 @@ export default function ScoutDashboard() {
                     WARNING ({amberDeals.length})
                   </button>
                   <button
+                    role="tab"
+                    id="scout-tab-green"
+                    aria-selected={activeTab === 'green'}
+                    aria-controls="scout-panel-green"
+                    tabIndex={activeTab === 'green' ? 0 : -1}
+                    ref={(node) => { healthTabRefs.current.green = node; }}
+                    onKeyDown={(event) => handleHealthTabKeyDown(event, 'green')}
                     onClick={() => setActiveTab('green')}
                     className={`flex-1 py-3 text-center border-b-2 font-bold transition-all uppercase ${
                       activeTab === 'green'
@@ -808,7 +830,7 @@ export default function ScoutDashboard() {
 
                 {/* Tab content: AT RISK */}
                 {activeTab === 'red' && (
-                  <div className="space-y-4">
+                  <div id="scout-panel-red" role="tabpanel" aria-labelledby="scout-tab-red" className="space-y-4">
                     {redDeals.length === 0 ? (
                       <div className="py-8 text-center border border-[var(--border-subtle)] rounded-[12px] bg-[var(--bg-elevated)]">
                         <p className="text-xs font-sans text-[var(--text-muted)]">No red-scored deals in this snapshot.</p>
@@ -823,9 +845,12 @@ export default function ScoutDashboard() {
                               key={deal.deal_id}
                               className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-[12px] overflow-hidden border-l-[3px] border-l-[var(--red)] shadow-[0_1px_4px_rgba(0,0,0,0.25)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.35)] transition-all duration-200"
                             >
-                              <div
+                              <button
+                                type="button"
                                 onClick={() => toggleCard(deal.deal_id)}
-                                className="p-4 flex justify-between items-center cursor-pointer hover:bg-[var(--bg-elevated)] select-none"
+                                aria-expanded={isExpanded}
+                                aria-controls={`scout-deal-${deal.deal_id}`}
+                                className="w-full p-4 flex justify-between items-center cursor-pointer hover:bg-[var(--bg-elevated)] select-none text-left"
                               >
                                 <div className="space-y-1">
                                   <h3 className="font-sans text-sm font-bold text-[var(--text-primary)]">{deal.deal_name}</h3>
@@ -842,10 +867,10 @@ export default function ScoutDashboard() {
                                     <ChevronDown className="w-4 h-4 text-[var(--text-muted)]" />
                                   )}
                                 </div>
-                              </div>
+                              </button>
 
                               {isExpanded && (
-                                <div className="p-4 pt-0 border-t border-[var(--border-subtle)] space-y-4 bg-[var(--bg-surface)]">
+                                <div id={`scout-deal-${deal.deal_id}`} className="p-4 pt-0 border-t border-[var(--border-subtle)] space-y-4 bg-[var(--bg-surface)]">
                                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 border-b border-[var(--border-subtle)] py-3.5 text-[10px] font-mono">
                                     <div>
                                       <span className="text-[var(--text-muted)] block uppercase">Days In Stage</span>
@@ -929,7 +954,7 @@ export default function ScoutDashboard() {
 
                 {/* Tab content: WARNING */}
                 {activeTab === 'amber' && (
-                  <div className="space-y-4">
+                  <div id="scout-panel-amber" role="tabpanel" aria-labelledby="scout-tab-amber" className="space-y-4">
                     {amberDeals.length === 0 ? (
                       <div className="py-8 text-center border border-[var(--border-subtle)] rounded-[12px] bg-[var(--bg-elevated)]">
                         <p className="text-xs font-sans text-[var(--text-muted)]">No amber-scored deals in this snapshot.</p>
@@ -943,9 +968,12 @@ export default function ScoutDashboard() {
                               key={deal.deal_id}
                               className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-[12px] overflow-hidden border-l-[3px] border-l-[var(--amber)] shadow-[0_1px_4px_rgba(0,0,0,0.25)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.35)] transition-all duration-200"
                             >
-                              <div
+                              <button
+                                type="button"
                                 onClick={() => toggleCard(deal.deal_id)}
-                                className="p-4 flex justify-between items-center cursor-pointer hover:bg-[var(--bg-elevated)] select-none"
+                                aria-expanded={isExpanded}
+                                aria-controls={`scout-deal-${deal.deal_id}`}
+                                className="w-full p-4 flex justify-between items-center cursor-pointer hover:bg-[var(--bg-elevated)] select-none text-left"
                               >
                                 <div className="space-y-1">
                                   <h3 className="font-sans text-sm font-bold text-[var(--text-primary)]">{deal.deal_name}</h3>
@@ -962,10 +990,10 @@ export default function ScoutDashboard() {
                                     <ChevronDown className="w-4 h-4 text-[var(--text-muted)]" />
                                   )}
                                 </div>
-                              </div>
+                              </button>
 
                               {isExpanded && (
-                                <div className="p-4 pt-0 border-t border-[var(--border-subtle)] space-y-4 bg-[var(--bg-surface)]">
+                                <div id={`scout-deal-${deal.deal_id}`} className="p-4 pt-0 border-t border-[var(--border-subtle)] space-y-4 bg-[var(--bg-surface)]">
                                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 border-b border-[var(--border-subtle)] py-3.5 text-[10px] font-mono">
                                     <div>
                                       <span className="text-[var(--text-muted)] block uppercase">Days In Stage</span>
@@ -1019,7 +1047,7 @@ export default function ScoutDashboard() {
 
                 {/* Tab content: HEALTHY */}
                 {activeTab === 'green' && (
-                  <div className="space-y-4">
+                  <div id="scout-panel-green" role="tabpanel" aria-labelledby="scout-tab-green" className="space-y-4">
                     {greenDeals.length === 0 ? (
                       <div className="py-8 text-center border border-[var(--border-subtle)] rounded-[12px] bg-[var(--bg-elevated)]">
                         <p className="text-xs font-sans text-[var(--text-muted)]">No green-scored deals in this snapshot.</p>

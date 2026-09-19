@@ -83,7 +83,7 @@ function ToastCard({ item }: { item: ToastItem }) {
       exit={{ opacity: 0, x: 100, scale: 0.9 }}
       transition={{ type: 'spring', damping: 25, stiffness: 250 }}
       role="status"
-      className={`pointer-events-auto w-full bg-[var(--bg-surface)] border border-[var(--border-subtle)] ${getBorderClass()} rounded-xl p-3.5 shadow-lg relative overflow-hidden flex gap-3 items-start select-none`}
+      className={`pointer-events-auto w-full bg-[var(--bg-surface)] border border-[var(--border-subtle)] ${getBorderClass()} rounded-[9px] p-3.5 shadow-lg relative overflow-hidden flex gap-3 items-start select-none`}
     >
       {getIcon()}
       <div className="flex-1 font-sans text-sm text-[var(--text-primary)] pr-4 leading-normal break-words">

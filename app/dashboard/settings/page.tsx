@@ -1,8 +1,12 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { PageHeader } from '@/components/dashboard/PageHeader';
+import { Surface } from '@/components/dashboard/Surface';
+import { StatusBadge } from '@/components/dashboard/StatusBadge';
+import { ProgressBar } from '@/components/dashboard/ProgressBar';
+import { FormField } from '@/components/dashboard/FormField';
 
 const VISIT_LIMITS: Record<string, number> = { starter: 500, growth: 5000, pro: Infinity };
 const PLAN_LABELS: Record<string, string> = { starter: 'Starter', growth: 'Growth', pro: 'Pro' };
@@ -10,233 +14,22 @@ const DOMAIN_LIMITS: Record<string, number> = { starter: 1, growth: 3, pro: 10 }
 type ClientDomain = { id: string; origin: string | null; domain: string; is_primary: boolean; active: boolean };
 
 export default function SettingsPage() {
-  const [loading, setLoading] = useState(true);
-  const [domain, setDomain] = useState('');
-  const [companyName, setCompanyName] = useState('');
-  const [plan, setPlan] = useState('starter');
-  const [monthlyVisits, setMonthlyVisits] = useState(0);
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [domains, setDomains] = useState<ClientDomain[]>([]);
-  const [newDomain, setNewDomain] = useState('');
+  const [loading, setLoading] = useState(true); const [domain, setDomain] = useState(''); const [companyName, setCompanyName] = useState(''); const [plan, setPlan] = useState('starter'); const [monthlyVisits, setMonthlyVisits] = useState(0); const [saving, setSaving] = useState(false); const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null); const [domains, setDomains] = useState<ClientDomain[]>([]); const [newDomain, setNewDomain] = useState('');
 
-  useEffect(() => {
-    async function loadClient() {
-      try {
-        const [res, domainsRes] = await Promise.all([fetch('/api/client'), fetch('/api/client/domains')]);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.client) {
-            setDomain(data.client.domain || '');
-            setCompanyName(data.client.company_name || '');
-            setPlan(data.client.plan || 'starter');
-            setMonthlyVisits(data.client.monthly_visits || 0);
-          }
-        }
-        if (domainsRes.ok) {
-          const domainData = await domainsRes.json();
-          setDomains(domainData.domains || []);
-        }
-      } catch (err) {
-        console.error('Failed to load client profile:', err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadClient();
-  }, []);
+  useEffect(() => { async function loadClient() { try { const [res, domainsRes] = await Promise.all([fetch('/api/client'), fetch('/api/client/domains')]); if (res.ok) { const data = await res.json(); if (data.client) { setDomain(data.client.domain || ''); setCompanyName(data.client.company_name || ''); setPlan(data.client.plan || 'starter'); setMonthlyVisits(data.client.monthly_visits || 0); } } if (domainsRes.ok) { const data = await domainsRes.json(); setDomains(data.domains || []); } } catch (error) { console.error('Failed to load client profile:', error); } finally { setLoading(false); } } loadClient(); }, []);
 
-  const handleSave = async () => {
-    setSaving(true);
-    setMessage(null);
-    try {
-      const res = await fetch('/api/client', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ domain }),
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setMessage({ type: 'success', text: 'Domain updated successfully.' });
-        setDomain(data.domain);
-      } else {
-        setMessage({ type: 'error', text: data.error || 'Failed to update domain.' });
-      }
-    } catch {
-      setMessage({ type: 'error', text: 'Network error occurred.' });
-    } finally {
-      setSaving(false);
-    }
-  };
+  const handleSave = async () => { setSaving(true); setMessage(null); try { const res = await fetch('/api/client', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ domain }) }); const data = await res.json(); if (res.ok && data.success) { setDomain(data.domain); setMessage({ type: 'success', text: 'Primary domain updated successfully.' }); } else setMessage({ type: 'error', text: data.error || 'Failed to update domain.' }); } catch { setMessage({ type: 'error', text: 'Network error occurred.' }); } finally { setSaving(false); } };
+  const refreshDomains = async () => { const res = await fetch('/api/client/domains'); if (!res.ok) return; const data = await res.json(); setDomains(data.domains || []); const primary = (data.domains || []).find((item: ClientDomain) => item.is_primary && item.active); if (primary) setDomain(primary.origin || primary.domain); };
+  const handleAddDomain = async () => { if (!newDomain.trim()) return; setSaving(true); setMessage(null); try { const res = await fetch('/api/client/domains', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ domain: newDomain }) }); const data = await res.json(); if (!res.ok) throw new Error(data.error || 'Failed to add domain'); setNewDomain(''); await refreshDomains(); setMessage({ type: 'success', text: 'Domain added.' }); } catch (error) { setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Failed to add domain.' }); } finally { setSaving(false); } };
+  const handleRemoveDomain = async (id: string) => { setSaving(true); setMessage(null); try { const res = await fetch(`/api/client/domains?id=${encodeURIComponent(id)}`, { method: 'DELETE' }); const data = await res.json(); if (!res.ok) throw new Error(data.error || 'Failed to remove domain'); await refreshDomains(); setMessage({ type: 'success', text: 'Domain removed.' }); } catch (error) { setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Failed to remove domain.' }); } finally { setSaving(false); } };
 
-  const refreshDomains = async () => {
-    const res = await fetch('/api/client/domains');
-    if (!res.ok) return;
-    const data = await res.json();
-    setDomains(data.domains || []);
-    const primary = (data.domains || []).find((item: ClientDomain) => item.is_primary && item.active);
-    if (primary) setDomain(primary.origin || primary.domain);
-  };
+  const visitLimit = VISIT_LIMITS[plan] ?? 500; const visitPct = visitLimit === Infinity ? 0 : Math.min((monthlyVisits / visitLimit) * 100, 100); const tone: 'danger' | 'warning' | 'accent' = visitPct >= 90 ? 'danger' : visitPct >= 70 ? 'warning' : 'accent'; const activeDomains = domains.filter((item) => item.active).length;
 
-  const handleAddDomain = async () => {
-    if (!newDomain.trim()) return;
-    setSaving(true);
-    setMessage(null);
-    try {
-      const res = await fetch('/api/client/domains', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ domain: newDomain }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to add domain');
-      setNewDomain('');
-      await refreshDomains();
-      setMessage({ type: 'success', text: 'Domain added.' });
-    } catch (error) {
-      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Failed to add domain.' });
-    } finally { setSaving(false); }
-  };
-
-  const handleRemoveDomain = async (id: string) => {
-    setSaving(true);
-    setMessage(null);
-    try {
-      const res = await fetch(`/api/client/domains?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to remove domain');
-      await refreshDomains();
-      setMessage({ type: 'success', text: 'Domain removed.' });
-    } catch (error) {
-      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Failed to remove domain.' });
-    } finally { setSaving(false); }
-  };
-
-  const visitLimit = VISIT_LIMITS[plan] ?? 500;
-  const visitPct = visitLimit === Infinity ? 0 : Math.min((monthlyVisits / visitLimit) * 100, 100);
-  const barColor = visitPct >= 90 ? '#ef4444' : visitPct >= 70 ? '#f59e0b' : '#C2683D';
-
-  return (
-    <div className="space-y-8 max-w-4xl font-sans">
-
-      <PageHeader eyebrow="Workspace" title="Settings" description="Manage your account, workspace, and plan." />
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-        {/* Card 1: Account */}
-        <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-[12px] p-6 flex flex-col gap-5">
-          <div>
-            <p className="text-[11px] font-mono uppercase tracking-widest text-[var(--text-muted)] mb-3">Account</p>
-            <h2 className="text-[15px] font-bold text-[var(--text-primary)]">Workspace</h2>
-            <p className="text-xs text-[var(--text-secondary)] mt-1">Your company profile and tracked domain.</p>
-          </div>
-
-          {loading ? (
-            <div className="space-y-3 animate-pulse">
-              <div className="h-8 bg-[var(--border-subtle)] rounded" />
-              <div className="h-8 bg-[var(--border-subtle)] rounded" />
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {/* Company name — read only */}
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-mono uppercase tracking-wider text-[var(--text-muted)]">
-                  Company Name
-                </label>
-                <div className="w-full bg-[var(--bg-base)] border border-[var(--border-subtle)] text-[var(--text-muted)] text-xs font-mono px-3 py-2.5 rounded-[6px] opacity-60 cursor-not-allowed">
-                  {companyName || '—'}
-                </div>
-              </div>
-
-              {/* Registered domains */}
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-mono uppercase tracking-wider text-[var(--text-muted)]">
-                  Primary Tracked Domain
-                </label>
-                <div className="space-y-2">
-                  {domains.map((item) => {
-                    const value = item.origin || item.domain;
-                    return <div key={item.id} className="flex items-center gap-2 rounded-[6px] border border-[var(--border-subtle)] p-2">
-                      <input type="radio" name="primary-domain" checked={domain === value} onChange={() => setDomain(value)} aria-label={`Make ${value} primary`} />
-                      <span className="min-w-0 flex-1 truncate text-[11px] font-mono text-[var(--text-primary)]">{value}</span>
-                      {domains.length > 1 && <button type="button" disabled={saving} onClick={() => handleRemoveDomain(item.id)} className="text-[10px] text-[var(--red)] disabled:opacity-50">Remove</button>}
-                    </div>;
-                  })}
-                </div>
-                <p className="text-[9px] font-mono text-[var(--text-muted)]">{domains.filter((item) => item.active).length} / {DOMAIN_LIMITS[plan] || 1} domains used</p>
-                <div className="flex gap-2 pt-2">
-                  <input type="url" value={newDomain} onChange={(event) => setNewDomain(event.target.value)} placeholder="https://yourwebsite.com" className="min-w-0 flex-1 bg-[var(--bg-base)] border border-[var(--border-subtle)] focus:border-[#C2683D] text-[var(--text-primary)] text-xs font-mono px-3 py-2.5 rounded-[6px] outline-none" />
-                  <button type="button" disabled={saving || !newDomain.trim() || domains.filter((item) => item.active).length >= (DOMAIN_LIMITS[plan] || 1)} onClick={handleAddDomain} className="border border-[#C2683D]/40 px-3 rounded-[6px] text-[11px] text-[#C2683D] disabled:opacity-40">Add</button>
-                </div>
-              </div>
-
-              {message && (
-                <p className={`text-[11px] font-mono ${message.type === 'success' ? 'text-[var(--green)]' : 'text-[var(--red)]'}`}>
-                  {message.text}
-                </p>
-              )}
-
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="w-full bg-[#C2683D] hover:bg-[#A8552F] disabled:opacity-50 text-white text-xs font-semibold font-sans py-2.5 rounded-[8px] transition-all active:scale-[0.98]"
-              >
-                {saving ? 'Saving...' : 'Save Primary Domain'}
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Card 2: Plan & Usage */}
-        <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-[12px] p-6 flex flex-col gap-5">
-          <div>
-            <p className="text-[11px] font-mono uppercase tracking-widest text-[var(--text-muted)] mb-3">Subscription</p>
-            <h2 className="text-[15px] font-bold text-[var(--text-primary)]">Plan & Usage</h2>
-            <p className="text-xs text-[var(--text-secondary)] mt-1">{"Your current plan and this month's visit usage."}</p>
-          </div>
-
-          {loading ? (
-            <div className="space-y-3 animate-pulse">
-              <div className="h-6 bg-[var(--border-subtle)] rounded w-1/3" />
-              <div className="h-2 bg-[var(--border-subtle)] rounded" />
-            </div>
-          ) : (
-            <div className="space-y-5">
-              {/* Plan badge */}
-              <div className="flex items-center gap-3">
-                <span className="text-[11px] font-mono uppercase tracking-widest text-[var(--text-muted)]">Current plan</span>
-                <span className="text-[11px] font-mono font-bold text-[#C2683D] border border-[#C2683D]/30 bg-[#C2683D]/10 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                  {PLAN_LABELS[plan] || 'Starter'}
-                </span>
-              </div>
-
-              {/* Usage bar */}
-              {visitLimit !== Infinity ? (
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-[10px] font-mono uppercase tracking-wider text-[var(--text-muted)]">Tracked visits this month</span>
-                    <span className={`text-[10px] font-mono font-bold ${visitPct >= 90 ? 'text-[var(--red)]' : visitPct >= 70 ? 'text-[var(--amber)]' : 'text-[var(--text-muted)]'}`}>
-                      {monthlyVisits.toLocaleString()} / {visitLimit.toLocaleString()}
-                    </span>
-                  </div>
-                  <div className="h-1.5 bg-[var(--border-subtle)] rounded-full overflow-hidden">
-                    <div className="h-full rounded-full transition-all duration-700" style={{ width: `${visitPct}%`, backgroundColor: barColor }} />
-                  </div>
-                  <p className="text-[9px] font-mono text-[var(--text-muted)]">Resets on the 1st of each month.</p>
-                </div>
-              ) : (
-                <p className="text-xs font-mono text-[var(--green)]">Unlimited tracked visits</p>
-              )}
-
-              <Link
-                href="/dashboard/billing"
-                className="block w-full text-center border border-[#C2683D]/30 hover:border-[#C2683D] hover:bg-[#C2683D]/5 text-[#C2683D] hover:text-[#A8552F] text-xs font-semibold font-sans py-2.5 rounded-[8px] transition-all"
-              >
-                Manage Billing &rarr;
-              </Link>
-            </div>
-          )}
-        </div>
-
-      </div>
+  return <div className="max-w-5xl space-y-8"><PageHeader eyebrow="Signal Room · Workspace controls" title="Settings" description="Manage your workspace, domains, and usage." />
+    {message && <p role={message.type === 'success' ? 'status' : 'alert'} aria-live="polite" className={message.type === 'success' ? 'text-sm text-[var(--green)]' : 'text-sm text-[var(--red)]'}>{message.text}</p>}
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <Surface className="space-y-6"><div><p className="dashboard-eyebrow">Workspace & domains</p><h2 className="mt-2 text-lg font-semibold text-[var(--text-primary)]">Your workspace</h2><p className="mt-1 text-sm text-[var(--text-secondary)]">Choose where Churnaut should listen for signals.</p></div>{loading ? <div className="space-y-3" role="status"><div className="h-10 animate-pulse rounded bg-[var(--border-subtle)]" /><div className="h-10 animate-pulse rounded bg-[var(--border-subtle)]" /></div> : <div className="space-y-5"><div><p className="dashboard-field-label">Company name</p><div className="mt-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2.5 text-sm text-[var(--text-muted)]" aria-readonly="true">{companyName || '—'}</div></div><fieldset className="space-y-2"><legend className="dashboard-field-label">Registered domains</legend>{domains.length === 0 && <p className="text-sm text-[var(--text-muted)]">No domains registered yet.</p>}{domains.map((item) => { const value = item.origin || item.domain; return <div key={item.id} className="flex items-center gap-3 rounded-lg border border-[var(--border-subtle)] p-3"><input type="radio" id={`primary-${item.id}`} name="primary-domain" checked={domain === value} onChange={() => setDomain(value)} aria-label={`Make ${value} primary`} /><label htmlFor={`primary-${item.id}`} className="min-w-0 flex-1 truncate text-sm text-[var(--text-primary)]">{value}</label>{activeDomains > 1 && <button type="button" disabled={saving} onClick={() => handleRemoveDomain(item.id)} className="text-xs text-[var(--red)] transition hover:underline disabled:opacity-50">Remove</button>}</div>; })}<p className="text-xs text-[var(--text-muted)]">{activeDomains} / {DOMAIN_LIMITS[plan] || 1} domains used</p></fieldset><div className="flex items-end gap-2"><FormField id="new-domain" label="Add a domain"><input id="new-domain" type="url" value={newDomain} onChange={(event) => setNewDomain(event.target.value)} placeholder="https://yourwebsite.com" className="w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--accent)]" /></FormField><button type="button" disabled={saving || !newDomain.trim() || activeDomains >= (DOMAIN_LIMITS[plan] || 1)} onClick={handleAddDomain} className="mb-0.5 rounded-lg border border-[var(--accent)]/40 px-4 py-2.5 text-sm text-[var(--accent)] transition hover:bg-[var(--accent)]/10 disabled:opacity-40">Add</button></div><button type="button" onClick={handleSave} disabled={saving} className="w-full rounded-lg bg-[var(--accent)] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--accent-hover)] disabled:opacity-50">{saving ? 'Saving...' : 'Save Primary Domain'}</button></div>}</Surface>
+      <Surface className="space-y-6"><div><p className="dashboard-eyebrow">Plan & usage</p><h2 className="mt-2 text-lg font-semibold text-[var(--text-primary)]">Your capacity</h2><p className="mt-1 text-sm text-[var(--text-secondary)]">Monitor this month&apos;s tracked visits and plan limits.</p></div>{loading ? <div className="space-y-3" role="status"><div className="h-8 w-1/3 animate-pulse rounded bg-[var(--border-subtle)]" /><div className="h-3 animate-pulse rounded bg-[var(--border-subtle)]" /></div> : <div className="space-y-6"><div className="flex items-center gap-3"><span className="text-sm text-[var(--text-secondary)]">Current plan</span><StatusBadge tone="info">{PLAN_LABELS[plan] || 'Starter'}</StatusBadge></div>{visitLimit !== Infinity ? <ProgressBar value={visitPct} tone={tone} label={`Tracked visits this month · ${monthlyVisits.toLocaleString()} / ${visitLimit.toLocaleString()}`} /> : <p className="text-sm text-[var(--green)]">Unlimited tracked visits</p>}<p className="text-xs text-[var(--text-muted)]">Usage resets on the 1st of each month.</p><Link href="/dashboard/billing" className="block w-full rounded-lg border border-[var(--accent)]/30 px-4 py-2.5 text-center text-sm font-semibold text-[var(--accent)] transition hover:bg-[var(--accent)]/10">Manage Billing →</Link></div>}</Surface>
     </div>
-  );
+  </div>;
 }

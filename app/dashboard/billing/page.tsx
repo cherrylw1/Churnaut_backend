@@ -6,6 +6,9 @@ import { Check, AlertTriangle } from 'lucide-react';
 import { PLAN_LIMITS, PLAN_PRICING } from '@/lib/plans';
 import Skeleton from '@/components/ui/Skeleton';
 import { PageHeader } from '@/components/dashboard/PageHeader';
+import { Surface } from '@/components/dashboard/Surface';
+import { StatusBadge } from '@/components/dashboard/StatusBadge';
+import { ProgressBar } from '@/components/dashboard/ProgressBar';
 
 interface ClientProfile {
   plan: string;
@@ -43,7 +46,7 @@ const PLANS = [
       'AI copywriter',
       'Bulk CSV import',
     ],
-    accent: 'border-[#C2683D]',
+    accent: 'border-[var(--accent)]',
     badge: 'Most Popular',
   },
   {
@@ -114,13 +117,13 @@ export default function BillingPage() {
   const monthlyVisits = client?.monthly_visits || 0;
   const visitLimit = VISIT_LIMITS[currentPlan] ?? 500;
   const visitPct = visitLimit === Infinity ? 0 : Math.min((monthlyVisits / visitLimit) * 100, 100);
-  const barColor = visitPct >= 90 ? '#ef4444' : visitPct >= 70 ? '#f59e0b' : '#C2683D';
 
   const hierarchy: Record<string, number> = { starter: 0, growth: 1, pro: 2 };
 
   if (loading) {
     return (
       <div className="space-y-6 max-w-4xl mx-auto">
+        <PageHeader eyebrow="Signal Room · Billing" title="Billing & plan" description="Manage your Churnaut subscription. Changes take effect immediately after payment." />
         <Skeleton variant="card" height={80} />
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
           <Skeleton variant="card" height={420} />
@@ -132,14 +135,14 @@ export default function BillingPage() {
   }
 
   return (
-    <div className="space-y-8 max-w-4xl mx-auto font-sans">
+    <div className="space-y-8 max-w-5xl mx-auto font-sans">
 
-      <PageHeader eyebrow="Workspace" title="Billing & plan" description="Manage your Churnaut subscription. Changes take effect immediately after payment." />
+      <PageHeader eyebrow="Signal Room · Billing" title="Billing & plan" description="Manage your Churnaut subscription. Changes take effect immediately after payment." />
 
       {/* Past due / cancelled warning */}
       {(planStatus === 'past_due' || planStatus === 'cancelled' || planStatus === 'expired') && (
-        <div className="flex items-start gap-3 border border-[var(--red)]/30 bg-red-500/10 rounded-[10px] px-5 py-4">
-          <AlertTriangle className="w-4 h-4 text-[var(--red)] flex-shrink-0 mt-0.5" />
+        <div role="alert" className="flex items-start gap-3 rounded-[10px] border border-[var(--red)]/30 bg-[var(--red)]/10 px-5 py-4">
+          <AlertTriangle aria-hidden="true" className="mt-0.5 w-4 h-4 flex-shrink-0 text-[var(--red)]" />
           <div>
             <p className="text-sm font-bold text-[var(--red)]">
               {planStatus === 'cancelled' ? 'Subscription cancelled' : 'Payment issue — action required'}
@@ -149,7 +152,7 @@ export default function BillingPage() {
                 ? 'Your subscription has been cancelled. You can resubscribe below.'
                 : 'Your last payment failed. Please update your billing details to avoid losing access.'}
               {' '}
-              <a href="mailto:support@churnaut.com" className="text-[var(--red)] underline hover:text-[#991b1b] transition-colors">
+              <a href="mailto:support@churnaut.com" className="text-[var(--red)] underline transition-colors hover:opacity-80">
                 Contact support &rarr;
               </a>
             </p>
@@ -159,7 +162,7 @@ export default function BillingPage() {
 
       {/* Current usage strip */}
       {visitLimit !== Infinity && (
-        <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-[12px] px-6 py-5 space-y-3">
+        <Surface className="space-y-3 px-6 py-5">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-mono uppercase tracking-wider text-[var(--text-muted)]">
               Monthly Tracked Visits — {currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1)} Plan
@@ -168,16 +171,11 @@ export default function BillingPage() {
               {monthlyVisits.toLocaleString()} / {visitLimit.toLocaleString()}
             </span>
           </div>
-          <div className="h-1.5 bg-[var(--border-subtle)] rounded-full overflow-hidden">
-            <div
-              className="h-full rounded-full transition-all duration-700"
-              style={{ width: `${visitPct}%`, backgroundColor: barColor }}
-            />
-          </div>
+          <ProgressBar value={visitPct} tone={visitPct >= 90 ? 'danger' : visitPct >= 70 ? 'warning' : 'accent'} label="Usage" />
           <p className="text-[10px] font-mono text-[var(--text-muted)]">
             Resets on the 1st of each month.
           </p>
-        </div>
+        </Surface>
       )}
 
       {/* Monthly / Yearly toggle */}
@@ -190,14 +188,14 @@ export default function BillingPage() {
           role="switch"
           aria-label="Switch between monthly and yearly billing"
           aria-checked={yearly}
-          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none ${yearly ? 'bg-[#C2683D]' : 'bg-[var(--border-subtle)]'}`}
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] ${yearly ? 'bg-[var(--accent)]' : 'bg-[var(--border-subtle)]'}`}
         >
           <span
             className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${yearly ? 'translate-x-6' : 'translate-x-1'}`}
           />
         </button>
         <span className={`text-sm font-sans ${yearly ? 'text-[var(--text-primary)] font-semibold' : 'text-[var(--text-muted)]'}`}>
-          Yearly <span className="text-[10px] font-mono text-[#C2683D] ml-1">2 MONTHS FREE</span>
+          Yearly <span className="ml-1 text-[10px] font-mono text-[var(--accent)]">2 MONTHS FREE</span>
         </span>
       </div>
 
@@ -213,12 +211,12 @@ export default function BillingPage() {
           return (
             <div
               key={plan.key}
-              className={`relative flex flex-col border-2 ${plan.accent} ${isCurrent ? 'bg-[var(--bg-elevated)]' : 'bg-[var(--bg-surface)]'} rounded-[14px] p-6 space-y-5 transition-all`}
+              className={`relative flex flex-col rounded-[14px] border-2 ${plan.accent} ${isCurrent ? 'bg-[var(--bg-elevated)]' : 'bg-[var(--bg-surface)]'} space-y-5 p-6 transition-all`}
             >
               {/* Badge */}
               {plan.badge && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  <span className="bg-[#C2683D] text-white text-[10px] font-mono font-bold uppercase tracking-wider px-3 py-1 rounded-full">
+                  <span className="rounded-full bg-[var(--accent)] px-3 py-1 text-[10px] font-mono font-bold uppercase tracking-wider text-white">
                     {plan.badge}
                   </span>
                 </div>
@@ -227,9 +225,7 @@ export default function BillingPage() {
               {/* Current plan tag */}
               {isCurrent && (
                 <div className="absolute top-4 right-4">
-                  <span className="text-[9px] font-mono uppercase tracking-wider text-[#C2683D] border border-[#C2683D]/30 bg-[#C2683D]/10 px-2 py-0.5 rounded-full">
-                    Current
-                  </span>
+                  <StatusBadge tone="info">Current</StatusBadge>
                 </div>
               )}
 
@@ -255,7 +251,7 @@ export default function BillingPage() {
               <ul className="space-y-2 flex-1">
                 {plan.features.map((f) => (
                   <li key={f} className="flex items-start gap-2 text-[12px] text-[var(--text-secondary)] font-sans">
-                    <Check className="w-3.5 h-3.5 text-[#C2683D] flex-shrink-0 mt-0.5" />
+                    <Check aria-hidden="true" className="mt-0.5 w-3.5 h-3.5 flex-shrink-0 text-[var(--accent)]" />
                     {f}
                   </li>
                 ))}
@@ -273,7 +269,7 @@ export default function BillingPage() {
                         href={portalUrl || 'https://churnaut.lemonsqueezy.com/billing'}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="block w-full text-center border border-[#C2683D]/30 text-[#C2683D] hover:text-white hover:bg-[#C2683D] text-[12px] font-sans py-2.5 rounded-[8px] transition-all"
+                        className="block w-full rounded-[8px] border border-[var(--accent)]/30 py-2.5 text-center text-[12px] font-sans text-[var(--accent)] transition-all hover:bg-[var(--accent)] hover:text-white"
                       >
                         Manage subscription &rarr;
                       </a>
@@ -284,7 +280,7 @@ export default function BillingPage() {
                     href={buildCheckoutUrl(variantId)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="block w-full text-center bg-[#C2683D] hover:bg-[#A8552F] text-white text-[13px] font-semibold font-sans py-2.5 rounded-[8px] transition-all active:scale-[0.98]"
+                    className="block w-full rounded-[8px] bg-[var(--accent)] py-2.5 text-center text-[13px] font-semibold font-sans text-white transition-all hover:bg-[var(--accent-hover)] motion-safe:active:scale-[0.98]"
                   >
                     Upgrade to {plan.name} &rarr;
                   </a>
@@ -305,7 +301,7 @@ export default function BillingPage() {
       {/* Footer note */}
       <p className="text-center text-[11px] font-mono text-[var(--text-muted)] pb-4">
         Payments processed securely by Lemon Squeezy. Subscriptions renew automatically.{' '}
-        <a href="mailto:support@churnaut.com" className="text-[#C2683D] hover:underline">
+          <a href="mailto:support@churnaut.com" className="text-[var(--accent)] hover:underline">
           Contact support
         </a>{' '}
         for billing queries.

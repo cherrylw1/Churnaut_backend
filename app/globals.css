@@ -105,8 +105,61 @@
 @layer components {
   .dashboard-app {
     --dashboard-content-max: 1560px;
+    /* Signal Room palette: the dashboard is a low-glare operational console.
+       The compatibility names below keep existing route components stable. */
+    --room-bg: #0c1012;
+    --room-panel: #14191c;
+    --room-panel-raised: #1a2024;
+    --room-panel-muted: #101416;
+    --room-line: #283035;
+    --room-line-strong: #3b474b;
+    --signal-text: #edf1ed;
+    --signal-text-secondary: #aab4b0;
+    --signal-text-muted: #74807c;
+    --signal-primary: #c9784d;
+    --signal-primary-strong: #e28b5c;
+    --signal-primary-soft: rgba(201, 120, 77, 0.13);
+    --signal-positive: #78b88b;
+    --signal-warning: #d9ad64;
+    --signal-critical: #db7764;
+    --signal-info: #89aec4;
+    --signal-glow: rgba(201, 120, 77, 0.24);
+    --signal-focus: #f1b08c;
+
+    --bg-base: var(--room-bg);
+    --bg-surface: var(--room-panel);
+    --bg-elevated: var(--room-panel-raised);
+    --border-subtle: var(--room-line);
+    --border-default: var(--room-line-strong);
+    --text-primary: var(--signal-text);
+    --text-secondary: var(--signal-text-secondary);
+    --text-muted: var(--signal-text-muted);
+    --accent: var(--signal-primary);
+    --accent-hover: var(--signal-primary-strong);
+    --accent-cyan: var(--signal-info);
+    --red: var(--signal-critical);
+    --amber: var(--signal-warning);
+    --green: var(--signal-positive);
     min-height: 100vh;
     background: var(--bg-base);
+    color-scheme: dark;
+  }
+
+  .dashboard-app h1,
+  .dashboard-app h2,
+  .dashboard-app h3,
+  .dashboard-app h4 {
+    font-family: var(--font-sans), system-ui, sans-serif;
+    letter-spacing: -0.025em;
+  }
+
+  .dashboard-app main {
+    background-color: var(--room-bg);
+    background-image:
+      radial-gradient(circle at 84% -10%, rgba(201, 120, 77, 0.11), transparent 34rem),
+      linear-gradient(rgba(255, 255, 255, 0.026) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.026) 1px, transparent 1px);
+    background-size: auto, 32px 32px, 32px 32px;
   }
 
   .dashboard-app main > div:first-child { width: 100%; max-width: var(--dashboard-content-max); margin-inline: auto; }
@@ -144,7 +197,7 @@
     align-items: flex-start;
     justify-content: space-between;
     gap: 24px;
-    margin: 0 auto 28px;
+    margin: 0 auto 32px;
     max-width: var(--dashboard-content-max);
   }
 
@@ -160,7 +213,7 @@
   }
 
   .dashboard-eyebrow { margin: 0 0 8px; }
-  .dashboard-title { margin: 0; color: var(--text-primary); font-family: var(--font-sans), system-ui, sans-serif; font-size: clamp(1.6rem, 2.8vw, 2.35rem); font-weight: 700; letter-spacing: -0.035em; line-height: 1.1; }
+  .dashboard-title { margin: 0; color: var(--text-primary); font-family: var(--font-sans), system-ui, sans-serif; font-size: clamp(1.7rem, 2.8vw, 2.5rem); font-weight: 720; letter-spacing: -0.045em; line-height: 1.04; }
   .dashboard-description { margin: 8px 0 0; max-width: 62ch; color: var(--text-secondary); font-size: 0.94rem; line-height: 1.55; }
   .dashboard-page-actions { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
 
@@ -168,14 +221,14 @@
     border: 1px solid var(--border-subtle);
     border-radius: 14px;
     background: var(--bg-surface);
-    box-shadow: 0 1px 2px rgba(73, 52, 37, 0.04);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.028), 0 1px 2px rgba(0, 0, 0, 0.18);
   }
-  .dashboard-surface-subtle { background: color-mix(in srgb, var(--bg-elevated) 52%, var(--bg-surface)); }
-  .dashboard-surface-elevated { box-shadow: 0 12px 28px rgba(73, 52, 37, 0.08); }
-  .dashboard-surface:focus-within { border-color: color-mix(in srgb, var(--accent) 58%, var(--border-default)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent); }
+  .dashboard-surface-subtle { background: color-mix(in srgb, var(--bg-elevated) 44%, var(--bg-surface)); }
+  .dashboard-surface-elevated { box-shadow: 0 18px 44px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.04); }
+  .dashboard-surface:focus-within { border-color: color-mix(in srgb, var(--accent) 62%, var(--border-default)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.03); }
 
   .dashboard-metric { min-height: 142px; padding: 18px; }
-  .dashboard-metric-primary { border-color: color-mix(in srgb, var(--accent) 34%, var(--border-subtle)); background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 10%, var(--bg-surface)), var(--bg-surface)); }
+  .dashboard-metric-primary { border-color: color-mix(in srgb, var(--accent) 52%, var(--border-subtle)); background: radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 62%), var(--bg-surface); }
   .dashboard-metric-icon { display: inline-flex; color: var(--accent); }
   .dashboard-metric-value { color: var(--text-primary); font-size: clamp(1.55rem, 2.4vw, 2rem); font-weight: 700; letter-spacing: -0.04em; line-height: 1; }
   .dashboard-metric-detail { margin: 10px 0 0; color: var(--text-muted); font-size: 0.78rem; }
@@ -185,7 +238,7 @@
   .dashboard-trend-negative { color: var(--red); }
 
   .dashboard-section-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
-  .dashboard-section-title { margin: 0; color: var(--text-primary); font-family: var(--font-sans), system-ui, sans-serif; font-size: 1rem; font-weight: 700; letter-spacing: -0.01em; }
+  .dashboard-section-title { margin: 0; color: var(--text-primary); font-family: var(--font-sans), system-ui, sans-serif; font-size: 1rem; font-weight: 680; letter-spacing: -0.015em; }
   .dashboard-section-description { margin: 4px 0 0; color: var(--text-muted); font-size: 0.82rem; }
 
   .dashboard-status { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border-subtle); border-radius: 999px; padding: 4px 9px; color: var(--text-secondary); font-size: 0.72rem; font-weight: 700; line-height: 1; }
@@ -202,6 +255,7 @@
   .dashboard-progress-accent { background: var(--accent); }
   .dashboard-progress-success { background: var(--green); }
   .dashboard-progress-warning { background: var(--amber); }
+  .dashboard-progress-danger { background: var(--red); }
 
   .dashboard-field { display: flex; flex-direction: column; gap: 6px; }
   .dashboard-field-hint { margin: -2px 0 2px; color: var(--text-muted); font-size: 0.78rem; line-height: 1.45; }
@@ -212,12 +266,16 @@
   .dashboard-empty-panel h3 { margin: 0; color: var(--text-primary); font-family: var(--font-sans), system-ui, sans-serif; font-size: 1rem; font-weight: 700; }
   .dashboard-empty-panel p { max-width: 42ch; margin: 7px 0 0; color: var(--text-secondary); font-size: 0.84rem; line-height: 1.55; }
 
-  .dashboard-table-wrap { overflow-x: auto; border: 1px solid var(--border-subtle); border-radius: 14px; background: var(--bg-surface); }
+  .dashboard-table-wrap { overflow-x: auto; border: 1px solid var(--border-subtle); border-radius: 10px; background: var(--bg-surface); }
   .dashboard-table { width: 100%; border-collapse: collapse; min-width: 620px; }
-  .dashboard-table th { padding: 11px 14px; border-bottom: 1px solid var(--border-subtle); color: var(--text-muted); background: var(--bg-elevated); font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em; text-align: left; text-transform: uppercase; white-space: nowrap; }
+  .dashboard-table th { padding: 11px 14px; border-bottom: 1px solid var(--border-subtle); color: var(--text-muted); background: color-mix(in srgb, var(--bg-elevated) 74%, var(--bg-surface)); font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.64rem; font-weight: 600; letter-spacing: 0.07em; text-align: left; text-transform: uppercase; white-space: nowrap; }
   .dashboard-table td { padding: 14px; border-bottom: 1px solid var(--border-subtle); color: var(--text-secondary); font-size: 0.86rem; vertical-align: middle; }
   .dashboard-table tr:last-child td { border-bottom: 0; }
-  .dashboard-table tbody tr:hover { background: color-mix(in srgb, var(--bg-elevated) 48%, transparent); }
+  .dashboard-table tbody tr:hover { background: color-mix(in srgb, var(--accent) 7%, var(--bg-elevated)); }
+
+  .dashboard-app .dashboard-status-dot { box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 12%, transparent); }
+  .dashboard-app .dashboard-progress { background: var(--room-panel-muted); border: 1px solid var(--border-subtle); }
+  .dashboard-app .dashboard-progress-fill { box-shadow: 0 0 14px color-mix(in srgb, currentColor 45%, transparent); }
 
   @media (max-width: 767px) {
     .dashboard-page-header { flex-direction: column; margin-bottom: 22px; }

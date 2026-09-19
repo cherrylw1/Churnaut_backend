@@ -78,6 +78,8 @@ export default function RulesPage() {
   const [selectedRule, setSelectedRule] = useState<RoutingRule | null>(null);
 
   const [activeTab, setActiveTab] = useState<'rules' | 'playbooks'>('rules');
+  const ruleTabRefs = useRef<Record<'rules' | 'playbooks', HTMLButtonElement | null>>({ rules: null, playbooks: null });
+  const ruleTabs: Array<'rules' | 'playbooks'> = ['rules', 'playbooks'];
 
   const [playbooks, setPlaybooks] = useState<PlaybookTemplate[]>([]);
   const [playbooksLoading, setPlaybooksLoading] = useState(false);
@@ -87,6 +89,20 @@ export default function RulesPage() {
   const [installing, setInstalling] = useState(false);
   const [installSuccess, setInstallSuccess] = useState(false);
   const [installError, setInstallError] = useState<string | null>(null);
+
+  const handleRuleTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, current: 'rules' | 'playbooks') => {
+    const currentIndex = ruleTabs.indexOf(current);
+    let nextIndex = currentIndex;
+    if (event.key === 'ArrowRight') nextIndex = (currentIndex + 1) % ruleTabs.length;
+    else if (event.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + ruleTabs.length) % ruleTabs.length;
+    else if (event.key === 'Home') nextIndex = 0;
+    else if (event.key === 'End') nextIndex = ruleTabs.length - 1;
+    else return;
+    event.preventDefault();
+    const next = ruleTabs[nextIndex];
+    setActiveTab(next);
+    window.requestAnimationFrame(() => ruleTabRefs.current[next]?.focus());
+  };
   
   // Create Modal State
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -400,6 +416,28 @@ export default function RulesPage() {
   };
 
   // Handle Drop
+  const persistRuleOrder = async (desiredOrder: RoutingRule[]) => {
+    const reordered = desiredOrder.map((rule, i) => ({ ...rule, priority: i + 1 }));
+    setRules(reordered);
+    try {
+      const res = await fetch('/api/rules', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          rules: reordered.map((r) => ({ id: r.id, priority: r.priority })),
+        }),
+      });
+      if (!res.ok) throw new Error('Failed to update priorities');
+      toast.success('Rules priority reordered successfully');
+      return true;
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to reorder rules.');
+      fetchRules();
+      return false;
+    }
+  };
+
   const handleDrop = async (e: React.DragEvent, index: number) => {
     e.preventDefault();
     if (draggedIndex === null || draggedIndex === index) return;
@@ -409,33 +447,18 @@ export default function RulesPage() {
     list.splice(draggedIndex, 1);
     list.splice(index, 0, draggedItem);
 
-    // Refresh priority sequences
-    const reordered = list.map((rule, i) => ({
-      ...rule,
-      priority: i + 1,
-    }));
-
-    setRules(reordered);
     setDraggedIndex(null);
 
-    // Save priorities to API database
-    try {
-      const res = await fetch('/api/rules', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          rules: reordered.map((r) => ({ id: r.id, priority: r.priority })),
-        }),
-      });
-      if (!res.ok) {
-        throw new Error('Failed to update priorities');
-      }
-      toast.success('Rules priority reordered successfully');
-    } catch (err) {
-      console.error(err);
-      toast.error('Failed to reorder rules.');
-      fetchRules();
-    }
+    await persistRuleOrder(list);
+  };
+
+  const moveRule = async (index: number, direction: -1 | 1) => {
+    const target = index + direction;
+    if (target < 0 || target >= rules.length) return;
+    const reordered = [...rules];
+    const [item] = reordered.splice(index, 1);
+    reordered.splice(target, 0, item);
+    await persistRuleOrder(reordered);
   };
 
   // Toggle active/inactive status immediately
@@ -716,9 +739,12 @@ export default function RulesPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader eyebrow="Engage" title="Routing rules" ariaLabel="ROUTING RULES" description="Configure personalized web variants based on inbound context" actions={
-        <div className="flex border-b border-[var(--border-subtle)] mt-4 md:mt-0">
+      <PageHeader eyebrow="Signal Room · Routing logic" title="Routing rules" ariaLabel="ROUTING RULES" description="Configure personalized web variants based on inbound context" actions={
+        <div role="tablist" aria-label="Routing workspace" className="flex border-b border-[var(--border-subtle)] mt-4 md:mt-0">
           <button
+            role="tab" id="rules-tab" aria-selected={activeTab === 'rules'} aria-controls="rules-panel" tabIndex={activeTab === 'rules' ? 0 : -1}
+            ref={(node) => { ruleTabRefs.current.rules = node; }}
+            onKeyDown={(event) => handleRuleTabKeyDown(event, 'rules')}
             onClick={() => setActiveTab('rules')}
             className={`px-5 py-2.5 text-xs font-mono font-bold uppercase tracking-wider border-b-2 transition-all ${
               activeTab === 'rules'
@@ -729,6 +755,9 @@ export default function RulesPage() {
             My Rules
           </button>
           <button
+            role="tab" id="playbooks-tab" aria-selected={activeTab === 'playbooks'} aria-controls="playbooks-panel" tabIndex={activeTab === 'playbooks' ? 0 : -1}
+            ref={(node) => { ruleTabRefs.current.playbooks = node; }}
+            onKeyDown={(event) => handleRuleTabKeyDown(event, 'playbooks')}
             onClick={() => setActiveTab('playbooks')}
             className={`px-5 py-2.5 text-xs font-mono font-bold uppercase tracking-wider border-b-2 transition-all ${
               activeTab === 'playbooks'
@@ -742,6 +771,7 @@ export default function RulesPage() {
       } />
 
       {activeTab === 'rules' && (
+        <div id="rules-panel" role="tabpanel" aria-labelledby="rules-tab">
         <>
 
       <div className="flex flex-col lg:flex-row gap-6 items-start w-full min-w-0">
@@ -779,7 +809,7 @@ export default function RulesPage() {
                     onDragOver={handleDragOver}
                     onDrop={(e) => handleDrop(e, index)}
                     onDragEnd={() => setDraggedIndex(null)}
-                    className={`border rounded-lg p-4 bg-[var(--bg-elevated)] flex items-start gap-4 transition-all hover:border-gray-500 relative select-none ${
+                    className={`border rounded-lg p-4 bg-[var(--bg-elevated)] flex items-start gap-4 transition-all hover:border-[var(--border-default)] relative select-none ${
                       isSelected ? 'border-[var(--accent)] bg-[var(--border-subtle)]/10' : 'border-[var(--border-subtle)]'
                     } ${!rule.active ? 'opacity-65' : ''}`}
                   >
@@ -825,6 +855,11 @@ export default function RulesPage() {
                       Edit rule
                     </button>
 
+                    <div className="flex flex-col gap-1" aria-label={`Move rule ${rule.priority}`}>
+                      <button type="button" onClick={() => moveRule(index, -1)} disabled={index === 0} aria-label={`Move rule ${rule.priority} up`} className="text-[10px] font-mono text-[var(--text-muted)] hover:text-[var(--accent)] disabled:opacity-30">↑</button>
+                      <button type="button" onClick={() => moveRule(index, 1)} disabled={index === rules.length - 1} aria-label={`Move rule ${rule.priority} down`} className="text-[10px] font-mono text-[var(--text-muted)] hover:text-[var(--accent)] disabled:opacity-30">↓</button>
+                    </div>
+
                     {/* Active/Inactive Switch */}
                     <div 
                       onClick={(e) => e.stopPropagation()} 
@@ -834,6 +869,7 @@ export default function RulesPage() {
                         onClick={() => handleToggleActive(rule)}
                         disabled={!isValidStoredRule(rule)}
                         role="switch"
+                        aria-label={`Activate rule ${rule.priority}: ${rule.signal_type || 'Any signal'}`}
                         aria-checked={Boolean(rule.active && isValidStoredRule(rule))}
                         title={!isValidStoredRule(rule) ? 'Repair this invalid configuration before activation' : undefined}
                         className={`w-10 h-5 rounded-full p-0.5 transition-colors focus:outline-none border ${
@@ -1370,7 +1406,7 @@ export default function RulesPage() {
                 <button
                   type="button"
                   onClick={() => setCreateModalOpen(false)}
-                  className="border border-[var(--border-subtle)] hover:border-gray-500 text-xs font-mono py-2 px-4 rounded text-[var(--text-secondary)] transition-all"
+                  className="border border-[var(--border-subtle)] hover:border-[var(--border-default)] text-xs font-mono py-2 px-4 rounded text-[var(--text-secondary)] transition-all"
                 >
                   CANCEL
                 </button>
@@ -1386,10 +1422,11 @@ export default function RulesPage() {
         </ModalShell>
       )}
         </>
+        </div>
       )}
 
       {activeTab === 'playbooks' && (
-        <div className="space-y-8">
+        <div id="playbooks-panel" role="tabpanel" aria-labelledby="playbooks-tab" className="space-y-8">
           {playbooksLoading ? (
             <div className="text-center py-12 text-[var(--text-muted)] font-mono text-sm uppercase tracking-widest">
               RETRIEVING PLAYBOOK TEMPLATES...
@@ -1429,21 +1466,7 @@ export default function RulesPage() {
           )}
 
           {selectedPlaybook && (
-            <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-              <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-lg max-w-lg w-full overflow-hidden shadow-2xl">
-                <div className="h-14 flex items-center justify-between px-6 border-b border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-primary)]">
-                  <span className="font-mono text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider">
-                    Install Playbook
-                  </span>
-                  <button
-                    onClick={closeInstallModal}
-                    className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors text-xs font-mono"
-                  >
-                    [CLOSE]
-                  </button>
-                </div>
-
-                <div className="p-6">
+            <ModalShell open={Boolean(selectedPlaybook)} onClose={closeInstallModal} title="Install Playbook" className="max-w-lg" contentClassName="p-6">
                   {installSuccess ? (
                     <div className="space-y-6 text-center py-4">
                       <div className="inline-flex items-center justify-center h-12 w-12 rounded-full bg-[var(--green)]/10 text-[var(--green)] border border-[var(--green)]/30 mb-2">
@@ -1460,7 +1483,7 @@ export default function RulesPage() {
                       <div className="flex flex-col sm:flex-row gap-3 pt-2">
                         <button
                           onClick={closeInstallModal}
-                          className="flex-1 bg-[var(--border-subtle)] hover:bg-[#252b3e] text-[var(--text-primary)] hover:text-white font-mono text-xs py-2.5 px-4 rounded transition-all active:scale-[0.98]"
+                          className="flex-1 bg-[var(--border-subtle)] hover:bg-[var(--bg-elevated)] text-[var(--text-primary)] hover:text-white font-mono text-xs py-2.5 px-4 rounded transition-all active:scale-[0.98]"
                         >
                           Close Window
                         </button>
@@ -1513,7 +1536,7 @@ export default function RulesPage() {
                         <button
                           type="button"
                           onClick={closeInstallModal}
-                          className="bg-[var(--border-subtle)] hover:bg-[#252b3e] text-[var(--text-primary)] hover:text-white font-mono text-xs py-2.5 px-5 rounded transition-all active:scale-[0.98]"
+                          className="bg-[var(--border-subtle)] hover:bg-[var(--bg-elevated)] text-[var(--text-primary)] hover:text-white font-mono text-xs py-2.5 px-5 rounded transition-all active:scale-[0.98]"
                         >
                           Cancel
                         </button>
@@ -1527,9 +1550,7 @@ export default function RulesPage() {
                       </div>
                     </form>
                   )}
-                </div>
-              </div>
-            </div>
+            </ModalShell>
           )}
         </div>
       )}
