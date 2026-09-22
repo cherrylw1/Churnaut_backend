@@ -20,7 +20,9 @@ test.describe('dashboard responsive shell', () => {
 
   test('home overview keeps Signal Room hierarchy and command actions', async ({ authenticatedPage: page }) => {
     await page.addInitScript(() => localStorage.removeItem('churnaut_onboarding_dismissed'))
+    let summaryCalls = 0
     await page.route('**/api/dashboard/summary', async (route) => {
+      summaryCalls += 1
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -38,11 +40,24 @@ test.describe('dashboard responsive shell', () => {
     await page.route('**/api/onboarding/status', async (route) => {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ snippet_installed: false, first_link_created: false, first_rule_created: false, crm_connected: false, first_personalized_visit: false }) })
     })
+    await page.route('**/api/client', async (route) => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ client: { plan: 'starter', monthly_visits: 500, plan_status: 'active' } }) })
+    })
     await page.emulateMedia({ reducedMotion: 'reduce' })
     await page.setViewportSize({ width: 375, height: 812 })
     await page.goto('/dashboard')
     await expect(page.locator('h1')).toHaveCount(1)
+    await expect(page.locator('[data-overview-pilot="true"]')).toHaveCount(1)
     await expect(page.getByText('Pipeline pressure', { exact: true })).toBeVisible()
+    await expect(page.getByLabel('72 out of 100 pipeline pressure')).toBeVisible()
+    await expect(page.getByText('NEEDS ATTENTION', { exact: true })).toBeVisible()
+    await expect(page.getByLabel('Active rules: 3')).toBeVisible()
+    await expect(page.getByLabel('Tracked links: 8')).toBeVisible()
+    await expect(page.getByLabel('Sessions this week: 21')).toBeVisible()
+    await expect(page.getByText('Visit limit reached — personalization is paused until the 1st of next month.')).toBeVisible()
+    await expect(page.getByRole('link', { name: /CREATE TRACKED LINK/i })).toHaveAttribute('href', '/dashboard/links')
+    await expect(page.getByRole('link', { name: /ADD ROUTING RULE/i })).toHaveAttribute('href', '/dashboard/rules')
+    await expect(page.getByRole('link', { name: /Review plan/i })).toHaveAttribute('href', '/dashboard/billing')
     await expect(page.getByText('Needs attention', { exact: true }).first()).toBeVisible()
     await expect(page.getByText('Signal feed', { exact: true })).toBeVisible()
     await expect(page.getByRole('link', { name: /View full Scout analysis/i })).toBeVisible()
@@ -56,7 +71,42 @@ test.describe('dashboard responsive shell', () => {
     await expect(page.getByRole('link', { name: /CREATE TRACKED LINK/i })).toBeVisible()
     await expect(page.getByRole('link', { name: /ADD ROUTING RULE/i })).toBeVisible()
     await expect(page.getByRole('button', { name: /RUN SCOUT ANALYSIS/i })).toBeVisible()
+    await expect(page.getByRole('link', { name: /Go to Snippet/i })).toHaveAttribute('href', '/dashboard/snippet')
+    await expect(page.getByRole('link', { name: /Create Link/i })).toHaveAttribute('href', '/dashboard/links')
+    await expect(page.getByRole('link', { name: /Add Rule/i })).toHaveAttribute('href', '/dashboard/rules')
+    await expect(page.getByRole('link', { name: /Connect CRM/i })).toHaveAttribute('href', '/dashboard/integrations/crm')
+    await expect(page.getByRole('link', { name: /View Analytics/i })).toHaveAttribute('href', '/dashboard/analytics')
+    await page.getByRole('button', { name: 'Dismiss onboarding checklist' }).click()
+    await expect.poll(() => page.evaluate(() => localStorage.getItem('churnaut_onboarding_dismissed'))).toBe('true')
+    let scoutRequest: { method: string; body: string | null } | null = null
+    await page.route('**/api/scout/score', async (route) => {
+      scoutRequest = { method: route.request().method(), body: route.request().postData() }
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ success: true }) })
+    })
+    await page.getByRole('button', { name: 'RUN SCOUT ANALYSIS' }).click()
+    await expect.poll(() => scoutRequest).toEqual({ method: 'POST', body: null })
+    await expect.poll(() => summaryCalls).toBeGreaterThan(1)
+    await page.goto('/dashboard/analytics')
+    await expect(page.locator('[data-overview-pilot="true"]')).toHaveCount(0)
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+  })
+
+  test('home overview does not mark setup complete when onboarding status fails', async ({ authenticatedPage: page }) => {
+    await page.addInitScript(() => localStorage.removeItem('churnaut_onboarding_dismissed'))
+    await page.route('**/api/dashboard/summary', async (route) => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ pressure_score: 20, pipeline_status: 'HEALTHY', active_rules_count: 1, tracked_links_count: 1, sessions_this_week: 1, scout_inbox: { has_red_deals: false, top_red_deal: null, top_rep: null }, recent_activity: [] }) })
+    })
+    await page.route('**/api/onboarding/status', async (route) => {
+      await route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: 'Unable to load onboarding status' }) })
+    })
+    await page.route('**/api/client', async (route) => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ client: { plan: 'starter', monthly_visits: 0, plan_status: 'active' } }) })
+    })
+    await page.goto('/dashboard')
+    await expect(page.getByText('Pipeline pressure', { exact: true })).toBeVisible()
+    await expect(page.getByText('Setup complete — Churnaut is fully configured and running.', { exact: true })).toHaveCount(0)
+    await page.waitForTimeout(4200)
+    await expect.poll(() => page.evaluate(() => localStorage.getItem('churnaut_onboarding_dismissed'))).toBeNull()
   })
 
   test('analytics keeps the measurement console hierarchy at phone width', async ({ authenticatedPage: page }) => {

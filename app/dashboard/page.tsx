@@ -1,28 +1,20 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import {
-  Zap,
-  RefreshCw,
-  ArrowRight,
-  PlusCircle,
-  Link2,
-} from 'lucide-react';
+import { ArrowRight, Check, Link2, PlusCircle, RefreshCw, ShieldAlert, Sparkles, Target, Zap } from 'lucide-react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { supabaseBrowser } from '@/lib/supabase';
 import CountUp from '@/components/ui/CountUp';
 import Skeleton from '@/components/ui/Skeleton';
-import { motion } from 'framer-motion';
 import { toast } from '@/hooks/useToast';
 import ErrorState from '@/components/ui/ErrorState';
 import { PLAN_LIMITS } from '@/lib/plans';
 import { PageHeader } from '@/components/dashboard/PageHeader';
 import { Surface } from '@/components/dashboard/Surface';
-import { MetricCard } from '@/components/dashboard/MetricCard';
-import { SectionHeader } from '@/components/dashboard/SectionHeader';
 import { ProgressBar } from '@/components/dashboard/ProgressBar';
-import { PressureInstrument } from '@/components/dashboard/PressureInstrument';
 import { SignalFeed } from '@/components/dashboard/SignalFeed';
+import { StatusBadge } from '@/components/dashboard/StatusBadge';
 
 interface ScoutInboxData {
   top_red_deal: { deal_name: string; next_action: string } | null;
@@ -54,7 +46,18 @@ interface OnboardingStatus {
   first_personalized_visit: boolean;
 }
 
+const setupSteps = [
+  { key: 'snippet_installed', title: 'Install the Churnaut snippet', description: 'Add the tracking script to your website head.', href: '/dashboard/snippet', cta: 'Go to Snippet' },
+  { key: 'first_link_created', title: 'Create your first tracked link', description: 'Generate a personalized URL for a prospect.', href: '/dashboard/links', cta: 'Create Link' },
+  { key: 'first_rule_created', title: 'Set your first routing rule', description: 'Define what your website shows when a signal fires.', href: '/dashboard/rules', cta: 'Add Rule' },
+  { key: 'crm_connected', title: 'Connect your CRM', description: 'Sync HubSpot, Pipedrive, or any supported CRM.', href: '/dashboard/integrations/crm', cta: 'Connect CRM' },
+  { key: 'first_personalized_visit', title: 'First personalized visit', description: "A prospect clicked your link and your rule fired. You're live.", href: '/dashboard/analytics', cta: 'View Analytics' },
+] as const;
+
+const entryMotion = { hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } };
+
 export default function DashboardPage() {
+  const reduceMotion = useReducedMotion();
   const [plan, setPlan] = useState<string>('starter');
   const [monthlyVisits, setMonthlyVisits] = useState<number>(0);
   const [planStatus, setPlanStatus] = useState<string>('active');
@@ -64,28 +67,26 @@ export default function DashboardPage() {
   const [runningScout, setRunningScout] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string>('');
   const [firstName, setFirstName] = useState<string>('');
-
   const [onboarding, setOnboarding] = useState<OnboardingStatus | null>(null);
   const [onboardingDismissed, setOnboardingDismissed] = useState(false);
 
-
-  const allComplete = !!(onboarding?.snippet_installed && onboarding?.first_link_created && onboarding?.first_rule_created && onboarding?.crm_connected && onboarding?.first_personalized_visit);
-
-  if (planStatus === 'expired') {
-    // future support for expired status banners
-  }
+  const onboardingFlags = onboarding ? [
+    onboarding.snippet_installed,
+    onboarding.first_link_created,
+    onboarding.first_rule_created,
+    onboarding.crm_connected,
+    onboarding.first_personalized_visit,
+  ] : [];
+  const allComplete = onboardingFlags.length === 5 && onboardingFlags.every(Boolean);
+  const setupCount = onboardingFlags.filter(Boolean).length;
 
   useEffect(() => {
-    // Check localStorage for dismissed state
     const dismissed = localStorage.getItem('churnaut_onboarding_dismissed');
     if (dismissed === 'true') {
       setOnboardingDismissed(true);
       return;
     }
-    fetch('/api/onboarding/status')
-      .then(r => r.json())
-      .then(data => setOnboarding(data))
-      .catch(() => {});
+    fetch('/api/onboarding/status').then((r) => r.json()).then(setOnboarding).catch(() => undefined);
   }, []);
 
   useEffect(() => {
@@ -98,21 +99,18 @@ export default function DashboardPage() {
     }
   }, [allComplete, onboarding, onboardingDismissed]);
 
-
-
   const fetchSummary = async () => {
     try {
       setLoading(true);
       setError(null);
       const res = await fetch('/api/dashboard/summary');
-      if (res.ok) {
-        const data = await res.json();
-        setSummary(data);
-        setLastUpdated(new Date().toLocaleTimeString());
-      } else {
+      if (!res.ok) {
         const errData = await res.json();
         setError(errData.error || 'Failed to retrieve dashboard summary metrics.');
+        return;
       }
+      setSummary(await res.json());
+      setLastUpdated(new Date().toLocaleTimeString());
     } catch (err) {
       console.error('Failed to fetch dashboard summary:', err);
       setError('A network error occurred while loading your dashboard metrics.');
@@ -123,61 +121,34 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetchSummary();
-
     const fetchUser = async () => {
       try {
         const { data: { user } } = await supabaseBrowser.auth.getUser();
-        if (user) {
-          const fullName = user.user_metadata?.full_name;
-          if (fullName && typeof fullName === 'string' && fullName.trim()) {
-            const first = fullName.trim().split(/\s+/)[0];
-            setFirstName(first);
-          } else if (user.email) {
-            const localPart = user.email.split('@')[0];
-            if (localPart) {
-              const cleanPart = localPart.replace(/\d/g, '');
-              if (cleanPart) {
-                const name = cleanPart.charAt(0).toUpperCase() + cleanPart.slice(1);
-                setFirstName(name);
-              } else {
-                setFirstName('');
-              }
-            } else {
-              setFirstName('');
-            }
-          } else {
-            setFirstName('');
-          }
+        if (!user) return;
+        const fullName = user.user_metadata?.full_name;
+        if (typeof fullName === 'string' && fullName.trim()) {
+          setFirstName(fullName.trim().split(/\s+/)[0]);
+        } else if (user.email) {
+          const localPart = user.email.split('@')[0].replace(/\d/g, '');
+          setFirstName(localPart ? localPart.charAt(0).toUpperCase() + localPart.slice(1) : '');
         }
       } catch (err) {
         console.error('Error fetching user info:', err);
       }
     };
-
-    fetchUser();
-
-    const fetchPlan = async () => {
-      try {
-        const res = await fetch('/api/client');
-        if (res.ok) {
-          const data = await res.json();
-          if (data.client?.plan) setPlan(data.client.plan);
-          if (typeof data.client?.monthly_visits === 'number') setMonthlyVisits(data.client.monthly_visits);
-          if (data.client?.plan_status) setPlanStatus(data.client.plan_status);
-
-        }
-      } catch {}
-    };
-    fetchPlan();
+    void fetchUser();
+    fetch('/api/client').then((res) => res.ok ? res.json() : null).then((data) => {
+      if (data?.client?.plan) setPlan(data.client.plan);
+      if (typeof data?.client?.monthly_visits === 'number') setMonthlyVisits(data.client.monthly_visits);
+      if (data?.client?.plan_status) setPlanStatus(data.client.plan_status);
+    }).catch(() => undefined);
   }, []);
 
   const handleRunScout = async () => {
     if (runningScout) return;
     setRunningScout(true);
     try {
-      const res = await fetch('/api/scout/score', {
-        method: 'POST',
-      });
+      const res = await fetch('/api/scout/score', { method: 'POST' });
       if (res.ok) {
         await fetchSummary();
         toast.success('Scout analysis complete — pipeline updated');
@@ -193,389 +164,55 @@ export default function DashboardPage() {
   };
 
   const getGreeting = () => {
-    const hr = new Date().getHours();
-    if (hr < 12) return 'Good morning';
-    if (hr < 17) return 'Good afternoon';
-    return 'Good evening';
+    const hour = new Date().getHours();
+    return hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
   };
 
   const formatRelativeTime = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / (1000 * 60));
-    const diffHours = Math.floor(diffMins / 60);
-    const diffDays = Math.floor(diffHours / 24);
-
+    const diffMins = Math.floor((Date.now() - new Date(dateString).getTime()) / 60000);
     if (diffMins < 1) return 'just now';
     if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHours = Math.floor(diffMins / 60);
     if (diffHours < 24) return `${diffHours}h ago`;
-    return `${diffDays}d ago`;
+    return `${Math.floor(diffHours / 24)}d ago`;
   };
 
-  if (error) {
-    return (
-      <div className="py-12">
-        <ErrorState message={error} onRetry={fetchSummary} />
-      </div>
-    );
-  }
+  const pressureTone = summary?.pipeline_status === 'HEALTHY' ? 'success' : summary?.pipeline_status === 'AT RISK' ? 'danger' : 'warning';
+  const pressureColor = summary?.pipeline_status === 'HEALTHY' ? 'var(--green)' : summary?.pipeline_status === 'AT RISK' ? 'var(--red)' : 'var(--amber)';
+  const metricCards: Array<{ label: string; value: number; detail: string; Icon: React.ElementType }> = summary ? [
+    { label: 'Active rules', value: summary.active_rules_count, detail: 'Personalization logic running', Icon: Target },
+    { label: 'Tracked links', value: summary.tracked_links_count, detail: 'Prospect paths measured', Icon: Link2 },
+    { label: 'Sessions this week', value: summary.sessions_this_week, detail: 'Engagement captured', Icon: Zap },
+  ] : [];
+  const capacity = useMemo(() => {
+    const limit = PLAN_LIMITS[plan as keyof typeof PLAN_LIMITS]?.tracked_visits ?? 500;
+    if (limit === Infinity) return null;
+    const pct = Math.min((monthlyVisits / limit) * 100, 100);
+    return { limit, pct, tone: pct >= 90 ? 'danger' as const : pct >= 70 ? 'warning' as const : 'accent' as const };
+  }, [monthlyVisits, plan]);
+
+  if (error) return <div className="py-12"><ErrorState message={error} onRetry={fetchSummary} /></div>;
 
   return (
-    <div className="mx-auto w-full max-w-[1560px] space-y-8 text-[var(--text-secondary)] font-sans">
-      <PageHeader
-        eyebrow="Signal Room"
-        title={`${getGreeting()}${firstName ? `, ${firstName}` : ''}.`}
-        description="Your operating view of pipeline pressure, active signals, and the next action worth taking."
-        actions={lastUpdated ? <span className="dashboard-status dashboard-status-neutral">Updated {lastUpdated}</span> : undefined}
-      />
+    <div className="mx-auto w-full max-w-[1560px] space-y-7 text-[var(--text-secondary)] font-sans">
+      <PageHeader eyebrow="Signal Room · Overview" title={`${getGreeting()}${firstName ? `, ${firstName}` : ''}.`} description="A calm read on pipeline pressure, active signals, and the next move worth making." actions={<div className="flex items-center gap-2">{planStatus !== 'active' && <StatusBadge tone="warning">{planStatus.replace('_', ' ')}</StatusBadge>}{lastUpdated && <span className="dashboard-status dashboard-status-neutral">Updated {lastUpdated}</span>}</div>} />
+      {capacity?.pct === 100 && plan === 'starter' && <div role="status" className="rounded-[16px] border border-[var(--red)]/25 bg-[var(--red)]/8 px-4 py-3 text-sm font-semibold text-[var(--red)]">Visit limit reached — personalization is paused until the 1st of next month. <Link href="/dashboard/billing" className="underline">Review plan</Link></div>}
 
-      {onboarding && !onboardingDismissed && !allComplete && (
-        <Surface tone="subtle" className="space-y-5 border-l-2 border-l-[var(--accent)] p-5 md:p-6" aria-labelledby="room-setup-title">
-          {/* Header row */}
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <h2 id="room-setup-title" className="text-base font-bold text-[var(--text-primary)]">Room setup</h2>
-              <p className="text-sm text-[var(--text-secondary)]">
-                Complete these steps to start personalizing your website.
-              </p>
-            </div>
-            <div className="flex items-center gap-4">
-              {/* Progress fraction */}
-              <span className="text-xs font-mono text-[var(--text-muted)]">
-                {[onboarding.snippet_installed, onboarding.first_link_created, onboarding.first_rule_created, onboarding.crm_connected, onboarding.first_personalized_visit].filter(Boolean).length} / 5 complete
-              </span>
-              {/* Dismiss button */}
-              <button
-                onClick={() => {
-                  localStorage.setItem('churnaut_onboarding_dismissed', 'true');
-                  setOnboardingDismissed(true);
-                }}
-                aria-label="Dismiss onboarding checklist"
-                className="min-h-10 rounded-lg px-2 text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-secondary)] text-xs transition-colors"
-              >
-                [DISMISS]
-              </button>
-            </div>
-          </div>
+      <section className="flex flex-col gap-3 rounded-[20px] border border-[var(--border-default)] bg-[var(--bg-surface)]/75 p-3 shadow-[0_16px_36px_rgba(40,32,22,0.06)] sm:flex-row sm:items-center sm:justify-between" aria-label="Overview actions">
+        <div className="flex min-w-0 items-center gap-3 px-2"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] bg-[var(--accent)]/12 text-[var(--accent)]" aria-hidden="true"><Sparkles className="h-4 w-4" /></span><div className="min-w-0"><p className="truncate text-sm font-semibold text-[var(--text-primary)]">Your revenue signals, in one room</p><p className="truncate text-xs text-[var(--text-muted)]">Turn the clearest signal into a useful action.</p></div></div>
+        <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:justify-end"><Link href="/dashboard/links" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-[12px] bg-[var(--accent)] px-4 text-xs font-bold tracking-[0.05em] text-white shadow-[0_8px_18px_color-mix(in_srgb,var(--accent)_20%,transparent)] transition hover:bg-[var(--accent-hover)]"><Link2 className="h-4 w-4" aria-hidden="true" />CREATE TRACKED LINK</Link><Link href="/dashboard/rules" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-[12px] border border-[var(--border-default)] bg-[var(--bg-surface)] px-4 text-xs font-bold tracking-[0.05em] text-[var(--text-primary)] transition hover:border-[var(--accent)] hover:bg-[var(--accent)]/6"><PlusCircle className="h-4 w-4 text-[var(--accent)]" aria-hidden="true" />ADD ROUTING RULE</Link><button type="button" onClick={handleRunScout} disabled={runningScout} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-[12px] border border-[var(--border-default)] bg-[var(--bg-surface)] px-4 text-xs font-bold tracking-[0.05em] text-[var(--text-primary)] transition hover:border-[var(--accent)] hover:bg-[var(--accent)]/6 disabled:opacity-60"><RefreshCw className={`h-4 w-4 text-[var(--accent)] ${runningScout ? 'motion-safe:animate-spin' : ''}`} aria-hidden="true" />{runningScout ? 'RUNNING…' : 'RUN SCOUT ANALYSIS'}</button></div>
+      </section>
 
-          {/* Progress bar */}
-          <ProgressBar value={([onboarding.snippet_installed, onboarding.first_link_created, onboarding.first_rule_created, onboarding.crm_connected, onboarding.first_personalized_visit].filter(Boolean).length / 5) * 100} label="Setup progress" />
+      {onboarding && !onboardingDismissed && !allComplete && <Surface tone="subtle" className="overflow-hidden rounded-[24px] border-[var(--border-default)] p-5 md:p-6" aria-labelledby="room-setup-title"><div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div><p className="dashboard-eyebrow font-mono">Launch readiness</p><h2 id="room-setup-title" className="mt-1 text-xl font-semibold text-[var(--text-primary)]">Finish setting up your room</h2><p className="mt-1 text-sm text-[var(--text-secondary)]">A few small steps unlock the full personalization loop.</p></div><button onClick={() => { localStorage.setItem('churnaut_onboarding_dismissed', 'true'); setOnboardingDismissed(true); }} aria-label="Dismiss onboarding checklist" className="min-h-10 rounded-[10px] px-3 text-xs font-semibold text-[var(--text-muted)] transition hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)]">Dismiss</button></div><div className="mt-5"><ProgressBar value={(setupCount / 5) * 100} label="Setup progress" /></div><div className="mt-5 grid gap-2 md:grid-cols-2">{setupSteps.map((step, index) => { const done = Boolean(onboarding[step.key]); return <div key={step.key} className={`flex min-w-0 items-center gap-3 rounded-[16px] border px-3 py-3 transition ${done ? 'border-[var(--green)]/25 bg-[var(--green)]/8' : 'border-[var(--border-subtle)] bg-[var(--bg-surface)] hover:border-[var(--accent)]/40'}`}><span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-xs font-bold ${done ? 'border-[var(--green)]/30 bg-[var(--green)]/12 text-[var(--green)]' : 'border-[var(--border-default)] bg-[var(--bg-elevated)] text-[var(--text-muted)]'}`} aria-hidden="true">{done ? <Check className="h-4 w-4" /> : String(index + 1).padStart(2, '0')}</span><div className="min-w-0 flex-1"><p className={`truncate text-sm font-semibold ${done ? 'text-[var(--text-muted)] line-through' : 'text-[var(--text-primary)]'}`}>{step.title}</p><p className="truncate text-xs text-[var(--text-muted)]">{step.description}</p></div>{!done && <Link href={step.href} className="shrink-0 rounded-[10px] px-2 py-2 text-xs font-semibold text-[var(--accent)] transition hover:bg-[var(--accent)]/8">{step.cta} <ArrowRight className="inline h-3.5 w-3.5" aria-hidden="true" /></Link>}</div>; })}</div></Surface>}
+      {onboarding && !onboardingDismissed && allComplete && <Surface tone="subtle" className="flex items-center gap-3 rounded-[20px] border-[var(--green)]/25 p-4" role="status"><span className="h-2.5 w-2.5 rounded-full bg-[var(--green)]" aria-hidden="true" /><p className="text-sm font-semibold text-[var(--green)]">Setup complete — Churnaut is fully configured and running.</p></Surface>}
 
-          {/* Steps list */}
-          <div className="space-y-3">
-            {[
-              {
-                key: 'snippet_installed',
-                done: onboarding.snippet_installed,
-                title: 'Install the Churnaut snippet',
-                description: 'Add the tracking script to your website head.',
-                href: '/dashboard/snippet',
-                cta: 'Go to Snippet →',
-              },
-              {
-                key: 'first_link_created',
-                done: onboarding.first_link_created,
-                title: 'Create your first tracked link',
-                description: 'Generate a personalized URL for a prospect.',
-                href: '/dashboard/links',
-                cta: 'Create Link →',
-              },
-              {
-                key: 'first_rule_created',
-                done: onboarding.first_rule_created,
-                title: 'Set your first routing rule',
-                description: 'Define what your website shows when a signal fires.',
-                href: '/dashboard/rules',
-                cta: 'Add Rule →',
-              },
-              {
-                key: 'crm_connected',
-                done: onboarding.crm_connected,
-                title: 'Connect your CRM',
-                description: 'Sync HubSpot, Pipedrive, or any supported CRM.',
-                href: '/dashboard/integrations/crm',
-                cta: 'Connect CRM →',
-              },
-              {
-                key: 'first_personalized_visit',
-                done: onboarding.first_personalized_visit,
-                title: '🎉 First personalized visit',
-                description: 'A prospect clicked your link and your rule fired. You\'re live.',
-                href: '/dashboard/analytics',
-                cta: 'View Analytics →',
-              },
-            ].map((step) => (
-              <div
-                key={step.key}
-                className={`flex items-center justify-between gap-4 p-3.5 rounded-lg border transition-colors ${
-                  step.done
-                    ? 'border-[var(--green)]/30 bg-[var(--green)]/10 opacity-50'
-                    : 'border-[var(--border-subtle)] bg-[var(--bg-elevated)]/30 hover:border-[var(--accent)]/40'
-                }`}
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  {/* Completion indicator */}
-                  <div className={`flex-shrink-0 w-5 h-5 rounded-full border flex items-center justify-center transition-all ${
-                    step.done
-                      ? 'bg-[var(--green)]/10 border-[var(--green)]/30 text-[var(--green)]'
-                      : 'border-[var(--border-subtle)] text-transparent'
-                  }`}>
-                    {step.done && (
-                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                        <path d="M2 5l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <p className={`text-xs font-mono font-bold uppercase tracking-wide ${step.done ? 'text-[var(--text-muted)] line-through' : 'text-[var(--text-primary)]'}`}>
-                      {step.title}
-                    </p>
-                    <p className="text-[10px] font-mono text-[var(--text-muted)] mt-0.5">{step.description}</p>
-                  </div>
-                </div>
-                {!step.done && (
-                  <Link
-                    href={step.href}
-                    className="flex min-h-10 flex-shrink-0 items-center text-sm font-semibold text-[var(--accent)] hover:text-[var(--accent-hover)] border border-[var(--accent)]/30 hover:border-[var(--accent)] px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap"
-                  >
-                    {step.cta}
-                  </Link>
-                )}
-              </div>
-            ))}
-          </div>
-        </Surface>
-      )}
+      {loading ? <div className="space-y-5 motion-safe:animate-pulse"><div className="grid gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]"><Skeleton variant="card" height={300} /><div className="grid gap-5 sm:grid-cols-3 xl:grid-cols-1"><Skeleton variant="card" height={90} /><Skeleton variant="card" height={90} /><Skeleton variant="card" height={90} /></div></div><Skeleton variant="card" height={220} /></div> : summary && <motion.div initial={reduceMotion ? false : 'hidden'} animate="visible" variants={{ visible: { transition: { staggerChildren: reduceMotion ? 0 : 0.06 } } }} className="space-y-5">
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]"><motion.div variants={entryMotion} className="relative overflow-hidden rounded-[28px] border border-[var(--border-default)] bg-[var(--bg-surface)] p-6 shadow-[0_18px_48px_rgba(40,32,22,0.08)] md:p-8" aria-label={`Pipeline pressure ${summary.pressure_score}, ${summary.pipeline_status}`}><div className="absolute -right-16 -top-20 h-64 w-64 rounded-full opacity-40 blur-3xl" style={{ background: `radial-gradient(circle, ${pressureColor}, transparent 68%)` }} aria-hidden="true" /><div className="relative flex items-start justify-between gap-4"><div><p className="dashboard-eyebrow font-mono">Live signal readout</p><h2 className="mt-2 text-2xl font-semibold text-[var(--text-primary)]">Pipeline pressure</h2><p className="mt-1 max-w-lg text-sm text-[var(--text-secondary)]">Revenue risk across the signals Churnaut can see right now.</p></div><StatusBadge tone={pressureTone}>{summary.pipeline_status}</StatusBadge></div><div className="relative mt-8 flex flex-col gap-7 sm:flex-row sm:items-end sm:justify-between"><div><p className="font-mono text-6xl font-semibold leading-none tracking-[-0.08em] text-[var(--text-primary)] tabular-nums"><CountUp value={summary.pressure_score} /></p><p className="mt-2 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)]">Current readout · 0–100</p></div><div className="w-full max-w-[340px]" role="img" aria-label={`${summary.pressure_score} out of 100 pipeline pressure`}><div className="h-4 overflow-hidden rounded-full border border-[var(--border-default)] bg-[var(--bg-elevated)]"><span className="block h-full rounded-full transition-[width] duration-700 motion-reduce:transition-none" style={{ width: `${Math.max(0, Math.min(100, summary.pressure_score))}%`, background: pressureColor }} /></div><div className="mt-2 flex justify-between text-[10px] font-mono uppercase tracking-[0.1em] text-[var(--text-muted)]"><span>Stable</span><span>Pressure</span></div></div></div></motion.div><div className="grid gap-5 sm:grid-cols-3 xl:grid-cols-1">{metricCards.map(({ label, value, detail, Icon }) => <motion.div key={label} variants={entryMotion} aria-label={`${label}: ${value}`} className="rounded-[22px] border border-[var(--border-default)] bg-[var(--bg-surface)] p-5 shadow-[0_12px_30px_rgba(40,32,22,0.05)]"><div className="flex items-start justify-between"><span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">{label}</span><span className="flex h-9 w-9 items-center justify-center rounded-[12px] bg-[var(--accent)]/10 text-[var(--accent)]" aria-hidden="true"><Icon className="h-4 w-4" /></span></div><p className="mt-5 font-mono text-4xl font-semibold tracking-[-0.06em] text-[var(--text-primary)] tabular-nums"><CountUp value={value} /></p><p className="mt-2 text-xs text-[var(--text-secondary)]">{detail}</p></motion.div>)}</div></div>
 
-      {onboarding && !onboardingDismissed && allComplete && (
-        <Surface tone="subtle" className="border-[var(--green)]/30 p-4 flex items-center gap-3">
-          <span className="w-2 h-2 rounded-full bg-[var(--green)] animate-pulse flex-shrink-0" />
-          <p className="text-sm text-[var(--green)] font-semibold">
-            Setup complete — Churnaut is fully configured and running.
-          </p>
-        </Surface>
-      )}
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(300px,0.65fr)]"><motion.div variants={entryMotion}><Surface className="rounded-[24px] p-5 md:p-6" aria-labelledby="feed-title"><div className="flex items-end justify-between gap-3"><div><p className="dashboard-eyebrow font-mono">What changed</p><h2 id="feed-title" className="mt-1 text-xl font-semibold text-[var(--text-primary)]">Signal feed</h2><p className="mt-1 text-sm text-[var(--text-secondary)]">The latest signals captured across your workspace.</p></div><Link href="/dashboard/analytics" className="hidden items-center gap-1 text-xs font-semibold text-[var(--accent)] sm:flex">View analytics <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" /></Link></div><SignalFeed events={summary.recent_activity} formatRelativeTime={formatRelativeTime} /><Link href="/dashboard/analytics" className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-[var(--accent)] sm:hidden">View full analytics <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" /></Link></Surface></motion.div><motion.div variants={entryMotion} className="space-y-5"><Surface tone="subtle" className="rounded-[24px] border-[var(--amber)]/25 p-5" aria-labelledby="attention-title"><div className="flex items-start justify-between gap-3"><div><p className="dashboard-eyebrow font-mono">Priority queue</p><h2 id="attention-title" className="mt-1 text-xl font-semibold text-[var(--text-primary)]">Needs attention</h2></div><ShieldAlert className="h-5 w-5 text-[var(--amber)]" aria-hidden="true" /></div>{!summary.scout_inbox.has_red_deals ? <div className="mt-5 rounded-[16px] border border-[var(--green)]/25 bg-[var(--green)]/8 p-4"><p className="text-sm font-semibold text-[var(--text-primary)]">No urgent items today.</p><p className="mt-1 text-xs text-[var(--text-secondary)]">Scout will surface the next meaningful change here.</p></div> : <div className="mt-5 space-y-3">{summary.scout_inbox.top_red_deal && <div className="rounded-[16px] border border-[var(--red)]/25 bg-[var(--red)]/8 p-4"><p className="text-[10px] font-mono font-bold uppercase tracking-[0.14em] text-[var(--red)]">Critical signal · deal</p><p className="mt-1 truncate text-sm font-semibold text-[var(--text-primary)]">{summary.scout_inbox.top_red_deal.deal_name}</p><p className="mt-1 text-xs text-[var(--text-secondary)]">Next action: {summary.scout_inbox.top_red_deal.next_action}</p></div>}{summary.scout_inbox.top_rep && <div className="rounded-[16px] border border-[var(--amber)]/25 bg-[var(--amber)]/8 p-4"><p className="text-[10px] font-mono font-bold uppercase tracking-[0.14em] text-[var(--amber)]">Warning signal · rep</p><p className="mt-1 text-sm font-semibold text-[var(--text-primary)]">{summary.scout_inbox.top_rep.rep_name}</p><p className="mt-1 text-xs text-[var(--text-secondary)]">{summary.scout_inbox.top_rep.count} red deals need a closer look.</p></div>}</div>}<Link href="/dashboard/scout" className="mt-5 inline-flex items-center gap-1 text-xs font-semibold text-[var(--accent)]">View full Scout analysis <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" /></Link></Surface>{capacity && <Surface className="rounded-[24px] p-5" aria-label="Capacity telemetry"><div className="flex items-center justify-between gap-3"><div><p className="dashboard-eyebrow font-mono">Capacity</p><h3 className="mt-1 text-lg font-semibold text-[var(--text-primary)]">Monthly tracked visits</h3></div><span className="font-mono text-sm font-semibold text-[var(--text-primary)]">{monthlyVisits.toLocaleString()} / {capacity.limit.toLocaleString()}</span></div><div className="mt-4"><ProgressBar value={capacity.pct} label="Visit capacity" tone={capacity.tone} /></div>{capacity.pct >= 80 && <p className={`mt-3 text-xs ${capacity.pct >= 90 ? 'text-[var(--red)]' : 'text-[var(--amber)]'}`}>{capacity.pct >= 100 ? 'Visit limit reached.' : `You've used ${Math.round(capacity.pct)}% of your monthly limit.`} {(plan === 'starter' || plan === 'growth') && <Link href="/dashboard/billing" className="font-semibold underline">Review plan <ArrowRight className="inline h-3 w-3" aria-hidden="true" /></Link>}</p>}</Surface>}</motion.div></div>
 
-      {loading ? (
-        <div className="space-y-8 animate-pulse">
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
-            <Skeleton variant="card" height={242} />
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 xl:grid-cols-1">
-              <Skeleton variant="card" height={70} />
-              <Skeleton variant="card" height={70} />
-              <Skeleton variant="card" height={70} />
-            </div>
-          </div>
-          <Skeleton variant="card" height={150} />
-          <Skeleton variant="card" height={220} />
-        </div>
-      ) : (
-        <div className="space-y-8">
-          {/* Primary instrumentation */}
-          {summary && (
-            <section aria-labelledby="instrumentation-title" className="space-y-3">
-              <SectionHeader headingId="instrumentation-title" title="Instrumentation" description="The signals shaping this workspace right now." />
-              <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
-                <PressureInstrument score={summary.pressure_score} status={summary.pipeline_status} value={<CountUp value={summary.pressure_score} />} />
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 xl:grid-cols-1">
-                  <MetricCard label="Active rules" value={<CountUp value={summary.active_rules_count} />} detail="Personalization logic running" />
-                  <MetricCard label="Tracked links" value={<CountUp value={summary.tracked_links_count} />} detail="Prospect paths measured" />
-                  <MetricCard label="Sessions this week" value={<CountUp value={summary.sessions_this_week} />} detail="Engagement captured" />
-                </div>
-              </div>
-            </section>
-          )}
-
-          {/* Needs attention */}
-          {summary && (
-            <Surface tone="subtle" className="border-l-2 border-l-[var(--amber)] p-5 md:p-6" aria-labelledby="attention-title">
-              <SectionHeader headingId="attention-title" title="Needs attention" description="The clearest next signal from your pipeline today." />
-              <div className="mt-5 space-y-3">
-                {!summary.scout_inbox.has_red_deals ? (
-                  <div className="flex items-center gap-3 rounded-[8px] border border-[var(--green)]/20 bg-[var(--green)]/5 px-4 py-4">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full border border-[var(--green)]/30 text-[var(--green)]" aria-hidden="true">✓</span>
-                    <div>
-                      <p className="text-sm font-semibold text-[var(--text-primary)]">No urgent items today.</p>
-                      <p className="mt-1 text-xs text-[var(--text-muted)]">Scout will surface the next meaningful change here.</p>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    {summary.scout_inbox.top_red_deal && (
-                      <div className="flex items-start gap-3 rounded-[8px] border border-[var(--red)]/25 bg-[var(--red)]/5 px-4 py-4">
-                        <Zap className="mt-0.5 h-4 w-4 flex-shrink-0 text-[var(--red)]" aria-hidden="true" />
-                        <div className="min-w-0">
-                          <p className="text-[10px] font-mono font-semibold uppercase tracking-[0.1em] text-[var(--red)]">Critical signal · deal</p>
-                          <p className="mt-1 text-sm font-semibold text-[var(--text-primary)]">{summary.scout_inbox.top_red_deal.deal_name}</p>
-                          <p className="mt-1 text-xs text-[var(--text-secondary)]">Next action: {summary.scout_inbox.top_red_deal.next_action}</p>
-                        </div>
-                      </div>
-                    )}
-                    {summary.scout_inbox.top_rep && (
-                      <div className="flex items-start gap-3 rounded-[8px] border border-[var(--amber)]/25 bg-[var(--amber)]/5 px-4 py-4">
-                        <Zap className="mt-0.5 h-4 w-4 flex-shrink-0 text-[var(--amber)]" aria-hidden="true" />
-                        <div className="min-w-0">
-                          <p className="text-[10px] font-mono font-semibold uppercase tracking-[0.1em] text-[var(--amber)]">Warning signal · rep</p>
-                          <p className="mt-1 text-sm font-semibold text-[var(--text-primary)]">{summary.scout_inbox.top_rep.rep_name}</p>
-                          <p className="mt-1 text-xs text-[var(--text-secondary)]">{summary.scout_inbox.top_rep.count} red deals need a closer look.</p>
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-              <div className="mt-5 flex justify-end">
-                <Link
-                  href="/dashboard/scout"
-                  className="text-[12px] text-[var(--accent)] hover:text-[var(--accent-hover)] font-bold uppercase tracking-wider flex items-center gap-1 transition-colors font-mono"
-                >
-                  View full Scout analysis <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
-              </div>
-            </Surface>
-          )}
-
-          {/* Signal feed */}
-          {summary && (
-            <Surface className="p-5 md:p-6" aria-labelledby="feed-title">
-              <SectionHeader headingId="feed-title" title="Signal feed" description="The latest signals captured across your workspace." />
-              <SignalFeed events={summary.recent_activity} formatRelativeTime={formatRelativeTime} />
-              <div className="mt-4 flex justify-end">
-                <Link
-                  href="/dashboard/analytics"
-                  className="text-[12px] text-[var(--accent)] hover:text-[var(--accent-hover)] font-bold uppercase tracking-wider flex items-center gap-1 transition-colors font-mono"
-                >
-                  View full analytics <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
-              </div>
-            </Surface>
-          )}
-
-          {/* Capacity */}
-          {(() => {
-            const limit = (PLAN_LIMITS[plan as keyof typeof PLAN_LIMITS]?.tracked_visits) ?? 500;
-            if (limit === Infinity) return null;
-            const pct = Math.min((monthlyVisits / limit) * 100, 100);
-            const textColor = pct >= 100 ? 'text-[var(--red)]' : pct >= 90 ? 'text-[var(--red)]' : pct >= 70 ? 'text-[var(--amber)]' : 'text-[var(--text-muted)]';
-            const atLimit = pct >= 100;
-            return (
-              <Surface tone="subtle" className="space-y-3 px-5 py-5 md:px-6" aria-label="Capacity telemetry">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-mono uppercase tracking-wider text-[var(--text-muted)]">
-                    Capacity · monthly tracked visits
-                  </span>
-                  <span className={`text-[11px] font-mono font-bold ${textColor}`}>
-                    {monthlyVisits.toLocaleString()} / {limit.toLocaleString()}
-                  </span>
-                </div>
-                <ProgressBar value={pct} label="Visit capacity" tone={pct >= 90 ? 'danger' : pct >= 70 ? 'warning' : 'accent'} />
-                {pct >= 80 && plan === 'starter' && (
-                  <p className="text-[10px] font-mono text-[var(--amber)]">
-                    {atLimit ? (
-                      <span className="text-[var(--red)] font-semibold">⛔ Visit limit reached — personalization is paused until the 1st of next month.</span>
-                    ) : (
-                      `You've used ${Math.round(pct)}% of your monthly limit.`
-                    )}
-                    {' '}<a href="/dashboard/billing" className="underline hover:text-[#A8552F] transition-colors">Upgrade to Growth for 10× more visits &rarr;</a>
-                  </p>
-                )}
-                {pct >= 80 && plan === 'growth' && (
-                  <p className="text-[10px] font-mono text-[var(--amber)]">
-                    {pct >= 100 ? 'Visit limit reached.' : `You've used ${Math.round(pct)}% of your monthly limit.`}
-                    {' '}<a href="/dashboard/billing" className="underline hover:text-[#A8552F] transition-colors">Upgrade to Pro for unlimited visits &rarr;</a>
-                  </p>
-                )}
-              </Surface>
-            );
-          })()}
-
-          {/* SECTION 4C: UPSELL NUDGE (starter only) */}
-          {plan === 'starter' && (
-            <div className="border border-[var(--accent)]/15 bg-[var(--accent)]/5 rounded-[12px] px-6 py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div className="space-y-1">
-                <p className="text-[12px] font-mono font-bold uppercase tracking-wider text-[var(--accent)]">
-                  Unlock Scout AI + Unlimited Rules
-                </p>
-                <p className="text-[11px] font-sans text-[var(--text-secondary)] max-w-md">
-                  Growth gives you Scout deal intelligence, AI weekly digests, Pipedrive, Zoho & Close CRM support, and 10× more tracked visits — starting at $399/mo.
-                </p>
-              </div>
-              <a
-                href="/dashboard/billing"
-                className="flex-shrink-0 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-sans text-xs font-semibold py-2 px-5 rounded-[8px] transition-all active:scale-[0.98] whitespace-nowrap"
-              >
-                Upgrade to Growth &rarr;
-              </a>
-            </div>
-          )}
-
-          {/* Command actions */}
-          <section aria-labelledby="command-actions-title">
-          <SectionHeader headingId="command-actions-title" title="Command actions" description="Move from signal to action without leaving the room." />
-          <motion.div 
-            className="grid grid-cols-1 gap-3 sm:grid-cols-3"
-            initial="hidden"
-            animate="visible"
-            variants={{
-              hidden: { opacity: 0 },
-              visible: {
-                opacity: 1,
-                transition: {
-                  staggerChildren: 0.1
-                }
-              }
-            }}
-          >
-            <motion.div
-              variants={{
-                hidden: { opacity: 0, y: 12 },
-                visible: { opacity: 1, y: 0, transition: { duration: 0.3, ease: 'easeOut' } }
-              }}
-            >
-              <Link
-                href="/dashboard/links"
-                className="card flex min-h-14 w-full items-center justify-between rounded-[8px] border border-[var(--border-default)] bg-transparent p-4 font-sans text-[13px] font-semibold text-[var(--text-secondary)] transition-all hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)]"
-              >
-                <span>CREATE TRACKED LINK</span>
-                <Link2 className="w-4 h-4 text-[var(--accent)]" />
-              </Link>
-            </motion.div>
-
-            <motion.div
-              variants={{
-                hidden: { opacity: 0, y: 12 },
-                visible: { opacity: 1, y: 0, transition: { duration: 0.3, ease: 'easeOut' } }
-              }}
-            >
-              <Link
-                href="/dashboard/rules"
-                className="card flex min-h-14 w-full items-center justify-between rounded-[8px] border border-[var(--border-default)] bg-transparent p-4 font-sans text-[13px] font-semibold text-[var(--text-secondary)] transition-all hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)]"
-              >
-                <span>ADD ROUTING RULE</span>
-                <PlusCircle className="w-4 h-4 text-[var(--accent)]" />
-              </Link>
-            </motion.div>
-
-            <motion.div
-              variants={{
-                hidden: { opacity: 0, y: 12 },
-                visible: { opacity: 1, y: 0, transition: { duration: 0.3, ease: 'easeOut' } }
-              }}
-            >
-              <button
-                onClick={handleRunScout}
-                disabled={runningScout}
-                className="card flex min-h-14 w-full items-center justify-between rounded-[8px] border border-[var(--border-default)] bg-transparent p-4 text-left font-sans text-[13px] font-semibold text-[var(--text-secondary)] transition-all hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)] disabled:opacity-50"
-              >
-                <span>{runningScout ? 'RUNNING...' : 'RUN SCOUT ANALYSIS'}</span>
-                <RefreshCw className={`w-4 h-4 text-[var(--accent)] ${runningScout ? 'animate-spin' : ''}`} />
-              </button>
-            </motion.div>
-          </motion.div>
-          </section>
-        </div>
-      )}
+        {plan === 'starter' && <motion.div variants={entryMotion} className="flex flex-col gap-4 rounded-[22px] border border-[var(--accent)]/25 bg-[var(--accent)]/8 p-5 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--accent)]">Unlock Scout AI + unlimited rules</p><p className="mt-1 max-w-2xl text-sm text-[var(--text-secondary)]">Growth gives you Scout deal intelligence, AI weekly digests, Pipedrive, Zoho &amp; Close CRM support, and 10× more tracked visits — starting at $399/mo.</p></div><Link href="/dashboard/billing" className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-[12px] bg-[var(--accent)] px-4 text-xs font-bold text-white transition hover:bg-[var(--accent-hover)]">Upgrade to Growth <ArrowRight className="ml-1 h-3.5 w-3.5" aria-hidden="true" /></Link></motion.div>}
+      </motion.div>}
     </div>
   );
 }

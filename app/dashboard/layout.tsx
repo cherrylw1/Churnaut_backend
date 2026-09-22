@@ -33,6 +33,28 @@ interface DashboardLayoutProps {
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = usePathname();
+  const overviewPilot = pathname === '/dashboard';
+  const overviewPilotStyle = overviewPilot ? {
+    '--room-bg': '#F4F1E9',
+    '--room-panel': '#FFFDF8',
+    '--room-panel-raised': '#EEEAE1',
+    '--room-panel-muted': '#F7F4EE',
+    '--room-line': '#DED7CC',
+    '--room-line-strong': '#C8BFB3',
+    '--signal-text': '#17221E',
+    '--signal-text-secondary': '#5D6963',
+    '--signal-text-muted': '#7E8883',
+    '--signal-primary': '#176B4F',
+    '--signal-primary-strong': '#10563F',
+    '--signal-primary-soft': 'rgba(23, 107, 79, 0.10)',
+    '--signal-positive': '#2F8D68',
+    '--signal-warning': '#A66E10',
+    '--signal-critical': '#B94A3C',
+    '--signal-info': '#507F95',
+    '--signal-glow': 'rgba(23, 107, 79, 0.16)',
+    '--signal-focus': '#176B4F',
+    colorScheme: 'light',
+  } as React.CSSProperties : undefined;
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
@@ -292,7 +314,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   }
 
   return (
-    <div className="dashboard-app min-h-screen bg-[var(--bg-base)] text-[var(--text-primary)] flex">
+    <div className="dashboard-app min-h-screen bg-[var(--bg-base)] text-[var(--text-primary)] flex" data-overview-pilot={overviewPilot ? 'true' : undefined} style={overviewPilotStyle}>
       {/* Sidebar Panel - Desktop */}
       <aside aria-label="Primary navigation" className="hidden md:flex w-60 bg-[var(--bg-surface)] border-r border-[var(--border-subtle)] flex-col select-none flex-shrink-0 shadow-[8px_0_30px_rgba(0,0,0,0.12)]">
         {renderSidebarContent()}
