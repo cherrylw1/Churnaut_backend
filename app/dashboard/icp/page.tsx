@@ -81,16 +81,16 @@ export default function IcpBuilderPage() {
     style: 'currency', currency: 'USD', maximumFractionDigits: 0,
   }).format(val);
 
-  const hasNotEnoughDeals = errorMsg?.includes('at least 3') || (profile === null && !loading) || (profile !== null && profile.win_count < 3);
+  const hasNotEnoughDeals = (!profile && errorMsg?.includes('at least 3')) || (profile !== null && profile.win_count < 3);
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto text-[var(--text-secondary)]">
       <PageHeader
-        eyebrow="Signal Room · ICP model"
+        eyebrow="Signal Field · Evidence model"
         title="ICP builder"
         description="Turn closed-won evidence into a practical model for who to route and why."
         actions={<button onClick={handleBuildIcp} disabled={building} className="min-h-10 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-sans text-sm font-semibold py-2.5 px-4 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50">
-          <RefreshCw aria-hidden="true" className={`w-3.5 h-3.5 ${building ? 'animate-spin' : ''}`} />
+          <RefreshCw aria-hidden="true" className={`w-3.5 h-3.5 ${building ? 'motion-safe:animate-spin' : ''}`} />
           {building ? 'ANALYZING...' : 'BUILD MY ICP'}
         </button>}
       />
@@ -102,7 +102,7 @@ export default function IcpBuilderPage() {
       </div> : null}
 
       {error ? <div className="py-8"><ErrorState message={error} onRetry={fetchProfile} /></div> : loading ? (
-        <div className="space-y-6 animate-pulse" aria-label="Loading ICP evidence">
+        <div className="space-y-6 motion-safe:animate-pulse" role="status" aria-busy="true" aria-label="Loading ICP evidence">
           <Skeleton variant="card" height={150} />
           <Skeleton variant="line" height={20} width={150} />
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4"><Skeleton variant="card" height={112} /><Skeleton variant="card" height={112} /><Skeleton variant="card" height={112} /></div>
@@ -110,6 +110,8 @@ export default function IcpBuilderPage() {
         </div>
       ) : hasNotEnoughDeals ? (
         <EmptyPanel icon={<Lock className="w-5 h-5" />} title="Not enough closed-won evidence" description="Close at least 3 deals in HubSpot to unlock your ICP model." action={<span className="text-xs font-mono text-[var(--text-muted)]">The model will appear here when the evidence is ready.</span>} />
+      ) : profile === null ? (
+        <EmptyPanel icon={<Target className="w-5 h-5" />} title="No ICP model yet" description="Build an evidence model from your closed-won deals when your CRM data is ready." action={<button onClick={handleBuildIcp} disabled={building} className="dashboard-button-primary inline-flex items-center gap-2">{building ? 'ANALYZING...' : 'BUILD MY ICP'}</button>} />
       ) : profile ? (
         <div className="space-y-8">
           <Surface tone="elevated" className="border-l-4 border-l-[var(--amber)]" aria-labelledby="icp-evidence-heading">
@@ -133,13 +135,15 @@ export default function IcpBuilderPage() {
           </section>
 
           <section aria-labelledby="winning-attributes-heading">
-            <SectionHeader title="Winning attributes" headingId="winning-attributes-heading" description="Job titles appearing most often in your wins." />
+            <SectionHeader title="Winning attributes" headingId="winning-attributes-heading" description="The patterns that recur across your wins." />
             {profile.top_job_titles && profile.top_job_titles.length > 0 ? <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
               {profile.top_job_titles.map((jt, idx) => <div key={idx} className="dashboard-surface dashboard-surface-subtle p-4 flex justify-between items-center gap-3">
                 <span className="text-sm font-semibold text-[var(--text-primary)]">{jt.title}</span>
                 <span className="text-xs text-[var(--text-muted)] uppercase font-mono">{jt.count} {jt.count === 1 ? 'WIN' : 'WINS'}</span>
               </div>)}
             </div> : <EmptyPanel title="No job-title evidence yet" description="Closed-won contact profiles do not include job titles for this model." />}
+            {profile.top_industries && profile.top_industries.length > 0 ? <div className="mt-6"><p className="dashboard-eyebrow font-mono">INDUSTRIES</p><div className="mt-3 flex flex-wrap gap-2">{profile.top_industries.map((industry) => <span key={industry} className="rounded-full border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-1.5 text-xs text-[var(--text-secondary)]">{industry}</span>)}</div></div> : null}
+            {profile.top_deal_stages && profile.top_deal_stages.length > 0 ? <div className="mt-6"><p className="dashboard-eyebrow font-mono">DEAL STAGES</p><div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">{profile.top_deal_stages.map((stage) => <div key={stage.sequence} className="dashboard-surface dashboard-surface-subtle flex items-center justify-between gap-3 p-4"><span className="text-sm font-semibold text-[var(--text-primary)]">{stage.sequence}</span><span className="font-mono text-xs text-[var(--text-muted)]">{stage.count} {stage.count === 1 ? 'WIN' : 'WINS'}</span></div>)}</div></div> : null}
           </section>
 
           <Surface tone="subtle" aria-labelledby="routing-output-heading">

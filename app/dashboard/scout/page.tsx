@@ -14,7 +14,7 @@ import {
   Skull,
   Target,
 } from 'lucide-react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import CountUp from '@/components/ui/CountUp';
 import Skeleton from '@/components/ui/Skeleton';
 import { toast } from '@/hooks/useToast';
@@ -123,9 +123,11 @@ function DealInsights({ deal }: { deal: ScoutDealDetail }) {
           <span className="font-sans text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider block">Score Trend</span>
           <div className="flex items-center gap-1">
             {deal.score_trajectory.map((p, i) => (
-              <span
-                key={i}
-                title={new Date(p.scored_at).toLocaleDateString()}
+                <span
+                  key={i}
+                  title={`${new Date(p.scored_at).toLocaleDateString()}: ${p.score}`}
+                  aria-label={`${new Date(p.scored_at).toLocaleDateString()}: ${p.score}`}
+                  role="img"
                 className="w-2.5 h-2.5 rounded-full"
                 style={{ backgroundColor: p.score === 'RED' ? 'var(--red)' : p.score === 'AMBER' ? 'var(--amber)' : 'var(--green)' }}
               />
@@ -156,6 +158,14 @@ function DealInsights({ deal }: { deal: ScoutDealDetail }) {
           <p className={body}>{deal.comparison}</p>
         </div>
       )}
+      {deal.data_gaps && deal.data_gaps.length > 0 && (
+        <div className="space-y-1 text-xs font-sans">
+          <span className={label}>Data gaps</span>
+          <ul className="list-disc list-inside text-[var(--text-secondary)] leading-relaxed space-y-0.5">
+            {deal.data_gaps.map((gap, i) => <li key={i}>{gap}</li>)}
+          </ul>
+        </div>
+      )}
       {deal.what_would_move_score && (
         <div className="space-y-1 text-xs font-sans">
           <span className={label}>What Would Move the Score</span>
@@ -168,6 +178,7 @@ function DealInsights({ deal }: { deal: ScoutDealDetail }) {
 
 export default function ScoutDashboard() {
   const [plan, setPlan] = useState<string>('starter');
+  const [planLoading, setPlanLoading] = useState(true);
   const [snapshot, setSnapshot] = useState<PipelineSnapshot | null>(null);
   const [deals, setDeals] = useState<ScoutDealDetail[]>([]);
   const [triggers, setTriggers] = useState<AccelerationTrigger[]>([]);
@@ -178,8 +189,13 @@ export default function ScoutDashboard() {
   const [expandedEmails, setExpandedEmails] = useState<Record<string, boolean>>({});
   const [scoreChanges, setScoreChanges] = useState<string[]>([]);
   const [blindSpots, setBlindSpots] = useState<RepBlindSpotReport[]>([]);
+  const [blindSpotsLoading, setBlindSpotsLoading] = useState(true);
+  const [blindSpotsError, setBlindSpotsError] = useState<string | null>(null);
   const [obituaries, setObituaries] = useState<DealObituary[]>([]);
+  const [obituariesLoading, setObituariesLoading] = useState(true);
+  const [obituariesError, setObituariesError] = useState<string | null>(null);
   const [generatingObits, setGeneratingObits] = useState(false);
+  const shouldReduceMotion = useReducedMotion();
 
   // Layout States
   const [activeTab, setActiveTab] = useState<'red' | 'amber' | 'green'>('red');
@@ -220,8 +236,9 @@ export default function ScoutDashboard() {
 
   // Fetch all pipeline data
   const fetchData = async (refresh = false) => {
+    const keepExistingPipeline = refresh && snapshot !== null;
     try {
-      setLoading(true);
+      setLoading(!keepExistingPipeline);
       setError(null);
       
       const res = await fetch(`/api/scout/pipeline${refresh ? '?refresh=true' : ''}`);
@@ -265,35 +282,64 @@ export default function ScoutDashboard() {
         setExpandedDeals(initialExpanded);
       } else {
         const errData = await res.json();
-        setError(errData.error || 'Failed to retrieve HubSpot pipeline data.');
+        const message = errData.error || 'Failed to retrieve HubSpot pipeline data.';
+        if (keepExistingPipeline) toast.error(message);
+        else setError(message);
       }
 
-      // Fetch Rep Blindspots
-      const bsRes = await fetch('/api/scout/blindspots');
-      if (bsRes.ok) {
-        const bsData = await bsRes.json();
-        setBlindSpots(bsData || []);
-      }
+      // Auxiliary panels load independently so a blindspot failure never blanks a valid pipeline.
+      await fetchBlindSpots();
 
       // Fetch Deal Obituaries
       await fetchObituaries();
     } catch (err) {
       console.error('Failed to load Scout pipeline details:', err);
-      setError('A network error occurred while syncing with HubSpot.');
+      const message = 'A network error occurred while syncing with HubSpot.';
+      if (keepExistingPipeline) toast.error(message);
+      else setError(message);
+      setBlindSpotsLoading(false);
     } finally {
       setLoading(false);
     }
   };
 
+  const fetchBlindSpots = async () => {
+    setBlindSpotsLoading(true);
+    setBlindSpotsError(null);
+    try {
+      const bsRes = await fetch('/api/scout/blindspots');
+      if (bsRes.ok) {
+        const bsData = await bsRes.json();
+        setBlindSpots(bsData || []);
+      } else {
+        const bsData = await bsRes.json().catch(() => null);
+        setBlindSpotsError(bsData?.error || 'Unable to load rep intelligence.');
+      }
+    } catch (err) {
+      console.error('Failed to load rep blindspots:', err);
+      setBlindSpotsError('Unable to load rep intelligence.');
+    } finally {
+      setBlindSpotsLoading(false);
+    }
+  };
+
   const fetchObituaries = async () => {
+    setObituariesLoading(true);
+    setObituariesError(null);
     try {
       const res = await fetch('/api/scout/obituaries');
       if (res.ok) {
         const data = await res.json();
         setObituaries(data || []);
+      } else {
+        const data = await res.json().catch(() => null);
+        setObituariesError(data?.error || 'Unable to load deal obituaries.');
       }
     } catch (err) {
       console.error('Failed to load deal obituaries:', err);
+      setObituariesError('Unable to load deal obituaries.');
+    } finally {
+      setObituariesLoading(false);
     }
   };
 
@@ -320,15 +366,23 @@ export default function ScoutDashboard() {
   };
 
   useEffect(() => {
-    fetchData();
+    if (!planLoading && plan !== 'starter') fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [planLoading, plan]);
 
   useEffect(() => {
+    let cancelled = false;
     fetch('/api/client')
       .then(res => res.json())
-      .then(data => { if (data.client?.plan) setPlan(data.client.plan); })
-      .catch(() => {});
+      .then(data => {
+        if (cancelled) return;
+        if (data.client?.plan) setPlan(data.client.plan);
+      })
+      .catch(() => {
+        // Fail closed to Starter access, but do not flash the gate while lookup is pending.
+      })
+      .finally(() => { if (!cancelled) setPlanLoading(false); });
+    return () => { cancelled = true; };
   }, []);
 
   // Run Scout AI scoring pipeline analysis
@@ -516,6 +570,18 @@ export default function ScoutDashboard() {
     }).format(val);
   };
 
+  if (planLoading) {
+    return (
+      <div className="space-y-6 text-[var(--text-secondary)]" role="status" aria-busy="true" aria-label="Checking Scout access">
+        <PageHeader eyebrow="Signal Field · Pipeline intervention" title="Scout AI" description="Pipeline intelligence that highlights what needs attention next." />
+        <div className="max-w-5xl mx-auto space-y-4" aria-hidden="true">
+          <Skeleton variant="card" height={160} />
+          <Skeleton variant="card" height={120} />
+        </div>
+      </div>
+    );
+  }
+
   if (plan === 'starter') {
     return (
       <div className="p-6">
@@ -530,13 +596,13 @@ export default function ScoutDashboard() {
 
   return (
     <div className="space-y-6 text-[var(--text-secondary)]">
-      <PageHeader eyebrow="Signal Room · Intervention console" title="Scout AI" description="Pipeline intelligence that highlights what needs attention next." actions={<div className="flex flex-col items-end gap-1.5">
+      <PageHeader eyebrow="Signal Field · Pipeline intervention" title="Scout AI" description="Pipeline intelligence that highlights what needs attention next." actions={<div className="flex flex-col items-end gap-1.5">
           <button
             onClick={handleRunAnalysis}
             disabled={runningScout || loading}
             className="min-h-10 bg-[var(--accent)] hover:bg-[var(--accent-hover)] disabled:opacity-50 text-white font-sans text-sm font-semibold py-2 px-4 rounded-lg transition-colors flex items-center gap-2"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${runningScout ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${runningScout ? 'motion-safe:animate-spin' : ''}`} />
             {runningScout ? 'Analyzing...' : 'RUN SCOUT ANALYSIS'}
           </button>
           {snapshot && (
@@ -547,7 +613,7 @@ export default function ScoutDashboard() {
         </div>} />
 
       {loading ? (
-        <div className="space-y-6 max-w-5xl mx-auto animate-pulse">
+        <div className="space-y-6 max-w-5xl mx-auto motion-safe:animate-pulse" role="status" aria-busy="true" aria-label="Loading Scout pipeline">
           {/* Skeleton header overview cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Skeleton variant="card" height={100} />
@@ -565,7 +631,7 @@ export default function ScoutDashboard() {
         </div>
       ) : error ? (
         <div className="py-12">
-          <ErrorState message={error} onRetry={fetchData} />
+          <ErrorState message={error} onRetry={() => fetchData(false)} />
         </div>
       ) : deals.length === 0 ? (
         <div className="py-12">
@@ -584,18 +650,7 @@ export default function ScoutDashboard() {
             <SectionHeader headingId="pipeline-state-title" title="Pipeline state" description="The current pressure and value distribution across scored deals." />
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {/* Card 1: Pressure Score Display */}
-              {runningScout ? (
-                <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 rounded-[12px] flex items-center justify-between gap-4 h-[108px]">
-                  <div className="space-y-2 flex-1 animate-pulse">
-                    <Skeleton variant="line" height={14} className="w-24" />
-                    <Skeleton variant="line" height={32} className="w-16 mt-2" />
-                  </div>
-                  <div className="border-l border-[var(--border-subtle)] pl-6 flex-1 space-y-2 animate-pulse">
-                    <Skeleton variant="line" height={14} className="w-16" />
-                    <Skeleton variant="line" height={16} className="w-28 mt-2" />
-                  </div>
-                </div>
-              ) : snapshot && pressureStatus ? (
+              {snapshot && pressureStatus ? (
                 <PressureInstrument
                   score={snapshot.pressure_score}
                   status={snapshot.pressure_score <= 30 ? 'HEALTHY' : snapshot.pressure_score <= 60 ? 'NEEDS ATTENTION' : 'AT RISK'}
@@ -609,7 +664,12 @@ export default function ScoutDashboard() {
 
               {/* Card 2: Scout Pipeline Diagnostics */}
               {snapshot ? (
-                <Surface className="flex flex-col justify-between gap-4 p-5">
+                <Surface className="flex flex-col justify-between gap-4 p-5 relative">
+                  {runningScout && (
+                    <span role="status" aria-label="Scout analysis in progress" className="absolute right-4 top-4 inline-flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider text-[var(--amber)]">
+                      <RefreshCw className="h-3 w-3 motion-safe:animate-spin" /> Analyzing
+                    </span>
+                  )}
                   <div className="flex justify-between items-center border-b border-[var(--border-subtle)] pb-2">
                     <span className="text-[12px] font-sans font-medium text-[var(--text-muted)] uppercase tracking-wider">Total Pipeline Value</span>
                     <span className="text-lg font-bold font-sans text-[var(--green)]">
@@ -618,6 +678,10 @@ export default function ScoutDashboard() {
                   </div>
 
                   <div className="grid grid-cols-3 gap-3 text-center">
+                    <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-2.5 rounded-[8px] col-span-3 sm:col-span-1">
+                      <span className="text-[10px] font-sans text-[var(--text-secondary)] block uppercase font-bold">Total scored deals</span>
+                      <span className="text-lg font-bold font-mono text-[var(--text-primary)] block mt-0.5">{snapshot.total_deals}</span>
+                    </div>
                     <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-2.5 rounded-[8px]">
                       <span className="text-[10px] font-sans text-[var(--red)] block uppercase font-bold">At Risk</span>
                       <span className="text-lg font-bold font-mono text-[var(--text-primary)] block mt-0.5">
@@ -696,7 +760,7 @@ export default function ScoutDashboard() {
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: 'auto', opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.25, ease: 'easeInOut' }}
+                  transition={{ duration: shouldReduceMotion ? 0 : 0.2, ease: 'easeInOut' }}
                   className="overflow-hidden"
                 >
                   <div className="p-5 space-y-4">
@@ -769,7 +833,7 @@ export default function ScoutDashboard() {
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: 'auto', opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.25, ease: 'easeInOut' }}
+                  transition={{ duration: shouldReduceMotion ? 0 : 0.2, ease: 'easeInOut' }}
                   className="overflow-hidden"
                 >
                   <div className="p-5 space-y-4">
@@ -1107,11 +1171,18 @@ export default function ScoutDashboard() {
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: 'auto', opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.25, ease: 'easeInOut' }}
+                  transition={{ duration: shouldReduceMotion ? 0 : 0.2, ease: 'easeInOut' }}
                   className="overflow-hidden"
                 >
                   <div className="p-5 space-y-4">
-                {blindSpots.length === 0 || blindSpots.reduce((acc, report) => acc + (report.blind_spots?.length || 0), 0) === 0 ? (
+                {blindSpotsLoading ? (
+                  <div role="status" aria-busy="true" className="py-8 text-center text-xs text-[var(--text-muted)]">Loading rep intelligence…</div>
+                ) : blindSpotsError ? (
+                  <div role="alert" className="py-6 space-y-3 text-center border border-[var(--red)]/20 rounded bg-[var(--red)]/5">
+                    <p className="text-xs text-[var(--red)]">{blindSpotsError}</p>
+                    <button type="button" onClick={fetchBlindSpots} className="text-[10px] font-semibold uppercase tracking-wider text-[var(--accent)] hover:underline">TRY AGAIN</button>
+                  </div>
+                ) : blindSpots.length === 0 || blindSpots.reduce((acc, report) => acc + (report.blind_spots?.length || 0), 0) === 0 ? (
                   <div className="py-8 text-center border border-dashed border-[var(--border-subtle)] rounded bg-[var(--bg-elevated)]">
                     <p className="text-xs font-sans text-[var(--text-muted)]">No blind spots detected across your team.</p>
                   </div>
@@ -1134,7 +1205,7 @@ export default function ScoutDashboard() {
 
                             {!hasSpots ? (
                               <div className="text-[10px] font-sans text-[var(--green)] uppercase tracking-wider flex items-center gap-1.5 font-bold">
-                                <span className="w-1.5 h-1.5 rounded-full bg-[var(--green)] animate-pulse" />
+                                <span className="w-1.5 h-1.5 rounded-full bg-[var(--green)]" />
                                 No blind spots detected
                               </div>
                             ) : (
@@ -1151,6 +1222,8 @@ export default function ScoutDashboard() {
                                     >
                                       <div className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-[9px] mb-0.5">
                                         <span className={`w-1.5 h-1.5 rounded-full ${isCritical ? 'bg-[var(--red)]' : 'bg-[var(--amber)]'}`} />
+                                        <span>{spot.severity}</span>
+                                        <span aria-hidden="true">·</span>
                                         {spot.type}
                                       </div>
                                       <div className="text-[var(--text-secondary)] text-[10px] leading-relaxed">
@@ -1199,7 +1272,7 @@ export default function ScoutDashboard() {
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: 'auto', opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.25, ease: 'easeInOut' }}
+                  transition={{ duration: shouldReduceMotion ? 0 : 0.2, ease: 'easeInOut' }}
                   className="overflow-hidden"
                 >
                   <div className="p-5 space-y-4 font-sans">
@@ -1212,12 +1285,19 @@ export default function ScoutDashboard() {
                     disabled={generatingObits}
                     className="border border-[var(--red)]/40 bg-[var(--red)]/5 hover:bg-[var(--red)]/10 text-[var(--red)] font-sans text-[11px] font-bold py-1.5 px-3 rounded-[8px] uppercase tracking-wider flex items-center gap-1.5 transition-colors disabled:opacity-50"
                   >
-                    <RefreshCw className={`w-3.5 h-3.5 ${generatingObits ? 'animate-spin' : ''}`} />
+                    <RefreshCw className={`w-3.5 h-3.5 ${generatingObits ? 'motion-safe:animate-spin' : ''}`} />
                     {generatingObits ? 'GENERATING...' : 'GENERATE OBITUARIES'}
                   </button>
                 </div>
 
-                {obituaries.length === 0 ? (
+                {obituariesLoading ? (
+                  <div role="status" aria-busy="true" className="py-8 text-center text-xs text-[var(--text-muted)]">Loading obituary archive…</div>
+                ) : obituariesError ? (
+                  <div role="alert" className="py-6 space-y-3 text-center border border-[var(--red)]/20 rounded bg-[var(--red)]/5">
+                    <p className="text-xs text-[var(--red)]">{obituariesError}</p>
+                    <button type="button" onClick={fetchObituaries} className="text-[10px] font-semibold uppercase tracking-wider text-[var(--accent)] hover:underline">TRY AGAIN</button>
+                  </div>
+                ) : obituaries.length === 0 ? (
                   <div className="py-8 text-center border border-dashed border-[var(--border-subtle)] rounded bg-[var(--bg-elevated)]">
                     <p className="text-xs font-sans text-[var(--text-muted)] max-w-md mx-auto leading-relaxed">
                       No closed-lost deals found. Obituaries are generated automatically when deals are marked lost in HubSpot.
@@ -1297,8 +1377,9 @@ export default function ScoutDashboard() {
             {/* Form Fields */}
             <div className="space-y-4 text-xs">
               <div className="space-y-1">
-                <label className="text-[var(--text-muted)] uppercase text-[9px] block font-semibold">To Representative</label>
+                <label htmlFor="scout-recipient" className="text-[var(--text-muted)] uppercase text-[9px] block font-semibold">To Representative</label>
                 <input
+                  id="scout-recipient"
                   type="text"
                   readOnly
                   value={`${modalData.repName} <${modalData.repEmail}>`}
@@ -1307,8 +1388,9 @@ export default function ScoutDashboard() {
               </div>
 
               <div className="space-y-1">
-                <label className="text-[var(--text-muted)] uppercase text-[9px] block font-semibold">Subject</label>
+                <label htmlFor="scout-subject" className="text-[var(--text-muted)] uppercase text-[9px] block font-semibold">Subject</label>
                 <input
+                  id="scout-subject"
                   type="text"
                   value={modalData.subject}
                   onChange={(e) => setModalData({ ...modalData, subject: e.target.value })}
@@ -1317,8 +1399,9 @@ export default function ScoutDashboard() {
               </div>
 
               <div className="space-y-1">
-                <label className="text-[var(--text-muted)] uppercase text-[9px] block font-semibold">Email Body Message</label>
+                <label htmlFor="scout-message" className="text-[var(--text-muted)] uppercase text-[9px] block font-semibold">Email Body Message</label>
                 <textarea
+                  id="scout-message"
                   rows={8}
                   value={modalData.message}
                   onChange={(e) => setModalData({ ...modalData, message: e.target.value })}

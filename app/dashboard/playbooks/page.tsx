@@ -37,6 +37,7 @@ export default function PlaybooksPage() {
   const [playbooks, setPlaybooks] = useState<PlaybookTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [warning, setWarning] = useState<string | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   // Modal State
   const [selectedPlaybook, setSelectedPlaybook] = useState<PlaybookTemplate | null>(null);
@@ -48,18 +49,19 @@ export default function PlaybooksPage() {
   const fetchPlaybooks = async () => {
     try {
       setLoading(true);
+      setFetchError(null);
       const res = await fetch('/api/playbooks');
       if (res.ok) {
         const data = await res.json();
         setPlaybooks(data.playbooks || []);
-        if (data.warning) {
-          setWarning(data.warning);
-        }
+        setWarning(data.warning || null);
       } else {
-        console.error('Failed to load playbook templates');
+        const data = await res.json().catch(() => ({}));
+        setFetchError(data.error || 'Unable to load playbook templates.');
       }
     } catch (err) {
       console.error('Error fetching playbooks:', err);
+      setFetchError('A network error occurred while loading playbook templates.');
     } finally {
       setLoading(false);
     }
@@ -179,7 +181,7 @@ CREATE TABLE IF NOT EXISTS playbook_templates (
 -- Click below or copy from supabase/playbooks.sql to seed the 21 templates!`;
 
   if (loading) {
-    return <div className="max-w-6xl space-y-6"><PageHeader eyebrow="Signal Room · Configuration library" title="Playbook library" description="Install proven routing patterns and tailor them to your workflow." /><Surface aria-busy="true" className="flex min-h-48 items-center justify-center"><p role="status" className="text-sm uppercase tracking-widest text-[var(--text-muted)]">Retrieving playbook templates...</p></Surface></div>;
+    return <div className="max-w-6xl space-y-6"><PageHeader eyebrow="Signal Field · Configuration library" title="Playbook library" description="Install proven routing patterns and tailor them to your workflow." /><Surface aria-busy="true" className="dashboard-surface flex min-h-48 items-center justify-center"><p role="status" className="text-sm uppercase tracking-widest text-[var(--text-muted)]">Retrieving playbook templates...</p></Surface></div>;
   }
 
   // Group playbooks by Tier
@@ -188,19 +190,25 @@ CREATE TABLE IF NOT EXISTS playbook_templates (
   const tier3 = playbooks.filter((p) => p.tier === 3);
   const tier4 = playbooks.filter((p) => p.tier === 4);
 
-  const showSeedingWarning = warning || playbooks.length === 0;
+  const showSeedingWarning = !fetchError && (warning || playbooks.length === 0);
 
   return (
     <div className="max-w-6xl space-y-8 text-[var(--text-primary)]">
-      <PageHeader eyebrow="Signal Room · Configuration library" title="Playbook library" description="Install proven routing patterns and tailor them to your workflow." />
+      <PageHeader eyebrow="Signal Field · Configuration library" title="Playbook library" description="Install proven routing patterns and tailor them to your workflow." />
+      {fetchError && (
+        <Surface role="alert" className="dashboard-surface flex items-center justify-between gap-4 border-rose-200 bg-rose-50 p-5 text-rose-700">
+          <p className="text-sm">{fetchError}</p>
+          <button type="button" onClick={fetchPlaybooks} className="dashboard-button-secondary min-h-9 px-3 text-xs">TRY AGAIN</button>
+        </Surface>
+      )}
       {/* Seeding Warning Alert */}
       {showSeedingWarning && (
-        <Surface role="alert" className="space-y-3 border-[var(--amber)]/30 bg-[var(--amber)]/10 p-6 text-[var(--amber)]">
-          <span className="font-bold block uppercase tracking-wider">DATABASE SEEDING REQUIRED</span>
+        <Surface role="alert" className="dashboard-surface space-y-3 border-amber-200 bg-amber-50 p-6 text-amber-800">
+          <span className="block font-semibold uppercase tracking-[0.14em]">PLAYBOOK LIBRARY NOTICE</span>
           <p className="leading-relaxed">
-            The Playbook templates have not been seeded into the database yet. To load the 21 standard playbooks, please copy and run the SQL migration statements.
+            {warning || 'The playbook library is empty. Seed the templates to make these ready-to-use routing patterns available.'}
           </p>
-          <div className="relative group overflow-x-auto rounded border border-[var(--amber)]/20 bg-[var(--bg-base)] p-3 font-mono text-[10px] text-[var(--text-secondary)]">
+          <div className="relative group overflow-x-auto rounded-xl border border-amber-200 bg-white/70 p-3 font-mono text-[10px] text-[var(--text-secondary)]">
             <pre>{seedSql}</pre>
             <span className="absolute top-2 right-2 text-[var(--accent)] font-bold" aria-label="SQL migration file">supabase/playbooks.sql</span>
           </div>
@@ -214,7 +222,7 @@ CREATE TABLE IF NOT EXISTS playbook_templates (
           {tier1.length > 0 && (
             <div className="space-y-4">
               <SectionHeader title="Tier 1 Highest Value" description="Fastest paths to qualified conversations." action={<StatusBadge tone="success">Highest value</StatusBadge>} />
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 {tier1.map((playbook) => (
                   <PlaybookCard key={playbook.id} playbook={playbook} onInstall={openInstallModal} />
                 ))}
@@ -226,7 +234,7 @@ CREATE TABLE IF NOT EXISTS playbook_templates (
           {tier2.length > 0 && (
             <div className="space-y-4">
               <SectionHeader title="Tier 2 High Value" description="Reliable signals for active buying intent." action={<StatusBadge tone="info">High value</StatusBadge>} />
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 {tier2.map((playbook) => (
                   <PlaybookCard key={playbook.id} playbook={playbook} onInstall={openInstallModal} />
                 ))}
@@ -238,7 +246,7 @@ CREATE TABLE IF NOT EXISTS playbook_templates (
           {tier3.length > 0 && (
             <div className="space-y-4">
               <SectionHeader title="Tier 3 Solid Value" description="Supporting patterns for a fuller signal mix." action={<StatusBadge tone="neutral">Solid value</StatusBadge>} />
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 {tier3.map((playbook) => (
                   <PlaybookCard key={playbook.id} playbook={playbook} onInstall={openInstallModal} />
                 ))}
@@ -250,7 +258,7 @@ CREATE TABLE IF NOT EXISTS playbook_templates (
           {tier4.length > 0 && (
             <div className="space-y-4">
               <SectionHeader title="Tier 4 Completeness" description="Long-tail signals that round out coverage." action={<StatusBadge tone="neutral">Completeness</StatusBadge>} />
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 {tier4.map((playbook) => (
                   <PlaybookCard key={playbook.id} playbook={playbook} onInstall={openInstallModal} />
                 ))}
@@ -397,7 +405,7 @@ function PlaybookCard({ playbook, onInstall }: PlaybookCardProps) {
   };
 
   return (
-    <div className="group flex flex-col justify-between rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 transition-all hover:border-[var(--accent)]/50 hover:bg-[var(--bg-elevated)]">
+    <article className="group flex flex-col justify-between rounded-2xl border border-[var(--field-line)] bg-[var(--field-surface)] p-5 shadow-[0_14px_35px_rgba(25,33,29,0.06)] transition-transform motion-safe:hover:-translate-y-0.5">
       <div className="space-y-3.5">
         <div className="flex items-center justify-between gap-2">
           <span className={getSignalBadgeClass(playbook.signal_type)}>
@@ -407,10 +415,10 @@ function PlaybookCard({ playbook, onInstall }: PlaybookCardProps) {
         </div>
         
         <div className="space-y-1.5">
-          <h3 className="text-xs font-mono font-bold uppercase leading-tight text-[var(--text-primary)] transition-colors group-hover:text-[var(--accent)]">
+          <h3 className="text-base font-semibold leading-tight text-[var(--field-ink)] transition-colors group-hover:text-[var(--signal-primary)]">
             {playbook.name}
           </h3>
-          <p className="text-[11px] font-mono text-[var(--text-secondary)] leading-relaxed min-h-[48px]">
+          <p className="min-h-[48px] text-sm leading-relaxed text-[var(--field-ink-secondary)]">
             {playbook.description}
           </p>
         </div>
@@ -422,11 +430,11 @@ function PlaybookCard({ playbook, onInstall }: PlaybookCardProps) {
         </span>
         <button
           onClick={() => onInstall(playbook)}
-          className="rounded-lg bg-[var(--border-subtle)] px-4 py-1.5 text-[10px] text-[var(--text-primary)] transition-all hover:bg-[var(--accent)] hover:text-white motion-safe:active:scale-[0.98]"
+          className="dashboard-button-primary min-h-9 px-4 text-xs"
         >
           Install
         </button>
       </div>
-    </div>
+    </article>
   );
 }

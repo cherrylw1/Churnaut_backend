@@ -130,7 +130,7 @@ export default function AnalyticsPage() {
   }, []);
 
   if (loading) {
-    return <div className="text-center py-12 text-[var(--text-muted)] font-mono text-sm bg-[var(--bg-base)] text-[var(--text-primary)] min-h-screen">RETRIEVING ANALYTICS...</div>;
+    return <div className="dashboard-surface mx-auto flex min-h-48 max-w-[1560px] items-center justify-center text-center text-sm uppercase tracking-[0.18em] text-[var(--text-muted)]" role="status" aria-busy="true">Retrieving measurement signals...</div>;
   }
 
   if (error) {
@@ -161,7 +161,7 @@ export default function AnalyticsPage() {
 
   return (
     <div className="mx-auto w-full max-w-[1560px] space-y-6 bg-[var(--bg-base)] text-[var(--text-primary)] min-h-screen">
-      <PageHeader eyebrow="Measure impact" title="Analytics" description="Understand which signals, rules, and links are moving the pipeline." />
+      <PageHeader eyebrow="Signal Field · Measurement" title="Analytics" description="Understand which signals, rules, and links are moving the pipeline." />
 
       {recentEvents.length === 0 ? (
         <EmptyState
@@ -176,6 +176,20 @@ export default function AnalyticsPage() {
       {/* Outcome telemetry */}
       <section aria-labelledby="outcome-telemetry-title" className="space-y-3">
         <SectionHeader headingId="outcome-telemetry-title" title="Outcome telemetry" description="The measures that tell you whether personalization is moving the pipeline." />
+        {liftReport && liftReport.personalized_sessions > 0 ? (
+          <Surface tone="elevated" className={`space-y-4 border-l-4 ${liftReport.overall_lift_pp > 0 ? 'border-l-[var(--green)]' : liftReport.overall_lift_pp < 0 ? 'border-l-[var(--red)]' : 'border-l-[var(--border-strong)]'}`}>
+            <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+              <div>
+                <p className="dashboard-eyebrow font-mono">MEASURED LIFT</p>
+                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
+                  {liftReport.overall_lift_pp > 0 ? 'Personalization is moving outcomes' : liftReport.overall_lift_pp < 0 ? 'Personalization is trailing baseline' : 'Measured lift is flat'}
+                </h2>
+                <p className="mt-2 text-sm text-[var(--text-secondary)]">{Math.abs(liftReport.overall_lift_pp)} percentage points {liftReport.overall_lift_pp > 0 ? 'above' : liftReport.overall_lift_pp < 0 ? 'below' : 'against'} the unmatched visitor baseline.</p>
+              </div>
+              <span className={`font-mono text-3xl font-semibold ${liftReport.overall_lift_pp > 0 ? 'text-[var(--green)]' : liftReport.overall_lift_pp < 0 ? 'text-[var(--red)]' : 'text-[var(--text-muted)]'}`}>{liftReport.overall_lift_pp > 0 ? '+' : ''}{liftReport.overall_lift_pp}pp</span>
+            </div>
+          </Surface>
+        ) : null}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-6">
           <div className="lg:col-span-2"><MetricCard label="Trigger rate" value={<CountUp value={summaryStats.personalizationTriggerRate} suffix="%" />} detail="Personalized sessions" emphasis="primary" /></div>
           <div className="lg:col-span-2"><MetricCard label="Overall conversion" value={<CountUp value={summaryStats.overallConversionRate} suffix="%" />} detail="Converted sessions" emphasis="primary" /></div>

@@ -8,6 +8,12 @@ const geistMono = localFont({
   weight: "100 900",
 });
 
+const geist = localFont({
+  src: "./fonts/GeistVF.woff",
+  variable: "--font-geist",
+  weight: "100 900",
+});
+
 export const metadata: Metadata = {
   title: "Churnaut",
   description: "Churnaut personalization and pipeline intelligence platform",
@@ -19,7 +25,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={geistMono.variable} data-scroll-behavior="smooth">
+    <html lang="en" className={`${geist.variable} ${geistMono.variable}`} data-scroll-behavior="smooth">
       <head />
       <body className="antialiased">
         {children}

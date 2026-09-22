@@ -84,6 +84,7 @@ export default function RulesPage() {
   const [playbooks, setPlaybooks] = useState<PlaybookTemplate[]>([]);
   const [playbooksLoading, setPlaybooksLoading] = useState(false);
   const [playbooksWarning, setPlaybooksWarning] = useState<string | null>(null);
+  const [playbooksError, setPlaybooksError] = useState<string | null>(null);
   const [selectedPlaybook, setSelectedPlaybook] = useState<PlaybookTemplate | null>(null);
   const [playbookFormValues, setPlaybookFormValues] = useState<Record<string, string>>({});
   const [installing, setInstalling] = useState(false);
@@ -662,14 +663,20 @@ export default function RulesPage() {
   const fetchPlaybooks = async () => {
     try {
       setPlaybooksLoading(true);
+      setPlaybooksError(null);
+      setPlaybooksWarning(null);
       const res = await fetch('/api/playbooks');
       if (res.ok) {
         const data = await res.json();
         setPlaybooks(data.playbooks || []);
-        if (data.warning) setPlaybooksWarning(data.warning);
+        setPlaybooksWarning(data.warning || null);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setPlaybooksError(data.error || 'Unable to load playbook templates.');
       }
     } catch (err) {
       console.error('Error fetching playbooks:', err);
+      setPlaybooksError('A network error occurred while loading playbook templates.');
     } finally {
       setPlaybooksLoading(false);
     }
@@ -739,7 +746,7 @@ export default function RulesPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader eyebrow="Signal Room · Routing logic" title="Routing rules" ariaLabel="ROUTING RULES" description="Configure personalized web variants based on inbound context" actions={
+      <PageHeader eyebrow="Signal Field · Routing logic" title="Routing rules" ariaLabel="ROUTING RULES" description="Configure personalized web variants based on inbound context" actions={
         <div role="tablist" aria-label="Routing workspace" className="flex border-b border-[var(--border-subtle)] mt-4 md:mt-0">
           <button
             role="tab" id="rules-tab" aria-selected={activeTab === 'rules'} aria-controls="rules-panel" tabIndex={activeTab === 'rules' ? 0 : -1}
@@ -784,7 +791,7 @@ export default function RulesPage() {
           </div>
 
           {loading ? (
-            <div className="text-center py-12 text-[var(--text-muted)] font-mono text-sm">RETRIEVING RULES...</div>
+            <div className="dashboard-surface flex min-h-48 items-center justify-center" role="status" aria-busy="true"><p className="text-sm uppercase tracking-[0.18em] text-[var(--text-muted)]">Retrieving rules...</p></div>
           ) : error ? (
             <ErrorState message={error} onRetry={fetchRules} />
           ) : rules.length === 0 ? (
@@ -809,7 +816,7 @@ export default function RulesPage() {
                     onDragOver={handleDragOver}
                     onDrop={(e) => handleDrop(e, index)}
                     onDragEnd={() => setDraggedIndex(null)}
-                    className={`border rounded-lg p-4 bg-[var(--bg-elevated)] flex items-start gap-4 transition-all hover:border-[var(--border-default)] relative select-none ${
+                    className={`dashboard-surface rounded-2xl p-4 flex items-start gap-4 transition-all hover:-translate-y-0.5 relative select-none ${
                       isSelected ? 'border-[var(--accent)] bg-[var(--border-subtle)]/10' : 'border-[var(--border-subtle)]'
                     } ${!rule.active ? 'opacity-65' : ''}`}
                   >
@@ -913,7 +920,7 @@ export default function RulesPage() {
         {/* Right Side: Edit Panel */}
         {selectedRule && (
           <div id="rule-editor-dialog" role={isMobileViewport ? 'dialog' : undefined} aria-modal={isMobileViewport ? true : undefined} aria-labelledby={isMobileViewport ? 'rule-editor-title' : undefined} onClick={(event) => { if (event.target === event.currentTarget) setSelectedRule(null); }} className="fixed inset-0 z-40 bg-black/35 p-3 overflow-y-auto lg:static lg:z-auto lg:bg-transparent lg:p-0 lg:overflow-visible w-full lg:w-[calc(40%-12px)] flex-shrink-0 min-w-0">
-            <div className="max-w-2xl lg:max-w-none lg:sticky lg:top-6 ml-auto lg:ml-0 border border-[var(--border-subtle)] bg-[var(--bg-elevated)] rounded-lg p-5 md:p-6 space-y-6 shadow-2xl lg:shadow-none">
+            <div className="dashboard-surface max-w-2xl lg:max-w-none lg:sticky lg:top-6 ml-auto lg:ml-0 rounded-2xl p-5 md:p-6 space-y-6 shadow-2xl lg:shadow-none">
               {!isValidStoredRule(selectedRule) && (
                 <div className="rounded border border-[var(--red)]/40 bg-[var(--red)]/10 p-3 text-xs text-[var(--red)]">
                   Invalid configuration: this rule cannot execute. Choose a supported action and valid condition, then save to repair it.
@@ -934,10 +941,11 @@ export default function RulesPage() {
               <form onSubmit={handleUpdateRule} className="space-y-4">
                 {/* Signal Type */}
                 <div className="space-y-1.5">
-                  <label className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
+                  <label htmlFor="edit-signal-type" className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
                     Signal Type
                   </label>
                   <select
+                    id="edit-signal-type"
                     value={editSignalType}
                     onChange={(e) => setEditSignalType(e.target.value)}
                     className="w-full bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-subtle)] focus:border-[var(--accent)] outline-none text-xs px-3 py-2.5 rounded  font-mono"
@@ -953,10 +961,11 @@ export default function RulesPage() {
                 {/* Conditions Row */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <label className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
+                    <label htmlFor="edit-condition-type" className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
                       Condition Type
                     </label>
                     <select
+                      id="edit-condition-type"
                       value={editConditionType}
                       onChange={(e) => setEditConditionType(e.target.value)}
                       className="w-full bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-subtle)] focus:border-[var(--accent)] outline-none text-xs px-3 py-2.5 rounded  font-mono"
@@ -969,10 +978,11 @@ export default function RulesPage() {
                     </select>
                   </div>
                   <div className="space-y-1.5">
-                    <label className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
+                    <label htmlFor="edit-condition-value" className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
                       Condition Value
                     </label>
                     <input
+                      id="edit-condition-value"
                       type="text"
                       disabled={editConditionType === 'Any visitor'}
                       value={editConditionValue}
@@ -986,10 +996,11 @@ export default function RulesPage() {
                 {/* Actions Row */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <label className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
+                    <label htmlFor="edit-action-type" className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
                       Action Type
                     </label>
                     <select
+                      id="edit-action-type"
                       value={editActionType}
                       onChange={(e) => setEditActionType(e.target.value)}
                       className="w-full bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-subtle)] focus:border-[var(--accent)] outline-none text-xs px-3 py-2.5 rounded  font-mono"
@@ -1002,10 +1013,11 @@ export default function RulesPage() {
                     </select>
                   </div>
                   <div className="space-y-1.5">
-                    <label className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
+                    <label htmlFor="edit-action-content" className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
                       Action Content URL/Val
                     </label>
                     <input
+                      id="edit-action-content"
                       type="text"
                       value={editActionContent}
                       onChange={(e) => setEditActionContent(e.target.value)}
@@ -1066,8 +1078,9 @@ export default function RulesPage() {
 
                         <div className="space-y-2">
                           <div className="space-y-1">
-                            <label className="block text-[9px] font-mono text-[var(--text-muted)] uppercase tracking-wider">Target CSS Selector</label>
+                            <label htmlFor={`edit-swap-selector-${index}`} className="block text-[9px] font-mono text-[var(--text-muted)] uppercase tracking-wider">Target CSS Selector</label>
                             <input
+                              id={`edit-swap-selector-${index}`}
                               type="text"
                               required
                               value={swap.selector}
@@ -1077,8 +1090,9 @@ export default function RulesPage() {
                             />
                           </div>
                           <div className="space-y-1">
-                            <label className="block text-[9px] font-mono text-[var(--text-muted)] uppercase tracking-wider">Variant Content</label>
+                            <label htmlFor={`edit-swap-content-${index}`} className="block text-[9px] font-mono text-[var(--text-muted)] uppercase tracking-wider">Variant Content</label>
                             <textarea
+                              id={`edit-swap-content-${index}`}
                               rows={3}
                               value={swap.content}
                               onChange={(e) => handleEditSwapChange(index, 'content', e.target.value)}
@@ -1121,8 +1135,9 @@ export default function RulesPage() {
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <div className="space-y-1">
-                          <label className="block text-[9px] text-[var(--text-secondary)] uppercase">Signal Type</label>
+                          <label htmlFor="ai-signal-type" className="block text-[9px] text-[var(--text-secondary)] uppercase">Signal Type</label>
                           <input
+                            id="ai-signal-type"
                             type="text"
                             value={aiSignalType}
                             onChange={(e) => setAiSignalType(e.target.value)}
@@ -1130,8 +1145,9 @@ export default function RulesPage() {
                           />
                         </div>
                         <div className="space-y-1">
-                          <label className="block text-[9px] text-[var(--text-secondary)] uppercase">Job Title</label>
+                          <label htmlFor="ai-job-title" className="block text-[9px] text-[var(--text-secondary)] uppercase">Job Title</label>
                           <input
+                            id="ai-job-title"
                             type="text"
                             value={aiJobTitle}
                             onChange={(e) => setAiJobTitle(e.target.value)}
@@ -1143,8 +1159,9 @@ export default function RulesPage() {
 
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                         <div className="space-y-1">
-                          <label className="block text-[9px] text-[var(--text-secondary)] uppercase">Industry</label>
+                          <label htmlFor="ai-industry" className="block text-[9px] text-[var(--text-secondary)] uppercase">Industry</label>
                           <input
+                            id="ai-industry"
                             type="text"
                             value={aiIndustry}
                             onChange={(e) => setAiIndustry(e.target.value)}
@@ -1153,8 +1170,9 @@ export default function RulesPage() {
                           />
                         </div>
                         <div className="space-y-1">
-                          <label className="block text-[9px] text-[var(--text-secondary)] uppercase">Size</label>
+                          <label htmlFor="ai-company-size" className="block text-[9px] text-[var(--text-secondary)] uppercase">Size</label>
                           <select
+                            id="ai-company-size"
                             value={aiCompanySize}
                             onChange={(e) => setAiCompanySize(e.target.value)}
                             className="w-full bg-[var(--bg-surface)] border border-[var(--border-subtle)] focus:border-[var(--accent)] outline-none px-1.5 py-1.5 rounded text-[var(--text-primary)] text-[11px]"
@@ -1167,8 +1185,9 @@ export default function RulesPage() {
                           </select>
                         </div>
                         <div className="space-y-1">
-                          <label className="block text-[9px] text-[var(--text-secondary)] uppercase">Tone</label>
+                          <label htmlFor="ai-tone" className="block text-[9px] text-[var(--text-secondary)] uppercase">Tone</label>
                           <select
+                            id="ai-tone"
                             value={aiTone}
                             onChange={(e) => setAiTone(e.target.value)}
                           className="w-full bg-[var(--bg-surface)] border border-[var(--border-subtle)] focus:border-[var(--accent)] outline-none px-1.5 py-1.5 rounded text-[var(--text-primary)] text-[11px]"
@@ -1246,10 +1265,11 @@ export default function RulesPage() {
             <form onSubmit={handleCreateRule} className="space-y-4">
               {/* Signal Type */}
               <div className="space-y-1.5">
-                <label className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
+                <label htmlFor="create-signal-type" className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
                   Signal Type
                 </label>
                 <select
+                  id="create-signal-type"
                   value={newSignalType}
                   onChange={(e) => setNewSignalType(e.target.value)}
                   className="w-full bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-subtle)] focus:border-[var(--accent)] outline-none text-xs px-3 py-2.5 rounded  font-mono"
@@ -1265,10 +1285,11 @@ export default function RulesPage() {
               {/* Conditions Row */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
+                  <label htmlFor="create-condition-type" className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
                     Condition Type
                   </label>
                   <select
+                    id="create-condition-type"
                     value={newConditionType}
                     onChange={(e) => setNewConditionType(e.target.value)}
                     className="w-full bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-subtle)] focus:border-[var(--accent)] outline-none text-xs px-3 py-2.5 rounded  font-mono"
@@ -1281,10 +1302,11 @@ export default function RulesPage() {
                   </select>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
+                  <label htmlFor="create-condition-value" className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
                     Condition Value
                   </label>
                   <input
+                    id="create-condition-value"
                     type="text"
                     disabled={newConditionType === 'Any visitor'}
                     value={newConditionValue}
@@ -1298,10 +1320,11 @@ export default function RulesPage() {
               {/* Actions Row */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
+                  <label htmlFor="create-action-type" className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
                     Action Type
                   </label>
                   <select
+                    id="create-action-type"
                     value={newActionType}
                     onChange={(e) => setNewActionType(e.target.value)}
                     className="w-full bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-subtle)] focus:border-[var(--accent)] outline-none text-xs px-3 py-2.5 rounded  font-mono"
@@ -1314,10 +1337,11 @@ export default function RulesPage() {
                   </select>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
+                  <label htmlFor="create-action-content" className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
                     Action Content URL/Val
                   </label>
                   <input
+                    id="create-action-content"
                     type="text"
                     value={newActionContent}
                     onChange={(e) => setNewActionContent(e.target.value)}
@@ -1364,8 +1388,9 @@ export default function RulesPage() {
 
                       <div className="space-y-2">
                         <div className="space-y-1">
-                          <label className="block text-[9px] font-mono text-[var(--text-muted)] uppercase tracking-wider">Target CSS Selector</label>
+                          <label htmlFor={`create-swap-selector-${index}`} className="block text-[9px] font-mono text-[var(--text-muted)] uppercase tracking-wider">Target CSS Selector</label>
                           <input
+                            id={`create-swap-selector-${index}`}
                             type="text"
                             required
                             value={swap.selector}
@@ -1375,8 +1400,9 @@ export default function RulesPage() {
                           />
                         </div>
                         <div className="space-y-1">
-                          <label className="block text-[9px] font-mono text-[var(--text-muted)] uppercase tracking-wider">Variant Content</label>
+                          <label htmlFor={`create-swap-content-${index}`} className="block text-[9px] font-mono text-[var(--text-muted)] uppercase tracking-wider">Variant Content</label>
                           <textarea
+                            id={`create-swap-content-${index}`}
                             rows={3}
                             value={swap.content}
                             onChange={(e) => handleNewSwapChange(index, 'content', e.target.value)}
@@ -1428,15 +1454,13 @@ export default function RulesPage() {
       {activeTab === 'playbooks' && (
         <div id="playbooks-panel" role="tabpanel" aria-labelledby="playbooks-tab" className="space-y-8">
           {playbooksLoading ? (
-            <div className="text-center py-12 text-[var(--text-muted)] font-mono text-sm uppercase tracking-widest">
-              RETRIEVING PLAYBOOK TEMPLATES...
-            </div>
+            <div className="dashboard-surface flex min-h-48 items-center justify-center" role="status" aria-busy="true"><p className="text-sm uppercase tracking-widest text-[var(--text-muted)]">Retrieving playbook templates...</p></div>
+          ) : playbooksError ? (
+            <div className="dashboard-surface flex items-center justify-between gap-4 border-rose-200 bg-rose-50 p-5 text-rose-700" role="alert"><p className="text-sm">{playbooksError}</p><button type="button" onClick={fetchPlaybooks} className="dashboard-button-secondary min-h-9 px-3 text-xs">TRY AGAIN</button></div>
           ) : (playbooksWarning || playbooks.length === 0) ? (
-            <div className="border border-[var(--amber)]/30 bg-[var(--amber)]/10 text-[var(--amber)] p-6 rounded-lg font-mono text-xs space-y-3">
-              <span className="font-bold block uppercase tracking-wider">DATABASE SEEDING REQUIRED</span>
-              <p className="leading-relaxed">
-                The Playbook templates have not been seeded into the database yet. Run the SQL migration from supabase/playbooks.sql in the Supabase SQL Editor to load the 21 standard playbooks.
-              </p>
+            <div className="dashboard-surface space-y-3 border-amber-200 bg-amber-50 p-6 text-amber-800" role="alert">
+              <span className="block font-semibold uppercase tracking-[0.14em]">PLAYBOOK LIBRARY NOTICE</span>
+              <p className="leading-relaxed">{playbooksWarning || 'The playbook library is empty. Seed the templates to make these patterns available.'}</p>
             </div>
           ) : (
             <div className="space-y-12">
@@ -1454,7 +1478,7 @@ export default function RulesPage() {
                     <h2 className="text-xs font-mono font-bold text-[var(--green)] uppercase tracking-widest bg-[var(--green)]/10 py-1.5 px-3 rounded border border-[var(--green)]/30 inline-block">
                       {tierLabels[tier]}
                     </h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                       {tierPlaybooks.map((playbook) => (
                         <PlaybookCard key={playbook.id} playbook={playbook} onInstall={openInstallModal} />
                       ))}
@@ -1468,7 +1492,7 @@ export default function RulesPage() {
           {selectedPlaybook && (
             <ModalShell open={Boolean(selectedPlaybook)} onClose={closeInstallModal} title="Install Playbook" className="max-w-lg" contentClassName="p-6">
                   {installSuccess ? (
-                    <div className="space-y-6 text-center py-4">
+                    <div className="space-y-6 text-center py-4" role="status" aria-live="polite">
                       <div className="inline-flex items-center justify-center h-12 w-12 rounded-full bg-[var(--green)]/10 text-[var(--green)] border border-[var(--green)]/30 mb-2">
                         ✓
                       </div>
@@ -1515,10 +1539,11 @@ export default function RulesPage() {
                       <div className="space-y-4 max-h-[300px] overflow-y-auto pr-1">
                         {selectedPlaybook.required_inputs.map((input) => (
                           <div key={input.field_name} className="space-y-1.5">
-                            <label className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
+                            <label htmlFor={`rules-playbook-input-${selectedPlaybook.id}-${input.field_name}`} className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider">
                               {input.label}
                             </label>
                             <input
+                              id={`rules-playbook-input-${selectedPlaybook.id}-${input.field_name}`}
                               type="text"
                               required
                               value={playbookFormValues[input.field_name] || ''}
@@ -1596,7 +1621,7 @@ function PlaybookCard({ playbook, onInstall }: PlaybookCardProps) {
   };
 
   return (
-    <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-lg p-5 flex flex-col justify-between hover:border-[var(--accent)]/50 hover:bg-[var(--bg-elevated)] transition-all group">
+    <article className="group flex flex-col justify-between rounded-2xl border border-[var(--field-line)] bg-[var(--field-surface)] p-5 shadow-[0_14px_35px_rgba(25,33,29,0.06)] transition-transform motion-safe:hover:-translate-y-0.5">
       <div className="space-y-3.5">
         <div className="flex items-center justify-between gap-2">
           <span className={getSignalBadgeClass(playbook.signal_type)}>
@@ -1606,10 +1631,10 @@ function PlaybookCard({ playbook, onInstall }: PlaybookCardProps) {
         </div>
         
         <div className="space-y-1.5">
-          <h3 className="text-xs font-mono font-bold text-[var(--text-primary)] uppercase group-hover:text-[var(--accent)] transition-colors leading-tight">
+          <h3 className="text-base font-semibold leading-tight text-[var(--field-ink)] transition-colors group-hover:text-[var(--signal-primary)]">
             {playbook.name}
           </h3>
-          <p className="text-[11px] font-mono text-[var(--text-secondary)] leading-relaxed min-h-[48px]">
+          <p className="min-h-[48px] text-sm leading-relaxed text-[var(--field-ink-secondary)]">
             {playbook.description}
           </p>
         </div>
@@ -1621,11 +1646,11 @@ function PlaybookCard({ playbook, onInstall }: PlaybookCardProps) {
         </span>
         <button
           onClick={() => onInstall(playbook)}
-          className="bg-[var(--border-subtle)] hover:bg-[var(--accent)] text-[var(--text-primary)] hover:text-white font-mono text-[10px] py-1.5 px-4 rounded transition-all active:scale-[0.98]"
+          className="dashboard-button-primary min-h-9 px-4 text-xs"
         >
           Install
         </button>
       </div>
-    </div>
+    </article>
   );
 }

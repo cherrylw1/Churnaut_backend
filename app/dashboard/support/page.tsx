@@ -9,6 +9,7 @@ interface Message {
   role: 'user' | 'assistant'
   content: string
   loading?: boolean
+  retry?: string
 }
 
 const WELCOME: Message = {
@@ -57,11 +58,11 @@ export default function SupportPage() {
       const data = await res.json()
       setMessages(prev => prev.filter(m => m.id !== 'loading').concat({
         id: crypto.randomUUID(), role: 'assistant',
-        content: res.ok ? data.answer : data.error || 'Something went wrong.',
+        content: res.ok ? data.answer : data.error || 'Something went wrong.', retry: res.ok ? undefined : text,
       }))
     } catch {
       setMessages(prev => prev.filter(m => m.id !== 'loading').concat({
-        id: crypto.randomUUID(), role: 'assistant', content: 'Network error — please try again.',
+        id: crypto.randomUUID(), role: 'assistant', content: 'Network error — please try again.', retry: text,
       }))
     } finally {
       setLoading(false)
@@ -74,9 +75,9 @@ export default function SupportPage() {
   }
 
   return (
-    <div className="mx-auto flex h-[calc(100vh-80px)] max-w-3xl flex-col">
+    <div className="mx-auto flex min-h-[calc(100dvh-80px)] max-w-3xl flex-col">
       <div className="flex-shrink-0 mb-4">
-        <PageHeader eyebrow="Signal Room · Support console" title="Support" description="Ask anything about Churnaut." actions={<div className="flex items-center gap-2 text-xs text-[var(--text-muted)]"><Bot className="h-4 w-4 text-[var(--accent)]" aria-hidden="true" />AI support</div>} />
+        <PageHeader eyebrow="Signal Field · Support desk" title="Support" description="Ask anything about Churnaut." actions={<div className="flex items-center gap-2 text-xs text-[var(--text-muted)]"><Bot className="h-4 w-4 text-[var(--accent)]" aria-hidden="true" />AI support</div>} />
       </div>
 
       <Surface role="log" aria-label="Support conversation" aria-live="polite" className="flex-1 space-y-4 overflow-y-auto pb-4 pr-1">
@@ -90,16 +91,16 @@ export default function SupportPage() {
             <div className={`max-w-[80%] ${msg.role === 'user' ? 'items-end flex flex-col' : ''}`}>
               {msg.loading ? (
                 <div role="status" aria-busy="true" className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-[12px] px-4 py-3 flex items-center gap-2">
-                  <Loader2 aria-hidden="true" className="w-3.5 h-3.5 animate-spin text-[var(--accent)]" />
+                  <Loader2 aria-hidden="true" className="w-3.5 h-3.5 motion-safe:animate-spin text-[var(--accent)]" />
                   <span className="text-xs font-mono text-[var(--text-muted)]">Thinking...</span>
                 </div>
               ) : (
-                <div className={`rounded-[12px] px-4 py-3 text-sm font-sans leading-relaxed whitespace-pre-wrap ${
+                <div role={msg.retry ? 'alert' : undefined} className={`rounded-[12px] px-4 py-3 text-sm font-sans leading-relaxed whitespace-pre-wrap ${
                   msg.role === 'user'
                     ? 'bg-[var(--accent)] text-white'
-                    : 'border border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[var(--text-primary)]'
+                    : msg.retry ? 'border border-[var(--red)]/30 bg-[var(--red)]/5 text-[var(--red)]' : 'border border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[var(--text-primary)]'
                 }`}>
-                  {msg.content}
+                  {msg.content}{msg.retry && <button type="button" onClick={() => { setInput(msg.retry || ''); inputRef.current?.focus() }} className="mt-3 block text-xs font-semibold underline">TRY AGAIN</button>}
                 </div>
               )}
             </div>
@@ -135,7 +136,7 @@ export default function SupportPage() {
             style={{ minHeight: '46px', maxHeight: '120px' }} />
           <button onClick={handleSend} disabled={loading || !input.trim()} aria-label="Send message" aria-busy={loading}
             className="flex-shrink-0 rounded-[10px] bg-[var(--accent)] p-3 text-white transition-all hover:bg-[var(--accent-hover)] motion-safe:active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-40">
-            {loading ? <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" /> : <Send aria-hidden="true" className="h-4 w-4" />}
+            {loading ? <Loader2 aria-hidden="true" className="h-4 w-4 motion-safe:animate-spin" /> : <Send aria-hidden="true" className="h-4 w-4" />}
           </button>
         </div>
         <p className="text-[10px] font-mono text-[var(--text-muted)] mt-2 text-center uppercase tracking-wider">

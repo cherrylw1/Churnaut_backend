@@ -40,7 +40,7 @@ const PLANS = [
       '3 domains',
       '5,000 tracked visits/mo',
       'Unlimited routing rules',
-      'HubSpot, Pipedrive, Zoho, Close',
+      'HubSpot native + Pipedrive, Zoho, Close webhook intake',
       'Scout AI deal intelligence',
       'AI weekly digest + anomaly alerts',
       'AI copywriter',
@@ -57,7 +57,7 @@ const PLANS = [
       '10 domains',
       'Unlimited tracked visits',
       'Unlimited routing rules',
-      'All CRM integrations',
+      'All currently available CRM and webhook capabilities',
       'Everything in Growth',
       'Zapier integration',
       'Multi-rep management',
@@ -74,34 +74,21 @@ const VISIT_LIMITS = Object.fromEntries(
 
 export default function BillingPage() {
   const [client, setClient] = useState<ClientProfile | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [profileState, setProfileState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [yearly, setYearly] = useState(false);
   const [userEmail, setUserEmail] = useState('');
   const [clientId, setClientId] = useState('');
   const [portalUrl, setPortalUrl] = useState<string | null>(null);
+  const [portalError, setPortalError] = useState(false);
+  const [portalLoading, setPortalLoading] = useState(false);
 
   useEffect(() => {
     const init = async () => {
-      try {
-        const [clientRes, { data: { user } }] = await Promise.all([
-          fetch('/api/client').then(r => r.json()),
-          supabaseBrowser.auth.getUser(),
-        ]);
-        if (clientRes.client) {
-          setClient(clientRes.client);
-          setClientId(clientRes.client.id || '');
-          if (clientRes.client.plan && clientRes.client.plan !== 'starter') {
-            fetch('/api/billing/portal')
-              .then(r => r.json())
-              .then(p => { if (p.url) setPortalUrl(p.url) })
-              .catch(() => {})
-          }
-        }
-        if (user?.email) setUserEmail(user.email);
-      } catch {}
-      setLoading(false);
+      try { const res = await fetch('/api/client'); if (!res.ok) throw new Error(); const data = await res.json(); if (!data.client) throw new Error(); setClient(data.client); setClientId(data.client.id || ''); setProfileState('ready'); if (data.client.plan && data.client.plan !== 'starter') { setPortalLoading(true); try { const portal = await fetch('/api/billing/portal'); if (!portal.ok) throw new Error(); const payload = await portal.json(); if (payload.url) setPortalUrl(payload.url); else setPortalError(true); } catch { setPortalError(true); } finally { setPortalLoading(false); } } }
+      catch { setProfileState('error'); }
+      try { const { data: { user } } = await supabaseBrowser.auth.getUser(); if (user?.email) setUserEmail(user.email); } catch { /* checkout email is optional */ }
     };
-    init();
+    void init();
   }, []);
 
   const buildCheckoutUrl = (variantId: string) => {
@@ -120,24 +107,26 @@ export default function BillingPage() {
 
   const hierarchy: Record<string, number> = { starter: 0, growth: 1, pro: 2 };
 
-  if (loading) {
+  if (profileState === 'loading') {
     return (
       <div className="space-y-6 max-w-4xl mx-auto">
-        <PageHeader eyebrow="Signal Room · Billing" title="Billing & plan" description="Manage your Churnaut subscription. Changes take effect immediately after payment." />
-        <Skeleton variant="card" height={80} />
+        <PageHeader eyebrow="Signal Field · Commercial controls" title="Billing & plan" description="Manage your Churnaut subscription. Changes take effect immediately after payment." />
+        <div role="status" aria-busy="true" aria-label="Loading billing account"><Skeleton variant="card" height={80} />
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
           <Skeleton variant="card" height={420} />
           <Skeleton variant="card" height={420} />
           <Skeleton variant="card" height={420} />
-        </div>
+        </div></div>
       </div>
     );
   }
 
+  if (profileState === 'error') return <div className="space-y-6 max-w-4xl mx-auto"><PageHeader eyebrow="Signal Field · Commercial controls" title="Billing & plan" description="Manage your Churnaut subscription. Changes take effect immediately after payment." /><div role="alert" className="dashboard-surface p-6 text-sm text-[var(--red)]">Billing account unavailable. <button type="button" onClick={() => window.location.reload()} className="font-semibold underline">TRY AGAIN</button></div></div>;
+
   return (
     <div className="space-y-8 max-w-5xl mx-auto font-sans">
 
-      <PageHeader eyebrow="Signal Room · Billing" title="Billing & plan" description="Manage your Churnaut subscription. Changes take effect immediately after payment." />
+      <PageHeader eyebrow="Signal Field · Commercial controls" title="Billing & plan" description="Manage your Churnaut subscription. Changes take effect immediately after payment." />
 
       {/* Past due / cancelled warning */}
       {(planStatus === 'past_due' || planStatus === 'cancelled' || planStatus === 'expired') && (
@@ -260,20 +249,11 @@ export default function BillingPage() {
               {/* CTA */}
               <div className="pt-2">
                 {isCurrent ? (
-                  <div className="space-y-2 w-full">
+        <div className="space-y-2 w-full">
                     <div className="w-full text-center text-[12px] font-mono text-[var(--text-muted)] border border-[var(--border-subtle)] rounded-[8px] py-2.5">
                       Current Plan
                     </div>
-                    {currentPlan !== 'starter' && (
-                      <a
-                        href={portalUrl || 'https://churnaut.lemonsqueezy.com/billing'}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block w-full rounded-[8px] border border-[var(--accent)]/30 py-2.5 text-center text-[12px] font-sans text-[var(--accent)] transition-all hover:bg-[var(--accent)] hover:text-white"
-                      >
-                        Manage subscription &rarr;
-                      </a>
-                    )}
+                    {currentPlan !== 'starter' && (portalLoading ? <div role="status" aria-busy="true" className="w-full rounded-[8px] border border-[var(--border-subtle)] py-2.5 text-center text-[12px] text-[var(--text-muted)]">Loading billing portal…</div> : portalUrl ? <a href={portalUrl} target="_blank" rel="noopener noreferrer" className="block w-full rounded-[8px] border border-[var(--accent)]/30 py-2.5 text-center text-[12px] font-sans text-[var(--accent)] transition-all hover:bg-[var(--accent)] hover:text-white">Manage subscription →</a> : portalError ? <div role="alert" className="rounded-[8px] border border-[var(--red)]/30 bg-[var(--red)]/5 p-3 text-center text-[12px] text-[var(--red)]">Billing portal unavailable. <button type="button" onClick={() => window.location.reload()} className="font-semibold underline">TRY AGAIN</button></div> : null)}
                   </div>
                 ) : isUpgrade ? (
                   <a

@@ -1,7 +1,9 @@
 'use client';
 
-import React, { useState, FormEvent } from 'react';
+import React, { FormEvent, useState } from 'react';
+import { ArrowRight, LockKeyhole } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { AuthShell } from '@/components/auth/AuthShell';
 import { supabaseBrowser } from '@/lib/supabase';
 
 export default function LoginPage() {
@@ -17,168 +19,49 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const { data, error } = await supabaseBrowser.auth.signInWithPassword({
-        email,
-        password,
-      });
-
+      const { data, error } = await supabaseBrowser.auth.signInWithPassword({ email, password });
       if (error) {
         const category = /rate|too many/i.test(error.message)
           ? 'rate_limited'
           : /invalid|credentials|password|email/i.test(error.message)
             ? 'invalid_credentials'
             : 'provider_error';
-        void fetch('/api/ops/auth-failure', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ category }),
-          keepalive: true,
-        }).catch(() => undefined);
+        void fetch('/api/ops/auth-failure', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ category }), keepalive: true }).catch(() => undefined);
         setErrorMsg(error.message);
       } else {
-        if (data.session) {
-          const sessionResponse = await fetch('/api/auth/session', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ access_token: data.session.access_token, expires_at: data.session.expires_at }),
-          });
-          if (!sessionResponse.ok) {
-            await supabaseBrowser.auth.signOut();
-            throw new Error('Unable to establish a secure server session. Please try again.');
-          }
-        } else {
-          throw new Error('Login succeeded but no session was returned. Please try again.');
+        if (!data.session) throw new Error('Login succeeded but no session was returned. Please try again.');
+        const sessionResponse = await fetch('/api/auth/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ access_token: data.session.access_token, expires_at: data.session.expires_at }),
+        });
+        if (!sessionResponse.ok) {
+          await supabaseBrowser.auth.signOut();
+          throw new Error('Unable to establish a secure server session. Please try again.');
         }
         router.push('/dashboard');
         router.refresh();
       }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred.';
-      setErrorMsg(errorMessage);
+      setErrorMsg(err instanceof Error ? err.message : 'An unexpected error occurred.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <main className="min-h-screen bg-[var(--bg-base)] text-[var(--text-primary)] grid grid-cols-1 lg:grid-cols-12 font-sans">
-      {/* Left panel: Form */}
-      <div className="lg:col-span-5 flex flex-col justify-center px-8 sm:px-12 lg:px-16 py-12 bg-[var(--bg-surface)] border-r border-[var(--border-subtle)]">
-        <div className="w-full max-w-md mx-auto">
-          {/* Logo brand at top */}
-          <div className="mb-10">
-            <div className="flex items-center gap-2 font-sans font-bold text-[24px] text-[var(--text-primary)]">
-              <span className="w-3 h-3 rounded-full bg-[var(--accent)]" />
-              CHURNAUT
-            </div>
-            <p className="text-sm text-[var(--text-secondary)] mt-2 font-sans">Sign in to your personalization workspace</p>
-          </div>
-
-          {errorMsg && (
-            <div className="mb-6 p-4 bg-[var(--red)]/5 border border-[var(--red)]/20 rounded-[8px] text-[var(--red)] text-xs font-mono">
-              {errorMsg}
-            </div>
-          )}
-
-          <form onSubmit={handleLogin} className="space-y-6">
-            <div className="space-y-2">
-              <label htmlFor="email" className="block text-[13px] font-sans font-medium text-[var(--text-secondary)] uppercase tracking-wider">
-                Email Address
-              </label>
-              <input
-                id="email"
-                type="email"
-                required
-                disabled={loading}
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="name@company.com"
-                className="w-full bg-[var(--bg-elevated)] border border-[var(--border-default)] focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] outline-none text-sm px-[14px] py-[10px] rounded-[8px] text-[var(--text-primary)] transition-all font-sans"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label htmlFor="password" className="block text-[13px] font-sans font-medium text-[var(--text-secondary)] uppercase tracking-wider">
-                Password
-              </label>
-              <input
-                id="password"
-                type="password"
-                required
-                disabled={loading}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full bg-[var(--bg-elevated)] border border-[var(--border-default)] focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] outline-none text-sm px-[14px] py-[10px] rounded-[8px] text-[var(--text-primary)] transition-all font-sans"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-sans text-sm font-semibold py-3 px-4 rounded-[8px] transition-all active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center"
-            >
-              {loading ? 'AUTHENTICATING...' : 'SIGN IN'}
-            </button>
-          </form>
-
-          <div className="mt-8 pt-6 border-t border-[var(--border-subtle)] text-center">
-            <p className="text-xs text-[var(--text-muted)] font-sans">
-              New to Churnaut?{' '}
-              <a href="/signup" className="text-[var(--accent)] hover:underline font-semibold transition-colors">
-                Create an account
-              </a>
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Right panel: Brand Panel with gradient background */}
-      <div className="hidden lg:col-span-7 lg:flex flex-col justify-center px-16 py-12 relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #2B2018 0%, #3D2817 50%, #2B2420 100%)' }}>
-        {/* Soft abstract shapes in background for premium look */}
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#C2683D]/15 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#C2683D]/10 rounded-full blur-3xl" />
-
-        <div className="relative max-w-lg space-y-8">
-          <div className="space-y-4">
-            <span className="px-3 py-1 bg-white/5 border border-white/10 rounded-full text-xs font-semibold text-[#E8A87C] tracking-wider uppercase font-sans">
-              B2B Client Personalization
-            </span>
-            <h2 className="text-4xl font-extrabold text-white leading-tight font-sans">
-              Stop leaving pipeline revenue on the table.
-            </h2>
-            <p className="text-[16px] text-[#D4C4B4] leading-relaxed font-sans">
-              Churnaut captures real-time web engagement signals and dynamically personalizes your website experiences for high-value prospects.
-            </p>
-          </div>
-
-          <div className="space-y-6 pt-6 border-t border-white/10">
-            <div className="flex items-start gap-4">
-              <div className="w-6 h-6 rounded-full bg-[#C2683D]/20 border border-[#C2683D]/40 flex items-center justify-center text-[#E8A87C] font-bold text-sm flex-shrink-0 mt-0.5">✓</div>
-              <div>
-                <h4 className="text-white font-semibold font-sans">Dynamic Content Swaps</h4>
-                <p className="text-xs text-[#D4C4B4] mt-1 font-sans">Instantly personalize headlines, subtext, and CTAs by industry, job title, or UTM parameters.</p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-4">
-              <div className="w-6 h-6 rounded-full bg-[#C2683D]/20 border border-[#C2683D]/40 flex items-center justify-center text-[#E8A87C] font-bold text-sm flex-shrink-0 mt-0.5">✓</div>
-              <div>
-                <h4 className="text-white font-semibold font-sans">CRM & HubSpot Sync</h4>
-                <p className="text-xs text-[#D4C4B4] mt-1 font-sans">Auto-pull closed-won patterns to compile B2B Ideal Customer Profiles (ICP) and write Obituaries for lost deals.</p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-4">
-              <div className="w-6 h-6 rounded-full bg-[#C2683D]/20 border border-[#C2683D]/40 flex items-center justify-center text-[#E8A87C] font-bold text-sm flex-shrink-0 mt-0.5">✓</div>
-              <div>
-                <h4 className="text-white font-semibold font-sans">Scout AI Intelligence</h4>
-                <p className="text-xs text-[#D4C4B4] mt-1 font-sans">Keep sales representatives accountable with automatic alerts, multithreading diagnostics, and inactivity detection.</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </main>
+    <AuthShell
+      eyebrow="Welcome back"
+      title="See what your pipeline is trying to tell you."
+      subtitle="Sign in to your personalization workspace and pick up from the signal that needs a decision next."
+      footer={<p className="text-center text-xs text-[var(--field-ink-muted)]">New to Churnaut? <a href="/signup" className="font-semibold text-[var(--signal-primary)] underline-offset-4 hover:underline">Create an account</a></p>}
+    >
+      {errorMsg ? <div className="mb-5 rounded-2xl border border-[var(--signal-critical)]/25 bg-[var(--signal-critical)]/8 p-4 text-sm leading-5 text-[var(--signal-critical)]" role="alert">{errorMsg}</div> : null}
+      <form onSubmit={handleLogin} className="space-y-5">
+        <div className="space-y-2"><label htmlFor="email" className="auth-field-label">Email Address</label><input id="email" type="email" required disabled={loading} value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@company.com" className="auth-input" /></div>
+        <div className="space-y-2"><div className="flex items-center justify-between gap-3"><label htmlFor="password" className="auth-field-label">Password</label><span className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--field-ink-muted)]">Private session</span></div><input id="password" type="password" required disabled={loading} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className="auth-input" /></div>
+        <button type="submit" disabled={loading} className="auth-submit-button">{loading ? 'AUTHENTICATING…' : <><LockKeyhole className="h-4 w-4" aria-hidden="true" /> SIGN IN <ArrowRight className="ml-auto h-4 w-4" aria-hidden="true" /></>}</button>
+      </form>
+    </AuthShell>
   );
 }

@@ -1,57 +1,55 @@
-import React from 'react';
+import Link from 'next/link';
+import { ArrowRight, BarChart3, Check, Globe2, Radar, Sparkles, Waypoints } from 'lucide-react';
+import { ChurnautMark } from '@/components/brand/ChurnautMark';
+
+const steps = [
+  { number: '01', title: 'Read the signal', copy: 'Capture the context behind every visit: source, account, intent, and momentum.', icon: Radar, tone: 'text-[#A7D8EB] bg-[#507F95]/15' },
+  { number: '02', title: 'Choose the move', copy: 'Translate that context into rules your team can understand, inspect, and improve.', icon: Waypoints, tone: 'text-[#F4C96B] bg-[#A66E10]/15' },
+  { number: '03', title: 'Adapt the experience', copy: 'Serve the right message, route, or rep while the opportunity is still warm.', icon: Sparkles, tone: 'text-[#8FE0A7] bg-[#2F8D68]/15' },
+];
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-[#1A1614] text-white flex flex-col justify-between p-8 font-sans selection:bg-[#C2683D]/30">
-      {/* Top Header */}
-      <header className="max-w-6xl w-full mx-auto flex items-center justify-between py-6">
-        <div className="text-xl font-bold tracking-widest font-mono text-[#C2683D]">CHURNAUT</div>
-        <div className="flex items-center space-x-6 font-mono text-sm">
-          <a href="/login" className="text-[#C4BAB0] hover:text-white transition-colors">
-            SIGN IN
-          </a>
-          <a href="/signup" className="border border-[var(--border-subtle)] hover:border-[#C2683D] text-white px-4 py-2 rounded transition-all">
-            GET STARTED
-          </a>
-        </div>
+    <main className="min-h-screen overflow-hidden bg-[var(--field-canvas)] text-[var(--field-ink)] selection:bg-[var(--signal-primary)]/20">
+      <header className="mx-auto flex w-full max-w-[1440px] items-center justify-between px-6 py-6 sm:px-10 lg:px-14">
+        <ChurnautMark href="/" />
+        <nav className="flex items-center gap-3 sm:gap-5" aria-label="Primary">
+          <Link href="/login" className="rounded-full px-3 py-2 text-xs font-semibold text-[var(--field-ink-secondary)] transition hover:bg-white/70 hover:text-[var(--field-ink)]">SIGN IN</Link>
+          <Link href="/signup" className="inline-flex min-h-10 items-center gap-2 rounded-full bg-[var(--field-ink)] px-4 py-2 text-xs font-semibold tracking-[0.04em] text-white shadow-lg shadow-black/10 transition hover:-translate-y-0.5 hover:bg-[var(--signal-primary)]">GET STARTED <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" /></Link>
+        </nav>
       </header>
 
-      {/* Hero Section */}
-      <section className="max-w-4xl w-full mx-auto text-center my-auto py-12 space-y-8">
-        <div className="inline-block border border-[#C2683D]/20 bg-[#C2683D]/5 text-[#C2683D] font-mono text-xs px-3 py-1 rounded-full uppercase tracking-wider">
-          Real-time Personalization Engine
+      <section className="mx-auto grid w-full max-w-[1440px] gap-12 px-6 pb-20 pt-12 sm:px-10 md:pt-20 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:gap-20 lg:px-14 lg:pb-28">
+        <div className="max-w-2xl">
+          <div className="inline-flex items-center gap-2 rounded-full border border-[var(--signal-primary)]/25 bg-[var(--signal-primary-soft)] px-3 py-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--signal-primary)]"><span className="h-1.5 w-1.5 rounded-full bg-[var(--signal-positive)]" /> Real-time revenue signals</div>
+          <h1 className="mt-8 max-w-[11ch] text-6xl font-semibold leading-[0.9] tracking-[-0.075em] text-[var(--field-ink)] sm:text-7xl lg:text-[6.7rem]">Make the next move obvious.</h1>
+          <p className="mt-8 max-w-xl text-base leading-7 text-[var(--field-ink-secondary)] sm:text-lg">Churnaut turns web intent, CRM context, and routing logic into a better experience for the accounts that matter most.</p>
+          <div className="mt-9 flex flex-col gap-3 sm:flex-row"><Link href="/signup" className="inline-flex min-h-12 items-center justify-center gap-3 rounded-full bg-[var(--signal-primary)] px-6 text-sm font-semibold text-white shadow-xl shadow-[var(--signal-primary)]/15 transition hover:-translate-y-0.5 hover:bg-[var(--signal-primary-strong)]">Initialize workspace <ArrowRight className="h-4 w-4" /></Link><Link href="/login" className="inline-flex min-h-12 items-center justify-center rounded-full border border-[var(--field-line-strong)] bg-[var(--field-surface)] px-6 text-sm font-semibold text-[var(--field-ink-secondary)] transition hover:-translate-y-0.5 hover:border-[var(--signal-primary)] hover:text-[var(--field-ink)]">Access dashboard</Link></div>
+          <div className="mt-10 flex flex-wrap gap-x-6 gap-y-2 text-xs text-[var(--field-ink-muted)]"><span className="inline-flex items-center gap-2"><Check className="h-3.5 w-3.5 text-[var(--signal-positive)]" /> Install once, learn continuously</span><span className="inline-flex items-center gap-2"><Check className="h-3.5 w-3.5 text-[var(--signal-positive)]" /> CRM-aware routing</span><span className="inline-flex items-center gap-2"><Check className="h-3.5 w-3.5 text-[var(--signal-positive)]" /> Built for revenue teams</span></div>
         </div>
-        <h1 className="text-4xl sm:text-6xl font-bold tracking-tight leading-none bg-gradient-to-r from-white via-gray-300 to-gray-500 bg-clip-text text-transparent">
-          Banish customer churn with dynamic personalization.
-        </h1>
-        <p className="text-[#C4BAB0] max-w-xl mx-auto text-sm sm:text-base font-light">
-          Churnaut routes leads, injects custom copy, and serves Calendly slots in real-time, matching incoming signals with priority-based rules.
-        </p>
-        <div className="flex flex-col sm:flex-row gap-4 items-center justify-center pt-4">
-          <a
-            href="/signup"
-            className="w-full sm:w-auto bg-[#C2683D] hover:bg-[#A8552F] text-white font-mono text-sm py-3.5 px-8 rounded transition-all active:scale-[0.98] shadow-lg shadow-[#C2683D]/15 text-center"
-          >
-            INITIALIZE WORKSPACE
-          </a>
-          <a
-            href="/login"
-            className="w-full sm:w-auto border border-[var(--border-subtle)] hover:border-gray-500 text-[#C4BAB0] hover:text-white font-mono text-sm py-3.5 px-8 rounded transition-all text-center"
-          >
-            ACCESS DASHBOARD
-          </a>
+
+        <div className="relative min-h-[470px] lg:min-h-[560px]">
+          <div className="absolute -right-14 top-4 h-72 w-72 rounded-full bg-[#E4A86B]/25 blur-3xl" />
+          <div className="absolute bottom-8 left-0 h-64 w-64 rounded-full bg-[var(--signal-primary)]/15 blur-3xl" />
+          <div className="relative ml-auto max-w-[640px] rounded-[34px] border border-[#D7D0C4] bg-[var(--field-surface)] p-3 shadow-[0_30px_80px_rgba(37,44,39,0.12)] sm:p-5">
+            <div className="rounded-[26px] bg-[var(--instrument-bg)] p-5 text-[var(--instrument-text)] sm:p-7">
+              <div className="flex items-center justify-between"><span className="font-mono text-[10px] uppercase tracking-[0.18em] text-white/45">Signal field / live readout</span><span className="inline-flex items-center gap-2 rounded-full border border-white/10 px-2.5 py-1 font-mono text-[10px] text-[#8FE0A7]"><span className="h-1.5 w-1.5 rounded-full bg-[#8FE0A7]" /> Active</span></div>
+              <div className="mt-10 grid gap-4 sm:grid-cols-[1fr_0.76fr]">
+                <div className="rounded-[24px] border border-white/10 bg-white/[0.055] p-5"><p className="font-mono text-[10px] uppercase tracking-[0.15em] text-white/45">Opportunity pressure</p><div className="mt-4 flex items-end gap-3"><span className="text-5xl font-semibold tracking-[-0.08em] text-white">Needs attention</span></div><div className="mt-7 h-2 overflow-hidden rounded-full border border-white/15 bg-white/10"><span className="block h-full w-3/4 rounded-full bg-gradient-to-r from-[#8FE0A7] via-[#F4C96B] to-[#FF9B8C]" /></div><div className="mt-2 flex justify-between font-mono text-[9px] uppercase tracking-[0.15em] text-white/35"><span>Stable</span><span>Pressure</span></div></div>
+                <div className="rounded-[24px] border border-[#8FC3D5]/20 bg-[#507F95]/15 p-5"><Globe2 className="h-5 w-5 text-[#A7D8EB]" /><p className="mt-9 text-3xl font-semibold tracking-[-0.06em] text-white">High-intent</p><p className="mt-1 text-xs leading-5 text-white/50">visitor context is ready to use</p><div className="mt-8 flex items-center gap-2 text-xs text-[#A7D8EB]"><BarChart3 className="h-4 w-4" /> signal detected</div></div>
+              </div>
+              <div className="mt-4 rounded-[24px] border border-white/10 bg-white/[0.04] p-5"><div className="flex items-center justify-between"><div><p className="font-mono text-[10px] uppercase tracking-[0.15em] text-white/40">Current path</p><p className="mt-2 text-sm text-white">Returning enterprise visitor <span className="mx-2 text-white/30">→</span> Social proof variant</p></div><span className="rounded-full bg-[#8FE0A7]/15 px-2.5 py-1 text-[10px] font-semibold text-[#8FE0A7]">MATCHED</span></div><div className="mt-5 flex gap-1.5"><span className="h-1.5 flex-1 rounded-full bg-[#8FE0A7]" /><span className="h-1.5 flex-1 rounded-full bg-[#F4C96B]" /><span className="h-1.5 flex-1 rounded-full bg-[#D27B53]" /><span className="h-1.5 flex-1 rounded-full bg-white/15" /></div></div>
+            </div>
+            <div className="flex items-center justify-between px-2 pt-4 text-[10px] font-mono uppercase tracking-[0.14em] text-[var(--field-ink-muted)]"><span>Signals → decisions → experiences</span><span>CHURNAUT / 2026</span></div>
+          </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="max-w-6xl w-full mx-auto border-t border-[var(--border-subtle)] pt-6 flex flex-col sm:flex-row justify-between items-center text-xs text-[#9B9189] font-mono gap-4">
-        <div>© 2026 Churnaut. All rights reserved.</div>
-        <div className="flex space-x-6">
-          <a href="#" className="hover:text-white transition-colors">PRIVACY</a>
-          <a href="#" className="hover:text-white transition-colors">TERMS</a>
-          <a href="/snippet.js" className="hover:text-white transition-colors">SDK</a>
-        </div>
-      </footer>
+      <section className="border-y border-[var(--field-line)] bg-[var(--field-surface)]"><div className="mx-auto grid w-full max-w-[1440px] gap-6 px-6 py-12 sm:px-10 md:grid-cols-3 lg:px-14">{steps.map(({ number, title, copy, icon: Icon, tone }) => <div key={number} className="group rounded-[24px] p-4 transition hover:bg-[var(--field-raised)]"><div className="flex items-center justify-between"><span className="font-mono text-[10px] tracking-[0.16em] text-[var(--field-ink-muted)]">{number}</span><span className={`flex h-10 w-10 items-center justify-center rounded-2xl ${tone}`}><Icon className="h-4 w-4" /></span></div><h2 className="mt-8 text-2xl font-semibold tracking-[-0.05em]">{title}</h2><p className="mt-3 max-w-[30ch] text-sm leading-6 text-[var(--field-ink-secondary)]">{copy}</p></div>)}</div></section>
+
+      <section className="mx-auto grid w-full max-w-[1440px] gap-10 px-6 py-20 sm:px-10 lg:grid-cols-[0.65fr_1.35fr] lg:px-14 lg:py-28"><div><p className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--signal-primary)]">A calmer operating system</p><h2 className="mt-5 max-w-[9ch] text-5xl font-semibold leading-[0.94] tracking-[-0.07em] sm:text-6xl">Revenue teams deserve better signals.</h2></div><div className="grid gap-4 sm:grid-cols-2"><div className="rounded-[28px] bg-[var(--field-ink)] p-6 text-white sm:col-span-2 sm:p-8"><p className="max-w-2xl text-2xl font-medium leading-tight tracking-[-0.04em] sm:text-3xl">Not another dashboard that asks you to stare harder. A workspace that tells you what changed, why it matters, and what to do next.</p><div className="mt-8 flex flex-wrap gap-2 text-xs text-white/55"><span className="rounded-full border border-white/15 px-3 py-1.5">Web intent</span><span className="rounded-full border border-white/15 px-3 py-1.5">CRM context</span><span className="rounded-full border border-white/15 px-3 py-1.5">Personalized paths</span></div></div><div className="rounded-[28px] border border-[var(--field-line)] bg-[var(--field-surface)] p-6"><p className="font-mono text-[10px] uppercase tracking-[0.15em] text-[var(--field-ink-muted)]">Built to connect</p><p className="mt-5 text-lg font-medium tracking-[-0.03em]">Your existing website, CRM, and workflow remain the source of truth.</p><Link href="/signup" className="mt-8 inline-flex items-center gap-2 text-sm font-semibold text-[var(--signal-primary)]">See how it works <ArrowRight className="h-4 w-4" /></Link></div><div className="rounded-[28px] border border-[#D6C4A2] bg-[#F4E9D3] p-6"><p className="font-mono text-[10px] uppercase tracking-[0.15em] text-[#8E6E31]">Designed for action</p><p className="mt-5 text-lg font-medium tracking-[-0.03em] text-[#503E20]">Every important state has a next step, not a dead end.</p><div className="mt-8 flex items-center gap-2 text-sm font-semibold text-[#8E6E31]"><Check className="h-4 w-4" /> Clear by design</div></div></div></section>
+
+      <footer className="border-t border-[var(--field-line)]"><div className="mx-auto flex w-full max-w-[1440px] flex-col gap-4 px-6 py-7 text-xs text-[var(--field-ink-muted)] sm:flex-row sm:items-center sm:justify-between sm:px-10 lg:px-14"><span>© 2026 Churnaut. Signals in. Revenue out.</span><div className="flex items-center gap-5"><Link href="/snippet.js" className="transition hover:text-[var(--field-ink)]">SDK</Link><Link href="/login" className="transition hover:text-[var(--field-ink)]">Sign in</Link><Link href="/signup" className="font-semibold text-[var(--signal-primary)] transition hover:text-[var(--signal-primary-strong)]">Get started <span aria-hidden="true">→</span></Link></div></div></footer>
     </main>
   );
 }

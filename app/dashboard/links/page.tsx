@@ -286,21 +286,21 @@ export default function LinksPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader eyebrow="Signal Room · Activation ledger" title="Tracked links" description="Generate personalized redirect URLs for outbound links" actions={<button
+      <PageHeader eyebrow="Signal Field · Activation ledger" title="Tracked links" description="Generate personalized redirect URLs for outbound links" actions={<button
           onClick={() => {
             setGeneratedUrl(null);
             setBulkResults(null);
             setBulkError(null);
             setModalOpen(true);
           }}
-          className="min-h-10 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-sans text-sm font-semibold py-2 px-4 rounded-lg transition-colors"
+          className="dashboard-button-primary min-h-10 px-4 text-sm"
         >
           + NEW LINK
         </button>} />
 
       {/* Main Table */}
       {loading ? (
-        <div className="text-center py-12 text-[var(--text-muted)] font-mono text-sm">RETRIEVING LINKS...</div>
+        <div className="dashboard-surface flex min-h-48 items-center justify-center" role="status" aria-busy="true"><p className="text-sm uppercase tracking-[0.18em] text-[var(--text-muted)]">Retrieving links...</p></div>
       ) : error ? (
         <ErrorState message={error} onRetry={fetchLinks} />
       ) : links.length === 0 ? (
@@ -317,11 +317,11 @@ export default function LinksPage() {
           }}
         />
       ) : (
-        <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/50 rounded-lg overflow-hidden">
+        <div className="dashboard-surface overflow-hidden">
           <div className="hidden md:block overflow-x-auto" role="region" aria-label="Tracked links ledger">
             <table className="dashboard-table w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-xs font-mono text-[var(--text-secondary)] uppercase">
+                <tr className="border-b border-[var(--field-line)] bg-[var(--field-raised)] text-[11px] font-medium tracking-[0.12em] text-[var(--field-ink-muted)] uppercase">
                   <th className="py-3.5 px-4 font-normal">Prospect Name</th>
                   <th className="py-3.5 px-4 font-normal">Company</th>
                   <th className="py-3.5 px-4 font-normal">Signal Type</th>
@@ -338,37 +338,37 @@ export default function LinksPage() {
                   const displayUrl = link.tracked_url || '';
 
                   return (
-                    <tr key={link.id} className="hover:bg-[var(--border-subtle)]/10 transition-colors">
-                      <td className="py-3 px-4 font-mono font-medium">{link.prospect_name || '-'}</td>
-                      <td className="py-3 px-4 text-[var(--text-secondary)] font-mono">{link.company_name || '-'}</td>
+                    <tr key={link.id} className="group border-b border-[var(--field-line)] last:border-0 transition-colors hover:bg-[var(--field-raised)]">
+                      <td className="px-4 py-4 font-medium text-[var(--field-ink)]">{link.prospect_name || '-'}</td>
+                      <td className="px-4 py-4 text-[var(--field-ink-secondary)]">{link.company_name || '-'}</td>
                       <td className="py-3 px-4">
-                        <span className="text-xs px-2 py-0.5 bg-[var(--border-subtle)] text-[var(--text-secondary)] rounded font-mono border border-[var(--border-subtle)]">
+                        <span className="rounded-full border border-[var(--field-line-strong)] bg-[var(--field-muted)] px-2.5 py-1 text-[11px] text-[var(--field-ink-secondary)]">
                           {link.signal_type || 'Other'}
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-[var(--text-secondary)] font-mono">{link.assigned_rep || '-'}</td>
-                      <td className="py-3 px-4 text-center font-mono text-[var(--text-primary)] tabular-nums">{link.click_count}</td>
+                      <td className="px-4 py-4 text-[var(--field-ink-secondary)]">{link.assigned_rep || '-'}</td>
+                      <td className="px-4 py-4 text-center tabular-nums text-[var(--field-ink)]">{link.click_count}</td>
                       <td className="py-3 px-4 text-center">
                         <span
                           className={`text-[10px] uppercase font-mono px-2 py-0.5 rounded border ${
                             status === 'Active'
-                              ? 'bg-[var(--green)]/10 text-[var(--green)] border-[var(--green)]/30'
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                               : status === 'Permanent'
-                              ? 'bg-[var(--accent)]/10 text-[var(--accent)] border-[var(--accent)]/30'
-                              : 'bg-[var(--red)]/10 text-[var(--red)] border-[var(--red)]/30'
+                            ? 'bg-amber-50 text-amber-700 border-amber-200'
+                            : 'bg-rose-50 text-rose-700 border-rose-200'
                           }`}
                         >
                           {status}
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-[var(--text-secondary)] font-mono text-xs">
+                      <td className="px-4 py-4 text-xs text-[var(--field-ink-muted)]">
                         {new Date(link.created_at).toLocaleDateString()}
                       </td>
                       <td className="py-3 px-4 text-right">
                         <button
                           onClick={() => displayUrl && handleCopy(displayUrl, link.id)}
                           disabled={!displayUrl}
-                          className="border border-[var(--border-subtle)] hover:border-[var(--accent)] hover:text-[var(--accent)] text-xs font-mono py-1 px-2.5 rounded transition-all active:scale-[0.97]"
+                          className="dashboard-button-secondary min-h-9 px-3 text-xs"
                         >
                           {copiedId === link.id ? 'COPIED!' : 'COPY'}
                         </button>
@@ -385,11 +385,11 @@ export default function LinksPage() {
               const status = getStatus(link.expires_at);
               const displayUrl = link.tracked_url || '';
               return (
-                <article key={link.id} className="p-4 space-y-3">
+            <article key={link.id} className="space-y-3 border-b border-[var(--field-line)] p-4 last:border-0">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <h2 className="truncate text-sm font-semibold text-[var(--text-primary)]">{link.prospect_name || 'Unnamed prospect'}</h2>
-                      <p className="truncate text-xs text-[var(--text-secondary)]">{link.company_name || 'No company'} · {link.signal_type || 'Other'}</p>
+                      <h2 className="truncate text-sm font-semibold text-[var(--field-ink)]">{link.prospect_name || 'Unnamed prospect'}</h2>
+                      <p className="truncate text-xs text-[var(--field-ink-secondary)]">{link.company_name || 'No company'} · {link.signal_type || 'Other'}</p>
                     </div>
                     <span className={`shrink-0 text-[10px] uppercase font-mono px-2 py-1 rounded border ${status === 'Active' ? 'bg-[var(--green)]/10 text-[var(--green)] border-[var(--green)]/30' : status === 'Permanent' ? 'bg-[var(--accent)]/10 text-[var(--accent)] border-[var(--accent)]/30' : 'bg-[var(--red)]/10 text-[var(--red)] border-[var(--red)]/30'}`}>{status}</span>
                   </div>
@@ -402,7 +402,7 @@ export default function LinksPage() {
             })}
           </div>
           {totalPages > 1 && (
-            <div className="flex items-center justify-end gap-3 border-t border-[var(--border-subtle)] px-4 py-3 font-mono text-xs">
+            <div className="flex items-center justify-end gap-3 border-t border-[var(--field-line)] px-4 py-3 text-xs text-[var(--field-ink-secondary)]">
               <button disabled={page <= 1} onClick={() => fetchLinks(page - 1)} className="disabled:opacity-40">← PREVIOUS</button>
               <span>{page} / {totalPages}</span>
               <button disabled={page >= totalPages} onClick={() => fetchLinks(page + 1)} className="disabled:opacity-40">NEXT →</button>
@@ -413,7 +413,7 @@ export default function LinksPage() {
 
       {/* Creation Modal */}
       {modalOpen && (
-        <ModalShell open={modalOpen} onClose={() => setModalOpen(false)} title="Generate Tracked Link" className="max-w-2xl bg-[var(--bg-elevated)]" contentClassName="p-0">
+        <ModalShell open={modalOpen} onClose={() => setModalOpen(false)} title="Generate Tracked Link" className="max-w-2xl" contentClassName="p-0">
 
             {/* Modal Tabs */}
             <div className="flex border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]" role="tablist" aria-label="Link generation mode">

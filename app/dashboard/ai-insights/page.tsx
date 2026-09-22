@@ -16,45 +16,54 @@ interface WeeklyDigest { id: string; week_start: string; summary: string; top_si
 const severityTone = (severity: AnomalyAlert['severity']) => severity === 'critical' ? 'danger' : severity === 'warning' ? 'warning' : 'info';
 
 export default function AiInsightsPage() {
-  const [plan, setPlan] = useState<string>('starter');
+  const [plan, setPlan] = useState<string | null>(null);
+  const [planLoading, setPlanLoading] = useState(true);
   const [alerts, setAlerts] = useState<AnomalyAlert[]>([]);
   const [digest, setDigest] = useState<WeeklyDigest | null>(null);
   const [loadingAlerts, setLoadingAlerts] = useState(true);
   const [loadingDigest, setLoadingDigest] = useState(true);
+  const [alertsError, setAlertsError] = useState<string | null>(null);
+  const [digestError, setDigestError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [runningDetection, setRunningDetection] = useState(false);
   const [generatingDigest, setGeneratingDigest] = useState(false);
 
   const fetchAlerts = async () => {
     try {
       setLoadingAlerts(true);
+      setAlertsError(null);
       const res = await fetch('/api/ai/anomaly');
       if (res.ok) { const data = await res.json(); setAlerts(data.alerts || []); }
-    } catch (err) { console.error('Failed to load anomaly alerts:', err); }
+      else { const data = await res.json().catch(() => ({})); setAlertsError(data.error || 'Unable to load anomaly alerts.'); }
+    } catch (err) { console.error('Failed to load anomaly alerts:', err); setAlertsError('A network error occurred while loading anomaly alerts.'); }
     finally { setLoadingAlerts(false); }
   };
 
   const fetchDigest = async () => {
     try {
       setLoadingDigest(true);
+      setDigestError(null);
       const res = await fetch('/api/ai/digest');
       if (res.ok) { const data = await res.json(); setDigest(data.digest || null); }
-    } catch (err) { console.error('Failed to load weekly digest:', err); }
+      else { const data = await res.json().catch(() => ({})); setDigestError(data.error || 'Unable to load the weekly briefing.'); }
+    } catch (err) { console.error('Failed to load weekly digest:', err); setDigestError('A network error occurred while loading the weekly briefing.'); }
     finally { setLoadingDigest(false); }
   };
 
   useEffect(() => { fetchAlerts(); fetchDigest(); }, []);
   useEffect(() => {
-    fetch('/api/client').then(res => res.json()).then(data => { if (data.client?.plan) setPlan(data.client.plan); }).catch(() => {});
+    fetch('/api/client').then(res => res.json()).then(data => { setPlan(data.client?.plan || 'starter'); }).catch(() => { setPlan('starter'); }).finally(() => setPlanLoading(false));
   }, []);
 
   const handleRunDetection = async () => {
     if (runningDetection) return;
     setRunningDetection(true);
+    setActionError(null);
     try {
       const res = await fetch('/api/ai/anomaly', { method: 'POST' });
       if (res.ok) { const data = await res.json(); setAlerts(data.alerts || []); toast.success('Anomaly detection scan complete'); }
-      else toast.error('Failed to execute anomaly detection.');
-    } catch (err) { console.error('Error running detection:', err); toast.error('An error occurred during anomaly detection.'); }
+      else { const data = await res.json().catch(() => ({})); setActionError(data.error || 'Failed to execute anomaly detection.'); toast.error('Failed to execute anomaly detection.'); }
+    } catch (err) { console.error('Error running detection:', err); setActionError('An error occurred during anomaly detection.'); toast.error('An error occurred during anomaly detection.'); }
     finally { setRunningDetection(false); }
   };
 
@@ -62,32 +71,37 @@ export default function AiInsightsPage() {
     try {
       const res = await fetch('/api/ai/anomaly', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
       if (res.ok) setAlerts(prev => prev.filter(alert => alert.id !== id));
-    } catch (err) { console.error('Error marking alert as read:', err); }
+      else { setActionError('Unable to mark that alert as read.'); }
+    } catch (err) { console.error('Error marking alert as read:', err); setActionError('Unable to mark that alert as read.'); }
   };
 
   const handleGenerateDigest = async () => {
     if (generatingDigest) return;
     setGeneratingDigest(true);
+    setActionError(null);
     try {
       const res = await fetch('/api/ai/digest', { method: 'POST' });
       if (res.ok) { const data = await res.json(); setDigest(data.digest || null); toast.success('Weekly digest generated successfully'); }
-      else toast.error('Failed to generate weekly digest.');
-    } catch (err) { console.error('Error generating digest:', err); toast.error('An error occurred while compiling digest.'); }
+      else { const data = await res.json().catch(() => ({})); setActionError(data.error || 'Failed to generate weekly digest.'); toast.error('Failed to generate weekly digest.'); }
+    } catch (err) { console.error('Error generating digest:', err); setActionError('An error occurred while compiling digest.'); toast.error('An error occurred while compiling digest.'); }
     finally { setGeneratingDigest(false); }
   };
 
+  if (planLoading) return <div className="dashboard-surface mx-auto flex min-h-48 max-w-6xl items-center justify-center text-sm uppercase tracking-[0.18em] text-[var(--text-muted)]" role="status" aria-busy="true">Loading workspace access...</div>;
   if (plan === 'starter') return <div className="p-6"><UpgradeGate feature="AI Revenue Insights" description="Weekly pipeline digests and anomaly detection — delivered automatically every Monday. Know what changed in your pipeline before your Monday standup." requiredPlan="growth" /></div>;
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto">
-      <PageHeader eyebrow="Signal Room · intelligence" title="AI revenue insights" description="A weekly revenue briefing with a live watch on the signals that need attention." />
+      <PageHeader eyebrow="Signal Field · Intelligence brief" title="AI revenue insights" description="A weekly revenue briefing with a live watch on the signals that need attention." />
+
+      {actionError ? <div role="alert" className="dashboard-surface border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{actionError}</div> : null}
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
         <section className="lg:col-span-3 space-y-4" aria-labelledby="weekly-briefing-heading">
           <Surface tone="elevated">
             <SectionHeader title="Weekly briefing" headingId="weekly-briefing-heading" description="The clearest read on what changed in your pipeline." action={<button onClick={handleGenerateDigest} disabled={generatingDigest} className="min-h-10 bg-[var(--accent)] hover:bg-[var(--accent-hover)] disabled:opacity-50 text-white font-mono text-[10px] font-bold py-2 px-3 rounded transition-colors">{generatingDigest ? 'COMPILING...' : 'GENERATE DIGEST'}</button>} />
             {digest ? <p className="mt-3 text-[10px] text-[var(--text-muted)] font-mono uppercase tracking-widest">Week of {digest.week_start}</p> : null}
-            {loadingDigest ? <div className="py-16 text-center text-[var(--text-muted)] font-mono text-xs">RETRIEVING BRIEFING...</div> : !digest ? <EmptyPanel icon={<Sparkles className="w-5 h-5" />} title="No briefing compiled" description="Generate a digest to see the latest pipeline story and the next best action." /> : (
+            {loadingDigest ? <div className="py-16 text-center text-[var(--text-muted)] font-mono text-xs" role="status" aria-busy="true">Retrieving briefing...</div> : digestError ? <div role="alert" className="mt-5 space-y-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700"><p>{digestError}</p><button type="button" onClick={fetchDigest} className="dashboard-button-secondary min-h-9 px-3 text-xs">TRY AGAIN</button></div> : !digest ? <EmptyPanel icon={<Sparkles className="w-5 h-5" />} title="No briefing compiled" description="Generate a digest to see the latest pipeline story and the next best action." /> : (
               <div className="mt-6 space-y-4">
                 <Surface tone="subtle" aria-label="This week summary"><p className="dashboard-eyebrow font-mono">THIS WEEK</p><p className="mt-2 text-sm leading-relaxed text-[var(--text-primary)]">{digest.summary}</p></Surface>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -103,7 +117,7 @@ export default function AiInsightsPage() {
         <section className="lg:col-span-2 space-y-4" aria-labelledby="anomaly-watch-heading">
           <Surface tone="elevated">
             <SectionHeader title="Anomaly watch" headingId="anomaly-watch-heading" description="Unread deviations from your normal pattern." action={<button onClick={handleRunDetection} disabled={runningDetection} className="min-h-10 border border-[var(--red)]/40 hover:bg-[var(--red)]/10 disabled:opacity-50 text-[var(--red)] font-mono text-[10px] font-bold py-2 px-3 rounded transition-colors">{runningDetection ? 'SCANNING...' : 'RUN DETECTION'}</button>} />
-            {loadingAlerts ? <div className="py-12 text-center text-[var(--text-muted)] font-mono text-xs">SCANNING ALERTS...</div> : alerts.length === 0 ? <EmptyPanel icon={<CheckCircle2 className="w-5 h-5" />} title="All systems operational" description="No unread anomalies detected in the last 7 days." /> : (
+            {loadingAlerts ? <div className="py-12 text-center text-[var(--text-muted)] font-mono text-xs" role="status" aria-busy="true">Scanning alerts...</div> : alertsError ? <div role="alert" className="mt-5 space-y-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700"><p>{alertsError}</p><button type="button" onClick={fetchAlerts} className="dashboard-button-secondary min-h-9 px-3 text-xs">TRY AGAIN</button></div> : alerts.length === 0 ? <EmptyPanel icon={<CheckCircle2 className="w-5 h-5" />} title="All systems operational" description="No unread anomalies detected in the last 7 days." /> : (
               <ul aria-label="Unread anomaly alerts" tabIndex={0} className="mt-5 space-y-3 max-h-[500px] overflow-y-auto pr-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]">
                 {alerts.map(alert => <li key={alert.id} className="dashboard-surface dashboard-surface-subtle p-4 space-y-3">
                   <div className="flex items-center justify-between gap-3"><StatusBadge tone={severityTone(alert.severity)}>{alert.severity}</StatusBadge><time className="text-[9px] font-mono text-[var(--text-muted)]" dateTime={alert.created_at}>{new Date(alert.created_at).toLocaleDateString()}</time></div>

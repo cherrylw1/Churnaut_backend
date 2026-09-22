@@ -12,22 +12,45 @@
 
 @layer base {
 :root {
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-serif: Georgia, serif;
-    --bg-base: #FAF6F0;
-    --bg-surface: #FFFFFF;
-    --bg-elevated: #F4EDE3;
-    --border-subtle: #ECE3D8;
-    --border-default: #DDD1C2;
-    --text-primary: #2B2420;
-    --text-secondary: #574E45;
-    --text-muted: #7A7068;
-    --accent: #C2683D;
-    --accent-hover: #A8552F;
-    --accent-cyan: #3F8F6B;
-    --red: #C0492F;
-    --amber: #C99A3F;
-    --green: #3F8F6B;
+  --font-sans: var(--font-geist), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-serif: var(--font-geist), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+    /* Signal Field: the shared product language. These names are stable so
+       existing routes can migrate without changing their data contracts. */
+    --field-canvas: #F3F1EA;
+    --field-surface: #FFFDF8;
+    --field-muted: #ECE9E1;
+    --field-raised: #F8F6F0;
+    --field-ink: #17211D;
+    --field-ink-secondary: #59655F;
+    --field-ink-muted: #7D8781;
+    --field-line: #D9D4C9;
+    --field-line-strong: #C5BEB1;
+    --signal-primary: #176B4F;
+    --signal-primary-strong: #10563F;
+    --signal-primary-soft: rgba(23, 107, 79, 0.10);
+    --signal-positive: #2F8D68;
+    --signal-warning: #A66E10;
+    --signal-critical: #B94A3C;
+    --signal-info: #507F95;
+    --signal-glow: rgba(23, 107, 79, 0.16);
+    --instrument-bg: #101713;
+    --instrument-text: #F4F1E8;
+
+    --bg-base: var(--field-canvas);
+    --bg-surface: var(--field-surface);
+    --bg-elevated: var(--field-raised);
+    --border-subtle: var(--field-line);
+    --border-default: var(--field-line-strong);
+    --text-primary: var(--field-ink);
+    --text-secondary: var(--field-ink-secondary);
+    --text-muted: var(--field-ink-muted);
+    --accent: var(--signal-primary);
+    --accent-hover: var(--signal-primary-strong);
+    --accent-cyan: var(--signal-info);
+    --red: var(--signal-critical);
+    --amber: var(--signal-warning);
+    --green: var(--signal-positive);
 
     /* Map to Tailwind/shadcn variables */
     --background: var(--bg-base);
@@ -48,7 +71,7 @@
     --border: var(--border-subtle);
     --input: var(--border-default);
     --ring: var(--accent);
-    --radius: 12px;
+    --radius: 14px;
   }
 
   html {
@@ -66,9 +89,9 @@
   }
 
   h1, h2, h3, h4 {
-    font-family: var(--font-serif), Georgia, serif;
-    font-weight: 600;
-    letter-spacing: -0.01em;
+    font-family: var(--font-sans), system-ui, sans-serif;
+    font-weight: 650;
+    letter-spacing: -0.035em;
   }
 
 
@@ -105,26 +128,18 @@
 @layer components {
   .dashboard-app {
     --dashboard-content-max: 1560px;
-    /* Signal Room palette: the dashboard is a low-glare operational console.
-       The compatibility names below keep existing route components stable. */
-    --room-bg: #0c1012;
-    --room-panel: #14191c;
-    --room-panel-raised: #1a2024;
-    --room-panel-muted: #101416;
-    --room-line: #283035;
-    --room-line-strong: #3b474b;
-    --signal-text: #edf1ed;
-    --signal-text-secondary: #aab4b0;
-    --signal-text-muted: #74807c;
-    --signal-primary: #c9784d;
-    --signal-primary-strong: #e28b5c;
-    --signal-primary-soft: rgba(201, 120, 77, 0.13);
-    --signal-positive: #78b88b;
-    --signal-warning: #d9ad64;
-    --signal-critical: #db7764;
-    --signal-info: #89aec4;
-    --signal-glow: rgba(201, 120, 77, 0.24);
-    --signal-focus: #f1b08c;
+    /* Compatibility aliases for the existing route components. The shell is
+       now warm by default; dark instrument surfaces are opt-in per feature. */
+    --room-bg: var(--field-canvas);
+    --room-panel: var(--field-surface);
+    --room-panel-raised: var(--field-raised);
+    --room-panel-muted: var(--field-muted);
+    --room-line: var(--field-line);
+    --room-line-strong: var(--field-line-strong);
+    --signal-text: var(--field-ink);
+    --signal-text-secondary: var(--field-ink-secondary);
+    --signal-text-muted: var(--field-ink-muted);
+    --signal-focus: var(--signal-primary);
 
     --bg-base: var(--room-bg);
     --bg-surface: var(--room-panel);
@@ -142,7 +157,7 @@
     --green: var(--signal-positive);
     min-height: 100vh;
     background: var(--bg-base);
-    color-scheme: dark;
+    color-scheme: light;
   }
 
   .dashboard-app h1,
@@ -156,10 +171,9 @@
   .dashboard-app main {
     background-color: var(--room-bg);
     background-image:
-      radial-gradient(circle at 84% -10%, rgba(201, 120, 77, 0.11), transparent 34rem),
-      linear-gradient(rgba(255, 255, 255, 0.026) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255, 255, 255, 0.026) 1px, transparent 1px);
-    background-size: auto, 32px 32px, 32px 32px;
+      radial-gradient(circle at 84% -10%, rgba(23, 107, 79, 0.10), transparent 34rem),
+      radial-gradient(circle at 0% 16%, rgba(191, 116, 51, 0.05), transparent 24rem);
+    background-size: auto;
   }
 
   .dashboard-app main > div:first-child { width: 100%; max-width: var(--dashboard-content-max); margin-inline: auto; }
@@ -169,7 +183,7 @@
   .dashboard-app input,
   .dashboard-app select,
   .dashboard-app textarea {
-    transition: border-color 150ms ease, background-color 150ms ease, color 150ms ease, box-shadow 150ms ease, opacity 150ms ease;
+    transition: border-color 180ms ease, background-color 180ms ease, color 180ms ease, box-shadow 180ms ease, opacity 180ms ease, transform 180ms ease;
   }
 
   .dashboard-app input:not([type='checkbox']):not([type='radio']),
@@ -219,13 +233,34 @@
 
   .dashboard-surface {
     border: 1px solid var(--border-subtle);
-    border-radius: 14px;
+    border-radius: 20px;
     background: var(--bg-surface);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.028), 0 1px 2px rgba(0, 0, 0, 0.18);
+    box-shadow: 0 1px 1px rgba(25, 33, 29, 0.03), 0 12px 30px rgba(25, 33, 29, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+    transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
   }
-  .dashboard-surface-subtle { background: color-mix(in srgb, var(--bg-elevated) 44%, var(--bg-surface)); }
-  .dashboard-surface-elevated { box-shadow: 0 18px 44px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.04); }
-  .dashboard-surface:focus-within { border-color: color-mix(in srgb, var(--accent) 62%, var(--border-default)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.03); }
+  .dashboard-surface-subtle { background: color-mix(in srgb, var(--bg-elevated) 56%, var(--bg-surface)); }
+  .dashboard-surface-elevated { box-shadow: 0 22px 50px rgba(25, 33, 29, 0.10), inset 0 1px 0 rgba(255, 255, 255, 0.75); }
+  .dashboard-surface:hover { border-color: color-mix(in srgb, var(--accent) 28%, var(--border-subtle)); }
+  .dashboard-surface:focus-within { border-color: color-mix(in srgb, var(--accent) 62%, var(--border-default)); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 14%, transparent), 0 12px 30px rgba(25, 33, 29, 0.05); }
+
+  .dashboard-instrument {
+    border-color: rgba(244, 241, 232, 0.14);
+    background: var(--instrument-bg);
+    color: var(--instrument-text);
+    box-shadow: 0 22px 50px rgba(16, 23, 19, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+  .dashboard-instrument .dashboard-metric-label,
+  .dashboard-instrument .dashboard-description,
+  .dashboard-instrument .text-\[var\(--text-muted\)\] { color: rgba(244, 241, 232, 0.62); }
+  .dashboard-instrument .dashboard-instrument-score { color: var(--instrument-text); }
+  .dashboard-instrument .dashboard-instrument-muted { color: rgba(244, 241, 232, 0.66); }
+  .dashboard-instrument .dashboard-instrument-track { border: 1px solid rgba(244, 241, 232, 0.18); background: rgba(244, 241, 232, 0.10); }
+  .dashboard-instrument .dashboard-status-success { color: #8FE0A7; background: rgba(143, 224, 167, 0.14); border-color: rgba(143, 224, 167, 0.40); }
+  .dashboard-instrument .dashboard-status-warning { color: #F4C96B; background: rgba(244, 201, 107, 0.14); border-color: rgba(244, 201, 107, 0.42); }
+  .dashboard-instrument .dashboard-status-danger { color: #FF9B8C; background: rgba(255, 155, 140, 0.14); border-color: rgba(255, 155, 140, 0.42); }
+  .dashboard-instrument .dashboard-status-info { color: #A7D8EB; background: rgba(167, 216, 235, 0.14); border-color: rgba(167, 216, 235, 0.40); }
+  .dashboard-instrument .dashboard-metric-icon { color: #F4C96B; }
+  .dashboard-instrument .dashboard-status { border-color: rgba(244, 241, 232, 0.18); }
 
   .dashboard-metric { min-height: 142px; padding: 18px; }
   .dashboard-metric-primary { border-color: color-mix(in srgb, var(--accent) 52%, var(--border-subtle)); background: radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 62%), var(--bg-surface); }
@@ -246,7 +281,7 @@
   .dashboard-status-success { color: var(--green); background: color-mix(in srgb, var(--green) 9%, transparent); border-color: color-mix(in srgb, var(--green) 24%, var(--border-subtle)); }
   .dashboard-status-warning { color: var(--amber); background: color-mix(in srgb, var(--amber) 10%, transparent); border-color: color-mix(in srgb, var(--amber) 28%, var(--border-subtle)); }
   .dashboard-status-danger { color: var(--red); background: color-mix(in srgb, var(--red) 9%, transparent); border-color: color-mix(in srgb, var(--red) 24%, var(--border-subtle)); }
-  .dashboard-status-info { color: #3879a8; background: color-mix(in srgb, #3879a8 9%, transparent); border-color: color-mix(in srgb, #3879a8 24%, var(--border-subtle)); }
+  .dashboard-status-info { color: var(--signal-info); background: color-mix(in srgb, var(--signal-info) 9%, transparent); border-color: color-mix(in srgb, var(--signal-info) 24%, var(--border-subtle)); }
 
   .dashboard-progress-wrap { width: 100%; }
   .dashboard-progress-label { display: flex; justify-content: space-between; margin-bottom: 6px; color: var(--text-muted); font-size: 0.75rem; }
@@ -275,13 +310,66 @@
 
   .dashboard-app .dashboard-status-dot { box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 12%, transparent); }
   .dashboard-app .dashboard-progress { background: var(--room-panel-muted); border: 1px solid var(--border-subtle); }
-  .dashboard-app .dashboard-progress-fill { box-shadow: 0 0 14px color-mix(in srgb, currentColor 45%, transparent); }
+  .dashboard-app .dashboard-progress-fill { box-shadow: 0 0 14px color-mix(in srgb, currentColor 22%, transparent); }
+
+  .dashboard-button-primary,
+  .dashboard-button-secondary,
+  .dashboard-button-danger {
+    display: inline-flex;
+    min-height: 40px;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border-radius: 12px;
+    padding: 0.65rem 0.9rem;
+    font-size: 0.76rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    line-height: 1;
+    text-transform: uppercase;
+    transition: transform 180ms ease, background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease, color 180ms ease;
+  }
+  .dashboard-button-primary { border: 1px solid var(--signal-primary); background: var(--signal-primary); color: #fff; box-shadow: 0 8px 16px rgba(23, 107, 79, 0.16); }
+  .dashboard-button-primary:hover { background: var(--signal-primary-strong); box-shadow: 0 10px 20px rgba(23, 107, 79, 0.22); transform: translateY(-1px); }
+  .dashboard-button-secondary { border: 1px solid var(--border-default); background: var(--bg-surface); color: var(--text-secondary); }
+  .dashboard-button-secondary:hover { border-color: var(--signal-primary); background: var(--signal-primary-soft); color: var(--text-primary); transform: translateY(-1px); }
+  .dashboard-button-danger { border: 1px solid color-mix(in srgb, var(--red) 42%, var(--border-default)); background: color-mix(in srgb, var(--red) 9%, transparent); color: var(--red); }
+  .dashboard-button-danger:hover { background: color-mix(in srgb, var(--red) 15%, transparent); transform: translateY(-1px); }
+  .dashboard-button-primary:active,
+  .dashboard-button-secondary:active,
+  .dashboard-button-danger:active { transform: translateY(0); }
+
+  .dashboard-input {
+    min-height: 40px;
+    border: 1px solid var(--border-default);
+    border-radius: 12px;
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    padding: 0.6rem 0.75rem;
+    outline: none;
+  }
+  .dashboard-input:focus { border-color: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 14%, transparent); }
+
+  .dashboard-shell-divider { border-color: color-mix(in srgb, var(--border-subtle) 78%, transparent); }
+
+  .auth-field-label { display: block; color: var(--field-ink-secondary); font-family: var(--font-sans), system-ui, sans-serif; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.10em; line-height: 1.2; text-transform: uppercase; }
+  .auth-input { width: 100%; min-height: 48px; border: 1px solid var(--field-line-strong); border-radius: 14px; background: var(--field-raised); color: var(--field-ink); padding: 0.75rem 0.9rem; font-size: 0.9rem; outline: none; transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease; }
+  .auth-input::placeholder { color: var(--field-ink-muted); }
+  .auth-input:focus { border-color: var(--signal-primary); background: var(--field-surface); box-shadow: 0 0 0 4px color-mix(in srgb, var(--signal-primary) 14%, transparent); }
+  .auth-input:disabled { cursor: wait; opacity: 0.62; }
+  .auth-input-icon { position: absolute; left: 0.9rem; top: 50%; width: 1rem; height: 1rem; transform: translateY(-50%); color: var(--field-ink-muted); pointer-events: none; }
+  .auth-submit-button { display: flex; min-height: 50px; width: 100%; align-items: center; gap: 0.6rem; border-radius: 14px; border: 1px solid var(--signal-primary); background: var(--signal-primary); padding: 0.8rem 1rem; color: #fff; font-size: 0.78rem; font-weight: 750; letter-spacing: 0.06em; text-transform: uppercase; box-shadow: 0 12px 24px rgba(23, 107, 79, 0.18); transition: transform 180ms ease, background-color 180ms ease, box-shadow 180ms ease, opacity 180ms ease; }
+  .auth-submit-button:hover { background: var(--signal-primary-strong); box-shadow: 0 16px 28px rgba(23, 107, 79, 0.24); transform: translateY(-1px); }
+  .auth-submit-button:active { transform: translateY(0); }
+  .auth-submit-button:disabled { cursor: wait; opacity: 0.58; transform: none; }
+  .auth-story { isolation: isolate; }
+  .auth-story::before { position: absolute; inset: 0; background-image: linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px); background-size: 40px 40px; content: ''; mask-image: linear-gradient(to bottom, black, transparent 78%); opacity: 0.35; pointer-events: none; }
 
   @media (max-width: 767px) {
     .dashboard-page-header { flex-direction: column; margin-bottom: 22px; }
     .dashboard-page-actions { width: 100%; justify-content: flex-start; }
     .dashboard-title { font-size: 1.7rem; }
-    .dashboard-surface { border-radius: 12px; }
+    .dashboard-surface { border-radius: 16px; }
     .dashboard-metric { min-height: 126px; padding: 15px; }
   }
 }

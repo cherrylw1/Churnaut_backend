@@ -26,6 +26,7 @@ import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import SupportWidget from '@/components/SupportWidget';
 import { supabaseBrowser } from '@/lib/supabase';
 import { CommandPalette } from '@/components/dashboard/CommandPalette';
+import { ChurnautMark } from '@/components/brand/ChurnautMark';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -203,33 +204,40 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   // Bind keyboard shortcuts hook
   useKeyboardShortcuts(() => setShortcutsOpen(true));
 
-  const coreGroup = [
+  const observeGroup = [
     { label: 'Home', href: '/dashboard', icon: HomeIcon },
+    { label: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
+    { label: 'Scout', href: '/dashboard/scout', icon: Radar },
+  ];
+
+  const activateGroup = [
     { label: 'Tracked Links', href: '/dashboard/links', icon: Link2 },
     { label: 'Routing Rules', href: '/dashboard/rules', icon: Sliders },
-    { label: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
   ];
 
   const intelligenceGroup = [
-    { label: 'Scout', href: '/dashboard/scout', icon: Radar },
     { label: 'ICP Builder', href: '/dashboard/icp', icon: Target },
     { label: 'AI Insights', href: '/dashboard/ai-insights', icon: Sparkles },
   ];
 
-  const setupGroup = [
+  const connectGroup = [
     { label: 'Integrations', href: '/dashboard/integrations', icon: Plug },
     { label: 'Snippet', href: '/dashboard/snippet', icon: Code2 },
+  ];
+
+  const workspaceGroup = [
     { label: 'Settings', href: '/dashboard/settings', icon: Settings },
     { label: 'Billing', href: '/dashboard/billing', icon: CreditCard },
     { label: 'Support', href: '/dashboard/support', icon: HelpCircle },
   ];
 
   // Combine to find the current active page label for breadcrumbs
-  const allItems = [...coreGroup, ...intelligenceGroup, ...setupGroup];
+  const allItems = [...observeGroup, ...activateGroup, ...intelligenceGroup, ...connectGroup, ...workspaceGroup];
+  const commandItems = [...allItems, { label: 'Playbook Library', href: '/dashboard/playbooks', icon: Sliders }];
   const activeItem = allItems.find(item => item.href === pathname) || allItems.find(item => pathname.startsWith(item.href) && item.href !== '/dashboard');
   const pageLabel = activeItem ? activeItem.label : 'Dashboard';
 
-  const renderNavGroup = (title: string, items: typeof coreGroup) => (
+  const renderNavGroup = (title: string, items: Array<{ label: string; href: string; icon: React.ComponentType<{ className?: string }> }>) => (
     <div className="space-y-1.5">
       <div className="px-4 text-[10px] font-mono font-semibold uppercase tracking-[0.13em] text-[var(--text-muted)]">
         {title}
@@ -265,28 +273,17 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const renderSidebarContent = () => (
     <div className="flex flex-col h-full bg-[var(--bg-surface)]">
       {/* Header Brand */}
-      <div className="h-[76px] flex items-center px-6 border-b border-[var(--border-subtle)] mb-4 flex-shrink-0">
-        <Link 
-          href="/dashboard" 
-          onClick={() => setSidebarOpen(false)}
-          className="flex items-center gap-3 font-sans text-[var(--text-primary)] hover:opacity-90 transition-opacity"
-        >
-          <span className="relative flex h-8 w-8 items-center justify-center rounded-[9px] border border-[var(--accent)]/60 bg-[var(--accent)]/10" aria-hidden="true">
-            <span className="h-2.5 w-2.5 rounded-full bg-[var(--accent)] shadow-[0_0_14px_var(--signal-glow)]" />
-            <span className="absolute inset-[6px] rounded-[5px] border border-[var(--accent)]/40" />
-          </span>
-          <span className="flex flex-col leading-none">
-            <span className="text-[15px] font-semibold tracking-[0.14em]">CHURNAUT</span>
-            <span className="mt-1 font-mono text-[9px] font-medium uppercase tracking-[0.18em] text-[var(--text-muted)]">Signal Room</span>
-          </span>
-        </Link>
+      <div className="flex h-[84px] flex-shrink-0 items-center border-b border-[var(--border-subtle)] px-6">
+        <ChurnautMark href="/dashboard" onClick={() => setSidebarOpen(false)} />
       </div>
 
       {/* Navigation Links */}
       <nav aria-label="Primary navigation" className="p-4 space-y-7 flex-1 overflow-y-auto">
-        {renderNavGroup('CORE', coreGroup)}
+        {renderNavGroup('OBSERVE', observeGroup)}
+        {renderNavGroup('ACTIVATE', activateGroup)}
         {renderNavGroup('INTELLIGENCE', intelligenceGroup)}
-        {renderNavGroup('SETUP', setupGroup)}
+        {renderNavGroup('CONNECT', connectGroup)}
+        {renderNavGroup('WORKSPACE', workspaceGroup)}
 
         {/* Sidebar Status Indicator */}
         <div className="pt-4 border-t border-[var(--border-subtle)] flex items-center space-x-3">
@@ -368,7 +365,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               <Menu className="w-5 h-5" />
             </button>
             <div className="flex items-center space-x-2 text-[12px] font-mono uppercase tracking-[0.05em] text-[var(--text-muted)] font-medium">
-              <Link href="/dashboard" className="hover:text-[var(--text-primary)] transition-colors">Signal Room</Link>
+              <Link href="/dashboard" className="hover:text-[var(--text-primary)] transition-colors">Signal Field</Link>
               {pageLabel !== 'Home' && (
                 <>
                   <span className="text-[var(--border-default)] font-normal">/</span>
@@ -424,7 +421,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
       {/* Support widget helper */}
       <SupportWidget />
-      <CommandPalette open={commandOpen} onClose={() => setCommandOpen(false)} items={allItems.map((item) => ({ ...item, group: item.href.startsWith('/dashboard/scout') || item.href.startsWith('/dashboard/icp') || item.href.startsWith('/dashboard/ai-insights') || item.href.startsWith('/dashboard/analytics') ? 'Intelligence' : item.href.startsWith('/dashboard/integrations') || item.href.startsWith('/dashboard/snippet') ? 'Connect' : item.href.startsWith('/dashboard/settings') || item.href.startsWith('/dashboard/billing') || item.href.startsWith('/dashboard/support') ? 'Workspace' : 'Engage' }))} />
+      <CommandPalette open={commandOpen} onClose={() => setCommandOpen(false)} items={commandItems.map((item) => ({ ...item, group: item.href === '/dashboard' || item.href.startsWith('/dashboard/analytics') || item.href.startsWith('/dashboard/scout') ? 'Observe' : item.href.startsWith('/dashboard/links') || item.href.startsWith('/dashboard/rules') || item.href.startsWith('/dashboard/playbooks') ? 'Activate' : item.href.startsWith('/dashboard/icp') || item.href.startsWith('/dashboard/ai-insights') ? 'Intelligence' : item.href.startsWith('/dashboard/integrations') || item.href.startsWith('/dashboard/snippet') ? 'Connect' : 'Workspace' }))} />
     </div>
   );
 }
