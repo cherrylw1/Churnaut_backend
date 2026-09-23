@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <defs>
+    <linearGradient id="churnautBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#165B40" />
+      <stop offset="100%" stop-color="#0D2E20" />
+    </linearGradient>
+  </defs>
+  <!-- Background Squircle -->
+  <rect x="1" y="1" width="30" height="30" rx="9" fill="url(#churnautBg)" />
+  <!-- Outer subtle signal perimeter -->
+  <rect x="4.5" y="4.5" width="23" height="23" rx="6.5" fill="none" stroke="#34D399" stroke-width="1.2" stroke-opacity="0.35" />
+  <!-- Inner geometric boundary -->
+  <rect x="8.5" y="8.5" width="15" height="15" rx="4.5" fill="none" stroke="#34D399" stroke-width="1.5" stroke-opacity="0.85" />
+  <!-- Central Signal Core -->
+  <circle cx="16" cy="16" r="3.2" fill="#FFFFFF" />
+  <circle cx="16" cy="16" r="2" fill="#10B981" />
+  <!-- Satellite Active Signal Node -->
+  <circle cx="23.5" cy="8.5" r="2" fill="#34D399" />
+</svg>
