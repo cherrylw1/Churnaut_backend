@@ -35,7 +35,7 @@ export function CapsuleBarChart({
   const activeDay = days[hoveredIdx] || days[2];
 
   return (
-    <Surface className="dashboard-capsule-chart flex flex-col justify-between p-6 transition-all duration-300 hover:shadow-md">
+    <Surface className="dashboard-capsule-chart h-full flex flex-col justify-between p-6 transition-all duration-300 hover:shadow-md">
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div>

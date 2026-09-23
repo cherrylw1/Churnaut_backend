@@ -323,7 +323,7 @@ export default function AnalyticsPage() {
       {/* Tables Row: Rule Performance & Rep Conversion */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left: Rule Performance Table */}
-        <Surface tone="subtle" className="p-5 space-y-4">
+        <Surface className="p-6 md:p-8 space-y-5 rounded-3xl border border-slate-200/90 bg-white shadow-xs hover:shadow-md transition-all duration-300">
           <SectionHeader title="Rule conversion" description="Which rules are creating movement" />
           <DataTable label="Rule conversion performance">
             <table aria-label="Rule conversion performance" className="dashboard-table w-full text-left border-collapse text-xs font-mono">
@@ -373,7 +373,7 @@ export default function AnalyticsPage() {
         </Surface>
 
         {/* Right: Rep Performance Table */}
-        <Surface tone="subtle" className="p-5 space-y-4">
+        <Surface className="p-6 md:p-8 space-y-5 rounded-3xl border border-slate-200/90 bg-white shadow-xs hover:shadow-md transition-all duration-300">
           <SectionHeader title="Representative conversions" description="Links sent and outcomes" />
           <DataTable label="Representative conversion performance">
             <table aria-label="Representative conversion performance" className="dashboard-table w-full text-left border-collapse text-xs font-mono">
@@ -412,7 +412,7 @@ export default function AnalyticsPage() {
 
       {/* Personalization Lift Report */}
       {liftReport && liftReport.personalized_sessions > 0 && (
-        <Surface tone="subtle" className="p-5 space-y-5">
+        <Surface className="p-6 md:p-8 space-y-6 rounded-3xl border border-slate-200/90 bg-white shadow-xs hover:shadow-md transition-all duration-300">
           <div>
             <h2 className="text-base font-bold text-[var(--text-primary)]">Personalization lift</h2>
             <p className="text-[10px] font-mono text-[var(--text-muted)] mt-1">

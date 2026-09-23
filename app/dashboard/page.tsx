@@ -334,58 +334,58 @@ export default function DashboardPage() {
             />
           </motion.section>
 
-          {/* Row 2: Donezo Bento Trio (Project Analytics + Reminders + Project List) */}
-          <motion.section variants={entryMotion} className="grid grid-cols-1 lg:grid-cols-12 gap-5" aria-label="Project analytics & priority">
-            {/* Col 1: Capsule Bar Chart (Project Analytics) */}
-            <div className="lg:col-span-5 flex flex-col">
-              <CapsuleBarChart
-                title="Project Analytics"
-                subtitle="Weekly project delivery and signal volume"
-              />
+          {/* Bento Grid: Aligned 8-Col Left Section + 4-Col Right Stack (Matching Donezo) */}
+          <motion.section variants={entryMotion} className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch" aria-label="Dashboard bento overview">
+            {/* Left 8 Columns (2x2 Grid: Analytics + Reminders / Team + Progress) */}
+            <div className="lg:col-span-8 flex flex-col gap-5">
+              {/* Upper Tier: Project Analytics + Reminders */}
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-5 flex-1 items-stretch">
+                <div className="md:col-span-7 flex flex-col">
+                  <CapsuleBarChart
+                    title="Project Analytics"
+                    subtitle="Weekly project delivery and signal volume"
+                  />
+                </div>
+                <div className="md:col-span-5 flex flex-col">
+                  <ScoutReminderCard
+                    dealName={summary.scout_inbox.top_red_deal?.deal_name}
+                    action={summary.scout_inbox.top_red_deal?.next_action}
+                    onRunScout={handleRunScout}
+                  />
+                </div>
+              </div>
+
+              {/* Lower Tier: Team Collaboration + Project Progress */}
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-5 flex-1 items-stretch">
+                <div className="md:col-span-7 flex flex-col">
+                  <TeamCollaborationCard
+                    events={summary.recent_activity}
+                    formatRelativeTime={formatRelativeTime}
+                  />
+                </div>
+                <div className="md:col-span-5 flex flex-col">
+                  <PressureInstrument
+                    title="Project Progress"
+                    label="Project Ended"
+                    score={summary.pressure_score > 0 ? summary.pressure_score : 41}
+                    status={summary.pipeline_status}
+                    value={<CountUp value={summary.pressure_score > 0 ? summary.pressure_score : 41} suffix="%" />}
+                  />
+                </div>
+              </div>
             </div>
 
-            {/* Col 2: Reminders Card */}
-            <div className="lg:col-span-3 flex flex-col">
-              <ScoutReminderCard
-                dealName={summary.scout_inbox.top_red_deal?.deal_name}
-                action={summary.scout_inbox.top_red_deal?.next_action}
-                onRunScout={handleRunScout}
-              />
-            </div>
-
-            {/* Col 3: Project / Active Campaigns List */}
-            <div className="lg:col-span-4 flex flex-col">
-              <ActiveCampaignsCard />
-            </div>
-          </motion.section>
-
-          {/* Row 3: Donezo Bento Trio (Team Collaboration + Project Progress + Time Tracker) */}
-          <motion.section variants={entryMotion} className="grid grid-cols-1 lg:grid-cols-12 gap-5" aria-label="Collaboration & telemetry">
-            {/* Col 1: Team Collaboration */}
-            <div className="lg:col-span-5 flex flex-col">
-              <TeamCollaborationCard
-                events={summary.recent_activity}
-                formatRelativeTime={formatRelativeTime}
-              />
-            </div>
-
-            {/* Col 2: Project Progress (Semi-Circular Arc Gauge with Hatch Pattern) */}
-            <div className="lg:col-span-3 flex flex-col">
-              <PressureInstrument
-                title="Project Progress"
-                label="Project Ended"
-                score={summary.pressure_score > 0 ? summary.pressure_score : 41}
-                status={summary.pipeline_status}
-                value={<CountUp value={summary.pressure_score > 0 ? summary.pressure_score : 41} suffix="%" />}
-              />
-            </div>
-
-            {/* Col 3: Time Tracker (Dark Emerald Wavy Ribbon Card with Live Clock) */}
-            <div className="lg:col-span-4 flex flex-col">
-              <TimeTrackerCard
-                title="Time Tracker"
-                subtitle="Live telemetry & intent capture"
-              />
+            {/* Right 4 Columns (Stacked: Project Campaigns + Time Tracker) */}
+            <div className="lg:col-span-4 flex flex-col gap-5 justify-between items-stretch">
+              <div className="flex-1 flex flex-col">
+                <ActiveCampaignsCard />
+              </div>
+              <div className="flex-1 flex flex-col">
+                <TimeTrackerCard
+                  title="Time Tracker"
+                  subtitle="Live telemetry & intent capture"
+                />
+              </div>
             </div>
           </motion.section>
         </motion.div>

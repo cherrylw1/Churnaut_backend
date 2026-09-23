@@ -17,7 +17,7 @@ export function ScoutReminderCard({
   onRunScout?: () => void;
 }) {
   return (
-    <Surface className="dashboard-reminders-card flex flex-col justify-between p-6 transition-all duration-300 hover:shadow-md">
+    <Surface className="dashboard-reminders-card h-full flex flex-col justify-between p-6 transition-all duration-300 hover:shadow-md">
       {/* Top Header */}
       <div>
         <div className="flex items-center justify-between gap-3">

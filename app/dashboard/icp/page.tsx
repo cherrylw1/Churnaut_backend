@@ -113,7 +113,7 @@ export default function IcpBuilderPage() {
         <EmptyPanel icon={<Target className="w-5 h-5" />} title="No ICP model yet" description="Build an evidence model from your closed-won deals when your CRM data is ready." action={<button onClick={handleBuildIcp} disabled={building} className="dashboard-button-primary inline-flex items-center gap-2">{building ? 'ANALYZING...' : 'BUILD MY ICP'}</button>} />
       ) : profile ? (
         <div className="dashboard-icp-workbench space-y-8">
-          <Surface tone="elevated" className="dashboard-icp-dossier border-l-4 border-l-[var(--amber)] p-6 md:p-8" aria-labelledby="icp-evidence-heading">
+          <Surface className="dashboard-icp-dossier rounded-3xl border border-slate-200/90 bg-white p-6 md:p-8 shadow-xs hover:shadow-md transition-all duration-300 border-l-4 border-l-amber-500" aria-labelledby="icp-evidence-heading">
             <div className="flex items-start gap-3">
               <div className="dashboard-empty-icon shrink-0"><Target aria-hidden="true" className="w-5 h-5" /></div>
               <div className="min-w-0">
@@ -136,16 +136,16 @@ export default function IcpBuilderPage() {
           <section className="dashboard-icp-attributes" aria-labelledby="winning-attributes-heading">
             <SectionHeader title="Winning attributes" headingId="winning-attributes-heading" description="The patterns that recur across your wins." />
             {profile.top_job_titles && profile.top_job_titles.length > 0 ? <div className="dashboard-icp-attribute-list grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
-              {profile.top_job_titles.map((jt, idx) => <div key={idx} className="dashboard-icp-attribute-row dashboard-surface dashboard-surface-subtle p-4 flex justify-between items-center gap-3">
+              {profile.top_job_titles.map((jt, idx) => <div key={idx} className="dashboard-icp-attribute-row rounded-2xl border border-slate-200/90 bg-white p-4 flex justify-between items-center gap-3 shadow-2xs hover:border-slate-300 transition-colors">
                 <span className="dashboard-wrap-anywhere text-sm font-semibold text-[var(--text-primary)]">{jt.title}</span>
                 <span className="text-xs text-[var(--text-muted)] uppercase font-mono">{jt.count} {jt.count === 1 ? 'WIN' : 'WINS'}</span>
               </div>)}
             </div> : <EmptyPanel title="No job-title evidence yet" description="Closed-won contact profiles do not include job titles for this model." />}
-            {profile.top_industries && profile.top_industries.length > 0 ? <div className="dashboard-icp-chip-group mt-6"><p className="dashboard-eyebrow font-mono">INDUSTRIES</p><div className="mt-3 flex flex-wrap gap-2">{profile.top_industries.map((industry) => <span key={industry} className="dashboard-icp-chip rounded-full border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-1.5 text-xs text-[var(--text-secondary)]">{industry}</span>)}</div></div> : null}
-            {profile.top_deal_stages && profile.top_deal_stages.length > 0 ? <div className="dashboard-icp-stage-group mt-6"><p className="dashboard-eyebrow font-mono">DEAL STAGES</p><div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">{profile.top_deal_stages.map((stage) => <div key={stage.sequence} className="dashboard-icp-stage-row dashboard-surface dashboard-surface-subtle flex items-center justify-between gap-3 p-4"><span className="dashboard-wrap-anywhere text-sm font-semibold text-[var(--text-primary)]">{stage.sequence}</span><span className="font-mono text-xs text-[var(--text-muted)]">{stage.count} {stage.count === 1 ? 'WIN' : 'WINS'}</span></div>)}</div></div> : null}
+            {profile.top_industries && profile.top_industries.length > 0 ? <div className="dashboard-icp-chip-group mt-6"><p className="dashboard-eyebrow font-mono">INDUSTRIES</p><div className="mt-3 flex flex-wrap gap-2">{profile.top_industries.map((industry) => <span key={industry} className="dashboard-icp-chip rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs">{industry}</span>)}</div></div> : null}
+            {profile.top_deal_stages && profile.top_deal_stages.length > 0 ? <div className="dashboard-icp-stage-group mt-6"><p className="dashboard-eyebrow font-mono">DEAL STAGES</p><div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">{profile.top_deal_stages.map((stage) => <div key={stage.sequence} className="dashboard-icp-stage-row rounded-2xl border border-slate-200/90 bg-white flex items-center justify-between gap-3 p-4 shadow-2xs hover:border-slate-300 transition-colors"><span className="dashboard-wrap-anywhere text-sm font-semibold text-[var(--text-primary)]">{stage.sequence}</span><span className="font-mono text-xs text-[var(--text-muted)]">{stage.count} {stage.count === 1 ? 'WIN' : 'WINS'}</span></div>)}</div></div> : null}
           </section>
 
-          <Surface tone="subtle" className="dashboard-icp-routing p-6 md:p-8" aria-labelledby="routing-output-heading">
+          <Surface className="dashboard-icp-routing rounded-3xl border border-slate-200/90 bg-white p-6 md:p-8 shadow-xs hover:shadow-md transition-all duration-300" aria-labelledby="routing-output-heading">
             <SectionHeader title="Routing output" headingId="routing-output-heading" description="The model can turn these patterns into live website decisions." action={<Link href="/dashboard/rules" className="text-xs text-[var(--accent)] hover:text-[var(--accent-hover)] font-semibold uppercase tracking-wider inline-flex items-center gap-1">View routing rules <ArrowRight aria-hidden="true" className="w-3.5 h-3.5" /></Link>} />
             <p className="mt-4 text-sm text-[var(--text-secondary)] leading-relaxed">ICP generation creates routing rules that can swap custom copy for high-fit prospects.</p>
           </Surface>

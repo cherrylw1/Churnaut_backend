@@ -808,12 +808,12 @@ export default function ScoutDashboard() {
       </div>
 
           {/* SECTION 4 — PIPELINE HEALTH (collapsible, default expanded) */}
-          <div className="dashboard-scout-panel dashboard-scout-health-panel border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-[12px] overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.25)]">
+          <div className="dashboard-scout-panel dashboard-scout-health-panel border border-slate-200/90 bg-white rounded-3xl overflow-hidden shadow-xs">
             <button
               onClick={() => toggleSection('pipelineHealth')}
               aria-expanded={!collapsedSections.pipelineHealth}
               aria-controls="scout-pipeline-health-panel"
-              className="w-full flex justify-between items-center p-4 bg-transparent hover:bg-[var(--bg-elevated)] border-b border-[var(--border-subtle)] transition-colors select-none text-left"
+              className="w-full flex justify-between items-center p-5 bg-transparent hover:bg-slate-50 border-b border-slate-100 transition-colors select-none text-left"
             >
               <span className="font-sans text-[13px] font-semibold tracking-[0.06em] text-[var(--text-secondary)] uppercase flex items-center gap-2">
                 <AlertTriangle className="text-[var(--red)] w-3.5 h-3.5" />
@@ -901,7 +901,7 @@ export default function ScoutDashboard() {
                           return (
                             <div
                               key={deal.deal_id}
-                              className="dashboard-scout-deal-card border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-[12px] overflow-hidden border-l-[3px] border-l-[var(--red)] shadow-[0_1px_4px_rgba(0,0,0,0.25)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.35)] transition-all duration-200"
+                              className="dashboard-scout-deal-card border border-slate-200/90 bg-white rounded-2xl overflow-hidden border-l-4 border-l-red-500 shadow-xs hover:shadow-md hover:border-slate-300 transition-all duration-300"
                             >
                               <button
                                 type="button"
@@ -1024,7 +1024,7 @@ export default function ScoutDashboard() {
                           return (
                             <div
                               key={deal.deal_id}
-                              className="dashboard-scout-deal-card border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-[12px] overflow-hidden border-l-[3px] border-l-[var(--amber)] shadow-[0_1px_4px_rgba(0,0,0,0.25)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.35)] transition-all duration-200"
+                              className="dashboard-scout-deal-card border border-slate-200/90 bg-white rounded-2xl overflow-hidden border-l-4 border-l-amber-500 shadow-xs hover:shadow-md hover:border-slate-300 transition-all duration-300"
                             >
                               <button
                                 type="button"
@@ -1115,7 +1115,7 @@ export default function ScoutDashboard() {
                         {greenDeals.map((deal) => (
                           <div
                             key={deal.deal_id}
-                            className="dashboard-scout-deal-row p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 hover:bg-[var(--bg-elevated)] transition-colors border-l-[3px] border-l-[var(--green)]"
+                            className="dashboard-scout-deal-row p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 bg-white rounded-2xl border border-slate-200/90 hover:border-slate-300 hover:shadow-xs transition-all border-l-4 border-l-emerald-600"
                           >
                             <div className="dashboard-wrap-anywhere min-w-0 space-y-0.5">
                               <span className="dashboard-wrap-anywhere font-sans text-sm font-bold text-[var(--text-primary)]">{deal.deal_name}</span>

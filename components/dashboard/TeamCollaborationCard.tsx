@@ -79,7 +79,7 @@ export function TeamCollaborationCard({
   const hasEvents = events && events.length > 0;
 
   return (
-    <Surface className="dashboard-team-card flex flex-col justify-between p-6 transition-all duration-300 hover:shadow-md">
+    <Surface className="dashboard-team-card h-full flex flex-col justify-between p-6 transition-all duration-300 hover:shadow-md">
       {/* Header */}
       <div className="flex items-center justify-between gap-3 mb-4">
         <h3 className="font-sans text-base font-bold text-slate-900">

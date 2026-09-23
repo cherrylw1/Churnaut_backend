@@ -9,6 +9,16 @@ import ErrorState from '@/components/ui/ErrorState';
 import { isCanonicalRuleConfiguration } from '@/lib/validation';
 import { PageHeader } from '@/components/dashboard/PageHeader';
 import { ModalShell } from '@/components/dashboard/ModalShell';
+import { GeometricIcon } from '@/components/dashboard/ActiveCampaignsCard';
+
+function getRuleIcon(signalType?: string | null): { bg: string; type: 'stripes' | 'rings' | 'flower' | 'slice' | 'cluster' } {
+  const signal = (signalType || '').toLowerCase();
+  if (signal.includes('email')) return { bg: 'bg-blue-50 text-blue-600', type: 'stripes' };
+  if (signal.includes('linkedin')) return { bg: 'bg-teal-50 text-teal-600', type: 'rings' };
+  if (signal.includes('google') || signal.includes('ad')) return { bg: 'bg-emerald-50 text-emerald-600', type: 'flower' };
+  if (signal.includes('visitor') || signal.includes('returning')) return { bg: 'bg-amber-50 text-amber-600', type: 'slice' };
+  return { bg: 'bg-purple-50 text-purple-600', type: 'cluster' };
+}
 
 interface PlaybookInput {
   field_name: string;
@@ -823,6 +833,7 @@ export default function RulesPage() {
               {rules.map((rule, index) => {
                 const isSelected = selectedRule?.id === rule.id;
                 const conditionsText = getConditionsText(rule.conditions);
+                const iconInfo = getRuleIcon(rule.signal_type);
 
                 return (
                   <div
@@ -832,79 +843,99 @@ export default function RulesPage() {
                     onDragOver={handleDragOver}
                     onDrop={(e) => handleDrop(e, index)}
                     onDragEnd={() => setDraggedIndex(null)}
-                    className={`dashboard-surface dashboard-rule-row rounded-2xl p-4 flex items-start gap-4 relative select-none ${
-                      isSelected ? 'border-[var(--accent)] bg-[var(--border-subtle)]/10' : 'border-[var(--border-subtle)]'
-                    } ${!rule.active ? 'opacity-65' : ''}`}
+                    className={`group dashboard-surface dashboard-rule-row rounded-3xl p-5 flex items-start gap-4 relative select-none transition-all duration-300 hover:shadow-md hover:border-slate-300 ${
+                      isSelected ? 'ring-2 ring-[#165B40] bg-slate-50/50' : 'border border-slate-200/90 bg-white'
+                    } ${!rule.active ? 'opacity-70' : ''}`}
                   >
                     {/* Drag Handle Indicator */}
-                    <div className="flex flex-col justify-center items-center h-full text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-move pt-1">
-                      <span className="text-sm tracking-widest font-mono">::</span>
+                    <div className="flex flex-col justify-center items-center h-full text-slate-300 group-hover:text-slate-600 cursor-move pt-2 transition-colors">
+                      <span className="text-xs tracking-widest font-mono">⋮⋮</span>
+                    </div>
+
+                    {/* Geometric Brand Icon Chip */}
+                    <div
+                      className={`h-10 w-10 rounded-2xl flex items-center justify-center flex-shrink-0 ${iconInfo.bg} shadow-2xs group-hover:scale-105 transition-transform mt-0.5`}
+                    >
+                      <GeometricIcon type={iconInfo.type} />
                     </div>
 
                     {/* Content Section */}
                     <div className="flex-1 min-w-0 space-y-2">
                       <div className="dashboard-wrap-anywhere flex min-w-0 flex-wrap items-center gap-2">
-                        <span className="text-xs font-mono font-bold text-[var(--text-secondary)]">
+                        <span className="text-xs font-mono font-bold text-slate-800">
                           #{rule.priority}
                         </span>
-                        <span className="text-[10px] font-mono px-2 py-0.5 bg-[var(--border-subtle)] border border-[var(--border-subtle)] text-[var(--accent)] rounded">
+                        <span className="text-[11px] font-semibold px-2.5 py-0.5 bg-slate-100 border border-slate-200/80 text-slate-700 rounded-full">
                           {rule.signal_type || 'Any Signal'}
                         </span>
-                        <span className="text-[10px] font-mono px-2 py-0.5 bg-[var(--green)]/10 border border-[var(--green)]/30 text-[var(--green)] rounded">
+                        <span className="text-[11px] font-semibold px-2.5 py-0.5 bg-emerald-50 border border-emerald-200/80 text-emerald-800 rounded-full">
                           {isValidStoredRule(rule) ? getActionLabel(rule.action_type) : 'Invalid configuration'}
                         </span>
+                        {rule.active ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 border border-emerald-200/80">
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                            Live
+                          </span>
+                        ) : (
+                          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500 border border-slate-200">
+                            Paused
+                          </span>
+                        )}
                       </div>
 
                       {/* Conditions */}
-                      <p className="dashboard-wrap-anywhere text-xs font-mono text-[var(--text-secondary)]">
-                        <span className="text-[var(--text-muted)]">IF:</span> {conditionsText}
+                      <p className="dashboard-wrap-anywhere text-xs font-mono text-slate-600">
+                        <span className="text-slate-400 font-bold">IF:</span> {conditionsText}
                       </p>
 
                       {/* Variant Preview */}
                       {rule.variant_content && (
-                        <div className="dashboard-rule-preview bg-[var(--bg-elevated)] border border-[var(--border-subtle)] py-1.5 px-2.5 rounded text-xs font-mono text-[var(--text-secondary)] max-w-full min-w-0">
+                        <div className="dashboard-rule-preview bg-slate-50/80 border border-slate-200/90 py-1.5 px-3 rounded-xl text-xs font-mono text-slate-700 max-w-full min-w-0">
                           {rule.variant_content}
                         </div>
                       )}
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={(event) => { ruleTriggerRef.current = event.currentTarget; setSelectedRule(rule); }}
-                      className="rounded border border-[var(--accent)] bg-[var(--bg-surface)] px-2 py-1 text-[10px] font-mono text-[var(--accent)] hover:bg-[var(--accent)] hover:text-white"
-                    >
-                      Edit rule
-                    </button>
-
-                    <div className="flex flex-col gap-1" aria-label={`Move rule ${rule.priority}`}>
-                      <button type="button" onClick={() => moveRule(index, -1)} disabled={index === 0} aria-label={`Move rule ${rule.priority} up`} className="text-[10px] font-mono text-[var(--text-muted)] hover:text-[var(--accent)] disabled:opacity-30">↑</button>
-                      <button type="button" onClick={() => moveRule(index, 1)} disabled={index === rules.length - 1} aria-label={`Move rule ${rule.priority} down`} className="text-[10px] font-mono text-[var(--text-muted)] hover:text-[var(--accent)] disabled:opacity-30">↓</button>
-                    </div>
-
-                    {/* Active/Inactive Switch */}
-                    <div 
-                      onClick={(e) => e.stopPropagation()} 
-                      className="flex items-center h-full self-center"
-                    >
+                    {/* Actions: Edit & Move */}
+                    <div className="flex items-center gap-2 flex-shrink-0 pt-0.5">
                       <button
-                        onClick={() => handleToggleActive(rule)}
-                        disabled={!isValidStoredRule(rule)}
-                        role="switch"
-                        aria-label={`Activate rule ${rule.priority}: ${rule.signal_type || 'Any signal'}`}
-                        aria-checked={Boolean(rule.active && isValidStoredRule(rule))}
-                        title={!isValidStoredRule(rule) ? 'Repair this invalid configuration before activation' : undefined}
-                        className={`w-10 h-5 rounded-full p-0.5 transition-colors focus:outline-none border ${
-                          rule.active && isValidStoredRule(rule)
-                            ? 'bg-[var(--accent)] border-[var(--accent)] text-right'
-                            : 'bg-[var(--border-subtle)] border-[var(--border-subtle)] text-left'
-                        }`}
+                        type="button"
+                        onClick={(event) => { ruleTriggerRef.current = event.currentTarget; setSelectedRule(rule); }}
+                        className="inline-flex items-center rounded-full border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-700 shadow-2xs hover:border-[#165B40] hover:text-[#165B40] transition-colors"
                       >
-                        <span
-                          className={`inline-block w-3.5 h-3.5 rounded-full bg-white transition-transform transform ${
-                            rule.active && isValidStoredRule(rule) ? 'translate-x-5' : 'translate-x-0'
-                          }`}
-                        />
+                        Edit rule
                       </button>
+
+                      <div className="flex flex-col gap-0.5" aria-label={`Move rule ${rule.priority}`}>
+                        <button type="button" onClick={() => moveRule(index, -1)} disabled={index === 0} aria-label={`Move rule ${rule.priority} up`} className="h-4 w-4 rounded-full flex items-center justify-center text-[10px] font-bold text-slate-400 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-30 transition-colors">▲</button>
+                        <button type="button" onClick={() => moveRule(index, 1)} disabled={index === rules.length - 1} aria-label={`Move rule ${rule.priority} down`} className="h-4 w-4 rounded-full flex items-center justify-center text-[10px] font-bold text-slate-400 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-30 transition-colors">▼</button>
+                      </div>
+
+                      {/* Active/Inactive iOS Switch */}
+                      <div 
+                        onClick={(e) => e.stopPropagation()} 
+                        className="flex items-center ml-1"
+                      >
+                        <button
+                          onClick={() => handleToggleActive(rule)}
+                          disabled={!isValidStoredRule(rule)}
+                          role="switch"
+                          aria-label={`Activate rule ${rule.priority}: ${rule.signal_type || 'Any signal'}`}
+                          aria-checked={Boolean(rule.active && isValidStoredRule(rule))}
+                          title={!isValidStoredRule(rule) ? 'Repair this invalid configuration before activation' : undefined}
+                          className={`w-11 h-6 rounded-full p-0.5 transition-colors focus:outline-none border shadow-2xs ${
+                            rule.active && isValidStoredRule(rule)
+                              ? 'bg-[#165B40] border-[#165B40]'
+                              : 'bg-slate-200 border-slate-300'
+                          }`}
+                        >
+                          <span
+                            className={`inline-block w-4.5 h-4.5 rounded-full bg-white shadow-xs transition-transform transform ${
+                              rule.active && isValidStoredRule(rule) ? 'translate-x-5' : 'translate-x-0.5'
+                            }`}
+                          />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );

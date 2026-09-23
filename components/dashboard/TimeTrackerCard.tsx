@@ -35,7 +35,7 @@ export function TimeTrackerCard({
   };
 
   return (
-    <Surface className="dashboard-time-tracker relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#0B2A1E] via-[#071F16] to-[#04120C] p-6 text-white shadow-md flex flex-col justify-between min-h-[220px]">
+    <Surface className="dashboard-time-tracker relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#0B2A1E] via-[#071F16] to-[#04120C] p-6 text-white shadow-md h-full flex flex-col justify-between min-h-[220px]">
       {/* 3D Wavy Silk Ribbons Background Graphic */}
       <div className="absolute inset-0 pointer-events-none opacity-40 overflow-hidden" aria-hidden="true">
         <svg

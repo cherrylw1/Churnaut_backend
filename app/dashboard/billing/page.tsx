@@ -202,11 +202,11 @@ export default function BillingPage() {
           return (
             <div
               key={plan.key}
-              className={`relative flex flex-col rounded-2xl border ${
+              className={`relative flex flex-col rounded-3xl border ${
                 isCurrent 
                   ? 'border-[#165B40] bg-white shadow-md ring-2 ring-[#165B40]/20' 
-                  : 'border-slate-200/90 bg-white shadow-xs hover:border-slate-300 hover:shadow-sm'
-              } space-y-5 p-7 transition-all`}
+                  : 'border-slate-200/90 bg-white shadow-xs hover:border-slate-300 hover:shadow-md'
+              } space-y-5 p-7 transition-all duration-300`}
             >
               {/* Badge */}
               {plan.badge && (

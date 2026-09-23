@@ -7,6 +7,8 @@ function SectionHeader({ title, description, eyebrow }: { title: string; descrip
 import { Surface } from '@/components/dashboard/Surface';
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
 
+import { GeometricIcon } from '@/components/dashboard/ActiveCampaignsCard';
+
 interface ClientProfile { id: string; company_name: string; snippet_key: string }
 interface VerificationStatus { active: boolean; lastPing?: string }
 const guides = {
@@ -44,75 +46,89 @@ export default function SnippetPage() {
           No website client key is available yet. Complete onboarding before installing the runtime.
         </div>
       ) : (
-        <>
-          <Surface className="p-6 md:p-8 space-y-5">
-            <SectionHeader
-              eyebrow="1 · Install runtime"
-              title="Your installation code"
-              description="Paste this script block in the head of every page you want to personalize."
-            />
-            <div className="relative overflow-x-auto rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4">
-              <pre className="min-w-max select-all font-mono text-xs leading-6 text-[var(--text-secondary)]">{getSnippetCode()}</pre>
+        <div className="space-y-6">
+          {/* Step 1: Install Runtime Bento */}
+          <Surface className="rounded-3xl border border-slate-200/90 bg-white p-6 md:p-8 space-y-6 shadow-xs hover:shadow-md transition-all duration-300">
+            <div className="flex items-center gap-3">
+              <GeometricIcon type="slices" bg="bg-blue-600" />
+              <div>
+                <p className="dashboard-eyebrow text-[10px] font-mono text-slate-400">Step 1 · Runtime</p>
+                <h2 className="text-base font-bold text-slate-900 font-sans tracking-tight">Your installation code</h2>
+                <p className="text-xs text-slate-500 mt-0.5">Paste this script block in the head of every page you want to personalize.</p>
+              </div>
+            </div>
+            <div className="relative overflow-x-auto rounded-2xl border border-slate-200/80 bg-slate-900 p-5 pr-28 text-slate-100 shadow-inner">
+              <pre className="min-w-max select-all font-mono text-xs leading-6 text-emerald-300">{getSnippetCode()}</pre>
               <button
                 type="button"
                 onClick={() => copyCode(getSnippetCode())}
-                className="dashboard-button-primary absolute right-3 top-3"
+                className="dashboard-button-primary rounded-full !min-h-8 !py-1.5 !px-4 text-xs font-semibold shadow-xs absolute right-4 top-4"
               >
-                {copied ? 'COPIED!' : 'COPY'}
+                {copied ? 'COPIED!' : 'COPY CODE'}
               </button>
             </div>
           </Surface>
 
-          <Surface className="p-6 md:p-8 space-y-5">
-            <SectionHeader
-              eyebrow="2 · Mark target elements"
-              title="Choose what to personalize"
-              description="Add the sr-target class to headings, descriptions, buttons, or calendar wrappers where content swaps should happen."
-            />
-            <pre className="overflow-x-auto rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 font-mono text-xs leading-6 text-[var(--text-secondary)] select-all">{`<!-- Swap a headline copy -->
+          {/* Step 2: Mark Target Elements Bento */}
+          <Surface className="rounded-3xl border border-slate-200/90 bg-white p-6 md:p-8 space-y-6 shadow-xs hover:shadow-md transition-all duration-300">
+            <div className="flex items-center gap-3">
+              <GeometricIcon type="flower" bg="bg-emerald-600" />
+              <div>
+                <p className="dashboard-eyebrow text-[10px] font-mono text-slate-400">Step 2 · Selectors</p>
+                <h2 className="text-base font-bold text-slate-900 font-sans tracking-tight">Choose what to personalize</h2>
+                <p className="text-xs text-slate-500 mt-0.5">Add the sr-target class to headings, descriptions, buttons, or calendar wrappers where content swaps should happen.</p>
+              </div>
+            </div>
+            <div className="overflow-x-auto rounded-2xl border border-slate-200/80 bg-slate-900 p-5 text-slate-100 shadow-inner font-mono text-xs leading-6 select-all">
+              <pre className="text-emerald-300">{`<!-- Swap a headline copy -->
 <h1 class="sr-target font-bold">Welcome to Churnaut</h1>
 
 <!-- Swap a direct scheduling button -->
 <div class="sr-target">
   <a href="/pricing">View Plans</a>
 </div>`}</pre>
+            </div>
           </Surface>
 
-          <Surface className="p-6 md:p-8 space-y-5">
-            <SectionHeader
-              eyebrow="3 · Verify connection"
-              title="Check the first live ping"
-              description="Verification is user-triggered so you always know when a status request was made."
-            />
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          {/* Step 3: Verify Connection Bento */}
+          <Surface className="rounded-3xl border border-slate-200/90 bg-white p-6 md:p-8 space-y-6 shadow-xs hover:shadow-md transition-all duration-300">
+            <div className="flex items-center gap-3">
+              <GeometricIcon type="rings" bg="bg-amber-500" />
+              <div>
+                <p className="dashboard-eyebrow text-[10px] font-mono text-slate-400">Step 3 · Telemetry</p>
+                <h2 className="text-base font-bold text-slate-900 font-sans tracking-tight">Check the first live ping</h2>
+                <p className="text-xs text-slate-500 mt-0.5">Verification is user-triggered so you always know when a status request was made.</p>
+              </div>
+            </div>
+            <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between pt-1">
               <button
                 type="button"
                 onClick={checkStatus}
                 disabled={checking}
-                className="dashboard-button-primary shrink-0"
+                className="dashboard-button-primary rounded-full !py-2.5 !px-6 text-xs font-semibold shadow-xs shrink-0"
               >
                 {checking ? 'VERIFYING…' : 'CHECK STATUS'}
               </button>
               <div className="flex flex-col gap-3 flex-1 sm:max-w-xl">
                 {statusError && (
-                  <div role="alert" className="rounded-xl border border-[var(--red)]/40 bg-[var(--red)]/10 p-4 text-sm text-[var(--red)]">
+                  <div role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-xs font-medium text-rose-700">
                     Status unavailable. Your last verified state is preserved.
                   </div>
                 )}
                 {status && (status.active ? (
-                  <div role="status" aria-live="polite" className="rounded-xl border border-[var(--green)]/40 bg-[var(--green)]/10 p-4">
+                  <div role="status" aria-live="polite" className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4">
                     <div className="flex items-center gap-3">
                       <StatusBadge tone="success">CONNECTION CONFIRMED</StatusBadge>
-                      <span className="text-sm text-[var(--text-secondary)]">Live signal received.</span>
+                      <span className="text-xs font-medium text-emerald-900">Live signal received.</span>
                     </div>
-                    <p className="mt-2 text-xs text-[var(--text-muted)]">
+                    <p className="mt-2 text-[11px] font-mono text-emerald-700">
                       Last ping detected: {status.lastPing ? new Date(status.lastPing).toLocaleString() : 'Not available'}
                     </p>
                   </div>
                 ) : (
-                  <div role="status" aria-live="polite" className="rounded-xl border border-[var(--amber)]/40 bg-[var(--amber)]/10 p-4">
+                  <div role="status" aria-live="polite" className="rounded-2xl border border-amber-200 bg-amber-50/60 p-4">
                     <StatusBadge tone="warning">WAITING FOR PINGS</StatusBadge>
-                    <p className="mt-2 text-xs leading-5 text-[var(--text-secondary)]">
+                    <p className="mt-2 text-xs leading-5 text-amber-900">
                       Ensure the script is before the closing head tag, visit your site with a tracking parameter, and reload after clearing cache.
                     </p>
                   </div>
@@ -121,35 +137,43 @@ export default function SnippetPage() {
             </div>
           </Surface>
 
-          <Surface className="p-6 md:p-8 space-y-5">
-            <SectionHeader
-              eyebrow="4 · Platform guides"
-              title="Installation guides"
-              description="Choose the platform that hosts your site."
-            />
-            <div className="space-y-3">
+          {/* Step 4: Platform Guides Bento */}
+          <Surface className="rounded-3xl border border-slate-200/90 bg-white p-6 md:p-8 space-y-6 shadow-xs hover:shadow-md transition-all duration-300">
+            <div className="flex items-center gap-3">
+              <GeometricIcon type="clusters" bg="bg-indigo-600" />
+              <div>
+                <p className="dashboard-eyebrow text-[10px] font-mono text-slate-400">Step 4 · Guides</p>
+                <h2 className="text-base font-bold text-slate-900 font-sans tracking-tight">Platform installation guides</h2>
+                <p className="text-xs text-slate-500 mt-0.5">Choose the platform that hosts your website.</p>
+              </div>
+            </div>
+            <div className="space-y-3 pt-1">
               {Object.entries(guides).map(([key, guide]) => {
                 const open = openGuide === key;
                 const trigger = `snippet-guide-trigger-${key}`;
                 const panel = `snippet-guide-${key}`;
                 return (
-                  <div key={key} className="overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-slate-50/50">
+                  <div key={key} className="overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-50/50 hover:border-slate-300 transition-all">
                     <button
                       id={trigger}
                       type="button"
                       aria-expanded={open}
                       aria-controls={panel}
                       onClick={() => toggleGuide(key)}
-                      className="flex w-full items-center justify-between p-4 text-left text-sm font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                      className="flex w-full items-center justify-between p-4 text-left text-xs font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-100/60 transition-colors"
                     >
-                      <span>{guide.title}</span>
-                      <span aria-hidden="true">{open ? '−' : '+'}</span>
+                      <span className="font-sans">{guide.title}</span>
+                      <span className="h-6 w-6 rounded-full bg-white border border-slate-200 flex items-center justify-center text-xs font-bold text-slate-500" aria-hidden="true">
+                        {open ? '−' : '+'}
+                      </span>
                     </button>
                     {open && (
-                      <div id={panel} role="region" aria-labelledby={trigger} className="border-t border-[var(--border-subtle)] bg-white p-4 text-sm leading-6 text-[var(--text-secondary)]">
+                      <div id={panel} role="region" aria-labelledby={trigger} className="border-t border-slate-200/80 bg-white p-5 text-xs leading-6 text-slate-600">
                         <p>{guide.body}</p>
                         {key === 'custom' && (
-                          <pre className="mt-3 overflow-x-auto rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3 font-mono text-xs leading-6 select-all">{getSnippetCode()}</pre>
+                          <div className="mt-3 overflow-x-auto rounded-xl border border-slate-200/80 bg-slate-900 p-4 font-mono text-[11px] leading-5 text-emerald-300 select-all">
+                            {getSnippetCode()}
+                          </div>
                         )}
                       </div>
                     )}
@@ -158,7 +182,7 @@ export default function SnippetPage() {
               })}
             </div>
           </Surface>
-        </>
+        </div>
       )}
     </div>
   );

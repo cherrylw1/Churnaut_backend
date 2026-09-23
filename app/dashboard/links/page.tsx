@@ -317,7 +317,7 @@ export default function LinksPage() {
           }}
         />
       ) : (
-        <div className="dashboard-surface dashboard-links-ledger">
+        <div className="dashboard-surface dashboard-links-ledger rounded-3xl border border-slate-200/90 bg-white overflow-hidden shadow-xs">
           <div className="hidden md:block dashboard-table-wrap dashboard-links-table-scroll" role="region" aria-label="Tracked links ledger">
             <table className="dashboard-table w-full text-left border-collapse">
               <thead>
@@ -360,7 +360,7 @@ export default function LinksPage() {
                         <button
                           onClick={() => displayUrl && handleCopy(displayUrl, link.id)}
                           disabled={!displayUrl}
-                          className="dashboard-button-secondary min-h-9 px-3 text-xs"
+                          className="dashboard-button-secondary rounded-full !py-1 !px-3.5 !text-xs !min-h-0"
                         >
                           {copiedId === link.id ? 'COPIED!' : 'COPY'}
                         </button>

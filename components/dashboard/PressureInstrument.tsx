@@ -37,7 +37,7 @@ export function PressureInstrument({
 
   return (
     <Surface
-      className="dashboard-pressure-instrument dashboard-surface relative flex flex-col justify-between p-6 transition-all duration-300 hover:shadow-md"
+      className="dashboard-pressure-instrument dashboard-surface relative h-full flex flex-col justify-between p-6 transition-all duration-300 hover:shadow-md"
       aria-label={`${title} ${score}%, ${status}`}
     >
       <div className="flex items-start justify-between gap-4">

@@ -7,6 +7,7 @@ import { SectionHeader as BaseSectionHeader } from '@/components/dashboard/Secti
 function SectionHeader({ title, description }: { title: string; description?: string; eyebrow?: string }) { return <BaseSectionHeader title={title} description={description} />; }
 import { Surface } from '@/components/dashboard/Surface';
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
+import { GeometricIcon } from '@/components/dashboard/ActiveCampaignsCard';
 
 type CrmStatus = { connected: boolean; crm_type: string | null };
 type CalendlyStatus = { connected: boolean; connected_at: string | null };
@@ -51,10 +52,157 @@ export default function IntegrationsPage() {
     ['Attio', 'attio', 'Sync Attio workspace records, pipelines, and contact attributes in real time.', '/dashboard/integrations/crm/attio', 'Coming Soon'],
   ] as const;
 
-  return <div className="dashboard-integrations space-y-6">
-    <PageHeader eyebrow="Signal Field · Connection fabric" title="Integrations" description="Connect the systems that feed Churnaut’s personalization signals." />
-    <Surface className="p-6 md:p-8"><SectionHeader eyebrow="CRM platforms" title="Connection map" description="Scout is currently enriched by the HubSpot adapter. Other providers remain clearly labelled by capability." /><div className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-3">{crmCards.map(([name, key, description, href, state]) => { const connected = crmStatus?.connected && crmStatus.crm_type === key; const gated = !planLoading && !planError && plan === 'starter' && ['pipedrive', 'zoho', 'close'].includes(key); const liveState = key === 'hubspot' ? (crmLoading ? 'Loading' : crmError ? 'Status unavailable' : connected ? 'Connected' : 'Disconnected') : gated ? 'Growth Plan' : state; const card = <div className={`h-full rounded-2xl border p-6 flex flex-col gap-4 ${gated ? 'opacity-75' : ''} ${connected ? 'border-[#165B40] ring-2 ring-[#165B40]/15' : 'border-slate-200/90 hover:border-slate-300'} bg-white shadow-xs`}><div className="flex items-start justify-between gap-3"><h2 className="font-sans text-base font-bold text-slate-900">{name}</h2><StatusBadge tone={connected ? 'success' : state === 'Webhook Only' ? 'warning' : state === 'Coming Soon' ? 'neutral' : 'neutral'}>{liveState}</StatusBadge></div><p className="text-sm leading-relaxed text-slate-600 flex-1">{description}</p>{href ? <span className="dashboard-button-secondary w-full justify-center">MANAGE →</span> : <span className="rounded-full border border-slate-200 px-3 py-2 text-center text-[10px] font-mono uppercase tracking-wide text-slate-400">WEBHOOK ONLY — ADAPTER PENDING</span>}</div>; return href ? <Link key={key} href={href} className="block">{card}</Link> : <div key={key} className="relative">{card}{gated && <Link href="/dashboard/billing" className="absolute inset-x-5 bottom-5 text-center text-xs font-semibold text-[#165B40]">Upgrade to unlock →</Link>}</div>; })}</div></Surface>
-    <Surface className="p-6 md:p-8"><SectionHeader eyebrow="Outbound & outreach" title="Event sources" description="Use the plain /api/webhook endpoint. New setups should use an Authorization header or signed request headers." /><div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50/70 p-5"><div className="flex flex-col gap-3 sm:flex-row sm:items-end"><div className="min-w-0 flex-1"><label htmlFor="webhook-endpoint" className="dashboard-field-label">Shared webhook endpoint</label><input id="webhook-endpoint" readOnly value={webhookUrl} className="dashboard-input mt-2 w-full font-mono text-xs bg-white" /></div><button type="button" onClick={() => copy(webhookUrl, 'endpoint')} className="dashboard-button-primary shrink-0">{copiedKey === 'endpoint' ? 'COPIED!' : 'COPY ENDPOINT'}</button></div><p className="mt-3 text-xs leading-5 text-slate-500">Send the secret in an Authorization header or signed request header. Do not put credentials in the URL.</p></div><div className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-3">{outreach.map((source) => { const id = `expected-${source.key}`; const open = !!openExpectedFields[source.key]; return <div key={source.key} className="rounded-2xl border border-slate-200/90 bg-white p-6 space-y-4 shadow-xs"><div className="flex items-start justify-between gap-3"><h2 className="font-sans text-base font-bold text-slate-900">{source.name}</h2><StatusBadge tone="success">Ready</StatusBadge></div><p className="text-sm leading-relaxed text-slate-600">{source.description}</p><div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3.5 text-xs text-slate-600"><p className="font-semibold text-slate-900">Setup instructions</p><ol className="mt-2 list-decimal space-y-1.5 pl-4">{source.setup.map((step) => <li key={step}>{step}</li>)}</ol></div><div className="rounded-xl border border-slate-200 overflow-hidden"><button id={`expected-trigger-${source.key}`} type="button" aria-expanded={open} aria-controls={id} onClick={() => toggle(source.key)} className="w-full flex items-center justify-between p-3 text-left text-xs font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-50 transition-colors"><span>Expected Payload Fields</span><span aria-hidden="true">{open ? '−' : '+'}</span></button>{open && <div id={id} role="region" aria-labelledby={`expected-trigger-${source.key}`} className="border-t border-slate-200 p-3.5 bg-slate-50/50"><ul className="grid gap-1.5 text-xs text-slate-600">{fields.map((field) => <li key={field}><code className="text-[#165B40] font-mono text-[11px] font-semibold">{field}</code>{field === 'signal_type' && <span className="text-amber-600"> · must be “{source.signal}”</span>}</li>)}</ul></div>}</div></div>; })}</div></Surface>
-    <Surface className="p-6 md:p-8"><SectionHeader eyebrow="Scheduling & automation" title="Calendly and workflow tools" description="Keep scheduling and automation credentials visible, copyable, and free of secrets in URLs." /><div className="mt-6 grid gap-5 md:grid-cols-2"><div className="rounded-2xl border border-slate-200/90 bg-white p-6 flex items-start justify-between gap-4 shadow-xs"><div><h2 className="font-sans text-base font-bold text-slate-900">Calendly</h2><p className="mt-2 text-sm leading-relaxed text-slate-600">OAuth-based calendar embed — route visitors to the right rep’s booking page.</p></div><div className="flex flex-col items-end gap-3 flex-shrink-0"><StatusBadge tone={calendlyStatus?.connected ? 'success' : calendlyLoading ? 'neutral' : calendlyError ? 'danger' : 'neutral'}>{calendlyLoading ? 'Loading' : calendlyError ? 'Status unavailable' : calendlyStatus?.connected ? 'Active' : 'Disconnected'}</StatusBadge><Link href="/dashboard/integrations/calendly" className="dashboard-button-secondary">MANAGE →</Link></div></div><div className="rounded-2xl border border-slate-200/90 bg-white p-6 flex items-start justify-between gap-4 shadow-xs"><div><h2 className="font-sans text-base font-bold text-slate-900">Webhook configuration</h2><p className="mt-2 text-sm leading-relaxed text-slate-600">Manage authorization tokens, field mappings, and ingestion telemetry.</p></div><div className="flex flex-wrap items-center gap-2 flex-shrink-0"><Link href="/dashboard/integrations/webhooks" className="dashboard-button-secondary shrink-0">CONFIGURE →</Link><Link href="/dashboard/snippet" className="dashboard-button-primary shrink-0">INSTALL SNIPPET →</Link></div></div></div></Surface>
-  </div>;
+  return (
+    <div className="dashboard-integrations space-y-8 max-w-6xl mx-auto">
+      <PageHeader eyebrow="Signal Field · Connection fabric" title="Integrations" description="Connect the systems that feed Churnaut’s personalization signals." />
+
+      {/* CRM Bento Section */}
+      <Surface className="rounded-3xl border border-slate-200/90 bg-white p-6 md:p-8 space-y-6 shadow-xs hover:shadow-md transition-all duration-300">
+        <div className="flex items-center gap-3">
+          <GeometricIcon type="stripes" bg="bg-blue-600" />
+          <div>
+            <p className="dashboard-eyebrow text-[10px] font-mono text-slate-400">CRM platforms</p>
+            <h2 className="text-base font-bold text-slate-900 font-sans tracking-tight">Connection map</h2>
+            <p className="text-xs text-slate-500 mt-0.5">Scout is currently enriched by the HubSpot adapter. Other providers remain clearly labelled by capability.</p>
+          </div>
+        </div>
+
+        <div className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+          {crmCards.map(([name, key, description, href, state]) => {
+            const connected = crmStatus?.connected && crmStatus.crm_type === key;
+            const gated = !planLoading && !planError && plan === 'starter' && ['pipedrive', 'zoho', 'close'].includes(key);
+            const liveState = key === 'hubspot' ? (crmLoading ? 'Loading' : crmError ? 'Status unavailable' : connected ? 'Connected' : 'Disconnected') : gated ? 'Growth Plan' : state;
+            const card = (
+              <div className={`h-full rounded-2xl border p-6 flex flex-col gap-4 ${gated ? 'opacity-75' : ''} ${connected ? 'border-[#165B40] ring-2 ring-[#165B40]/15' : 'border-slate-200/80 hover:border-slate-300'} bg-white shadow-xs hover:shadow-sm transition-all`}>
+                <div className="flex items-start justify-between gap-3">
+                  <h2 className="font-sans text-base font-bold text-slate-900">{name}</h2>
+                  <StatusBadge tone={connected ? 'success' : state === 'Webhook Only' ? 'warning' : state === 'Coming Soon' ? 'neutral' : 'neutral'}>{liveState}</StatusBadge>
+                </div>
+                <p className="text-xs leading-relaxed text-slate-600 flex-1">{description}</p>
+                {href ? (
+                  <span className="dashboard-button-secondary rounded-full !py-2 !px-4 text-xs font-semibold uppercase tracking-wider w-full justify-center shadow-xs">MANAGE →</span>
+                ) : (
+                  <span className="rounded-full border border-slate-200 px-3 py-2 text-center text-[10px] font-mono uppercase tracking-wide text-slate-400">WEBHOOK ONLY — ADAPTER PENDING</span>
+                )}
+              </div>
+            );
+            return href ? (
+              <Link key={key} href={href} className="block">{card}</Link>
+            ) : (
+              <div key={key} className="relative">{card}{gated && <Link href="/dashboard/billing" className="absolute inset-x-5 bottom-5 text-center text-xs font-semibold text-[#165B40]">Upgrade to unlock →</Link>}</div>
+            );
+          })}
+        </div>
+      </Surface>
+
+      {/* Outbound & Outreach Bento Section */}
+      <Surface className="rounded-3xl border border-slate-200/90 bg-white p-6 md:p-8 space-y-6 shadow-xs hover:shadow-md transition-all duration-300">
+        <div className="flex items-center gap-3">
+          <GeometricIcon type="slices" bg="bg-emerald-600" />
+          <div>
+            <p className="dashboard-eyebrow text-[10px] font-mono text-slate-400">Outbound & outreach</p>
+            <h2 className="text-base font-bold text-slate-900 font-sans tracking-tight">Event sources</h2>
+            <p className="text-xs text-slate-500 mt-0.5">Use the plain /api/webhook endpoint. New setups should use an Authorization header or signed request headers.</p>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <div className="min-w-0 flex-1">
+              <label htmlFor="webhook-endpoint" className="dashboard-field-label text-[10px] font-mono text-slate-500 uppercase tracking-wider">Shared webhook endpoint</label>
+              <input id="webhook-endpoint" readOnly value={webhookUrl} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 font-mono text-xs text-slate-800 outline-none" />
+            </div>
+            <button type="button" onClick={() => copy(webhookUrl, 'endpoint')} className="dashboard-button-primary rounded-full !py-2.5 !px-5 text-xs font-semibold uppercase tracking-wider shadow-xs shrink-0">
+              {copiedKey === 'endpoint' ? 'COPIED!' : 'COPY ENDPOINT'}
+            </button>
+          </div>
+          <p className="mt-3 text-xs leading-5 text-slate-500">Send the secret in an Authorization header or signed request header. Do not put credentials in the URL.</p>
+        </div>
+
+        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+          {outreach.map((source) => {
+            const id = `expected-${source.key}`;
+            const open = !!openExpectedFields[source.key];
+            return (
+              <div key={source.key} className="rounded-2xl border border-slate-200/90 bg-white p-6 space-y-4 shadow-xs hover:shadow-sm transition-all">
+                <div className="flex items-start justify-between gap-3">
+                  <h2 className="font-sans text-base font-bold text-slate-900">{source.name}</h2>
+                  <StatusBadge tone="success">Ready</StatusBadge>
+                </div>
+                <p className="text-xs leading-relaxed text-slate-600">{source.description}</p>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-3.5 text-xs text-slate-600">
+                  <p className="font-semibold text-slate-900">Setup instructions</p>
+                  <ol className="mt-2 list-decimal space-y-1.5 pl-4 text-xs text-slate-600">
+                    {source.setup.map((step) => <li key={step}>{step}</li>)}
+                  </ol>
+                </div>
+                <div className="rounded-2xl border border-slate-200 overflow-hidden">
+                  <button id={`expected-trigger-${source.key}`} type="button" aria-expanded={open} aria-controls={id} onClick={() => toggle(source.key)} className="w-full flex items-center justify-between p-3.5 text-left text-xs font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-50 transition-colors">
+                    <span>Expected Payload Fields</span>
+                    <span aria-hidden="true">{open ? '−' : '+'}</span>
+                  </button>
+                  {open && (
+                    <div id={id} role="region" aria-labelledby={`expected-trigger-${source.key}`} className="border-t border-slate-200 p-3.5 bg-slate-50/50">
+                      <ul className="grid gap-1.5 text-xs text-slate-600">
+                        {fields.map((field) => (
+                          <li key={field}>
+                            <code className="text-[#165B40] font-mono text-[11px] font-semibold">{field}</code>
+                            {field === 'signal_type' && <span className="text-amber-600"> · must be “{source.signal}”</span>}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </Surface>
+
+      {/* Scheduling & Automation Bento Section */}
+      <Surface className="rounded-3xl border border-slate-200/90 bg-white p-6 md:p-8 space-y-6 shadow-xs hover:shadow-md transition-all duration-300">
+        <div className="flex items-center gap-3">
+          <GeometricIcon type="rings" bg="bg-amber-500" />
+          <div>
+            <p className="dashboard-eyebrow text-[10px] font-mono text-slate-400">Scheduling & automation</p>
+            <h2 className="text-base font-bold text-slate-900 font-sans tracking-tight">Calendly and workflow tools</h2>
+            <p className="text-xs text-slate-500 mt-0.5">Keep scheduling and automation credentials visible, copyable, and free of secrets in URLs.</p>
+          </div>
+        </div>
+
+        <div className="grid gap-5 md:grid-cols-2">
+          <div className="rounded-2xl border border-slate-200/90 bg-white p-6 flex items-start justify-between gap-4 shadow-xs hover:shadow-sm transition-all">
+            <div>
+              <h2 className="font-sans text-base font-bold text-slate-900">Calendly</h2>
+              <p className="mt-2 text-xs leading-relaxed text-slate-600">OAuth-based calendar embed — route visitors to the right rep’s booking page.</p>
+            </div>
+            <div className="flex flex-col items-end gap-3 flex-shrink-0">
+              <StatusBadge tone={calendlyStatus?.connected ? 'success' : calendlyLoading ? 'neutral' : calendlyError ? 'danger' : 'neutral'}>
+                {calendlyLoading ? 'Loading' : calendlyError ? 'Status unavailable' : calendlyStatus?.connected ? 'Active' : 'Disconnected'}
+              </StatusBadge>
+              <Link href="/dashboard/integrations/calendly" className="dashboard-button-secondary rounded-full !py-2 !px-4 text-xs font-semibold uppercase tracking-wider shadow-xs">
+                MANAGE →
+              </Link>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200/90 bg-white p-6 flex items-start justify-between gap-4 shadow-xs hover:shadow-sm transition-all">
+            <div>
+              <h2 className="font-sans text-base font-bold text-slate-900">Webhook configuration</h2>
+              <p className="mt-2 text-xs leading-relaxed text-slate-600">Manage authorization tokens, field mappings, and ingestion telemetry.</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
+              <Link href="/dashboard/integrations/webhooks" className="dashboard-button-secondary rounded-full !py-2 !px-4 text-xs font-semibold uppercase tracking-wider shadow-xs shrink-0">
+                CONFIGURE →
+              </Link>
+              <Link href="/dashboard/snippet" className="dashboard-button-primary rounded-full !py-2 !px-4 text-xs font-semibold uppercase tracking-wider shadow-xs shrink-0">
+                INSTALL SNIPPET →
+              </Link>
+            </div>
+          </div>
+        </div>
+      </Surface>
+    </div>
+  );
 }
