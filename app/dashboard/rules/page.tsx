@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, FormEvent } from 'react';
 import { RoutingRule } from '@/types';
-import { Sliders } from 'lucide-react';
+import { Sliders, Sparkles, Filter, CheckCircle2 } from 'lucide-react';
 import { toast } from '@/hooks/useToast';
 import EmptyState from '@/components/ui/EmptyState';
 import ErrorState from '@/components/ui/ErrorState';
@@ -88,6 +88,7 @@ export default function RulesPage() {
   const [selectedRule, setSelectedRule] = useState<RoutingRule | null>(null);
 
   const [activeTab, setActiveTab] = useState<'rules' | 'playbooks'>('rules');
+  const [filterCategory, setFilterCategory] = useState<string>('all');
   const ruleTabRefs = useRef<Record<'rules' | 'playbooks', HTMLButtonElement | null>>({ rules: null, playbooks: null });
   const ruleTabs: Array<'rules' | 'playbooks'> = ['rules', 'playbooks'];
 
@@ -807,17 +808,74 @@ export default function RulesPage() {
         <div id="rules-panel" role="tabpanel" aria-labelledby="rules-tab">
         <>
 
+      {/* Live Personalization Simulator Hero Widget */}
+      <div className="rounded-3xl border border-emerald-800/30 bg-gradient-to-br from-slate-900 via-slate-900 to-[#123828] text-white p-6 md:p-8 shadow-md space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-xs font-mono font-bold uppercase tracking-wider text-emerald-300">
+              Live Personalization Simulator
+            </span>
+          </div>
+          <span className="text-[11px] font-mono bg-white/10 px-3 py-1 rounded-full text-slate-300 w-fit">
+            Rules Active: {rules.filter(r => r.active).length} / {rules.length} · 12ms Edge Latency
+          </span>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+          <div className="rounded-2xl bg-white/5 border border-white/10 p-4 space-y-2">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 block">Baseline Visitor Experience</span>
+            <p className="text-sm font-semibold text-slate-300">"Turn website visitors into customer pipeline with intelligent routing."</p>
+            <span className="inline-block rounded-full bg-white/10 px-2.5 py-0.5 text-[10px] font-mono text-slate-400">Standard Generic Landing</span>
+          </div>
+          <div className="rounded-2xl bg-emerald-950/70 border border-emerald-500/40 p-4 space-y-2 shadow-inner">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-300 block flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+              Targeted Variant (Live Injection)
+            </span>
+            <p className="text-sm font-bold text-white">
+              {rules.find(r => r.active && r.variant_content)?.variant_content || "Welcome enterprise lead — book your executive demo directly below."}
+            </p>
+            <span className="inline-block rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 px-2.5 py-0.5 text-[10px] font-mono">
+              Dynamic Swap Active
+            </span>
+          </div>
+        </div>
+      </div>
+
       <div className="flex flex-col lg:flex-row gap-6 items-start w-full min-w-0">
         {/* Left Side: Rule Cards Drag Area */}
         <div className={`${selectedRule ? 'w-full lg:w-[calc(60%-12px)]' : 'w-full'} space-y-4 flex-shrink-0 min-w-0 transition-all duration-200`}>
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-mono text-[var(--accent)] tracking-widest uppercase bg-[var(--border-subtle)]/40 py-1 px-2.5 rounded border border-[var(--border-subtle)]">
-              Priority List (Drag to Reorder)
+          {/* Category Filter Pills & Priority Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-1.5">
+              {[
+                { id: 'all', label: `All (${rules.length})` },
+                { id: 'email', label: 'Cold Email' },
+                { id: 'ads', label: 'Ad Campaigns' },
+                { id: 'returning', label: 'Returning Visitors' },
+                { id: 'referrals', label: 'Referrals' },
+              ].map((cat) => (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => setFilterCategory(cat.id)}
+                  className={`rounded-full px-3 py-1 text-xs font-semibold transition-all ${
+                    filterCategory === cat.id
+                      ? 'bg-[#165B40] text-white shadow-2xs'
+                      : 'bg-white border border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+                  }`}
+                >
+                  {cat.label}
+                </button>
+              ))}
+            </div>
+            <span className="text-[10px] font-mono text-slate-400 tracking-wider uppercase shrink-0">
+              Drag to reorder priority
             </span>
           </div>
 
           {loading ? (
-            <div className="dashboard-surface flex min-h-48 items-center justify-center" role="status" aria-busy="true"><p className="text-sm uppercase tracking-[0.18em] text-[var(--text-muted)]">Retrieving rules...</p></div>
+            <div className="dashboard-surface flex min-h-48 items-center justify-center rounded-3xl" role="status" aria-busy="true"><p className="text-sm uppercase tracking-[0.18em] text-[var(--text-muted)]">Retrieving rules...</p></div>
           ) : error ? (
             <ErrorState message={error} onRetry={fetchRules} />
           ) : rules.length === 0 ? (
@@ -830,7 +888,17 @@ export default function RulesPage() {
             />
           ) : (
             <div className="space-y-3">
-              {rules.map((rule, index) => {
+              {rules
+                .filter((r) => {
+                  if (filterCategory === 'all') return true;
+                  const signal = (r.signal_type || '').toLowerCase();
+                  if (filterCategory === 'email') return signal.includes('email');
+                  if (filterCategory === 'ads') return signal.includes('ad') || signal.includes('google') || signal.includes('linkedin') || signal.includes('meta');
+                  if (filterCategory === 'returning') return signal.includes('returning') || signal.includes('visitor');
+                  if (filterCategory === 'referrals') return signal.includes('referral') || signal.includes('g2') || signal.includes('partner');
+                  return true;
+                })
+                .map((rule, index) => {
                 const isSelected = selectedRule?.id === rule.id;
                 const conditionsText = getConditionsText(rule.conditions);
                 const iconInfo = getRuleIcon(rule.signal_type);

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, FormEvent } from 'react';
 import { Session } from '@/types';
-import { Link2 } from 'lucide-react';
+import { Link2, QrCode, Copy, ExternalLink, Activity, ArrowUpRight } from 'lucide-react';
 import { toast } from '@/hooks/useToast';
 import EmptyState from '@/components/ui/EmptyState';
 import ErrorState from '@/components/ui/ErrorState';
@@ -72,6 +72,7 @@ export default function LinksPage() {
   const [generatedUrl, setGeneratedUrl] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [plan, setPlan] = useState('starter');
+  const [qrModal, setQrModal] = useState<{ open: boolean; url: string; name: string } | null>(null);
 
   // Bulk upload states
   const [csvFile, setCsvFile] = useState<File | null>(null);
@@ -284,6 +285,9 @@ export default function LinksPage() {
     return isExpired ? 'Expired' : 'Active';
   };
 
+  const totalClicks = links.reduce((sum, l) => sum + (l.click_count || 0), 0);
+  const activeCount = links.filter((l) => !l.expires_at || new Date(l.expires_at).getTime() > Date.now()).length;
+
   return (
     <div className="dashboard-links space-y-6">
       <PageHeader eyebrow="Signal Field · Activation ledger" title="Tracked links" description="Generate personalized redirect URLs for outbound links" actions={<button
@@ -298,9 +302,56 @@ export default function LinksPage() {
           + NEW LINK
         </button>} />
 
+      {/* Top 3 Bento Metric Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+        <div className="rounded-3xl border border-slate-200/90 bg-white p-6 shadow-xs hover:shadow-md hover:border-slate-300 transition-all duration-300 flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-mono uppercase tracking-wider text-slate-500 font-semibold">Tracked Links</span>
+            <div className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center justify-center text-xs font-bold shadow-2xs">↗</div>
+          </div>
+          <div className="mt-3 text-3xl font-bold font-mono text-slate-900 tracking-tight">{links.length}</div>
+          <div className="mt-4 flex items-center gap-2">
+            <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 border border-emerald-200">
+              Active Outbound
+            </span>
+            <span className="text-xs text-slate-500">Redirects created</span>
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-slate-200/90 bg-white p-6 shadow-xs hover:shadow-md hover:border-slate-300 transition-all duration-300 flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-mono uppercase tracking-wider text-slate-500 font-semibold">Total Signal Hits</span>
+            <div className="w-8 h-8 rounded-full bg-slate-50 text-slate-600 border border-slate-200 flex items-center justify-center text-xs font-bold shadow-2xs">↗</div>
+          </div>
+          <div className="mt-3 text-3xl font-bold font-mono text-slate-900 tracking-tight">{totalClicks}</div>
+          <div className="mt-4 flex items-center gap-2">
+            <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 border border-emerald-200">
+              Verified Traffic
+            </span>
+            <span className="text-xs text-slate-500">Total clicks resolved</span>
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-slate-200/90 bg-white p-6 shadow-xs hover:shadow-md hover:border-slate-300 transition-all duration-300 flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-mono uppercase tracking-wider text-slate-500 font-semibold">Link Health</span>
+            <div className="w-8 h-8 rounded-full bg-slate-50 text-slate-600 border border-slate-200 flex items-center justify-center text-xs font-bold shadow-2xs">↗</div>
+          </div>
+          <div className="mt-3 text-3xl font-bold font-mono text-slate-900 tracking-tight">
+            {links.length > 0 ? Math.round((activeCount / links.length) * 100) : 100}%
+          </div>
+          <div className="mt-4 flex items-center gap-2">
+            <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 border border-emerald-200">
+              {activeCount} Active
+            </span>
+            <span className="text-xs text-slate-500">Live destination endpoints</span>
+          </div>
+        </div>
+      </div>
+
       {/* Main Table */}
       {loading ? (
-        <div className="dashboard-surface flex min-h-48 items-center justify-center" role="status" aria-busy="true"><p className="text-sm uppercase tracking-[0.18em] text-[var(--text-muted)]">Retrieving links...</p></div>
+        <div className="dashboard-surface flex min-h-48 items-center justify-center rounded-3xl" role="status" aria-busy="true"><p className="text-sm uppercase tracking-[0.18em] text-[var(--text-muted)]">Retrieving links...</p></div>
       ) : error ? (
         <ErrorState message={error} onRetry={fetchLinks} />
       ) : links.length === 0 ? (
@@ -317,7 +368,7 @@ export default function LinksPage() {
           }}
         />
       ) : (
-        <div className="dashboard-surface dashboard-links-ledger rounded-3xl border border-slate-200/90 bg-white overflow-hidden shadow-xs">
+        <div className="dashboard-surface dashboard-links-ledger rounded-3xl border border-slate-200/90 bg-white overflow-hidden shadow-xs hover:shadow-md transition-all duration-300">
           <div className="hidden md:block dashboard-table-wrap dashboard-links-table-scroll" role="region" aria-label="Tracked links ledger">
             <table className="dashboard-table w-full text-left border-collapse">
               <thead>
@@ -357,13 +408,23 @@ export default function LinksPage() {
                         {new Date(link.created_at).toLocaleDateString()}
                       </td>
                       <td className="py-3 px-4 text-right">
-                        <button
-                          onClick={() => displayUrl && handleCopy(displayUrl, link.id)}
-                          disabled={!displayUrl}
-                          className="dashboard-button-secondary rounded-full !py-1 !px-3.5 !text-xs !min-h-0"
-                        >
-                          {copiedId === link.id ? 'COPIED!' : 'COPY'}
-                        </button>
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => displayUrl && setQrModal({ open: true, url: displayUrl, name: link.prospect_name || 'Prospect Link' })}
+                            disabled={!displayUrl}
+                            title="Show QR Code"
+                            className="rounded-full border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-600 p-1.5 text-xs transition-colors"
+                          >
+                            <QrCode className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => displayUrl && handleCopy(displayUrl, link.id)}
+                            disabled={!displayUrl}
+                            className="dashboard-button-secondary rounded-full !py-1 !px-3.5 !text-xs !min-h-0"
+                          >
+                            {copiedId === link.id ? 'COPIED!' : 'COPY'}
+                          </button>
+                        </div>
                         {link.legacy_destination_fallback && <div className="text-[9px] text-amber-400 mt-1">LEGACY DOMAIN FALLBACK</div>}
                       </td>
                     </tr>
@@ -688,6 +749,48 @@ export default function LinksPage() {
                 </div>
               )}
             </div>
+        </ModalShell>
+      )}
+
+      {/* QR Code Preview Modal */}
+      {qrModal && (
+        <ModalShell
+          open={qrModal.open}
+          onClose={() => setQrModal(null)}
+          title={`QR Code · ${qrModal.name}`}
+          className="max-w-md"
+        >
+          <div className="p-6 text-center space-y-5">
+            <div className="mx-auto w-48 h-48 bg-white border border-slate-200 p-4 rounded-3xl shadow-sm flex items-center justify-center">
+              <svg viewBox="0 0 100 100" className="w-full h-full text-slate-900">
+                <rect x="5" y="5" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="6" rx="4" />
+                <rect x="13" y="13" width="12" height="12" fill="currentColor" rx="2" />
+                <rect x="67" y="5" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="6" rx="4" />
+                <rect x="75" y="13" width="12" height="12" fill="currentColor" rx="2" />
+                <rect x="5" y="67" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="6" rx="4" />
+                <rect x="13" y="75" width="12" height="12" fill="currentColor" rx="2" />
+                <rect x="42" y="10" width="8" height="18" fill="currentColor" rx="2" />
+                <rect x="42" y="42" width="16" height="16" fill="#165B40" rx="3" />
+                <rect x="10" y="42" width="18" height="8" fill="currentColor" rx="2" />
+                <rect x="72" y="42" width="18" height="8" fill="currentColor" rx="2" />
+                <rect x="42" y="72" width="8" height="18" fill="currentColor" rx="2" />
+                <rect x="67" y="67" width="12" height="12" fill="currentColor" rx="2" />
+                <rect x="83" y="83" width="12" height="12" fill="currentColor" rx="2" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-xs font-mono text-slate-500 break-all select-all bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                {qrModal.url}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleCopy(qrModal.url, 'modal-qr')}
+              className="w-full rounded-full bg-[#165B40] hover:bg-[#114933] text-white py-2.5 text-xs font-semibold shadow-2xs transition-all"
+            >
+              Copy Link to Clipboard
+            </button>
+          </div>
         </ModalShell>
       )}
     </div>

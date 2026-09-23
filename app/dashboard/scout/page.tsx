@@ -646,64 +646,68 @@ export default function ScoutDashboard() {
       ) : (
         <div className="dashboard-scout-workbench space-y-6 max-w-5xl mx-auto">
           {/* SECTION 1 — PIPELINE STATE (always expanded, not collapsible) */}
-          <section aria-labelledby="pipeline-state-title" className="dashboard-scout-state space-y-3">
+          <section aria-labelledby="pipeline-state-title" className="dashboard-scout-state space-y-4">
             <SectionHeader headingId="pipeline-state-title" title="Pipeline state" description="The current pressure and value distribution across scored deals." />
-            <div className="dashboard-scout-overview-grid grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="dashboard-scout-overview-grid grid grid-cols-1 gap-6 md:grid-cols-2">
               {/* Card 1: Pressure Score Display */}
               {snapshot && pressureStatus ? (
-                <PressureInstrument
-                  score={snapshot.pressure_score}
-                  status={snapshot.pressure_score <= 30 ? 'HEALTHY' : snapshot.pressure_score <= 60 ? 'NEEDS ATTENTION' : 'AT RISK'}
-                  value={<CountUp value={snapshot.pressure_score} />}
-                />
+                <div className="rounded-3xl border border-slate-200/90 bg-white p-6 md:p-8 shadow-xs hover:shadow-md transition-all duration-300">
+                  <PressureInstrument
+                    score={snapshot.pressure_score}
+                    status={snapshot.pressure_score <= 30 ? 'HEALTHY' : snapshot.pressure_score <= 60 ? 'NEEDS ATTENTION' : 'AT RISK'}
+                    value={<CountUp value={snapshot.pressure_score} />}
+                  />
+                </div>
               ) : (
-                <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 rounded-[12px] text-center text-xs font-mono text-[var(--text-muted)]">
+                <div className="border border-slate-200 bg-white p-6 rounded-3xl text-center text-xs font-mono text-slate-400">
                   No snapshot data available.
                 </div>
               )}
 
               {/* Card 2: Scout Pipeline Diagnostics */}
               {snapshot ? (
-                <Surface className="dashboard-scout-diagnostics flex flex-col justify-between gap-4 p-5 relative">
+                <Surface className="dashboard-scout-diagnostics flex flex-col justify-between gap-5 p-6 md:p-8 rounded-3xl border border-slate-200/90 bg-white shadow-xs hover:shadow-md transition-all duration-300 relative">
                   {runningScout && (
-                    <span role="status" aria-label="Scout analysis in progress" className="absolute right-4 top-4 inline-flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider text-[var(--amber)]">
+                    <span role="status" aria-label="Scout analysis in progress" className="absolute right-6 top-6 inline-flex items-center gap-1.5 text-xs font-mono uppercase tracking-wider text-amber-600 bg-amber-50 border border-amber-200 px-3 py-1 rounded-full">
                       <RefreshCw className="h-3 w-3 motion-safe:animate-spin" /> Analyzing
                     </span>
                   )}
-                  <div className="flex justify-between items-center border-b border-[var(--border-subtle)] pb-2">
-                    <span className="text-[12px] font-sans font-medium text-[var(--text-muted)] uppercase tracking-wider">Total Pipeline Value</span>
-                    <span className="text-lg font-bold font-sans text-[var(--green)]">
-                      {formatCurrency(snapshot.total_pipeline_value)}
-                    </span>
+                  <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+                    <div>
+                      <span className="text-xs font-mono uppercase tracking-wider text-slate-500 font-semibold block">Total Pipeline Value</span>
+                      <span className="text-2xl font-bold font-mono text-emerald-700 block mt-1">
+                        {formatCurrency(snapshot.total_pipeline_value)}
+                      </span>
+                    </div>
                   </div>
 
                   <div className="dashboard-scout-metrics grid grid-cols-3 gap-3 text-center">
-                    <div className="dashboard-scout-metric border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-2.5 rounded-[8px] col-span-3 sm:col-span-1">
-                      <span className="text-[10px] font-sans text-[var(--text-secondary)] block uppercase font-bold">Total scored deals</span>
-                      <span className="text-lg font-bold font-mono text-[var(--text-primary)] block mt-0.5">{snapshot.total_deals}</span>
+                    <div className="dashboard-scout-metric border border-slate-200/90 bg-slate-50/70 p-3.5 rounded-2xl col-span-3 sm:col-span-1 shadow-2xs">
+                      <span className="text-[10px] font-sans text-slate-500 block uppercase font-bold tracking-wider">Total Scored</span>
+                      <span className="text-xl font-bold font-mono text-slate-900 block mt-1">{snapshot.total_deals}</span>
                     </div>
-                    <div className="dashboard-scout-metric dashboard-scout-metric-red border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-2.5 rounded-[8px]">
-                      <span className="text-[10px] font-sans text-[var(--red)] block uppercase font-bold">At Risk</span>
-                      <span className="text-lg font-bold font-mono text-[var(--text-primary)] block mt-0.5">
+                    <div className="dashboard-scout-metric dashboard-scout-metric-red border border-rose-200/90 bg-rose-50/60 p-3.5 rounded-2xl shadow-2xs">
+                      <span className="text-[10px] font-sans text-rose-700 block uppercase font-bold tracking-wider">At Risk</span>
+                      <span className="text-xl font-bold font-mono text-rose-800 block mt-1">
                         {snapshot.red_count}
                       </span>
                     </div>
-                    <div className="dashboard-scout-metric dashboard-scout-metric-amber border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-2.5 rounded-[8px]">
-                      <span className="text-[10px] font-sans text-[var(--amber)] block uppercase font-bold">Warning</span>
-                      <span className="text-lg font-bold font-mono text-[var(--text-primary)] block mt-0.5">
+                    <div className="dashboard-scout-metric dashboard-scout-metric-amber border border-amber-200/90 bg-amber-50/60 p-3.5 rounded-2xl shadow-2xs">
+                      <span className="text-[10px] font-sans text-amber-700 block uppercase font-bold tracking-wider">Warning</span>
+                      <span className="text-xl font-bold font-mono text-amber-800 block mt-1">
                         {snapshot.amber_count}
                       </span>
                     </div>
-                    <div className="dashboard-scout-metric dashboard-scout-metric-green border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-2.5 rounded-[8px]">
-                      <span className="text-[10px] font-sans text-[var(--green)] block uppercase font-bold">Healthy</span>
-                      <span className="text-lg font-bold font-mono text-[var(--text-primary)] block mt-0.5">
+                    <div className="dashboard-scout-metric dashboard-scout-metric-green border border-emerald-200/90 bg-emerald-50/60 p-3.5 rounded-2xl shadow-2xs">
+                      <span className="text-[10px] font-sans text-emerald-700 block uppercase font-bold tracking-wider">Healthy</span>
+                      <span className="text-xl font-bold font-mono text-emerald-800 block mt-1">
                         {snapshot.green_count}
                       </span>
                     </div>
                   </div>
                 </Surface>
               ) : (
-                <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 rounded-[12px] text-center text-xs font-mono text-[var(--text-muted)]">
+                <div className="border border-slate-200 bg-white p-6 rounded-3xl text-center text-xs font-mono text-slate-400">
                   No diagnostics available.
                 </div>
               )}
@@ -714,20 +718,21 @@ export default function ScoutDashboard() {
           <section aria-labelledby="action-queue-title" className="dashboard-scout-action-queue space-y-3">
             <SectionHeader headingId="action-queue-title" title="Action queue" description="The next interventions surfaced from Scout’s current snapshot." />
             
-            <div className="dashboard-scout-action-ledger border border-[var(--border-subtle)] border-l-[3px] border-l-[var(--amber)] bg-[var(--bg-elevated)] rounded-[12px] p-5 shadow-[0_1px_4px_rgba(0,0,0,0.25)] font-sans text-xs space-y-2">
-              <div className="flex items-center gap-2 text-[var(--text-primary)] font-bold tracking-wider uppercase text-[12px]">
-                <Zap className="text-[var(--amber)] w-4 h-4 fill-[var(--amber)]/10" />
+            <div className="dashboard-scout-action-ledger border border-amber-200/90 border-l-4 border-l-amber-500 bg-amber-50/40 rounded-3xl p-6 md:p-7 shadow-xs font-sans text-xs space-y-3">
+              <div className="flex items-center gap-2 text-slate-900 font-bold tracking-wider uppercase text-xs">
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
+                <Zap className="text-amber-600 w-4 h-4 fill-amber-500/20" />
                 SCOUT INBOX — TODAY
               </div>
-              <div className="space-y-1.5 text-[var(--text-secondary)]">
+              <div className="space-y-2 text-slate-700">
                 {!hasRedDeals ? (
-                  <p className="text-[var(--text-muted)] italic">No urgent items today.</p>
+                  <p className="text-slate-400 italic">No urgent items today.</p>
                 ) : (
                   displayInboxItems.map((item, idx) => (
-                    <p key={idx} className="dashboard-scout-action-item flex items-start gap-2">
-                      <span className="text-[var(--amber)]">•</span>
-                      <span>{item}</span>
-                    </p>
+                    <div key={idx} className="dashboard-scout-action-item flex items-center gap-2.5 bg-white/70 border border-amber-200/60 rounded-xl px-4 py-2.5 shadow-2xs">
+                      <span className="w-2 h-2 rounded-full bg-amber-500" />
+                      <span className="font-medium text-slate-800">{item}</span>
+                    </div>
                   ))
                 )}
               </div>
@@ -735,7 +740,7 @@ export default function ScoutDashboard() {
           </section>
 
           {/* SECTION 3 — DEAL ACCELERATION TRIGGERS (collapsible, default collapsed) */}
-          <div className="dashboard-scout-panel border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-[12px] overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.25)]">
+          <div className="dashboard-scout-panel border border-slate-200/90 bg-white rounded-3xl overflow-hidden shadow-xs hover:shadow-md transition-all duration-300">
             <button
               onClick={() => toggleSection('triggers')}
               aria-expanded={!collapsedSections.triggers}
@@ -763,36 +768,36 @@ export default function ScoutDashboard() {
                   transition={{ duration: shouldReduceMotion ? 0 : 0.2, ease: 'easeInOut' }}
                   className="overflow-hidden"
                 >
-                  <div className="p-5 space-y-4">
+                  <div className="p-6 space-y-4">
                 {triggers.length === 0 ? (
-                  <div className="py-8 text-center border border-dashed border-[var(--border-subtle)] rounded bg-[var(--bg-elevated)]">
-                    <p className="text-xs font-sans text-[var(--text-muted)]">No acceleration triggers in the last 24 hours.</p>
+                  <div className="py-8 text-center border border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
+                    <p className="text-xs font-sans text-slate-400">No acceleration triggers in the last 24 hours.</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
                     {triggers.map((trigger, idx) => (
                       <div
                         key={idx}
-                        className="dashboard-scout-trigger-row border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 rounded-[12px] flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:border-[var(--border-default)] transition-colors shadow-[0_1px_4px_rgba(0,0,0,0.1)]"
+                        className="dashboard-scout-trigger-row border border-slate-200/80 bg-slate-50/40 p-4 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:border-slate-300 hover:bg-white transition-all shadow-2xs"
                       >
-                        <div className="space-y-1 md:space-y-0.5">
+                        <div className="space-y-1">
                           <div className="flex items-center gap-2">
-                            <span className="font-sans text-sm font-bold text-[var(--text-primary)]">{trigger.prospect_name}</span>
-                            <span className="text-[var(--border-default)] font-sans text-xs">|</span>
-                            <span className="font-sans text-xs text-[var(--text-secondary)]">{trigger.company_name}</span>
+                            <span className="font-sans text-sm font-bold text-slate-900">{trigger.prospect_name}</span>
+                            <span className="text-slate-300 font-sans text-xs">|</span>
+                            <span className="font-sans text-xs font-medium text-slate-600">{trigger.company_name}</span>
                           </div>
-                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] font-mono text-[var(--text-muted)]">
-                            <span>Rep: <span className="text-[var(--text-secondary)]">{trigger.rep_name}</span>{trigger.rep_email && <span className="text-[var(--text-muted)]"> ({trigger.rep_email})</span>}</span>
-                            <span>Stage: <span className="text-[var(--text-secondary)]">{trigger.deal_stage}</span></span>
-                            <span>Value: <span className="text-[var(--green)]">{formatCurrency(trigger.deal_value)}</span></span>
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] font-mono text-slate-500">
+                            <span>Rep: <span className="text-slate-800 font-semibold">{trigger.rep_name}</span>{trigger.rep_email && <span className="text-slate-400"> ({trigger.rep_email})</span>}</span>
+                            <span>Stage: <span className="text-slate-700 font-medium">{trigger.deal_stage}</span></span>
+                            <span>Value: <span className="text-emerald-700 font-bold">{formatCurrency(trigger.deal_value)}</span></span>
                             {trigger.last_visit_timestamp && (
-                              <span>Visited: <span className="text-[var(--amber)]">{new Date(trigger.last_visit_timestamp).toLocaleTimeString()}</span></span>
+                              <span>Visited: <span className="text-amber-700 font-semibold">{new Date(trigger.last_visit_timestamp).toLocaleTimeString()}</span></span>
                             )}
                           </div>
                         </div>
                         <button
                           onClick={() => openNotifyModal(trigger)}
-                          className="dashboard-button-primary w-full md:w-auto bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-sans text-xs font-semibold px-3.5 py-2 rounded-[8px] transition-colors flex items-center justify-center gap-1.5"
+                          className="rounded-full bg-[#165B40] hover:bg-[#114933] text-white font-sans text-xs font-semibold px-4 py-2 transition-all flex items-center justify-center gap-1.5 shadow-2xs shrink-0"
                         >
                           <Mail className="w-3 h-3" />
                           NOTIFY REP
@@ -901,71 +906,83 @@ export default function ScoutDashboard() {
                           return (
                             <div
                               key={deal.deal_id}
-                              className="dashboard-scout-deal-card border border-slate-200/90 bg-white rounded-2xl overflow-hidden border-l-4 border-l-red-500 shadow-xs hover:shadow-md hover:border-slate-300 transition-all duration-300"
+                              className="dashboard-scout-deal-card border border-slate-200/90 bg-white rounded-3xl overflow-hidden border-l-4 border-l-rose-500 shadow-xs hover:shadow-md hover:border-slate-300 transition-all duration-300"
                             >
                               <button
                                 type="button"
                                 onClick={() => toggleCard(deal.deal_id)}
                                 aria-expanded={isExpanded}
                                 aria-controls={`scout-deal-${deal.deal_id}`}
-                                className="w-full p-4 flex justify-between items-center cursor-pointer hover:bg-[var(--bg-elevated)] select-none text-left"
+                                className="w-full p-5 flex justify-between items-center cursor-pointer hover:bg-slate-50/70 select-none text-left transition-colors"
                               >
-                                <div className="dashboard-wrap-anywhere min-w-0 space-y-1">
-                                  <h3 className="dashboard-wrap-anywhere font-sans text-sm font-bold text-[var(--text-primary)]">{deal.deal_name}</h3>
-                                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] font-mono text-[var(--text-muted)]">
-                                    <span>Rep: <span className="text-[var(--text-secondary)]">{deal.rep_name}</span>{deal.rep_email && <span className="text-[var(--text-muted)]"> ({deal.rep_email})</span>}</span>
-                                    <span>Value: <span className="text-[var(--green)]">{formatCurrency(deal.deal_value)}</span></span>
-                                    <span>Stage: <span className="text-[var(--text-secondary)]">{deal.stage}</span></span>
+                                <div className="dashboard-wrap-anywhere min-w-0 space-y-1.5">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <h3 className="dashboard-wrap-anywhere font-sans text-base font-bold text-slate-900">{deal.deal_name}</h3>
+                                    <span className="rounded-full bg-rose-50 text-rose-700 border border-rose-200 px-2.5 py-0.5 text-[10px] font-mono font-bold uppercase">
+                                      At Risk
+                                    </span>
+                                  </div>
+                                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-mono text-slate-500">
+                                    <span>Rep: <strong className="text-slate-800">{deal.rep_name}</strong></span>
+                                    <span>ARR: <strong className="text-emerald-700 font-bold">{formatCurrency(deal.deal_value)}</strong></span>
+                                    <span className="rounded-full bg-slate-100 border border-slate-200 px-2 py-0.5 text-[10px] text-slate-600 font-sans font-medium">{deal.stage}</span>
                                   </div>
                                 </div>
-                                <div>
+                                <div className="ml-4 shrink-0 flex items-center gap-3">
+                                  <span className="hidden sm:inline-flex rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-1 font-mono text-xs font-bold">
+                                    {formatCurrency(deal.deal_value)}
+                                  </span>
                                   {isExpanded ? (
-                                    <ChevronUp className="w-4 h-4 text-[var(--text-muted)]" />
+                                    <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-slate-600">
+                                      <ChevronUp className="w-4 h-4" />
+                                    </div>
                                   ) : (
-                                    <ChevronDown className="w-4 h-4 text-[var(--text-muted)]" />
+                                    <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-slate-600">
+                                      <ChevronDown className="w-4 h-4" />
+                                    </div>
                                   )}
                                 </div>
                               </button>
 
                               {isExpanded && (
-                                <div id={`scout-deal-${deal.deal_id}`} className="p-4 pt-0 border-t border-[var(--border-subtle)] space-y-4 bg-[var(--bg-surface)]">
-                                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 border-b border-[var(--border-subtle)] py-3.5 text-[10px] font-mono">
+                                <div id={`scout-deal-${deal.deal_id}`} className="p-6 pt-0 border-t border-slate-100 space-y-4 bg-white">
+                                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 text-xs font-mono">
                                     <div>
-                                      <span className="text-[var(--text-muted)] block uppercase">Days In Stage</span>
-                                      <span className="text-[var(--text-primary)] text-xs font-bold block mt-0.5">{deal.days_in_stage === null ? 'Unknown' : `${deal.days_in_stage}d`}</span>
+                                      <span className="text-slate-400 block text-[10px] uppercase font-bold">Days In Stage</span>
+                                      <span className="text-slate-900 text-sm font-bold block mt-0.5">{deal.days_in_stage === null ? 'Unknown' : `${deal.days_in_stage}d`}</span>
                                     </div>
                                     <div>
-                                      <span className="text-[var(--text-muted)] block uppercase">Last Activity</span>
-                                      <span className="text-[var(--text-primary)] text-xs font-bold block mt-0.5">
+                                      <span className="text-slate-400 block text-[10px] uppercase font-bold">Last Activity</span>
+                                      <span className="text-slate-900 text-sm font-bold block mt-0.5">
                                         {deal.last_activity_days !== null ? `${deal.last_activity_days}d ago` : 'None logged'}
                                       </span>
                                     </div>
                                     <div>
-                                      <span className="text-[var(--text-muted)] block uppercase">Contact Engagement</span>
-                                      <span className="text-[var(--text-primary)] text-xs font-bold block mt-0.5">{deal.contact_count} contacts</span>
+                                      <span className="text-slate-400 block text-[10px] uppercase font-bold">Contact Engagement</span>
+                                      <span className="text-slate-900 text-sm font-bold block mt-0.5">{deal.contact_count} contacts</span>
                                     </div>
                                     <div>
-                                      <span className="text-[var(--text-muted)] block uppercase">Recent Web Visits</span>
-                                      <span className="text-[var(--text-primary)] text-xs font-bold block mt-0.5">{deal.website_visits_7d} visits (7d)</span>
+                                      <span className="text-slate-400 block text-[10px] uppercase font-bold">Recent Web Visits</span>
+                                      <span className="text-slate-900 text-sm font-bold block mt-0.5">{deal.website_visits_7d} visits (7d)</span>
                                     </div>
                                   </div>
 
-                                  <div className="space-y-1 text-xs font-sans">
-                                    <span className="font-sans text-[11px] font-bold text-[var(--red)] uppercase tracking-wider block">Primary Risk Factor</span>
-                                    <p className="font-mono text-[var(--red)] leading-relaxed">{deal.primary_risk}</p>
+                                  <div className="rounded-2xl bg-rose-50/80 border border-rose-200 p-4 space-y-1">
+                                    <span className="font-sans text-xs font-bold text-rose-700 uppercase tracking-wider block">Primary Risk Factor</span>
+                                    <p className="font-mono text-xs text-rose-900 leading-relaxed font-semibold">{deal.primary_risk}</p>
                                   </div>
                                   <DealInsights deal={deal} />
 
-                                  <div className="bg-[var(--red)]/5 border border-[var(--red)]/20 p-3 rounded-[8px] space-y-1 text-xs font-sans">
-                                    <span className="font-sans text-[11px] font-bold text-[var(--red)] uppercase tracking-wider block">Recommended Rep Action (Today)</span>
-                                    <p className="font-sans text-[var(--text-secondary)]">{deal.next_action}</p>
+                                  <div className="rounded-2xl bg-emerald-50/60 border border-emerald-200 p-4 space-y-1">
+                                    <span className="font-sans text-xs font-bold text-emerald-800 uppercase tracking-wider block">Recommended Rep Action (Today)</span>
+                                    <p className="font-sans text-xs text-slate-800 leading-relaxed font-medium">{deal.next_action}</p>
                                   </div>
 
                                   <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 pt-2">
                                     {deal.draft_email ? (
                                       <button
                                         onClick={() => toggleEmail(deal.deal_id)}
-                                        className="border border-[var(--border-default)] hover:bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] font-sans text-[11px] py-2 px-3.5 rounded-[8px] transition-all flex items-center justify-center gap-1.5"
+                                        className="rounded-full border border-slate-300 hover:bg-slate-50 text-slate-700 font-sans text-xs font-semibold py-2 px-4 transition-all flex items-center justify-center gap-1.5 shadow-2xs"
                                       >
                                         <Mail className="w-3.5 h-3.5" />
                                         {isEmailOpen ? 'HIDE DRAFT EMAIL' : 'VIEW DRAFT EMAIL'}
@@ -976,7 +993,7 @@ export default function ScoutDashboard() {
 
                                     <button
                                       onClick={() => openNudgeModal(deal)}
-                                      className="dashboard-button-primary bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-sans text-xs font-semibold py-2 px-4.5 rounded-[8px] transition-all flex items-center justify-center gap-2"
+                                      className="rounded-full bg-[#165B40] hover:bg-[#114933] text-white font-sans text-xs font-semibold py-2 px-5 transition-all flex items-center justify-center gap-2 shadow-2xs"
                                     >
                                       <Send className="w-3.5 h-3.5" />
                                       NUDGE REP
@@ -984,15 +1001,15 @@ export default function ScoutDashboard() {
                                   </div>
 
                                   {isEmailOpen && deal.draft_email && (
-                                    <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-4 rounded-[8px] space-y-3 relative">
-                                      <span className="font-sans text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest block">AI DRAFT EMAIL</span>
-                                      <div className="font-mono text-xs text-[var(--text-secondary)] whitespace-pre-wrap bg-black/10 p-3 rounded border border-[var(--border-subtle)] leading-relaxed select-text">
+                                    <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-5 space-y-3 relative">
+                                      <span className="font-sans text-[10px] font-bold text-[#165B40] uppercase tracking-widest block">AI DRAFT EMAIL</span>
+                                      <div className="font-mono text-xs text-slate-800 whitespace-pre-wrap bg-white p-4 rounded-xl border border-slate-200 leading-relaxed select-text shadow-2xs">
                                         {deal.draft_email}
                                       </div>
                                       <div className="flex justify-end">
                                         <button
                                           onClick={() => copyToClipboard(deal.draft_email || '')}
-                                          className="border border-[var(--border-default)] hover:bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] font-sans text-[10px] py-1.5 px-2.5 rounded-[6px] transition-all flex items-center gap-1"
+                                          className="rounded-full border border-slate-300 hover:bg-white text-slate-700 font-sans text-xs font-semibold py-1.5 px-3.5 transition-all flex items-center gap-1.5 shadow-2xs"
                                         >
                                           <Copy className="w-3 h-3" />
                                           COPY EMAIL
@@ -1014,8 +1031,8 @@ export default function ScoutDashboard() {
                 {activeTab === 'amber' && (
                   <div id="scout-panel-amber" role="tabpanel" aria-labelledby="scout-tab-amber" className="space-y-4">
                     {amberDeals.length === 0 ? (
-                      <div className="py-8 text-center border border-[var(--border-subtle)] rounded-[12px] bg-[var(--bg-elevated)]">
-                        <p className="text-xs font-sans text-[var(--text-muted)]">No amber-scored deals in this snapshot.</p>
+                      <div className="py-8 text-center border border-slate-200 rounded-2xl bg-slate-50/50">
+                        <p className="text-xs font-sans text-slate-400">No amber-scored deals in this snapshot.</p>
                       </div>
                     ) : (
                       <div className="space-y-3">
@@ -1024,70 +1041,82 @@ export default function ScoutDashboard() {
                           return (
                             <div
                               key={deal.deal_id}
-                              className="dashboard-scout-deal-card border border-slate-200/90 bg-white rounded-2xl overflow-hidden border-l-4 border-l-amber-500 shadow-xs hover:shadow-md hover:border-slate-300 transition-all duration-300"
+                              className="dashboard-scout-deal-card border border-slate-200/90 bg-white rounded-3xl overflow-hidden border-l-4 border-l-amber-500 shadow-xs hover:shadow-md hover:border-slate-300 transition-all duration-300"
                             >
                               <button
                                 type="button"
                                 onClick={() => toggleCard(deal.deal_id)}
                                 aria-expanded={isExpanded}
                                 aria-controls={`scout-deal-${deal.deal_id}`}
-                                className="w-full p-4 flex justify-between items-center cursor-pointer hover:bg-[var(--bg-elevated)] select-none text-left"
+                                className="w-full p-5 flex justify-between items-center cursor-pointer hover:bg-slate-50/70 select-none text-left transition-colors"
                               >
-                                <div className="dashboard-wrap-anywhere min-w-0 space-y-1">
-                                  <h3 className="dashboard-wrap-anywhere font-sans text-sm font-bold text-[var(--text-primary)]">{deal.deal_name}</h3>
-                                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] font-mono text-[var(--text-muted)]">
-                                    <span>Rep: <span className="text-[var(--text-secondary)]">{deal.rep_name}</span>{deal.rep_email && <span className="text-[var(--text-muted)]"> ({deal.rep_email})</span>}</span>
-                                    <span>Value: <span className="text-[var(--green)]">{formatCurrency(deal.deal_value)}</span></span>
-                                    <span>Stage: <span className="text-[var(--text-secondary)]">{deal.stage}</span></span>
+                                <div className="dashboard-wrap-anywhere min-w-0 space-y-1.5">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <h3 className="dashboard-wrap-anywhere font-sans text-base font-bold text-slate-900">{deal.deal_name}</h3>
+                                    <span className="rounded-full bg-amber-50 text-amber-700 border border-amber-200 px-2.5 py-0.5 text-[10px] font-mono font-bold uppercase">
+                                      Warning
+                                    </span>
+                                  </div>
+                                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-mono text-slate-500">
+                                    <span>Rep: <strong className="text-slate-800">{deal.rep_name}</strong></span>
+                                    <span>ARR: <strong className="text-emerald-700 font-bold">{formatCurrency(deal.deal_value)}</strong></span>
+                                    <span className="rounded-full bg-slate-100 border border-slate-200 px-2 py-0.5 text-[10px] text-slate-600 font-sans font-medium">{deal.stage}</span>
                                   </div>
                                 </div>
-                                <div>
+                                <div className="ml-4 shrink-0 flex items-center gap-3">
+                                  <span className="hidden sm:inline-flex rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-1 font-mono text-xs font-bold">
+                                    {formatCurrency(deal.deal_value)}
+                                  </span>
                                   {isExpanded ? (
-                                    <ChevronUp className="w-4 h-4 text-[var(--text-muted)]" />
+                                    <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-slate-600">
+                                      <ChevronUp className="w-4 h-4" />
+                                    </div>
                                   ) : (
-                                    <ChevronDown className="w-4 h-4 text-[var(--text-muted)]" />
+                                    <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-slate-600">
+                                      <ChevronDown className="w-4 h-4" />
+                                    </div>
                                   )}
                                 </div>
                               </button>
 
                               {isExpanded && (
-                                <div id={`scout-deal-${deal.deal_id}`} className="p-4 pt-0 border-t border-[var(--border-subtle)] space-y-4 bg-[var(--bg-surface)]">
-                                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 border-b border-[var(--border-subtle)] py-3.5 text-[10px] font-mono">
+                                <div id={`scout-deal-${deal.deal_id}`} className="p-6 pt-0 border-t border-slate-100 space-y-4 bg-white">
+                                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 text-xs font-mono">
                                     <div>
-                                      <span className="text-[var(--text-muted)] block uppercase">Days In Stage</span>
-                                      <span className="text-[var(--text-primary)] text-xs font-bold block mt-0.5">{deal.days_in_stage === null ? 'Unknown' : `${deal.days_in_stage}d`}</span>
+                                      <span className="text-slate-400 block text-[10px] uppercase font-bold">Days In Stage</span>
+                                      <span className="text-slate-900 text-sm font-bold block mt-0.5">{deal.days_in_stage === null ? 'Unknown' : `${deal.days_in_stage}d`}</span>
                                     </div>
                                     <div>
-                                      <span className="text-[var(--text-muted)] block uppercase">Last Activity</span>
-                                      <span className="text-[var(--text-primary)] text-xs font-bold block mt-0.5">
+                                      <span className="text-slate-400 block text-[10px] uppercase font-bold">Last Activity</span>
+                                      <span className="text-slate-900 text-sm font-bold block mt-0.5">
                                         {deal.last_activity_days !== null ? `${deal.last_activity_days}d ago` : 'None logged'}
                                       </span>
                                     </div>
                                     <div>
-                                      <span className="text-[var(--text-muted)] block uppercase">Contact Engagement</span>
-                                      <span className="text-[var(--text-primary)] text-xs font-bold block mt-0.5">{deal.contact_count} contacts</span>
+                                      <span className="text-slate-400 block text-[10px] uppercase font-bold">Contact Engagement</span>
+                                      <span className="text-slate-900 text-sm font-bold block mt-0.5">{deal.contact_count} contacts</span>
                                     </div>
                                     <div>
-                                      <span className="text-[var(--text-muted)] block uppercase">Recent Web Visits</span>
-                                      <span className="text-[var(--text-primary)] text-xs font-bold block mt-0.5">{deal.website_visits_7d} visits (7d)</span>
+                                      <span className="text-slate-400 block text-[10px] uppercase font-bold">Recent Web Visits</span>
+                                      <span className="text-slate-900 text-sm font-bold block mt-0.5">{deal.website_visits_7d} visits (7d)</span>
                                     </div>
                                   </div>
 
-                                  <div className="space-y-1 text-xs font-sans">
-                                    <span className="font-sans text-[11px] font-bold text-[var(--amber)] uppercase tracking-wider block">Primary Risk Factor</span>
-                                    <p className="font-mono text-[var(--amber)] leading-relaxed">{deal.primary_risk}</p>
+                                  <div className="rounded-2xl bg-amber-50/80 border border-amber-200 p-4 space-y-1">
+                                    <span className="font-sans text-xs font-bold text-amber-700 uppercase tracking-wider block">Primary Risk Factor</span>
+                                    <p className="font-mono text-xs text-amber-900 leading-relaxed font-semibold">{deal.primary_risk}</p>
                                   </div>
                                   <DealInsights deal={deal} />
 
-                                  <div className="bg-[var(--amber)]/5 border border-[var(--amber)]/20 p-3 rounded-[8px] space-y-1 text-xs font-sans">
-                                    <span className="font-sans text-[11px] font-bold text-[var(--amber)] uppercase tracking-wider block">Recommended Rep Action (Today)</span>
-                                    <p className="font-sans text-[var(--text-secondary)]">{deal.next_action}</p>
+                                  <div className="rounded-2xl bg-emerald-50/60 border border-emerald-200 p-4 space-y-1">
+                                    <span className="font-sans text-xs font-bold text-emerald-800 uppercase tracking-wider block">Recommended Rep Action (Today)</span>
+                                    <p className="font-sans text-xs text-slate-800 leading-relaxed font-medium">{deal.next_action}</p>
                                   </div>
 
                                   <div className="flex justify-end pt-2">
                                     <button
                                       onClick={() => openNudgeModal(deal)}
-                                      className="dashboard-button-primary bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-sans text-xs font-semibold py-2 px-4.5 rounded-[8px] transition-all flex items-center justify-center gap-2"
+                                      className="rounded-full bg-[#165B40] hover:bg-[#114933] text-white font-sans text-xs font-semibold py-2 px-5 transition-all flex items-center justify-center gap-2 shadow-2xs"
                                     >
                                       <Send className="w-3.5 h-3.5" />
                                       NUDGE REP
@@ -1107,25 +1136,27 @@ export default function ScoutDashboard() {
                 {activeTab === 'green' && (
                   <div id="scout-panel-green" role="tabpanel" aria-labelledby="scout-tab-green" className="space-y-4">
                     {greenDeals.length === 0 ? (
-                      <div className="py-8 text-center border border-[var(--border-subtle)] rounded-[12px] bg-[var(--bg-elevated)]">
-                        <p className="text-xs font-sans text-[var(--text-muted)]">No green-scored deals in this snapshot.</p>
+                      <div className="py-8 text-center border border-slate-200 rounded-2xl bg-slate-50/50">
+                        <p className="text-xs font-sans text-slate-400">No green-scored deals in this snapshot.</p>
                       </div>
                     ) : (
-                      <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-[12px] divide-y divide-[var(--border-subtle)] overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.25)]">
+                      <div className="space-y-3">
                         {greenDeals.map((deal) => (
                           <div
                             key={deal.deal_id}
-                            className="dashboard-scout-deal-row p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 bg-white rounded-2xl border border-slate-200/90 hover:border-slate-300 hover:shadow-xs transition-all border-l-4 border-l-emerald-600"
+                            className="dashboard-scout-deal-row p-4 sm:p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white rounded-3xl border border-slate-200/90 hover:border-slate-300 hover:shadow-xs transition-all border-l-4 border-l-emerald-600 shadow-2xs"
                           >
-                            <div className="dashboard-wrap-anywhere min-w-0 space-y-0.5">
-                              <span className="dashboard-wrap-anywhere font-sans text-sm font-bold text-[var(--text-primary)]">{deal.deal_name}</span>
-                              <div className="flex items-center gap-3 text-[10px] font-mono text-[var(--text-muted)]">
-                                <span>Rep: <span className="text-[var(--text-secondary)]">{deal.rep_name}</span>{deal.rep_email && <span className="text-[var(--text-muted)]"> ({deal.rep_email})</span>}</span>
-                                <span>Stage: <span className="text-[var(--text-secondary)]">{deal.stage}</span></span>
+                            <div className="dashboard-wrap-anywhere min-w-0 space-y-1">
+                              <span className="dashboard-wrap-anywhere font-sans text-base font-bold text-slate-900">{deal.deal_name}</span>
+                              <div className="flex items-center gap-3 text-xs font-mono text-slate-500">
+                                <span>Rep: <strong className="text-slate-800">{deal.rep_name}</strong></span>
+                                <span>Stage: <span className="rounded-full bg-slate-100 border border-slate-200 px-2 py-0.5 text-[10px] text-slate-600 font-sans">{deal.stage}</span></span>
                               </div>
                             </div>
                             <div className="flex items-center gap-4 justify-between w-full sm:w-auto">
-                              <span className="font-sans text-sm font-bold text-[var(--green)]">{formatCurrency(deal.deal_value)}</span>
+                              <span className="rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 px-3.5 py-1 font-mono text-xs font-bold">
+                                {formatCurrency(deal.deal_value)}
+                              </span>
                             </div>
                           </div>
                         ))}
@@ -1140,21 +1171,21 @@ export default function ScoutDashboard() {
       </div>
 
           {/* SECTION 5 — REP INTELLIGENCE (collapsible, default expanded) */}
-          <div className="dashboard-scout-panel border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-[12px] overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.25)]">
+          <div className="dashboard-scout-panel border border-slate-200/90 bg-white rounded-3xl overflow-hidden shadow-xs hover:shadow-md transition-all duration-300">
             <button
               onClick={() => toggleSection('repIntelligence')}
               aria-expanded={!collapsedSections.repIntelligence}
               aria-controls="scout-rep-intelligence-panel"
-              className="w-full flex justify-between items-center p-4 bg-transparent hover:bg-[var(--bg-elevated)] border-b border-[var(--border-subtle)] transition-colors select-none text-left"
+              className="w-full flex justify-between items-center p-5 bg-transparent hover:bg-slate-50 border-b border-slate-100 transition-colors select-none text-left"
             >
-              <span className="font-sans text-[13px] font-semibold tracking-[0.06em] text-[var(--text-secondary)] uppercase flex items-center gap-2">
-                <Brain className="text-[var(--accent)] w-3.5 h-3.5" />
+              <span className="font-sans text-[13px] font-semibold tracking-[0.06em] text-slate-800 uppercase flex items-center gap-2">
+                <Brain className="text-[#165B40] w-3.5 h-3.5" />
                 REP INTELLIGENCE
               </span>
               {collapsedSections.repIntelligence ? (
-                <ChevronDown className="w-4 h-4 text-[var(--text-muted)]" />
+                <ChevronDown className="w-4 h-4 text-slate-400" />
               ) : (
-                <ChevronUp className="w-4 h-4 text-[var(--text-muted)]" />
+                <ChevronUp className="w-4 h-4 text-slate-400" />
               )}
             </button>
 
@@ -1168,17 +1199,17 @@ export default function ScoutDashboard() {
                   transition={{ duration: shouldReduceMotion ? 0 : 0.2, ease: 'easeInOut' }}
                   className="overflow-hidden"
                 >
-                  <div className="p-5 space-y-4">
+                  <div className="p-6 space-y-4">
                 {blindSpotsLoading ? (
-                  <div role="status" aria-busy="true" className="py-8 text-center text-xs text-[var(--text-muted)]">Loading rep intelligence…</div>
+                  <div role="status" aria-busy="true" className="py-8 text-center text-xs text-slate-400 font-mono">Loading rep intelligence…</div>
                 ) : blindSpotsError ? (
-                  <div role="alert" className="py-6 space-y-3 text-center border border-[var(--red)]/20 rounded bg-[var(--red)]/5">
-                    <p className="text-xs text-[var(--red)]">{blindSpotsError}</p>
-                    <button type="button" onClick={fetchBlindSpots} className="text-[10px] font-semibold uppercase tracking-wider text-[var(--accent)] hover:underline">TRY AGAIN</button>
+                  <div role="alert" className="py-6 space-y-3 text-center border border-rose-200 rounded-2xl bg-rose-50/60 p-4">
+                    <p className="text-xs text-rose-700">{blindSpotsError}</p>
+                    <button type="button" onClick={fetchBlindSpots} className="text-xs font-semibold uppercase tracking-wider text-[#165B40] hover:underline">TRY AGAIN</button>
                   </div>
                 ) : blindSpots.length === 0 || blindSpots.reduce((acc, report) => acc + (report.blind_spots?.length || 0), 0) === 0 ? (
-                  <div className="py-8 text-center border border-dashed border-[var(--border-subtle)] rounded bg-[var(--bg-elevated)]">
-                    <p className="text-xs font-sans text-[var(--text-muted)]">No blind spots detected across your team.</p>
+                  <div className="py-8 text-center border border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
+                    <p className="text-xs font-sans text-slate-400">No blind spots detected across your team.</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -1187,19 +1218,19 @@ export default function ScoutDashboard() {
                       return (
                         <div
                           key={idx}
-                          className="dashboard-scout-rep-row border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 rounded-[12px] flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:border-[var(--border-default)] transition-colors shadow-[0_1px_4px_rgba(0,0,0,0.1)]"
+                          className="dashboard-scout-rep-row border border-slate-200/80 bg-slate-50/40 p-5 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:border-slate-300 hover:bg-white transition-all shadow-2xs"
                         >
-                          <div className="space-y-1.5 w-full">
+                          <div className="space-y-2 w-full">
                             <div className="flex items-center justify-between">
-                              <span className="dashboard-wrap-anywhere font-sans text-sm font-bold text-[var(--text-primary)]">{report.rep_name}</span>
-                              <span className="font-mono text-[10px] text-[var(--text-muted)] uppercase font-semibold">
+                              <span className="dashboard-wrap-anywhere font-sans text-base font-bold text-slate-900">{report.rep_name}</span>
+                              <span className="font-mono text-xs text-slate-500 uppercase font-semibold">
                                 {report.deal_count} {report.deal_count === 1 ? 'DEAL' : 'DEALS'}
                               </span>
                             </div>
 
                             {!hasSpots ? (
-                              <div className="text-[10px] font-sans text-[var(--green)] uppercase tracking-wider flex items-center gap-1.5 font-bold">
-                                <span className="w-1.5 h-1.5 rounded-full bg-[var(--green)]" />
+                              <div className="text-xs font-sans text-emerald-700 uppercase tracking-wider flex items-center gap-1.5 font-bold">
+                                <span className="w-2 h-2 rounded-full bg-emerald-500" />
                                 No blind spots detected
                               </div>
                             ) : (
@@ -1207,20 +1238,20 @@ export default function ScoutDashboard() {
                                 {report.blind_spots.map((spot, sIdx) => {
                                   const isCritical = spot.severity === 'critical';
                                   const badgeColorClass = isCritical
-                                    ? 'bg-[var(--red)]/5 text-[var(--red)] border-[var(--red)]/20'
-                                    : 'bg-[var(--amber)]/5 text-[var(--amber)] border-[var(--amber)]/20';
+                                    ? 'bg-rose-50 text-rose-800 border-rose-200'
+                                    : 'bg-amber-50 text-amber-800 border-amber-200';
                                   return (
                                     <div
                                       key={sIdx}
-                                      className={`flex flex-col border p-2 rounded-[6px] text-[11px] font-sans w-full sm:w-auto sm:max-w-xs ${badgeColorClass}`}
+                                      className={`flex flex-col border p-3 rounded-xl text-xs font-sans w-full sm:w-auto sm:max-w-xs shadow-2xs ${badgeColorClass}`}
                                     >
-                                      <div className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-[9px] mb-0.5">
-                                        <span className={`w-1.5 h-1.5 rounded-full ${isCritical ? 'bg-[var(--red)]' : 'bg-[var(--amber)]'}`} />
+                                      <div className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-[10px] mb-1">
+                                        <span className={`w-2 h-2 rounded-full ${isCritical ? 'bg-rose-500' : 'bg-amber-500'}`} />
                                         <span>{spot.severity}</span>
                                         <span aria-hidden="true">·</span>
                                         {spot.type}
                                       </div>
-                                      <div className="text-[var(--text-secondary)] text-[10px] leading-relaxed">
+                                      <div className="text-slate-700 text-xs leading-relaxed">
                                         {spot.description}
                                       </div>
                                     </div>
@@ -1241,21 +1272,21 @@ export default function ScoutDashboard() {
       </div>
 
           {/* SECTION 6 — DEAL OBITUARIES (collapsible, default collapsed) */}
-          <div className="dashboard-scout-panel border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-[12px] overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.25)]">
+          <div className="dashboard-scout-panel border border-slate-200/90 bg-white rounded-3xl overflow-hidden shadow-xs hover:shadow-md transition-all duration-300">
             <button
               onClick={() => toggleSection('obituaries')}
               aria-expanded={!collapsedSections.obituaries}
               aria-controls="scout-obituaries-panel"
-              className="w-full flex justify-between items-center p-4 bg-transparent hover:bg-[var(--bg-elevated)] border-b border-[var(--border-subtle)] transition-colors select-none text-left"
+              className="w-full flex justify-between items-center p-5 bg-transparent hover:bg-slate-50 border-b border-slate-100 transition-colors select-none text-left"
             >
-              <span className="font-sans text-[13px] font-semibold tracking-[0.06em] text-[var(--text-secondary)] uppercase flex items-center gap-2">
-                <Skull className="text-[var(--red)] w-3.5 h-3.5" />
+              <span className="font-sans text-[13px] font-semibold tracking-[0.06em] text-slate-800 uppercase flex items-center gap-2">
+                <Skull className="text-rose-600 w-3.5 h-3.5" />
                 DEAL OBITUARIES
               </span>
               {collapsedSections.obituaries ? (
-                <ChevronDown className="w-4 h-4 text-[var(--text-muted)]" />
+                <ChevronDown className="w-4 h-4 text-slate-400" />
               ) : (
-                <ChevronUp className="w-4 h-4 text-[var(--text-muted)]" />
+                <ChevronUp className="w-4 h-4 text-slate-400" />
               )}
             </button>
 
@@ -1269,15 +1300,15 @@ export default function ScoutDashboard() {
                   transition={{ duration: shouldReduceMotion ? 0 : 0.2, ease: 'easeInOut' }}
                   className="overflow-hidden"
                 >
-                  <div className="p-5 space-y-4 font-sans">
-                <div className="flex justify-between items-center pb-2 border-b border-[var(--border-subtle)]">
-                  <div className="text-[12px] text-[var(--text-muted)] uppercase tracking-wider font-semibold">
+                  <div className="p-6 space-y-4 font-sans">
+                <div className="flex justify-between items-center pb-3 border-b border-slate-100">
+                  <div className="text-xs text-slate-500 uppercase tracking-wider font-semibold">
                     Post-Mortem Deal Reviews
                   </div>
                   <button
                     onClick={handleGenerateObituaries}
                     disabled={generatingObits}
-                    className="border border-[var(--red)]/40 bg-[var(--red)]/5 hover:bg-[var(--red)]/10 text-[var(--red)] font-sans text-[11px] font-bold py-1.5 px-3 rounded-[8px] uppercase tracking-wider flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                    className="rounded-full border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 font-sans text-xs font-semibold py-2 px-4 uppercase tracking-wider flex items-center gap-1.5 transition-colors disabled:opacity-50 shadow-2xs"
                   >
                     <RefreshCw className={`w-3.5 h-3.5 ${generatingObits ? 'motion-safe:animate-spin' : ''}`} />
                     {generatingObits ? 'GENERATING...' : 'GENERATE OBITUARIES'}
@@ -1285,7 +1316,7 @@ export default function ScoutDashboard() {
                 </div>
 
                 {obituariesLoading ? (
-                  <div role="status" aria-busy="true" className="py-8 text-center text-xs text-[var(--text-muted)]">Loading obituary archive…</div>
+                  <div role="status" aria-busy="true" className="py-8 text-center text-xs text-slate-400 font-mono">Loading obituary archive…</div>
                 ) : obituariesError ? (
                   <div role="alert" className="py-6 space-y-3 text-center border border-[var(--red)]/20 rounded bg-[var(--red)]/5">
                     <p className="text-xs text-[var(--red)]">{obituariesError}</p>

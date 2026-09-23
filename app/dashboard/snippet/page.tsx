@@ -57,15 +57,25 @@ export default function SnippetPage() {
                 <p className="text-xs text-slate-500 mt-0.5">Paste this script block in the head of every page you want to personalize.</p>
               </div>
             </div>
-            <div className="relative overflow-x-auto rounded-2xl border border-slate-200/80 bg-slate-900 p-5 pr-28 text-slate-100 shadow-inner">
-              <pre className="min-w-max select-all font-mono text-xs leading-6 text-emerald-300">{getSnippetCode()}</pre>
-              <button
-                type="button"
-                onClick={() => copyCode(getSnippetCode())}
-                className="dashboard-button-primary rounded-full !min-h-8 !py-1.5 !px-4 text-xs font-semibold shadow-xs absolute right-4 top-4"
-              >
-                {copied ? 'COPIED!' : 'COPY CODE'}
-              </button>
+            <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 text-slate-100 shadow-inner">
+              <div className="flex items-center justify-between border-b border-slate-800/80 px-4 py-2.5 bg-slate-900/90">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500/80" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500/80" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500/80" />
+                  <span className="ml-2 font-mono text-[11px] text-slate-400">snippet.html</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => copyCode(getSnippetCode())}
+                  className="rounded-full bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-1 text-xs font-semibold shadow-2xs transition-all"
+                >
+                  {copied ? 'COPIED!' : 'COPY CODE'}
+                </button>
+              </div>
+              <div className="overflow-x-auto p-5">
+                <pre className="select-all font-mono text-xs leading-6 text-emerald-300">{getSnippetCode()}</pre>
+              </div>
             </div>
           </Surface>
 
@@ -79,14 +89,25 @@ export default function SnippetPage() {
                 <p className="text-xs text-slate-500 mt-0.5">Add the sr-target class to headings, descriptions, buttons, or calendar wrappers where content swaps should happen.</p>
               </div>
             </div>
-            <div className="overflow-x-auto rounded-2xl border border-slate-200/80 bg-slate-900 p-5 text-slate-100 shadow-inner font-mono text-xs leading-6 select-all">
-              <pre className="text-emerald-300">{`<!-- Swap a headline copy -->
+            <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 text-slate-100 shadow-inner">
+              <div className="flex items-center justify-between border-b border-slate-800/80 px-4 py-2.5 bg-slate-900/90">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500/80" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500/80" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500/80" />
+                  <span className="ml-2 font-mono text-[11px] text-slate-400">target-elements.html</span>
+                </div>
+                <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-400">sr-target class</span>
+              </div>
+              <div className="overflow-x-auto p-5 font-mono text-xs leading-6 select-all">
+                <pre className="text-emerald-300">{`<!-- Swap a headline copy -->
 <h1 class="sr-target font-bold">Welcome to Churnaut</h1>
 
 <!-- Swap a direct scheduling button -->
 <div class="sr-target">
   <a href="/pricing">View Plans</a>
 </div>`}</pre>
+              </div>
             </div>
           </Surface>
 
@@ -105,7 +126,7 @@ export default function SnippetPage() {
                 type="button"
                 onClick={checkStatus}
                 disabled={checking}
-                className="dashboard-button-primary rounded-full !py-2.5 !px-6 text-xs font-semibold shadow-xs shrink-0"
+                className="rounded-full bg-[#165B40] hover:bg-[#114933] text-white py-2.5 px-6 text-xs font-semibold shadow-2xs transition-all shrink-0 disabled:opacity-50"
               >
                 {checking ? 'VERIFYING…' : 'CHECK STATUS'}
               </button>
