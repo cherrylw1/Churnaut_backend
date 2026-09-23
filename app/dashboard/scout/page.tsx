@@ -600,7 +600,7 @@ export default function ScoutDashboard() {
           <button
             onClick={handleRunAnalysis}
             disabled={runningScout || loading}
-            className="min-h-10 bg-[var(--accent)] hover:bg-[var(--accent-hover)] disabled:opacity-50 text-white font-sans text-sm font-semibold py-2 px-4 rounded-lg transition-colors flex items-center gap-2"
+            className="inline-flex items-center gap-2 rounded-full bg-[#165B40] hover:bg-[#114933] disabled:opacity-50 text-white font-sans text-xs font-semibold py-2.5 px-5 shadow-sm transition-all active:scale-[0.98]"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${runningScout ? 'motion-safe:animate-spin' : ''}`} />
             {runningScout ? 'Analyzing...' : 'RUN SCOUT ANALYSIS'}

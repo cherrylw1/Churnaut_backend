@@ -1,4 +1,6 @@
-import type { ReactNode } from 'react';
+'use client';
+
+import React, { type ReactNode } from 'react';
 import { ArrowDownRight, ArrowUpRight, Minus } from 'lucide-react';
 import { Surface } from './Surface';
 
@@ -7,23 +9,35 @@ interface MetricCardProps {
   value: ReactNode;
   detail?: ReactNode;
   trend?: number | null;
+  trendText?: string;
   icon?: ReactNode;
   emphasis?: 'default' | 'primary';
+  onClick?: () => void;
 }
 
-export function MetricCard({ label, value, detail, trend, icon, emphasis = 'default' }: MetricCardProps) {
+export function MetricCard({
+  label,
+  value,
+  detail,
+  trend,
+  trendText,
+  icon,
+  emphasis = 'default',
+  onClick,
+}: MetricCardProps) {
   const isPrimary = emphasis === 'primary';
   const trendLabel = typeof trend === 'number' ? `${Math.abs(trend)}% vs prior period` : undefined;
 
   return (
     <Surface
-      className={`dashboard-metric relative flex flex-col justify-between p-6 transition-all duration-200 ${
+      onClick={onClick}
+      className={`dashboard-metric group relative flex flex-col justify-between p-6 transition-all duration-300 hover:-translate-y-1 select-none cursor-pointer ${
         isPrimary
-          ? 'bg-[#165B40] text-white border-[#165B40] shadow-md hover:shadow-lg'
-          : 'bg-white text-slate-900 border-slate-200/90 shadow-xs hover:border-slate-300 hover:shadow-sm'
+          ? 'bg-[#165B40] text-white border-[#165B40] shadow-md hover:shadow-xl hover:shadow-[#165B40]/20'
+          : 'bg-white text-slate-900 border-slate-200/90 shadow-xs hover:border-slate-300 hover:shadow-lg'
       }`}
     >
-      {/* Top Header: Label & Circular Arrow/Icon */}
+      {/* Top Header: Label & Circular Arrow Button */}
       <div className="flex items-center justify-between gap-3">
         <span
           className={`text-xs font-semibold tracking-wide ${
@@ -33,10 +47,10 @@ export function MetricCard({ label, value, detail, trend, icon, emphasis = 'defa
           {label}
         </span>
         <div
-          className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors flex-shrink-0 ${
+          className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300 group-hover:rotate-45 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 ${
             isPrimary
-              ? 'bg-white/15 text-white border border-white/20 hover:bg-white/25'
-              : 'border border-slate-200 text-slate-500 bg-white hover:bg-slate-50 hover:text-slate-800'
+              ? 'bg-white/15 text-white border border-white/20 group-hover:bg-white group-hover:text-[#165B40] group-hover:shadow-xs'
+              : 'border border-slate-200 text-slate-500 bg-white group-hover:bg-[#165B40] group-hover:text-white group-hover:border-[#165B40] group-hover:shadow-xs'
           }`}
           aria-hidden="true"
         >
@@ -44,10 +58,10 @@ export function MetricCard({ label, value, detail, trend, icon, emphasis = 'defa
         </div>
       </div>
 
-      {/* Middle Value */}
+      {/* Middle Value Readout */}
       <div className="my-3">
         <div
-          className={`text-3xl sm:text-4xl font-bold tracking-tight font-sans ${
+          className={`text-3xl sm:text-4xl font-extrabold tracking-tight font-sans ${
             isPrimary ? 'text-white' : 'text-slate-900'
           }`}
         >
@@ -59,9 +73,9 @@ export function MetricCard({ label, value, detail, trend, icon, emphasis = 'defa
       <div className="flex items-center gap-2 flex-wrap">
         {typeof trend === 'number' ? (
           <span
-            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold transition-colors ${
               isPrimary
-                ? 'bg-white/20 text-white border border-white/25'
+                ? 'bg-white/15 text-white border border-white/25 group-hover:bg-white/20'
                 : trend > 0
                 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/80'
                 : trend < 0
@@ -77,16 +91,14 @@ export function MetricCard({ label, value, detail, trend, icon, emphasis = 'defa
             ) : (
               <Minus className="w-3.5 h-3.5" aria-hidden="true" />
             )}
-            <span>{Math.abs(trend)}%</span>
-            <span className="font-normal opacity-85">
-              {trend > 0 ? 'Increased' : trend < 0 ? 'Decreased' : 'Flat'}
-            </span>
+            <span>{trendText || (trend > 0 ? 'Increased from last month' : trend < 0 ? 'Decreased from last month' : 'Unchanged')}</span>
           </span>
-        ) : null}
-        {detail ? (
+        ) : detail ? (
           <span
-            className={`text-xs ${
-              isPrimary ? 'text-white/80' : 'text-slate-400'
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${
+              isPrimary
+                ? 'bg-white/15 text-white border-white/25'
+                : 'bg-slate-50 text-slate-600 border-slate-200/90'
             }`}
           >
             {detail}

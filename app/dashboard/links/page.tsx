@@ -293,7 +293,7 @@ export default function LinksPage() {
             setBulkError(null);
             setModalOpen(true);
           }}
-          className="dashboard-button-primary min-h-10 px-4 text-sm"
+          className="inline-flex items-center gap-2 rounded-full bg-[#165B40] hover:bg-[#114933] text-white px-5 py-2.5 font-semibold text-xs shadow-sm transition-all active:scale-[0.98]"
         >
           + NEW LINK
         </button>} />

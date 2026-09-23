@@ -1,4 +1,6 @@
-import type { ReactNode } from 'react';
+'use client';
+
+import React, { type ReactNode } from 'react';
 import { Surface } from './Surface';
 import { StatusBadge } from './StatusBadge';
 
@@ -8,11 +10,23 @@ const toneForStatus = (status: PressureStatus) => (
   status === 'HEALTHY' ? 'success' : status === 'AT RISK' ? 'danger' : 'warning'
 );
 
-export function PressureInstrument({ score, status, value }: { score: number; status: PressureStatus; value?: ReactNode }) {
+export function PressureInstrument({
+  score,
+  status,
+  value,
+  title = 'Project Progress',
+  label = 'Project Ended',
+}: {
+  score: number;
+  status: PressureStatus;
+  value?: ReactNode;
+  title?: string;
+  label?: string;
+}) {
   const clamped = Math.max(0, Math.min(100, score));
-  // Semi-circle arc calculations: radius 70, cx 100, cy 95
-  // Perimeter of semi-circle = PI * r = 3.14159 * 70 = 219.9
-  const arcLength = Math.PI * 70;
+  // Semi-circle arc calculations: radius 75, cx 100, cy 100
+  // Perimeter of semi-circle = PI * r = 3.14159 * 75 = 235.6
+  const arcLength = Math.PI * 75;
   const strokeDashoffset = arcLength * (1 - clamped / 100);
 
   const strokeColor = status === 'HEALTHY' 
@@ -22,27 +36,52 @@ export function PressureInstrument({ score, status, value }: { score: number; st
     : '#F59E0B';
 
   return (
-    <Surface className="dashboard-pressure-instrument dashboard-surface relative flex flex-col justify-between p-6" aria-label={`Pipeline pressure ${score}, ${status}`}>
+    <Surface
+      className="dashboard-pressure-instrument dashboard-surface relative flex flex-col justify-between p-6 transition-all duration-300 hover:shadow-md"
+      aria-label={`${title} ${score}%, ${status}`}
+    >
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h3 className="text-base font-bold text-slate-900">Pipeline Pressure</h3>
-          <p className="mt-0.5 text-xs text-slate-500">Revenue risk across signals Churnaut detects</p>
+          <h3 className="font-sans text-base font-bold text-slate-900">{title}</h3>
+          <p className="mt-0.5 text-xs text-slate-500">Real-time pipeline & deal resolution</p>
         </div>
         <StatusBadge tone={toneForStatus(status)}>{status}</StatusBadge>
       </div>
 
-      {/* Donezo-style Semi-Circular Progress Arc */}
+      {/* Donezo-style Semi-Circular Progress Arc with Diagonal Hatched Remaining Track */}
       <div className="relative my-4 flex flex-col items-center justify-center">
-        <svg viewBox="0 0 200 115" className="w-52 max-w-full overflow-visible">
-          {/* Background Track Arc */}
+        <svg viewBox="0 0 200 115" className="w-56 max-w-full overflow-visible">
+          <defs>
+            <pattern
+              id="arcDiagonalHatch"
+              width="6"
+              height="6"
+              patternTransform="rotate(45 0 0)"
+              patternUnits="userSpaceOnUse"
+            >
+              <line x1="0" y1="0" x2="0" y2="6" stroke="#94A3B8" strokeWidth="2.5" />
+            </pattern>
+          </defs>
+
+          {/* Underlay Base Track */}
           <path
             d="M 25 100 A 75 75 0 0 1 175 100"
             fill="none"
-            stroke="#E2E8F0"
+            stroke="#F1F5F9"
             strokeWidth="18"
             strokeLinecap="round"
           />
-          {/* Filled Foreground Arc */}
+
+          {/* Hatched Remaining Track (Pending Arc) */}
+          <path
+            d="M 25 100 A 75 75 0 0 1 175 100"
+            fill="none"
+            stroke="url(#arcDiagonalHatch)"
+            strokeWidth="18"
+            strokeLinecap="round"
+          />
+
+          {/* Filled Foreground Arc (Active Progress) */}
           <path
             d="M 25 100 A 75 75 0 0 1 175 100"
             fill="none"
@@ -57,28 +96,34 @@ export function PressureInstrument({ score, status, value }: { score: number; st
 
         {/* Center Readout Text */}
         <div className="absolute bottom-2 flex flex-col items-center text-center">
-          <span className="font-sans text-4xl font-bold tracking-tight text-slate-900 tabular-nums">
+          <span className="font-sans text-4xl sm:text-5xl font-extrabold tracking-tight text-slate-900 tabular-nums">
             {value ?? `${clamped}%`}
           </span>
-          <span className="mt-0.5 text-[11px] font-medium text-slate-400">
-            Signal Pressure
+          <span className="mt-0.5 text-xs font-semibold text-slate-400">
+            {label}
           </span>
         </div>
       </div>
 
-      {/* Legend Dots */}
-      <div className="flex items-center justify-center gap-4 pt-1 text-xs text-slate-500 font-medium border-t border-slate-100">
+      {/* Donezo-style 3-Dot Legend */}
+      <div className="flex items-center justify-center gap-5 pt-3 text-xs text-slate-600 font-medium border-t border-slate-100">
+        <div className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-full bg-[#10B981]" />
+          <span>Completed</span>
+        </div>
         <div className="flex items-center gap-1.5">
           <span className="w-2.5 h-2.5 rounded-full bg-[#165B40]" />
-          <span>Healthy (0-40)</span>
+          <span>In Progress</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-full bg-[#F59E0B]" />
-          <span>Attention (41-70)</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-full bg-[#EF4444]" />
-          <span>At Risk (71+)</span>
+          <span
+            className="w-2.5 h-2.5 rounded-full border border-slate-400/80"
+            style={{
+              background:
+                'repeating-linear-gradient(135deg, #94a3b8, #94a3b8 1.5px, transparent 1.5px, transparent 4px)',
+            }}
+          />
+          <span>Pending</span>
         </div>
       </div>
     </Surface>
