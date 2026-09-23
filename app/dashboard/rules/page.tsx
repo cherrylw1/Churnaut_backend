@@ -745,7 +745,7 @@ export default function RulesPage() {
   }, [activeTab, playbooks.length]);
 
   return (
-    <div className="space-y-6">
+    <div className="dashboard-rules space-y-6">
       <PageHeader eyebrow="Signal Field · Routing logic" title="Routing rules" ariaLabel="ROUTING RULES" description="Configure personalized web variants based on inbound context" actions={
         <div role="tablist" aria-label="Routing workspace" className="flex border-b border-[var(--border-subtle)] mt-4 md:mt-0">
           <button
@@ -816,7 +816,7 @@ export default function RulesPage() {
                     onDragOver={handleDragOver}
                     onDrop={(e) => handleDrop(e, index)}
                     onDragEnd={() => setDraggedIndex(null)}
-                    className={`dashboard-surface rounded-2xl p-4 flex items-start gap-4 transition-all hover:-translate-y-0.5 relative select-none ${
+                    className={`dashboard-surface dashboard-rule-row rounded-2xl p-4 flex items-start gap-4 relative select-none ${
                       isSelected ? 'border-[var(--accent)] bg-[var(--border-subtle)]/10' : 'border-[var(--border-subtle)]'
                     } ${!rule.active ? 'opacity-65' : ''}`}
                   >
@@ -827,7 +827,7 @@ export default function RulesPage() {
 
                     {/* Content Section */}
                     <div className="flex-1 min-w-0 space-y-2">
-                      <div className="flex items-center gap-2">
+                      <div className="dashboard-wrap-anywhere flex min-w-0 flex-wrap items-center gap-2">
                         <span className="text-xs font-mono font-bold text-[var(--text-secondary)]">
                           #{rule.priority}
                         </span>
@@ -840,16 +840,14 @@ export default function RulesPage() {
                       </div>
 
                       {/* Conditions */}
-                      <p className="text-xs font-mono text-[var(--text-secondary)]">
+                      <p className="dashboard-wrap-anywhere text-xs font-mono text-[var(--text-secondary)]">
                         <span className="text-[var(--text-muted)]">IF:</span> {conditionsText}
                       </p>
 
                       {/* Variant Preview */}
                       {rule.variant_content && (
-                        <div className="bg-[var(--bg-elevated)] border border-[var(--border-subtle)] py-1.5 px-2.5 rounded text-xs font-mono text-[var(--text-secondary)] h-[30px] overflow-hidden flex items-center max-w-full min-w-0">
-                          <div className="truncate w-full min-w-0">
-                            {rule.variant_content}
-                          </div>
+                        <div className="dashboard-rule-preview bg-[var(--bg-elevated)] border border-[var(--border-subtle)] py-1.5 px-2.5 rounded text-xs font-mono text-[var(--text-secondary)] max-w-full min-w-0">
+                          {rule.variant_content}
                         </div>
                       )}
                     </div>
@@ -909,7 +907,7 @@ export default function RulesPage() {
             ) : (
               <button
                 onClick={() => setCreateModalOpen(true)}
-                className="w-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-mono text-xs py-3 px-4 rounded transition-all active:scale-[0.99]"
+                className="dashboard-button-primary w-full py-3 px-4 text-xs"
               >
                 + ADD ROUTING RULE
               </button>
@@ -1034,12 +1032,10 @@ export default function RulesPage() {
                       <label className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider font-bold">
                         Page Element Swaps
                       </label>
-                      <span className="text-[10px] text-[var(--accent)] font-mono cursor-help bg-[var(--border-subtle)] px-1.5 rounded relative group">
-                        [?]
-                        <span className="pointer-events-none absolute right-0 bottom-full mb-2 w-64 bg-[var(--bg-surface)] border border-[var(--border-subtle)] p-3 text-[10px] leading-relaxed text-[var(--text-secondary)] font-mono rounded shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                          {"Specify CSS selectors (e.g. '#headline' or '.cta-button') and the variant HTML/Text content to inject."}
-                        </span>
-                      </span>
+                      <details className="dashboard-help-disclosure">
+                        <summary aria-label="Explain page element swaps">?</summary>
+                        <div role="note">{"Specify CSS selectors (e.g. '#headline' or '.cta-button') and the variant HTML/Text content to inject."}</div>
+                      </details>
                     </div>
                     <p className="text-[10px] font-mono text-[var(--text-muted)]">
                       Add multiple page elements to swap. Each rule can personalize multiple parts of the page simultaneously.
@@ -1246,7 +1242,7 @@ export default function RulesPage() {
                   <button
                     type="submit"
                     disabled={updatingRule}
-                    className="flex-1 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-mono text-xs py-2 px-4 rounded transition-all active:scale-[0.98] disabled:opacity-50"
+                    className="dashboard-button-primary flex-1 py-2 px-4 text-xs disabled:opacity-50"
                   >
                     {updatingRule ? 'SAVING...' : 'SAVE CHANGES'}
                   </button>
@@ -1358,12 +1354,10 @@ export default function RulesPage() {
                     <label className="block text-[10px] font-mono text-[var(--text-secondary)] uppercase tracking-wider font-bold">
                       Page Element Swaps
                     </label>
-                    <span className="text-[10px] text-[var(--accent)] font-mono cursor-help bg-[var(--border-subtle)] px-1.5 rounded relative group">
-                      [?]
-                      <span className="pointer-events-none absolute right-0 bottom-full mb-2 w-64 bg-[var(--bg-surface)] border border-[var(--border-subtle)] p-3 text-[10px] leading-relaxed text-[var(--text-secondary)] font-mono rounded shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity z-10 font-normal">
-                        {"Specify CSS selectors (e.g. '#headline' or '.cta-button') and the variant HTML/Text content to inject."}
-                      </span>
-                    </span>
+                    <details className="dashboard-help-disclosure">
+                      <summary aria-label="Explain page element swaps">?</summary>
+                      <div role="note">{"Specify CSS selectors (e.g. '#headline' or '.cta-button') and the variant HTML/Text content to inject."}</div>
+                    </details>
                   </div>
                   <p className="text-[10px] font-mono text-[var(--text-muted)]">
                     Add multiple page elements to swap. Each rule can personalize multiple parts of the page simultaneously.
@@ -1439,7 +1433,7 @@ export default function RulesPage() {
                 <button
                   type="submit"
                   disabled={savingNewRule}
-                  className="bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-mono text-xs py-2 px-6 rounded transition-all active:scale-[0.98] disabled:opacity-50"
+                  className="dashboard-button-primary py-2 px-6 text-xs disabled:opacity-50"
                 >
                   {savingNewRule ? 'CREATING...' : 'CREATE RULE'}
                 </button>
@@ -1507,7 +1501,7 @@ export default function RulesPage() {
                       <div className="flex flex-col sm:flex-row gap-3 pt-2">
                         <button
                           onClick={closeInstallModal}
-                          className="flex-1 bg-[var(--border-subtle)] hover:bg-[var(--bg-elevated)] text-[var(--text-primary)] hover:text-white font-mono text-xs py-2.5 px-4 rounded transition-all active:scale-[0.98]"
+                          className="dashboard-button-secondary flex-1 py-2.5 px-4 text-xs"
                         >
                           Close Window
                         </button>
@@ -1561,14 +1555,14 @@ export default function RulesPage() {
                         <button
                           type="button"
                           onClick={closeInstallModal}
-                          className="bg-[var(--border-subtle)] hover:bg-[var(--bg-elevated)] text-[var(--text-primary)] hover:text-white font-mono text-xs py-2.5 px-5 rounded transition-all active:scale-[0.98]"
+                          className="dashboard-button-secondary py-2.5 px-5 text-xs"
                         >
                           Cancel
                         </button>
                         <button
                           type="submit"
                           disabled={installing}
-                          className="bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-mono text-xs py-2.5 px-6 rounded transition-all active:scale-[0.98] disabled:opacity-55"
+                          className="dashboard-button-primary py-2.5 px-6 text-xs disabled:opacity-55"
                         >
                           {installing ? 'INSTALLING...' : 'INSTALL PLAYBOOK'}
                         </button>
@@ -1596,21 +1590,21 @@ function PlaybookCard({ playbook, onInstall }: PlaybookCardProps) {
       case 'cold_email':
         return `${base} bg-[var(--accent)]/10 text-[var(--accent)] border-[var(--accent)]/30`;
       case 'linkedin_lead_gen':
-        return `${base} bg-blue-950/20 text-blue-400 border-blue-900/40`;
+        return `${base} bg-[var(--signal-observe)]/10 text-[var(--signal-observe)] border-[var(--signal-observe)]/30`;
       case 'returning_visitor':
         return `${base} bg-[var(--green)]/10 text-[var(--green)] border-[var(--green)]/30`;
       case 'google_ad':
         return `${base} bg-[var(--amber)]/10 text-[var(--amber)] border-[var(--amber)]/30`;
       case 'linkedin_ad':
-        return `${base} bg-sky-950/20 text-sky-400 border-sky-900/40`;
+        return `${base} bg-[var(--signal-observe)]/10 text-[var(--signal-observe)] border-[var(--signal-observe)]/30`;
       case 'meta_ad':
-        return `${base} bg-purple-950/20 text-purple-400 border-purple-900/40`;
+        return `${base} bg-[var(--signal-intelligence)]/10 text-[var(--signal-intelligence)] border-[var(--signal-intelligence)]/30`;
       case 'tiktok_ad':
-        return `${base} bg-pink-950/20 text-pink-400 border-pink-900/40`;
+        return `${base} bg-[var(--signal-intelligence)]/10 text-[var(--signal-intelligence)] border-[var(--signal-intelligence)]/30`;
       case 'g2_referral':
-        return `${base} bg-orange-950/20 text-orange-400 border-orange-900/40`;
+        return `${base} bg-[var(--signal-activate)]/10 text-[var(--signal-activate)] border-[var(--signal-activate)]/30`;
       case 'partner_referral':
-        return `${base} bg-rose-950/20 text-rose-400 border-rose-900/40`;
+        return `${base} bg-[var(--signal-critical)]/10 text-[var(--signal-critical)] border-[var(--signal-critical)]/30`;
       default:
         return `${base} bg-[var(--border-subtle)] text-[var(--text-secondary)] border-[var(--border-subtle)]`;
     }
@@ -1621,7 +1615,7 @@ function PlaybookCard({ playbook, onInstall }: PlaybookCardProps) {
   };
 
   return (
-    <article className="group flex flex-col justify-between rounded-2xl border border-[var(--field-line)] bg-[var(--field-surface)] p-5 shadow-[0_14px_35px_rgba(25,33,29,0.06)] transition-transform motion-safe:hover:-translate-y-0.5">
+    <article className="dashboard-embedded-playbook-row group flex flex-col justify-between border-b border-[var(--field-line)] py-4">
       <div className="space-y-3.5">
         <div className="flex items-center justify-between gap-2">
           <span className={getSignalBadgeClass(playbook.signal_type)}>
@@ -1634,7 +1628,7 @@ function PlaybookCard({ playbook, onInstall }: PlaybookCardProps) {
           <h3 className="text-base font-semibold leading-tight text-[var(--field-ink)] transition-colors group-hover:text-[var(--signal-primary)]">
             {playbook.name}
           </h3>
-          <p className="min-h-[48px] text-sm leading-relaxed text-[var(--field-ink-secondary)]">
+          <p className="dashboard-wrap-anywhere text-sm leading-relaxed text-[var(--field-ink-secondary)]">
             {playbook.description}
           </p>
         </div>

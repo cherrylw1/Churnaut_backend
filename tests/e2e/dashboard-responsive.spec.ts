@@ -1,7 +1,44 @@
 import { test, expect } from './fixtures/auth'
+import type { Page } from '@playwright/test'
 import { PLAN_PRICING } from '../../lib/plans'
 
 const hasCredentials = Boolean(process.env.E2E_EMAIL && process.env.E2E_PASSWORD)
+
+async function assertNoHorizontalOverflow(page: Page) {
+  const offenders = await page.evaluate(() => {
+    const intentional = (element: Element) => Boolean(element.closest('.dashboard-code-scroll, .dashboard-local-scroll, .dashboard-table-wrap'))
+    return Array.from(document.querySelectorAll<HTMLElement>('*')).flatMap((element) => {
+      if (intentional(element) || element === document.documentElement || element === document.body) return []
+      const rect = element.getBoundingClientRect()
+      const outOfBounds = rect.left < -1 || rect.right > window.innerWidth + 1
+      const intrinsicOverflow = element.scrollWidth > element.clientWidth + 1 && getComputedStyle(element).overflowX === 'visible'
+      return outOfBounds || intrinsicOverflow
+        ? [{ tag: element.tagName.toLowerCase(), id: element.id, className: typeof element.className === 'string' ? element.className : '', left: Math.round(rect.left), right: Math.round(rect.right), scrollWidth: element.scrollWidth, clientWidth: element.clientWidth }]
+        : []
+    }).slice(0, 20)
+  })
+  expect(offenders).toEqual([])
+}
+
+async function assertSurfaceGeometry(page: Page) {
+  const offenders = await page.evaluate(() => {
+    const expected = getComputedStyle(document.documentElement).getPropertyValue('--radius-major').trim()
+    return Array.from(document.querySelectorAll<HTMLElement>('.dashboard-surface')).flatMap((surface) => {
+    const style = getComputedStyle(surface)
+    const rect = surface.getBoundingClientRect()
+    const radii = [style.borderTopLeftRadius, style.borderTopRightRadius, style.borderBottomRightRadius, style.borderBottomLeftRadius]
+    const isOwner = surface.matches('[data-surface-owner="true"]')
+    const childEscapes = isOwner && Array.from(surface.children).some((child) => {
+      const childRect = child.getBoundingClientRect()
+      return childRect.left < rect.left - 1 || childRect.right > rect.right + 1 || childRect.top < rect.top - 1 || childRect.bottom > rect.bottom + 1
+    })
+    return radii.every((radius) => radius === radii[0]) && (!isOwner || radii.every((radius) => radius === expected)) && rect.left >= -1 && rect.right <= window.innerWidth + 1 && !childEscapes
+      ? []
+      : [{ tag: surface.tagName.toLowerCase(), id: surface.id, className: typeof surface.className === 'string' ? surface.className : '', owner: isOwner, expected, radius: radii.join('/'), left: Math.round(rect.left), right: Math.round(rect.right), width: Math.round(rect.width), childEscapes }]
+    })
+  })
+  expect(offenders).toEqual([])
+}
 
 test.describe('dashboard responsive shell', () => {
   test.skip(!hasCredentials, 'Authenticated responsive checks require E2E_EMAIL and E2E_PASSWORD.')
@@ -15,7 +52,8 @@ test.describe('dashboard responsive shell', () => {
     await expect(page.getByText('SIGNAL FIELD', { exact: true })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Search workspace' })).toBeVisible()
     await expect(page.getByRole('link', { name: 'Analytics', exact: true })).toHaveAttribute('aria-current', 'page')
-    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+    await assertNoHorizontalOverflow(page)
+    await assertSurfaceGeometry(page)
   })
 
   test('home overview keeps Signal Field hierarchy and command actions', async ({ authenticatedPage: page }) => {
@@ -71,6 +109,10 @@ test.describe('dashboard responsive shell', () => {
     await expect(page.getByRole('link', { name: /CREATE TRACKED LINK/i })).toBeVisible()
     await expect(page.getByRole('link', { name: /ADD ROUTING RULE/i })).toBeVisible()
     await expect(page.getByRole('button', { name: /RUN SCOUT ANALYSIS/i })).toBeVisible()
+    await expect(page.locator('.dashboard-telemetry-rail')).toBeVisible()
+    await expect(page.locator('.dashboard-decision-band')).toBeVisible()
+    await expect(page.locator('.dashboard-readiness-ledger')).toBeVisible()
+    await expect(page.locator('.dashboard-overview .truncate')).toHaveCount(0)
     await expect(page.getByRole('link', { name: /Go to Snippet/i })).toHaveAttribute('href', '/dashboard/snippet')
     await expect(page.getByRole('link', { name: /Create Link/i })).toHaveAttribute('href', '/dashboard/links')
     await expect(page.getByRole('link', { name: /Add Rule/i })).toHaveAttribute('href', '/dashboard/rules')
@@ -90,7 +132,35 @@ test.describe('dashboard responsive shell', () => {
     await expect.poll(() => summaryCalls).toBeGreaterThan(1)
     await page.goto('/dashboard/analytics')
     await expect(page.locator('[data-overview-pilot="true"]')).toHaveCount(0)
-    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+    await assertNoHorizontalOverflow(page)
+    await assertSurfaceGeometry(page)
+  })
+
+  test('home overview wraps urgent long content without clipping', async ({ authenticatedPage: page }) => {
+    await page.addInitScript(() => localStorage.removeItem('churnaut_onboarding_dismissed'))
+    await page.route('**/api/dashboard/summary', async (route) => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
+        pressure_score: 91,
+        pipeline_status: 'AT RISK',
+        active_rules_count: 4,
+        tracked_links_count: 12,
+        sessions_this_week: 38,
+        scout_inbox: {
+          has_red_deals: true,
+          top_red_deal: { deal_name: 'EnterpriseOpportunityWithoutSpacesThatMustWrapAcrossThePriorityQueue', next_action: 'SendTheFollowUpBeforeTheBuyingCommitteeMovesOn' },
+          top_rep: { rep_name: 'RepresentativeNameThatIsIntentionallyLongToExerciseWrapping', count: 3 },
+        },
+        recent_activity: [{ event_type: 'PersonalizedVisitWithAnIntentionallyLongActivityLabel', signal_type: 'ColdEmailSignalWithoutSpaces', created_at: new Date().toISOString() }],
+      }) })
+    })
+    await page.route('**/api/onboarding/status', async (route) => { await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ snippet_installed: true, first_link_created: true, first_rule_created: true, crm_connected: true, first_personalized_visit: true }) }) })
+    await page.route('**/api/client', async (route) => { await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ client: { plan: 'starter', monthly_visits: 0, plan_status: 'active' } }) }) })
+    await page.setViewportSize({ width: 375, height: 812 })
+    await page.goto('/dashboard')
+    await expect(page.getByText('EnterpriseOpportunityWithoutSpacesThatMustWrapAcrossThePriorityQueue', { exact: true })).toBeVisible()
+    await expect(page.getByText('RepresentativeNameThatIsIntentionallyLongToExerciseWrapping', { exact: true })).toBeVisible()
+    await assertNoHorizontalOverflow(page)
+    await assertSurfaceGeometry(page)
   })
 
   test('home overview does not mark setup complete when onboarding status fails', async ({ authenticatedPage: page }) => {
@@ -152,7 +222,8 @@ test.describe('dashboard responsive shell', () => {
     await expect(page.getByText('Pipeline pressure', { exact: true })).toBeVisible()
     await expect(page.getByText('No recent activities recorded.', { exact: true })).toBeVisible()
     await expect(page.getByText('No urgent items today.', { exact: true })).toBeVisible()
-    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+    await assertNoHorizontalOverflow(page)
+    await assertSurfaceGeometry(page)
   })
 
   test('analytics keeps the measurement console hierarchy at phone width', async ({ authenticatedPage: page }) => {
@@ -182,7 +253,8 @@ test.describe('dashboard responsive shell', () => {
       const tables = [...document.querySelectorAll('table')]
       return Boolean(signal && tables[0] && (signal.compareDocumentPosition(tables[0]) & Node.DOCUMENT_POSITION_FOLLOWING))
     })).toBe(true)
-    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+    await assertNoHorizontalOverflow(page)
+    await assertSurfaceGeometry(page)
   })
 
   test('analytics distinguishes loading, retry, and negative measured lift', async ({ authenticatedPage: page }) => {
@@ -1280,6 +1352,8 @@ test.describe('dashboard responsive shell', () => {
     await page.emulateMedia({ reducedMotion: 'reduce' })
     await page.setViewportSize({ width: 768, height: 1024 })
     await page.goto('/dashboard')
+    await expect(page.getByRole('button', { name: 'Open navigation' })).toBeVisible()
+    await expect(page.locator('.dashboard-sidebar')).toBeHidden()
     await page.getByRole('button', { name: 'Search workspace' }).click()
     const palette = page.getByRole('dialog', { name: 'Search workspace' })
     await expect(palette).toBeVisible()
@@ -1303,8 +1377,80 @@ test.describe('dashboard responsive shell', () => {
       await page.goto(route)
       await expect(page.getByRole('main')).toBeVisible()
       await expect(page.locator('h1')).toHaveCount(1)
-      await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+      await assertNoHorizontalOverflow(page)
+      await assertSurfaceGeometry(page)
     }
+    for (const [route, selector] of [['/dashboard/analytics', '.dashboard-analytics'], ['/dashboard/links', '.dashboard-links'], ['/dashboard/rules', '.dashboard-rules'], ['/dashboard/playbooks', '.dashboard-playbooks']] as const) {
+      await page.goto(route)
+      await expect(page.locator(selector)).toBeVisible()
+      await expect(page.locator(`${selector} .truncate`)).toHaveCount(0)
+      await assertNoHorizontalOverflow(page)
+    }
+  })
+
+  test('Phase D operational routes keep their composition and disclosure contracts across breakpoints', async ({ authenticatedPage: page }) => {
+    const longName = 'ProspectWithAnIntentionallyLongUnbrokenIdentifierThatMustWrapAtEveryViewportWidth'
+    await page.route('**/api/analytics', async (route) => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
+        summaryStats: { totalLinksCreatedThisMonth: 18, totalClicksThisMonth: 42, personalizationTriggerRate: 48, overallConversionRate: 24 },
+        signalBreakdown: [{ signal: 'Cold Email', links: 18, clicks: 42, conversions: 8, conversion_rate: 24 }],
+        rulePerformance: [{ rule_id: 'phase-d-rule', priority: 1, signal_type: longName, action_type: 'inject_copy', triggers: 18, conversions: 8, conversion_rate: 44 }],
+        liftReport: { personalized_sessions: 18, unpersonalized_sessions: 12, personalized_rate: 42, baseline_rate: 18, overall_lift_pp: 24, rules: [{ rule_id: 'phase-d-rule', signal_type: longName, action_type: longName, personalized_sessions: 18, personalized_rate: 42, baseline_rate: 18, lift_pp: 24 }] },
+        recentEvents: [{ id: 'phase-d-event', event_type: longName, signal_type: longName, created_at: new Date().toISOString(), prospect_name: longName }],
+        repPerformance: [{ rep: longName, links: 18, conversions: 8, conversion_rate: 44 }],
+        dailyVolume: [{ date: 'Today', rawDate: new Date().toISOString(), count: 8 }],
+      }) })
+    })
+    await page.route('**/api/links?*', async (route) => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ page: 1, totalPages: 1, sessions: [{ id: 'phase-d-link', prospect_name: longName, company_name: longName, signal_type: longName, assigned_rep: longName, click_count: 3, expires_at: null, created_at: new Date().toISOString(), tracked_url: `https://churnaut.test/${longName}` }] }) })
+    })
+    await page.route('**/api/rules', async (route) => {
+      if (route.request().method() === 'GET') await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ rules: [{ id: 'phase-d-rule', priority: 1, active: true, signal_type: longName, conditions: { job_title_contains: longName }, action_type: 'inject_copy', action_payload: { swaps: [{ selector: '#headline', content: longName }] }, target_selector: '#headline', variant_content: longName, created_at: new Date().toISOString() }] }) })
+      else await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ success: true }) })
+    })
+    await page.route('**/api/playbooks', async (route) => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ playbooks: [
+        { id: 'phase-d-playbook-1', name: 'First playbook', description: longName, signal_type: 'cold_email', tier: 1, required_inputs: [{ field_name: 'cta_url', label: longName, placeholder: 'https://example.test', type: 'url' }], rule_template: { signal_type: 'cold_email', action_type: 'inject_copy' }, created_at: new Date().toISOString() },
+        { id: 'phase-d-playbook-2', name: 'Second playbook', description: 'Second preview description', signal_type: 'returning_visitor', tier: 2, required_inputs: [], rule_template: { signal_type: 'returning_visitor', action_type: 'show_calendar' }, created_at: new Date().toISOString() },
+      ] }) })
+    })
+
+    for (const viewport of [{ width: 375, height: 812 }, { width: 768, height: 1024 }, { width: 1440, height: 900 }]) {
+      await page.setViewportSize(viewport)
+      for (const route of ['/dashboard/analytics', '/dashboard/links', '/dashboard/rules', '/dashboard/playbooks']) {
+        await page.emulateMedia({ reducedMotion: route === '/dashboard/analytics' ? 'reduce' : 'no-preference' })
+        await page.goto(route)
+        await expect(page.locator('h1')).toHaveCount(1)
+        await assertNoHorizontalOverflow(page)
+        await assertSurfaceGeometry(page)
+      }
+
+      await page.goto('/dashboard/analytics')
+      await expect(page.locator('.dashboard-analytics-measurement-canvas')).toBeVisible()
+      await expect(page.locator('.dashboard-analytics-measurement-canvas [role="group"]')).toHaveCount(2)
+      await expect(page.getByText(longName, { exact: true }).first()).toBeVisible()
+      await expect(page.locator('.recharts-line-curve').first()).toBeVisible()
+
+      await page.goto('/dashboard/links')
+      await expect(page.locator('.dashboard-links-ledger, .dashboard-links .dashboard-surface').first()).toBeVisible()
+      await expect(page.getByText(longName, { exact: true }).first()).toBeVisible()
+
+      await page.goto('/dashboard/playbooks')
+      const rows = page.locator('.dashboard-playbook-row')
+      await expect(rows).toHaveCount(2)
+      await expect(rows.first()).toHaveAttribute('aria-pressed', 'true')
+      await rows.nth(1).click()
+      await expect(rows.nth(1)).toHaveAttribute('aria-pressed', 'true')
+      await expect(rows.first()).toHaveAttribute('aria-pressed', 'false')
+      await expect(page.locator('.dashboard-playbook-preview')).toContainText('Second playbook')
+    }
+
+    await page.goto('/dashboard/rules')
+    await page.getByRole('button', { name: 'Edit rule' }).first().click()
+    const help = page.getByRole('button', { name: 'Explain page element swaps' }).first()
+    await help.focus()
+    await help.press('Enter')
+    await expect(page.getByRole('note').first()).toBeVisible()
   })
 
   test('representative routes keep one page heading and semantic controls', async ({ authenticatedPage: page }) => {

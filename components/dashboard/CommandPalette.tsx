@@ -56,7 +56,7 @@ export function CommandPalette({ open, onClose, items }: { open: boolean; onClos
   const go = (href: string) => { onClose(); router.push(href); };
   return (
     <div className="fixed inset-0 z-[100] flex items-start justify-center bg-black/30 p-4 pt-[12vh]" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-      <div ref={dialogRef} className="w-full max-w-xl overflow-hidden rounded-[10px] border border-[var(--border-default)] bg-[var(--bg-surface)] shadow-2xl" role="dialog" aria-modal="true" aria-label="Search workspace">
+      <div ref={dialogRef} className="dashboard-command-dialog w-full max-w-xl overflow-hidden border border-[var(--border-default)] bg-[var(--bg-surface)] shadow-2xl" role="dialog" aria-modal="true" aria-label="Search workspace">
         <div className="flex items-center gap-3 border-b border-[var(--border-subtle)] px-4">
           <Search className="h-5 w-5 text-[var(--text-muted)]" aria-hidden="true" />
           <input ref={inputRef} value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && filtered[0]) go(filtered[0].href); }} placeholder="Search workspace…" aria-label="Search workspace" className="h-14 flex-1 border-0 bg-transparent text-base text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]" />

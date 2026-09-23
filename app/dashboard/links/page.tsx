@@ -285,7 +285,7 @@ export default function LinksPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="dashboard-links space-y-6">
       <PageHeader eyebrow="Signal Field · Activation ledger" title="Tracked links" description="Generate personalized redirect URLs for outbound links" actions={<button
           onClick={() => {
             setGeneratedUrl(null);
@@ -317,8 +317,8 @@ export default function LinksPage() {
           }}
         />
       ) : (
-        <div className="dashboard-surface overflow-hidden">
-          <div className="hidden md:block overflow-x-auto" role="region" aria-label="Tracked links ledger">
+        <div className="dashboard-surface dashboard-links-ledger">
+          <div className="hidden md:block dashboard-table-wrap dashboard-links-table-scroll" role="region" aria-label="Tracked links ledger">
             <table className="dashboard-table w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-[var(--field-line)] bg-[var(--field-raised)] text-[11px] font-medium tracking-[0.12em] text-[var(--field-ink-muted)] uppercase">
@@ -339,25 +339,17 @@ export default function LinksPage() {
 
                   return (
                     <tr key={link.id} className="group border-b border-[var(--field-line)] last:border-0 transition-colors hover:bg-[var(--field-raised)]">
-                      <td className="px-4 py-4 font-medium text-[var(--field-ink)]">{link.prospect_name || '-'}</td>
-                      <td className="px-4 py-4 text-[var(--field-ink-secondary)]">{link.company_name || '-'}</td>
+                      <td className="dashboard-wrap-anywhere px-4 py-4 font-medium text-[var(--field-ink)]">{link.prospect_name || '-'}</td>
+                      <td className="dashboard-wrap-anywhere px-4 py-4 text-[var(--field-ink-secondary)]">{link.company_name || '-'}</td>
                       <td className="py-3 px-4">
                         <span className="rounded-full border border-[var(--field-line-strong)] bg-[var(--field-muted)] px-2.5 py-1 text-[11px] text-[var(--field-ink-secondary)]">
                           {link.signal_type || 'Other'}
                         </span>
                       </td>
-                      <td className="px-4 py-4 text-[var(--field-ink-secondary)]">{link.assigned_rep || '-'}</td>
+                      <td className="dashboard-wrap-anywhere px-4 py-4 text-[var(--field-ink-secondary)]">{link.assigned_rep || '-'}</td>
                       <td className="px-4 py-4 text-center tabular-nums text-[var(--field-ink)]">{link.click_count}</td>
                       <td className="py-3 px-4 text-center">
-                        <span
-                          className={`text-[10px] uppercase font-mono px-2 py-0.5 rounded border ${
-                            status === 'Active'
-                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                              : status === 'Permanent'
-                            ? 'bg-amber-50 text-amber-700 border-amber-200'
-                            : 'bg-rose-50 text-rose-700 border-rose-200'
-                          }`}
-                        >
+                        <span className={`dashboard-link-status dashboard-link-status-${status.toLowerCase()} text-[10px] uppercase font-mono px-2 py-0.5 rounded border`}>
                           {status}
                         </span>
                       </td>
@@ -388,14 +380,14 @@ export default function LinksPage() {
             <article key={link.id} className="space-y-3 border-b border-[var(--field-line)] p-4 last:border-0">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <h2 className="truncate text-sm font-semibold text-[var(--field-ink)]">{link.prospect_name || 'Unnamed prospect'}</h2>
-                      <p className="truncate text-xs text-[var(--field-ink-secondary)]">{link.company_name || 'No company'} · {link.signal_type || 'Other'}</p>
+                      <h2 className="dashboard-wrap-anywhere text-sm font-semibold text-[var(--field-ink)]">{link.prospect_name || 'Unnamed prospect'}</h2>
+                      <p className="dashboard-wrap-anywhere text-xs text-[var(--field-ink-secondary)]">{link.company_name || 'No company'} · {link.signal_type || 'Other'}</p>
                     </div>
-                    <span className={`shrink-0 text-[10px] uppercase font-mono px-2 py-1 rounded border ${status === 'Active' ? 'bg-[var(--green)]/10 text-[var(--green)] border-[var(--green)]/30' : status === 'Permanent' ? 'bg-[var(--accent)]/10 text-[var(--accent)] border-[var(--accent)]/30' : 'bg-[var(--red)]/10 text-[var(--red)] border-[var(--red)]/30'}`}>{status}</span>
+                    <span className={`dashboard-link-status dashboard-link-status-${status.toLowerCase()} shrink-0 text-[10px] uppercase font-mono px-2 py-1 rounded border`}>{status}</span>
                   </div>
-                  <div className="flex items-center justify-between gap-3 text-xs text-[var(--text-muted)]">
-                    <span>{link.assigned_rep || 'Unassigned'} · {link.click_count} clicks · {new Date(link.created_at).toLocaleDateString()}</span>
-                    <button onClick={() => displayUrl && handleCopy(displayUrl, link.id)} disabled={!displayUrl} className="min-h-9 border border-[var(--border-subtle)] hover:border-[var(--accent)] hover:text-[var(--accent)] px-3 rounded font-mono text-[10px] disabled:opacity-40">{copiedId === link.id ? 'COPIED!' : 'COPY'}</button>
+                  <div className="flex min-w-0 items-start justify-between gap-3 text-xs text-[var(--text-muted)]">
+                    <span className="dashboard-wrap-anywhere min-w-0">{link.assigned_rep || 'Unassigned'} · {link.click_count} clicks · {new Date(link.created_at).toLocaleDateString()}</span>
+                    <button onClick={() => displayUrl && handleCopy(displayUrl, link.id)} disabled={!displayUrl} className="dashboard-button-secondary min-h-9 shrink-0 px-3 text-[10px] disabled:opacity-40">{copiedId === link.id ? 'COPIED!' : 'COPY'}</button>
                   </div>
                 </article>
               );
@@ -463,7 +455,7 @@ export default function LinksPage() {
                 <div id="single-link-panel" role="tabpanel" aria-labelledby="single-link-tab">
                   {generatedUrl ? (
                     /* SUCCESS SCREEN */
-                    <div className="space-y-4 border border-[var(--border-subtle)] p-6 rounded-lg bg-[var(--bg-elevated)]/50">
+                    <div className="dashboard-links-result-band space-y-4 border border-[var(--border-subtle)] p-6">
                       <div className="text-center py-2">
                         <span className="text-xs font-mono text-[var(--green)] bg-[var(--green)]/10 px-3 py-1 border border-[var(--green)]/30 rounded-full">
                           LINK GENERATED SUCCESSFULLY
@@ -483,7 +475,7 @@ export default function LinksPage() {
                           />
                           <button
                             onClick={() => handleCopy(generatedUrl, 'generated')}
-                            className="bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-mono text-xs px-4 rounded transition-all active:scale-[0.98]"
+                            className="dashboard-button-primary px-4 text-xs"
                           >
                             {copiedId === 'generated' ? 'COPIED!' : 'COPY'}
                           </button>
@@ -627,7 +619,7 @@ export default function LinksPage() {
                         <button
                           type="submit"
                           disabled={generating}
-                          className="bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-mono text-xs py-2 px-6 rounded transition-all active:scale-[0.98] disabled:opacity-50"
+                          className="dashboard-button-primary px-6 text-xs disabled:opacity-50"
                         >
                           {generating ? 'GENERATING...' : 'GENERATE TRACKED LINK'}
                         </button>
@@ -638,7 +630,7 @@ export default function LinksPage() {
               ) : (
                 /* BULK CSV TAB */
                 <div id="bulk-link-panel" role="tabpanel" aria-labelledby="bulk-link-tab" className="space-y-4">
-                  <div className="border border-dashed border-[var(--border-subtle)] p-8 rounded-lg text-center bg-[var(--bg-elevated)]/30">
+                  <div className="dashboard-links-upload-panel border border-dashed border-[var(--border-subtle)] p-8 text-center bg-[var(--bg-elevated)]/30">
                     <p className="text-xs font-mono text-[var(--text-secondary)] mb-2">
                       Upload a CSV file containing your prospects. Required columns:
                     </p>
@@ -682,7 +674,7 @@ export default function LinksPage() {
                         </button>
                         <button
                           onClick={downloadBulkResults}
-                          className="bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-mono text-xs py-2 px-4 rounded transition-all active:scale-[0.98]"
+                          className="dashboard-button-primary px-4 text-xs"
                         >
                           DOWNLOAD TRACKED CSV
                         </button>
@@ -693,7 +685,7 @@ export default function LinksPage() {
                       <button
                         onClick={handleBulkUpload}
                         disabled={!csvFile || bulkProcessing}
-                        className="bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-mono text-xs py-2 px-6 rounded transition-all active:scale-[0.98] disabled:opacity-50"
+                        className="dashboard-button-primary px-6 text-xs disabled:opacity-50"
                       >
                         {bulkProcessing ? 'PROCESSING BATCH...' : 'UPLOAD AND GENERATE'}
                       </button>

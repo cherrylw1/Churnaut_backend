@@ -572,7 +572,7 @@ export default function ScoutDashboard() {
 
   if (planLoading) {
     return (
-      <div className="space-y-6 text-[var(--text-secondary)]" role="status" aria-busy="true" aria-label="Checking Scout access">
+      <div className="dashboard-scout space-y-6 text-[var(--text-secondary)]" role="status" aria-busy="true" aria-label="Checking Scout access">
         <PageHeader eyebrow="Signal Field · Pipeline intervention" title="Scout AI" description="Pipeline intelligence that highlights what needs attention next." />
         <div className="max-w-5xl mx-auto space-y-4" aria-hidden="true">
           <Skeleton variant="card" height={160} />
@@ -584,7 +584,7 @@ export default function ScoutDashboard() {
 
   if (plan === 'starter') {
     return (
-      <div className="p-6">
+      <div className="dashboard-scout p-6">
         <UpgradeGate
           feature="Scout AI"
           description="Know which deals are dying before they do. Scout AI scores your entire HubSpot pipeline Red, Amber, or Green — and tells your reps exactly what to do next."
@@ -595,7 +595,7 @@ export default function ScoutDashboard() {
   }
 
   return (
-    <div className="space-y-6 text-[var(--text-secondary)]">
+    <div className="dashboard-scout space-y-6 text-[var(--text-secondary)]">
       <PageHeader eyebrow="Signal Field · Pipeline intervention" title="Scout AI" description="Pipeline intelligence that highlights what needs attention next." actions={<div className="flex flex-col items-end gap-1.5">
           <button
             onClick={handleRunAnalysis}
@@ -613,7 +613,7 @@ export default function ScoutDashboard() {
         </div>} />
 
       {loading ? (
-        <div className="space-y-6 max-w-5xl mx-auto motion-safe:animate-pulse" role="status" aria-busy="true" aria-label="Loading Scout pipeline">
+        <div className="dashboard-scout-workbench space-y-6 max-w-5xl mx-auto motion-safe:animate-pulse" role="status" aria-busy="true" aria-label="Loading Scout pipeline">
           {/* Skeleton header overview cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Skeleton variant="card" height={100} />
@@ -644,11 +644,11 @@ export default function ScoutDashboard() {
           />
         </div>
       ) : (
-        <div className="space-y-6 max-w-5xl mx-auto">
+        <div className="dashboard-scout-workbench space-y-6 max-w-5xl mx-auto">
           {/* SECTION 1 — PIPELINE STATE (always expanded, not collapsible) */}
-          <section aria-labelledby="pipeline-state-title" className="space-y-3">
+          <section aria-labelledby="pipeline-state-title" className="dashboard-scout-state space-y-3">
             <SectionHeader headingId="pipeline-state-title" title="Pipeline state" description="The current pressure and value distribution across scored deals." />
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="dashboard-scout-overview-grid grid grid-cols-1 gap-4 md:grid-cols-2">
               {/* Card 1: Pressure Score Display */}
               {snapshot && pressureStatus ? (
                 <PressureInstrument
@@ -664,7 +664,7 @@ export default function ScoutDashboard() {
 
               {/* Card 2: Scout Pipeline Diagnostics */}
               {snapshot ? (
-                <Surface className="flex flex-col justify-between gap-4 p-5 relative">
+                <Surface className="dashboard-scout-diagnostics flex flex-col justify-between gap-4 p-5 relative">
                   {runningScout && (
                     <span role="status" aria-label="Scout analysis in progress" className="absolute right-4 top-4 inline-flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider text-[var(--amber)]">
                       <RefreshCw className="h-3 w-3 motion-safe:animate-spin" /> Analyzing
@@ -677,24 +677,24 @@ export default function ScoutDashboard() {
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-3 text-center">
-                    <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-2.5 rounded-[8px] col-span-3 sm:col-span-1">
+                  <div className="dashboard-scout-metrics grid grid-cols-3 gap-3 text-center">
+                    <div className="dashboard-scout-metric border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-2.5 rounded-[8px] col-span-3 sm:col-span-1">
                       <span className="text-[10px] font-sans text-[var(--text-secondary)] block uppercase font-bold">Total scored deals</span>
                       <span className="text-lg font-bold font-mono text-[var(--text-primary)] block mt-0.5">{snapshot.total_deals}</span>
                     </div>
-                    <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-2.5 rounded-[8px]">
+                    <div className="dashboard-scout-metric dashboard-scout-metric-red border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-2.5 rounded-[8px]">
                       <span className="text-[10px] font-sans text-[var(--red)] block uppercase font-bold">At Risk</span>
                       <span className="text-lg font-bold font-mono text-[var(--text-primary)] block mt-0.5">
                         {snapshot.red_count}
                       </span>
                     </div>
-                    <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-2.5 rounded-[8px]">
+                    <div className="dashboard-scout-metric dashboard-scout-metric-amber border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-2.5 rounded-[8px]">
                       <span className="text-[10px] font-sans text-[var(--amber)] block uppercase font-bold">Warning</span>
                       <span className="text-lg font-bold font-mono text-[var(--text-primary)] block mt-0.5">
                         {snapshot.amber_count}
                       </span>
                     </div>
-                    <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-2.5 rounded-[8px]">
+                    <div className="dashboard-scout-metric dashboard-scout-metric-green border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-2.5 rounded-[8px]">
                       <span className="text-[10px] font-sans text-[var(--green)] block uppercase font-bold">Healthy</span>
                       <span className="text-lg font-bold font-mono text-[var(--text-primary)] block mt-0.5">
                         {snapshot.green_count}
@@ -711,10 +711,10 @@ export default function ScoutDashboard() {
           </section>
 
           {/* SECTION 2 — ACTION QUEUE (always expanded, not collapsible) */}
-          <section aria-labelledby="action-queue-title" className="space-y-3">
+          <section aria-labelledby="action-queue-title" className="dashboard-scout-action-queue space-y-3">
             <SectionHeader headingId="action-queue-title" title="Action queue" description="The next interventions surfaced from Scout’s current snapshot." />
             
-            <div className="border border-[var(--border-subtle)] border-l-[3px] border-l-[var(--amber)] bg-[var(--bg-elevated)] rounded-[12px] p-5 shadow-[0_1px_4px_rgba(0,0,0,0.25)] font-sans text-xs space-y-2">
+            <div className="dashboard-scout-action-ledger border border-[var(--border-subtle)] border-l-[3px] border-l-[var(--amber)] bg-[var(--bg-elevated)] rounded-[12px] p-5 shadow-[0_1px_4px_rgba(0,0,0,0.25)] font-sans text-xs space-y-2">
               <div className="flex items-center gap-2 text-[var(--text-primary)] font-bold tracking-wider uppercase text-[12px]">
                 <Zap className="text-[var(--amber)] w-4 h-4 fill-[var(--amber)]/10" />
                 SCOUT INBOX — TODAY
@@ -724,7 +724,7 @@ export default function ScoutDashboard() {
                   <p className="text-[var(--text-muted)] italic">No urgent items today.</p>
                 ) : (
                   displayInboxItems.map((item, idx) => (
-                    <p key={idx} className="flex items-start gap-2">
+                    <p key={idx} className="dashboard-scout-action-item flex items-start gap-2">
                       <span className="text-[var(--amber)]">•</span>
                       <span>{item}</span>
                     </p>
@@ -735,7 +735,7 @@ export default function ScoutDashboard() {
           </section>
 
           {/* SECTION 3 — DEAL ACCELERATION TRIGGERS (collapsible, default collapsed) */}
-          <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-[12px] overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.25)]">
+          <div className="dashboard-scout-panel border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-[12px] overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.25)]">
             <button
               onClick={() => toggleSection('triggers')}
               aria-expanded={!collapsedSections.triggers}
@@ -773,7 +773,7 @@ export default function ScoutDashboard() {
                     {triggers.map((trigger, idx) => (
                       <div
                         key={idx}
-                        className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 rounded-[12px] flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:border-[var(--border-default)] transition-colors shadow-[0_1px_4px_rgba(0,0,0,0.1)]"
+                        className="dashboard-scout-trigger-row border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 rounded-[12px] flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:border-[var(--border-default)] transition-colors shadow-[0_1px_4px_rgba(0,0,0,0.1)]"
                       >
                         <div className="space-y-1 md:space-y-0.5">
                           <div className="flex items-center gap-2">
@@ -792,7 +792,7 @@ export default function ScoutDashboard() {
                         </div>
                         <button
                           onClick={() => openNotifyModal(trigger)}
-                          className="w-full md:w-auto bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-sans text-xs font-semibold px-3.5 py-2 rounded-[8px] transition-colors active:scale-[0.98] flex items-center justify-center gap-1.5"
+                          className="dashboard-button-primary w-full md:w-auto bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-sans text-xs font-semibold px-3.5 py-2 rounded-[8px] transition-colors flex items-center justify-center gap-1.5"
                         >
                           <Mail className="w-3 h-3" />
                           NOTIFY REP
@@ -808,7 +808,7 @@ export default function ScoutDashboard() {
       </div>
 
           {/* SECTION 4 — PIPELINE HEALTH (collapsible, default expanded) */}
-          <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-[12px] overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.25)]">
+          <div className="dashboard-scout-panel dashboard-scout-health-panel border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-[12px] overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.25)]">
             <button
               onClick={() => toggleSection('pipelineHealth')}
               aria-expanded={!collapsedSections.pipelineHealth}
@@ -838,7 +838,7 @@ export default function ScoutDashboard() {
                 >
                   <div className="p-5 space-y-4">
                 {/* Tabs Header */}
-                <div role="tablist" aria-label="Pipeline health states" className="flex border-b border-[var(--border-subtle)] font-sans text-xs mb-4">
+                <div role="tablist" aria-label="Pipeline health states" className="dashboard-scout-health-tabs flex border-b border-[var(--border-subtle)] font-sans text-xs mb-4">
                   <button
                     role="tab"
                     id="scout-tab-red"
@@ -907,7 +907,7 @@ export default function ScoutDashboard() {
                           return (
                             <div
                               key={deal.deal_id}
-                              className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-[12px] overflow-hidden border-l-[3px] border-l-[var(--red)] shadow-[0_1px_4px_rgba(0,0,0,0.25)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.35)] transition-all duration-200"
+                              className="dashboard-scout-deal-card border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-[12px] overflow-hidden border-l-[3px] border-l-[var(--red)] shadow-[0_1px_4px_rgba(0,0,0,0.25)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.35)] transition-all duration-200"
                             >
                               <button
                                 type="button"
@@ -916,8 +916,8 @@ export default function ScoutDashboard() {
                                 aria-controls={`scout-deal-${deal.deal_id}`}
                                 className="w-full p-4 flex justify-between items-center cursor-pointer hover:bg-[var(--bg-elevated)] select-none text-left"
                               >
-                                <div className="space-y-1">
-                                  <h3 className="font-sans text-sm font-bold text-[var(--text-primary)]">{deal.deal_name}</h3>
+                                <div className="dashboard-wrap-anywhere min-w-0 space-y-1">
+                                  <h3 className="dashboard-wrap-anywhere font-sans text-sm font-bold text-[var(--text-primary)]">{deal.deal_name}</h3>
                                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] font-mono text-[var(--text-muted)]">
                                     <span>Rep: <span className="text-[var(--text-secondary)]">{deal.rep_name}</span>{deal.rep_email && <span className="text-[var(--text-muted)]"> ({deal.rep_email})</span>}</span>
                                     <span>Value: <span className="text-[var(--green)]">{formatCurrency(deal.deal_value)}</span></span>
@@ -982,7 +982,7 @@ export default function ScoutDashboard() {
 
                                     <button
                                       onClick={() => openNudgeModal(deal)}
-                                      className="bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-sans text-xs font-semibold py-2 px-4.5 rounded-[8px] transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
+                                      className="dashboard-button-primary bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-sans text-xs font-semibold py-2 px-4.5 rounded-[8px] transition-all flex items-center justify-center gap-2"
                                     >
                                       <Send className="w-3.5 h-3.5" />
                                       NUDGE REP
@@ -1030,7 +1030,7 @@ export default function ScoutDashboard() {
                           return (
                             <div
                               key={deal.deal_id}
-                              className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-[12px] overflow-hidden border-l-[3px] border-l-[var(--amber)] shadow-[0_1px_4px_rgba(0,0,0,0.25)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.35)] transition-all duration-200"
+                              className="dashboard-scout-deal-card border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-[12px] overflow-hidden border-l-[3px] border-l-[var(--amber)] shadow-[0_1px_4px_rgba(0,0,0,0.25)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.35)] transition-all duration-200"
                             >
                               <button
                                 type="button"
@@ -1039,8 +1039,8 @@ export default function ScoutDashboard() {
                                 aria-controls={`scout-deal-${deal.deal_id}`}
                                 className="w-full p-4 flex justify-between items-center cursor-pointer hover:bg-[var(--bg-elevated)] select-none text-left"
                               >
-                                <div className="space-y-1">
-                                  <h3 className="font-sans text-sm font-bold text-[var(--text-primary)]">{deal.deal_name}</h3>
+                                <div className="dashboard-wrap-anywhere min-w-0 space-y-1">
+                                  <h3 className="dashboard-wrap-anywhere font-sans text-sm font-bold text-[var(--text-primary)]">{deal.deal_name}</h3>
                                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] font-mono text-[var(--text-muted)]">
                                     <span>Rep: <span className="text-[var(--text-secondary)]">{deal.rep_name}</span>{deal.rep_email && <span className="text-[var(--text-muted)]"> ({deal.rep_email})</span>}</span>
                                     <span>Value: <span className="text-[var(--green)]">{formatCurrency(deal.deal_value)}</span></span>
@@ -1093,7 +1093,7 @@ export default function ScoutDashboard() {
                                   <div className="flex justify-end pt-2">
                                     <button
                                       onClick={() => openNudgeModal(deal)}
-                                      className="bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-sans text-xs font-semibold py-2 px-4.5 rounded-[8px] transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
+                                      className="dashboard-button-primary bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-sans text-xs font-semibold py-2 px-4.5 rounded-[8px] transition-all flex items-center justify-center gap-2"
                                     >
                                       <Send className="w-3.5 h-3.5" />
                                       NUDGE REP
@@ -1121,10 +1121,10 @@ export default function ScoutDashboard() {
                         {greenDeals.map((deal) => (
                           <div
                             key={deal.deal_id}
-                            className="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 hover:bg-[var(--bg-elevated)] transition-colors border-l-[3px] border-l-[var(--green)]"
+                            className="dashboard-scout-deal-row p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 hover:bg-[var(--bg-elevated)] transition-colors border-l-[3px] border-l-[var(--green)]"
                           >
-                            <div className="space-y-0.5">
-                              <span className="font-sans text-sm font-bold text-[var(--text-primary)]">{deal.deal_name}</span>
+                            <div className="dashboard-wrap-anywhere min-w-0 space-y-0.5">
+                              <span className="dashboard-wrap-anywhere font-sans text-sm font-bold text-[var(--text-primary)]">{deal.deal_name}</span>
                               <div className="flex items-center gap-3 text-[10px] font-mono text-[var(--text-muted)]">
                                 <span>Rep: <span className="text-[var(--text-secondary)]">{deal.rep_name}</span>{deal.rep_email && <span className="text-[var(--text-muted)]"> ({deal.rep_email})</span>}</span>
                                 <span>Stage: <span className="text-[var(--text-secondary)]">{deal.stage}</span></span>
@@ -1146,7 +1146,7 @@ export default function ScoutDashboard() {
       </div>
 
           {/* SECTION 5 — REP INTELLIGENCE (collapsible, default expanded) */}
-          <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-[12px] overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.25)]">
+          <div className="dashboard-scout-panel border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-[12px] overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.25)]">
             <button
               onClick={() => toggleSection('repIntelligence')}
               aria-expanded={!collapsedSections.repIntelligence}
@@ -1193,11 +1193,11 @@ export default function ScoutDashboard() {
                       return (
                         <div
                           key={idx}
-                          className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 rounded-[12px] flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:border-[var(--border-default)] transition-colors shadow-[0_1px_4px_rgba(0,0,0,0.1)]"
+                          className="dashboard-scout-rep-row border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 rounded-[12px] flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:border-[var(--border-default)] transition-colors shadow-[0_1px_4px_rgba(0,0,0,0.1)]"
                         >
                           <div className="space-y-1.5 w-full">
                             <div className="flex items-center justify-between">
-                              <span className="font-sans text-sm font-bold text-[var(--text-primary)]">{report.rep_name}</span>
+                              <span className="dashboard-wrap-anywhere font-sans text-sm font-bold text-[var(--text-primary)]">{report.rep_name}</span>
                               <span className="font-mono text-[10px] text-[var(--text-muted)] uppercase font-semibold">
                                 {report.deal_count} {report.deal_count === 1 ? 'DEAL' : 'DEALS'}
                               </span>
@@ -1247,7 +1247,7 @@ export default function ScoutDashboard() {
       </div>
 
           {/* SECTION 6 — DEAL OBITUARIES (collapsible, default collapsed) */}
-          <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-[12px] overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.25)]">
+          <div className="dashboard-scout-panel border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-[12px] overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.25)]">
             <button
               onClick={() => toggleSection('obituaries')}
               aria-expanded={!collapsedSections.obituaries}
@@ -1308,11 +1308,11 @@ export default function ScoutDashboard() {
                     {obituaries.map((obit, idx) => (
                       <div
                         key={idx}
-                        className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 rounded-[12px] flex flex-col justify-between gap-3 hover:border-[var(--border-default)] transition-colors shadow-[0_1px_4px_rgba(0,0,0,0.15)] font-sans"
+                        className="dashboard-scout-obituary-card border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 rounded-[12px] flex flex-col justify-between gap-3 hover:border-[var(--border-default)] transition-colors shadow-[0_1px_4px_rgba(0,0,0,0.15)] font-sans"
                       >
                         <div className="space-y-2">
                           <div className="flex justify-between items-start">
-                            <span className="text-sm font-bold text-[var(--text-primary)] leading-snug font-sans">{obit.deal_name}</span>
+                            <span className="dashboard-wrap-anywhere min-w-0 text-sm font-bold text-[var(--text-primary)] leading-snug font-sans">{obit.deal_name}</span>
                             <span className="text-xs font-bold text-[var(--red)] font-mono">{formatCurrency(obit.deal_value)}</span>
                           </div>
                           <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-[var(--text-muted)] uppercase font-semibold">
@@ -1422,7 +1422,7 @@ export default function ScoutDashboard() {
               <button
                 onClick={handleSendNudge}
                 disabled={sendingNudge}
-                className="bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-sans text-xs font-semibold py-2 px-4.5 rounded-[8px] transition-all active:scale-[0.98] flex items-center gap-1.5"
+                className="dashboard-button-primary bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-sans text-xs font-semibold py-2 px-4.5 rounded-[8px] transition-all flex items-center gap-1.5"
               >
                 {sendingNudge ? 'SENDING...' : 'SEND NUDGE'}
               </button>

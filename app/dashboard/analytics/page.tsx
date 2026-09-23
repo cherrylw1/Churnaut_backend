@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useReducedMotion } from 'framer-motion';
 import CountUp from '@/components/ui/CountUp';
 import {
   ResponsiveContainer,
@@ -19,7 +20,6 @@ import EmptyState from '@/components/ui/EmptyState';
 import ErrorState from '@/components/ui/ErrorState';
 import { PageHeader } from '@/components/dashboard/PageHeader';
 import { Surface } from '@/components/dashboard/Surface';
-import { MetricCard } from '@/components/dashboard/MetricCard';
 import { DataTable } from '@/components/dashboard/DataTable';
 import { SectionHeader } from '@/components/dashboard/SectionHeader';
 
@@ -99,6 +99,7 @@ interface AnalyticsData {
 }
 
 export default function AnalyticsPage() {
+  const reduceMotion = useReducedMotion();
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -130,22 +131,18 @@ export default function AnalyticsPage() {
   }, []);
 
   if (loading) {
-    return <div className="dashboard-surface mx-auto flex min-h-48 max-w-[1560px] items-center justify-center text-center text-sm uppercase tracking-[0.18em] text-[var(--text-muted)]" role="status" aria-busy="true">Retrieving measurement signals...</div>;
+    return <div className="dashboard-analytics mx-auto w-full max-w-[1560px] space-y-6" role="status" aria-busy="true"><PageHeader eyebrow="Signal Field · Measurement" title="Analytics" description="Understand which signals, rules, and links are moving the pipeline." /><Surface className="flex min-h-48 items-center justify-center text-center text-sm uppercase tracking-[0.18em] text-[var(--text-muted)]">Retrieving measurement signals...</Surface></div>;
   }
 
   if (error) {
     return (
-      <div className="py-12 bg-[var(--bg-base)] min-h-screen">
-        <ErrorState message={error} onRetry={fetchAnalytics} />
-      </div>
+      <div className="dashboard-analytics mx-auto w-full max-w-[1560px] space-y-6"><PageHeader eyebrow="Signal Field · Measurement" title="Analytics" description="Understand which signals, rules, and links are moving the pipeline." /><ErrorState message={error} onRetry={fetchAnalytics} /></div>
     );
   }
 
   if (!data) {
     return (
-      <div className="py-12 bg-[var(--bg-base)] min-h-screen">
-        <ErrorState message="Failed to fetch analytics metrics. Please ensure webhooks or resolve calls have been logged." onRetry={fetchAnalytics} />
-      </div>
+      <div className="dashboard-analytics mx-auto w-full max-w-[1560px] space-y-6"><PageHeader eyebrow="Signal Field · Measurement" title="Analytics" description="Understand which signals, rules, and links are moving the pipeline." /><ErrorState message="Failed to fetch analytics metrics. Please ensure webhooks or resolve calls have been logged." onRetry={fetchAnalytics} /></div>
     );
   }
 
@@ -160,7 +157,7 @@ export default function AnalyticsPage() {
   } = data;
 
   return (
-    <div className="mx-auto w-full max-w-[1560px] space-y-6 bg-[var(--bg-base)] text-[var(--text-primary)] min-h-screen">
+    <div className="dashboard-analytics mx-auto w-full max-w-[1560px] space-y-6 bg-[var(--bg-base)] text-[var(--text-primary)] min-h-screen">
       <PageHeader eyebrow="Signal Field · Measurement" title="Analytics" description="Understand which signals, rules, and links are moving the pipeline." />
 
       {recentEvents.length === 0 ? (
@@ -190,20 +187,20 @@ export default function AnalyticsPage() {
             </div>
           </Surface>
         ) : null}
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-6">
-          <div className="lg:col-span-2"><MetricCard label="Trigger rate" value={<CountUp value={summaryStats.personalizationTriggerRate} suffix="%" />} detail="Personalized sessions" emphasis="primary" /></div>
-          <div className="lg:col-span-2"><MetricCard label="Overall conversion" value={<CountUp value={summaryStats.overallConversionRate} suffix="%" />} detail="Converted sessions" emphasis="primary" /></div>
-          <div className="lg:col-span-1"><MetricCard label="Links created (MTD)" value={<CountUp value={summaryStats.totalLinksCreatedThisMonth} />} detail="Tracked links" /></div>
-          <div className="lg:col-span-1"><MetricCard label="Click events (MTD)" value={<CountUp value={summaryStats.totalClicksThisMonth} />} detail="Engagement" /></div>
-        </div>
+        <Surface tone="elevated" className="dashboard-analytics-telemetry-rail">
+          <div className="dashboard-analytics-telemetry-primary"><span className="dashboard-eyebrow">TRIGGER RATE</span><strong><CountUp value={summaryStats.personalizationTriggerRate} suffix="%" /></strong><span>Personalized sessions</span></div>
+          <div className="dashboard-analytics-telemetry-primary"><span className="dashboard-eyebrow">CONVERSION</span><strong><CountUp value={summaryStats.overallConversionRate} suffix="%" /></strong><span>Converted sessions</span></div>
+          <div className="dashboard-analytics-telemetry-secondary"><span className="dashboard-eyebrow">LINKS CREATED</span><strong><CountUp value={summaryStats.totalLinksCreatedThisMonth} /></strong><span>This month</span></div>
+          <div className="dashboard-analytics-telemetry-secondary"><span className="dashboard-eyebrow">CLICK EVENTS</span><strong><CountUp value={summaryStats.totalClicksThisMonth} /></strong><span>This month</span></div>
+        </Surface>
       </section>
 
       {/* Visual Graphs Row */}
       <section aria-labelledby="signal-volume-title" className="space-y-3">
       <SectionHeader headingId="signal-volume-title" title="Signal volume" description="What moved across the last 30 days, and how each signal converted." />
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
+      <Surface tone="subtle" className="dashboard-analytics-measurement-canvas grid grid-cols-1 gap-6 p-5 lg:grid-cols-5" aria-label="Analytics measurement canvas">
         {/* Line Chart: Daily personalization volume */}
-        <Surface tone="subtle" className="space-y-4 p-5 lg:col-span-3" aria-label="30-day personalization volume chart">
+        <div className="dashboard-analytics-chart-primary space-y-4 lg:col-span-3" role="group" aria-label="30-day personalization volume chart">
           <SectionHeader title="Personalization volume" description="Past 30 days" />
           <div className="h-64 min-w-0" role="img" aria-label="Line chart of personalization triggers over the past 30 days">
             {mounted && (
@@ -236,10 +233,11 @@ export default function AnalyticsPage() {
                     }}
                   />
                   <Line
+                    isAnimationActive={!reduceMotion}
                     type="monotone"
                     dataKey="count"
                     name="Personalization Triggers"
-                    stroke="var(--accent)"
+                    stroke="var(--signal-observe)"
                     strokeWidth={2}
                     activeDot={{ r: 6 }}
                     dot={{ r: 2 }}
@@ -248,10 +246,10 @@ export default function AnalyticsPage() {
               </ResponsiveContainer>
             )}
           </div>
-        </Surface>
+        </div>
 
         {/* Bar Chart: Signal Breakdown comparison */}
-        <Surface tone="subtle" className="space-y-4 p-5 lg:col-span-2" aria-label="Signal conversion comparison chart">
+        <div className="dashboard-analytics-chart-secondary space-y-4 lg:col-span-2" role="group" aria-label="Signal conversion comparison chart">
           <SectionHeader title="Signal conversion" description="Links compared with conversions" />
           <div className="h-64 min-w-0" role="img" aria-label="Bar chart comparing signal links and conversions">
             {mounted && (
@@ -290,14 +288,14 @@ export default function AnalyticsPage() {
                       paddingTop: 10,
                     }}
                   />
-                  <Bar dataKey="links" name="Links" fill="var(--accent)" radius={[2, 2, 0, 0]} />
-                  <Bar dataKey="conversions" name="Conversions" fill="var(--green)" radius={[2, 2, 0, 0]} />
+                  <Bar isAnimationActive={!reduceMotion} dataKey="links" name="Links" fill="var(--signal-activate)" radius={[2, 2, 0, 0]} />
+                  <Bar isAnimationActive={!reduceMotion} dataKey="conversions" name="Conversions" fill="var(--signal-positive)" radius={[2, 2, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             )}
           </div>
-        </Surface>
-      </div>
+        </div>
+      </Surface>
       </section>
 
       {/* Tables Row: Rule Performance & Rep Conversion */}
@@ -401,18 +399,18 @@ export default function AnalyticsPage() {
           </div>
 
           {/* Overall lift summary */}
-          <div className="grid grid-cols-3 gap-4">
-            <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 rounded-lg text-center">
+          <div className="dashboard-analytics-comparison-band">
+            <div>
               <p className="text-[10px] font-mono text-[var(--text-muted)] uppercase tracking-wider mb-1">Personalized</p>
               <p className="text-2xl font-bold font-mono text-[var(--text-primary)]">{liftReport.personalized_rate}%</p>
               <p className="text-[10px] font-mono text-[var(--text-muted)] mt-1">{liftReport.personalized_sessions} sessions</p>
             </div>
-            <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 rounded-lg text-center">
+            <div>
               <p className="text-[10px] font-mono text-[var(--text-muted)] uppercase tracking-wider mb-1">Baseline</p>
               <p className="text-2xl font-bold font-mono text-[var(--text-secondary)]">{liftReport.baseline_rate}%</p>
               <p className="text-[10px] font-mono text-[var(--text-muted)] mt-1">{liftReport.unpersonalized_sessions} sessions</p>
             </div>
-            <div className={`border p-4 rounded-lg text-center ${liftReport.overall_lift_pp > 0 ? 'border-[var(--green)]/30 bg-[var(--green)]/10' : 'border-[var(--border-subtle)] bg-[var(--bg-surface)]'}`}>
+            <div className={liftReport.overall_lift_pp > 0 ? 'dashboard-analytics-lift-positive' : 'dashboard-analytics-lift-neutral'}>
               <p className="text-[10px] font-mono text-[var(--text-muted)] uppercase tracking-wider mb-1">Lift</p>
               <p className={`text-2xl font-bold font-mono ${liftReport.overall_lift_pp > 0 ? 'text-[var(--green)]' : 'text-[var(--text-secondary)]'}`}>
                 {liftReport.overall_lift_pp > 0 ? '+' : ''}{liftReport.overall_lift_pp}pp
@@ -423,7 +421,7 @@ export default function AnalyticsPage() {
 
           {/* Per-rule lift table */}
           {liftReport.rules.length > 0 && (
-            <div className="overflow-x-auto">
+            <div className="dashboard-table-wrap dashboard-analytics-table-scroll" role="region" aria-label="Per-rule lift performance">
               <table className="dashboard-table w-full text-left border-collapse text-xs font-mono">
                 <thead>
                   <tr className="border-b border-[var(--border-subtle)]">

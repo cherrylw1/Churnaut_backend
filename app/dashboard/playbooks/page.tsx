@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { PageHeader } from '@/components/dashboard/PageHeader';
 import { ModalShell } from '@/components/dashboard/ModalShell';
 import { Surface } from '@/components/dashboard/Surface';
-import { SectionHeader } from '@/components/dashboard/SectionHeader';
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
 
 interface PlaybookInput {
@@ -41,6 +40,7 @@ export default function PlaybooksPage() {
 
   // Modal State
   const [selectedPlaybook, setSelectedPlaybook] = useState<PlaybookTemplate | null>(null);
+  const [focusedPlaybook, setFocusedPlaybook] = useState<PlaybookTemplate | null>(null);
   const [formValues, setFormValues] = useState<Record<string, string>>({});
   const [installing, setInstalling] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -53,7 +53,9 @@ export default function PlaybooksPage() {
       const res = await fetch('/api/playbooks');
       if (res.ok) {
         const data = await res.json();
-        setPlaybooks(data.playbooks || []);
+        const nextPlaybooks = data.playbooks || [];
+        setPlaybooks(nextPlaybooks);
+        setFocusedPlaybook((current) => current && nextPlaybooks.some((playbook: PlaybookTemplate) => playbook.id === current.id) ? current : (nextPlaybooks[0] || null));
         setWarning(data.warning || null);
       } else {
         const data = await res.json().catch(() => ({}));
@@ -72,6 +74,7 @@ export default function PlaybooksPage() {
   }, []);
 
   const openInstallModal = (playbook: PlaybookTemplate) => {
+    setFocusedPlaybook(playbook);
     setSelectedPlaybook(playbook);
     const initialValues: Record<string, string> = {};
     playbook.required_inputs.forEach((input) => {
@@ -193,7 +196,7 @@ CREATE TABLE IF NOT EXISTS playbook_templates (
   const showSeedingWarning = !fetchError && (warning || playbooks.length === 0);
 
   return (
-    <div className="max-w-6xl space-y-8 text-[var(--text-primary)]">
+    <div className="dashboard-playbooks max-w-6xl space-y-8 text-[var(--text-primary)]">
       <PageHeader eyebrow="Signal Field · Configuration library" title="Playbook library" description="Install proven routing patterns and tailor them to your workflow." />
       {fetchError && (
         <Surface role="alert" className="dashboard-surface flex items-center justify-between gap-4 border-rose-200 bg-rose-50 p-5 text-rose-700">
@@ -208,63 +211,38 @@ CREATE TABLE IF NOT EXISTS playbook_templates (
           <p className="leading-relaxed">
             {warning || 'The playbook library is empty. Seed the templates to make these ready-to-use routing patterns available.'}
           </p>
-          <div className="relative group overflow-x-auto rounded-xl border border-amber-200 bg-white/70 p-3 font-mono text-[10px] text-[var(--text-secondary)]">
+          <div className="dashboard-code-scroll relative border border-amber-200 bg-white/70 p-3 font-mono text-[10px] text-[var(--text-secondary)]">
             <pre>{seedSql}</pre>
             <span className="absolute top-2 right-2 text-[var(--accent)] font-bold" aria-label="SQL migration file">supabase/playbooks.sql</span>
           </div>
         </Surface>
       )}
 
-      {/* Render Playbooks Grid by Tiers */}
+      {/* Render Playbooks as a grouped library with one selected preview */}
       {!showSeedingWarning && (
-        <div className="space-y-12">
-          {/* TIER 1 */}
-          {tier1.length > 0 && (
-            <div className="space-y-4">
-              <SectionHeader title="Tier 1 Highest Value" description="Fastest paths to qualified conversations." action={<StatusBadge tone="success">Highest value</StatusBadge>} />
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                {tier1.map((playbook) => (
-                  <PlaybookCard key={playbook.id} playbook={playbook} onInstall={openInstallModal} />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* TIER 2 */}
-          {tier2.length > 0 && (
-            <div className="space-y-4">
-              <SectionHeader title="Tier 2 High Value" description="Reliable signals for active buying intent." action={<StatusBadge tone="info">High value</StatusBadge>} />
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                {tier2.map((playbook) => (
-                  <PlaybookCard key={playbook.id} playbook={playbook} onInstall={openInstallModal} />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* TIER 3 */}
-          {tier3.length > 0 && (
-            <div className="space-y-4">
-              <SectionHeader title="Tier 3 Solid Value" description="Supporting patterns for a fuller signal mix." action={<StatusBadge tone="neutral">Solid value</StatusBadge>} />
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                {tier3.map((playbook) => (
-                  <PlaybookCard key={playbook.id} playbook={playbook} onInstall={openInstallModal} />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* TIER 4 */}
-          {tier4.length > 0 && (
-            <div className="space-y-4">
-              <SectionHeader title="Tier 4 Completeness" description="Long-tail signals that round out coverage." action={<StatusBadge tone="neutral">Completeness</StatusBadge>} />
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                {tier4.map((playbook) => (
-                  <PlaybookCard key={playbook.id} playbook={playbook} onInstall={openInstallModal} />
-                ))}
-              </div>
-            </div>
-          )}
+        <div className="dashboard-playbook-library grid gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(320px,1.05fr)]">
+          <div className="dashboard-surface dashboard-playbook-list space-y-5">
+            {([
+              [1, 'Tier 1 · Highest value', 'Fastest paths to qualified conversations.', tier1],
+              [2, 'Tier 2 · High value', 'Reliable signals for active buying intent.', tier2],
+              [3, 'Tier 3 · Solid value', 'Supporting patterns for a fuller signal mix.', tier3],
+              [4, 'Tier 4 · Completeness', 'Long-tail signals that round out coverage.', tier4],
+            ] as Array<[number, string, string, PlaybookTemplate[]]>).map(([tier, title, description, tierItems]) => {
+              if (tierItems.length === 0) return null;
+              return <section key={tier as number} className="dashboard-playbook-tier" aria-labelledby={`playbook-tier-${tier}`}>
+                <div className="flex items-start justify-between gap-3 border-b border-[var(--field-line)] pb-3"><div><h2 id={`playbook-tier-${tier}`} className="text-sm font-semibold text-[var(--field-ink)]">{title}</h2><p className="mt-1 text-xs text-[var(--field-ink-muted)]">{description}</p></div><StatusBadge tone={tier === 1 ? 'success' : tier === 2 ? 'info' : 'neutral'}>{tier === 1 ? 'Highest value' : tier === 2 ? 'High value' : tier === 3 ? 'Solid value' : 'Completeness'}</StatusBadge></div>
+                <div className="divide-y divide-[var(--field-line)]">{tierItems.map((playbook) => <PlaybookRow key={playbook.id} playbook={playbook} selected={focusedPlaybook?.id === playbook.id} onSelect={setFocusedPlaybook} />)}</div>
+              </section>;
+            })}
+          </div>
+          <aside className="dashboard-surface dashboard-playbook-preview lg:sticky lg:top-6 lg:self-start" aria-live="polite">
+            {(() => { const preview = focusedPlaybook || tier1[0] || tier2[0] || tier3[0] || tier4[0]; return preview ? <>
+              <div className="flex items-start justify-between gap-3"><div><p className="dashboard-eyebrow">SELECTED PATTERN</p><h2 className="mt-2 text-2xl font-semibold tracking-tight text-[var(--field-ink)] dashboard-wrap-anywhere">{preview.name}</h2></div><span className="dashboard-playbook-signal">{preview.signal_type.replace(/_/g, ' ')}</span></div>
+              <p className="mt-4 dashboard-wrap-anywhere text-sm leading-relaxed text-[var(--field-ink-secondary)]">{preview.description}</p>
+              <div className="mt-6 grid gap-3 border-y border-[var(--field-line)] py-4 sm:grid-cols-2"><div><p className="dashboard-eyebrow">TIER</p><p className="mt-1 font-mono text-sm text-[var(--field-ink)]">{preview.tier}</p></div><div><p className="dashboard-eyebrow">REQUIRED INPUTS</p><p className="mt-1 dashboard-wrap-anywhere font-mono text-sm text-[var(--field-ink)]">{preview.required_inputs.map((input) => input.label).join(' · ') || 'None'}</p></div></div>
+              <button type="button" onClick={() => openInstallModal(preview)} className="dashboard-button-primary mt-6 min-h-11 w-full">INSTALL THIS PLAYBOOK</button>
+            </> : <p className="text-sm text-[var(--field-ink-muted)]">Select a playbook to inspect its activation pattern.</p>; })()}
+          </aside>
         </div>
       )}
 
@@ -290,13 +268,13 @@ CREATE TABLE IF NOT EXISTS playbook_templates (
                   <div className="flex flex-col sm:flex-row gap-3 pt-2">
                     <button
                       onClick={closeInstallModal}
-                      className="flex-1 rounded-lg bg-[var(--border-subtle)] px-4 py-2.5 text-xs text-white transition-all hover:bg-[var(--bg-elevated)] motion-safe:active:scale-[0.98]"
+                      className="dashboard-button-secondary flex-1 px-4 py-2.5 text-xs"
                     >
                       Close Window
                     </button>
                     <Link
                       href="/dashboard/rules"
-                      className="flex-1 rounded-lg bg-[var(--accent)] px-4 py-2.5 text-center text-xs text-white transition-all hover:bg-[var(--accent-hover)] motion-safe:active:scale-[0.98]"
+                      className="dashboard-button-primary flex-1 px-4 py-2.5 text-center text-xs"
                     >
                       View Routing Rules &rarr;
                     </Link>
@@ -314,7 +292,7 @@ CREATE TABLE IF NOT EXISTS playbook_templates (
                   </div>
 
                   {errorMsg && (
-                    <div role="alert" className="rounded border border-[var(--red)]/30 bg-[var(--red)]/10 p-3 text-xs text-[var(--red)]">
+                    <div role="alert" className="dashboard-wrap-anywhere border border-[var(--red)]/30 bg-[var(--red)]/10 p-3 text-xs text-[var(--red)]">
                       {errorMsg}
                     </div>
                   )}
@@ -333,7 +311,7 @@ CREATE TABLE IF NOT EXISTS playbook_templates (
                           value={formValues[input.field_name] || ''}
                           onChange={(e) => handleInputChange(input.field_name, e.target.value)}
                           placeholder={input.placeholder}
-                          className="w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2.5 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+                          className="dashboard-input w-full px-3 py-2.5 text-xs"
                         />
                       </div>
                     ))}
@@ -344,14 +322,14 @@ CREATE TABLE IF NOT EXISTS playbook_templates (
                     <button
                       type="button"
                       onClick={closeInstallModal}
-                      className="rounded-lg bg-[var(--border-subtle)] px-5 py-2.5 text-xs text-white transition-all hover:bg-[var(--bg-elevated)] motion-safe:active:scale-[0.98]"
+                      className="dashboard-button-secondary px-5 py-2.5 text-xs"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
                       disabled={installing}
-                      className="rounded-lg bg-[var(--accent)] px-6 py-2.5 text-xs font-semibold text-white transition-all hover:bg-[var(--accent-hover)] motion-safe:active:scale-[0.98] disabled:opacity-55"
+                      className="dashboard-button-primary px-6 py-2.5 text-xs disabled:opacity-55"
                     >
                       {installing ? 'INSTALLING...' : 'INSTALL PLAYBOOK'}
                     </button>
@@ -365,32 +343,32 @@ CREATE TABLE IF NOT EXISTS playbook_templates (
   );
 }
 
-// Sub-component: Playbook Card
-interface PlaybookCardProps {
+interface PlaybookRowProps {
   playbook: PlaybookTemplate;
-  onInstall: (playbook: PlaybookTemplate) => void;
+  selected: boolean;
+  onSelect: (playbook: PlaybookTemplate) => void;
 }
 
-function PlaybookCard({ playbook, onInstall }: PlaybookCardProps) {
+function PlaybookRow({ playbook, selected, onSelect }: PlaybookRowProps) {
   const getSignalBadgeClass = (signalType: string) => {
     const base = 'border text-[9px] font-mono px-2 py-0.5 rounded uppercase font-bold select-none';
     switch (signalType) {
       case 'cold_email':
         return `${base} bg-[var(--accent)]/20 text-[var(--accent)] border-[var(--accent)]/40`;
       case 'linkedin_lead_gen':
-        return `${base} bg-[var(--accent-cyan)]/10 text-[var(--accent-cyan)] border-[var(--accent-cyan)]/30`;
+        return `${base} bg-[var(--signal-observe)]/10 text-[var(--signal-observe)] border-[var(--signal-observe)]/30`;
       case 'returning_visitor':
         return `${base} bg-[var(--green)]/10 text-[var(--green)] border-[var(--green)]/30`;
       case 'google_ad':
         return `${base} bg-[var(--amber)]/10 text-[var(--amber)] border-[var(--amber)]/30`;
       case 'linkedin_ad':
-        return `${base} bg-[var(--accent-cyan)]/10 text-[var(--accent-cyan)] border-[var(--accent-cyan)]/30`;
+        return `${base} bg-[var(--signal-observe)]/10 text-[var(--signal-observe)] border-[var(--signal-observe)]/30`;
       case 'meta_ad':
-        return `${base} bg-[var(--accent-cyan)]/10 text-[var(--accent-cyan)] border-[var(--accent-cyan)]/30`;
+        return `${base} bg-[var(--signal-intelligence)]/10 text-[var(--signal-intelligence)] border-[var(--signal-intelligence)]/30`;
       case 'tiktok_ad':
-        return `${base} bg-[var(--accent-cyan)]/10 text-[var(--accent-cyan)] border-[var(--accent-cyan)]/30`;
+        return `${base} bg-[var(--signal-intelligence)]/10 text-[var(--signal-intelligence)] border-[var(--signal-intelligence)]/30`;
       case 'qr_code':
-        return `${base} bg-[var(--accent-cyan)]/10 text-[var(--accent-cyan)] border-[var(--accent-cyan)]/30`;
+        return `${base} bg-[var(--signal-activate)]/10 text-[var(--signal-activate)] border-[var(--signal-activate)]/30`;
       case 'g2_referral':
         return `${base} bg-[var(--amber)]/10 text-[var(--amber)] border-[var(--amber)]/30`;
       case 'partner_referral':
@@ -404,37 +382,9 @@ function PlaybookCard({ playbook, onInstall }: PlaybookCardProps) {
     return signalType.replace(/_/g, ' ');
   };
 
-  return (
-    <article className="group flex flex-col justify-between rounded-2xl border border-[var(--field-line)] bg-[var(--field-surface)] p-5 shadow-[0_14px_35px_rgba(25,33,29,0.06)] transition-transform motion-safe:hover:-translate-y-0.5">
-      <div className="space-y-3.5">
-        <div className="flex items-center justify-between gap-2">
-          <span className={getSignalBadgeClass(playbook.signal_type)}>
-            {getSignalLabel(playbook.signal_type)}
-          </span>
-          <span className="text-[10px] font-mono text-[var(--text-muted)]">Tier {playbook.tier}</span>
-        </div>
-        
-        <div className="space-y-1.5">
-          <h3 className="text-base font-semibold leading-tight text-[var(--field-ink)] transition-colors group-hover:text-[var(--signal-primary)]">
-            {playbook.name}
-          </h3>
-          <p className="min-h-[48px] text-sm leading-relaxed text-[var(--field-ink-secondary)]">
-            {playbook.description}
-          </p>
-        </div>
-      </div>
-      
-      <div className="pt-4 border-t border-[var(--border-subtle)]/60 mt-4 flex items-center justify-between gap-2">
-        <span className="text-[10px] font-mono text-[var(--text-muted)]">
-          {playbook.required_inputs.length} input{playbook.required_inputs.length !== 1 ? 's' : ''} required
-        </span>
-        <button
-          onClick={() => onInstall(playbook)}
-          className="dashboard-button-primary min-h-9 px-4 text-xs"
-        >
-          Install
-        </button>
-      </div>
-    </article>
-  );
+  return <button type="button" onClick={() => onSelect(playbook)} aria-pressed={selected} className={`dashboard-playbook-row w-full text-left ${selected ? 'dashboard-playbook-row-selected' : ''}`}>
+    <span className={getSignalBadgeClass(playbook.signal_type)}>{getSignalLabel(playbook.signal_type)}</span>
+    <span className="min-w-0 flex-1"><strong className="dashboard-wrap-anywhere block text-sm text-[var(--field-ink)]">{playbook.name}</strong><span className="dashboard-wrap-anywhere mt-1 block text-xs text-[var(--field-ink-muted)]">{playbook.required_inputs.length} input{playbook.required_inputs.length !== 1 ? 's' : ''} required</span></span>
+    <span className="shrink-0 font-mono text-xs text-[var(--field-ink-muted)]">T{playbook.tier}</span>
+  </button>;
 }

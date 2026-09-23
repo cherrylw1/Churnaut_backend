@@ -87,11 +87,11 @@ export function ModalShell({
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className={cn('relative w-full max-w-2xl max-h-[90vh] overflow-hidden rounded-[10px] border border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-2xl', className)}
+        className={cn('dashboard-modal relative w-full max-w-2xl max-h-[90vh] overflow-hidden border border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-2xl', className)}
       >
-        <div className="flex items-center justify-between gap-4 border-b border-[var(--border-subtle)] px-5 py-4">
+        <div className="dashboard-modal-header border-b border-[var(--border-subtle)] px-5 py-4">
           <h2 id={titleId} className="text-sm font-semibold text-[var(--text-primary)]">{title}</h2>
-          <button type="button" onClick={onClose} aria-label={closeLabel} className="rounded-md px-2 py-1 text-xs text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)]">
+          <button type="button" onClick={onClose} aria-label={closeLabel} className="rounded-[var(--radius-control)] px-2 py-1 text-xs text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)]">
             <span aria-hidden="true">×</span>
           </button>
         </div>

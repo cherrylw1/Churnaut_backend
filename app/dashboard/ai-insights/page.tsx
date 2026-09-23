@@ -87,39 +87,39 @@ export default function AiInsightsPage() {
     finally { setGeneratingDigest(false); }
   };
 
-  if (planLoading) return <div className="dashboard-surface mx-auto flex min-h-48 max-w-6xl items-center justify-center text-sm uppercase tracking-[0.18em] text-[var(--text-muted)]" role="status" aria-busy="true">Loading workspace access...</div>;
-  if (plan === 'starter') return <div className="p-6"><UpgradeGate feature="AI Revenue Insights" description="Weekly pipeline digests and anomaly detection — delivered automatically every Monday. Know what changed in your pipeline before your Monday standup." requiredPlan="growth" /></div>;
+  if (planLoading) return <div className="dashboard-ai-insights dashboard-surface mx-auto flex min-h-48 max-w-6xl items-center justify-center text-sm uppercase tracking-[0.18em] text-[var(--text-muted)]" role="status" aria-busy="true">Loading workspace access...</div>;
+  if (plan === 'starter') return <div className="dashboard-ai-insights p-6"><UpgradeGate feature="AI Revenue Insights" description="Weekly pipeline digests and anomaly detection — delivered automatically every Monday. Know what changed in your pipeline before your Monday standup." requiredPlan="growth" /></div>;
 
   return (
-    <div className="space-y-8 max-w-6xl mx-auto">
+    <div className="dashboard-ai-insights space-y-8 max-w-6xl mx-auto">
       <PageHeader eyebrow="Signal Field · Intelligence brief" title="AI revenue insights" description="A weekly revenue briefing with a live watch on the signals that need attention." />
 
-      {actionError ? <div role="alert" className="dashboard-surface border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{actionError}</div> : null}
+      {actionError ? <div role="alert" className="dashboard-ai-action-feedback dashboard-surface border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{actionError}</div> : null}
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
-        <section className="lg:col-span-3 space-y-4" aria-labelledby="weekly-briefing-heading">
-          <Surface tone="elevated">
+        <section className="dashboard-ai-briefing lg:col-span-3 space-y-4" aria-labelledby="weekly-briefing-heading">
+          <Surface tone="elevated" className="dashboard-ai-briefing-canvas">
             <SectionHeader title="Weekly briefing" headingId="weekly-briefing-heading" description="The clearest read on what changed in your pipeline." action={<button onClick={handleGenerateDigest} disabled={generatingDigest} className="min-h-10 bg-[var(--accent)] hover:bg-[var(--accent-hover)] disabled:opacity-50 text-white font-mono text-[10px] font-bold py-2 px-3 rounded transition-colors">{generatingDigest ? 'COMPILING...' : 'GENERATE DIGEST'}</button>} />
             {digest ? <p className="mt-3 text-[10px] text-[var(--text-muted)] font-mono uppercase tracking-widest">Week of {digest.week_start}</p> : null}
             {loadingDigest ? <div className="py-16 text-center text-[var(--text-muted)] font-mono text-xs" role="status" aria-busy="true">Retrieving briefing...</div> : digestError ? <div role="alert" className="mt-5 space-y-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700"><p>{digestError}</p><button type="button" onClick={fetchDigest} className="dashboard-button-secondary min-h-9 px-3 text-xs">TRY AGAIN</button></div> : !digest ? <EmptyPanel icon={<Sparkles className="w-5 h-5" />} title="No briefing compiled" description="Generate a digest to see the latest pipeline story and the next best action." /> : (
-              <div className="mt-6 space-y-4">
-                <Surface tone="subtle" aria-label="This week summary"><p className="dashboard-eyebrow font-mono">THIS WEEK</p><p className="mt-2 text-sm leading-relaxed text-[var(--text-primary)]">{digest.summary}</p></Surface>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Surface tone="subtle"><p className="dashboard-eyebrow font-mono">TOP SIGNAL</p><p className="mt-2 text-sm leading-relaxed text-[var(--text-primary)]">{digest.top_signal}</p></Surface>
-                  <Surface tone="subtle"><p className="dashboard-eyebrow font-mono">REP SPOTLIGHT</p><p className="mt-2 text-sm leading-relaxed text-[var(--text-primary)]">{digest.rep_spotlight}</p></Surface>
+              <div className="dashboard-ai-briefing-story mt-6 space-y-4">
+                <div className="dashboard-ai-briefing-summary" aria-label="This week summary"><p className="dashboard-eyebrow font-mono">THIS WEEK</p><p className="mt-2 text-sm leading-relaxed text-[var(--text-primary)]">{digest.summary}</p></div>
+                <div className="dashboard-ai-briefing-signals grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="dashboard-ai-briefing-signal"><p className="dashboard-eyebrow font-mono">TOP SIGNAL</p><p className="mt-2 text-sm leading-relaxed text-[var(--text-primary)]">{digest.top_signal}</p></div>
+                  <div className="dashboard-ai-briefing-signal"><p className="dashboard-eyebrow font-mono">REP SPOTLIGHT</p><p className="mt-2 text-sm leading-relaxed text-[var(--text-primary)]">{digest.rep_spotlight}</p></div>
                 </div>
-                <Surface className="border-l-4 border-l-[var(--accent)]"><p className="dashboard-eyebrow font-mono">RECOMMENDED ACTION</p><p className="mt-2 text-sm leading-relaxed font-semibold text-[var(--text-primary)]">{digest.recommendation}</p></Surface>
+                <div className="dashboard-ai-briefing-recommendation border-l-4 border-l-[var(--accent)]"><p className="dashboard-eyebrow font-mono">RECOMMENDED ACTION</p><p className="mt-2 text-sm leading-relaxed font-semibold text-[var(--text-primary)]">{digest.recommendation}</p></div>
               </div>
             )}
           </Surface>
         </section>
 
-        <section className="lg:col-span-2 space-y-4" aria-labelledby="anomaly-watch-heading">
-          <Surface tone="elevated">
+        <section className="dashboard-ai-anomaly lg:col-span-2 space-y-4" aria-labelledby="anomaly-watch-heading">
+          <Surface tone="elevated" className="dashboard-ai-anomaly-canvas">
             <SectionHeader title="Anomaly watch" headingId="anomaly-watch-heading" description="Unread deviations from your normal pattern." action={<button onClick={handleRunDetection} disabled={runningDetection} className="min-h-10 border border-[var(--red)]/40 hover:bg-[var(--red)]/10 disabled:opacity-50 text-[var(--red)] font-mono text-[10px] font-bold py-2 px-3 rounded transition-colors">{runningDetection ? 'SCANNING...' : 'RUN DETECTION'}</button>} />
             {loadingAlerts ? <div className="py-12 text-center text-[var(--text-muted)] font-mono text-xs" role="status" aria-busy="true">Scanning alerts...</div> : alertsError ? <div role="alert" className="mt-5 space-y-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700"><p>{alertsError}</p><button type="button" onClick={fetchAlerts} className="dashboard-button-secondary min-h-9 px-3 text-xs">TRY AGAIN</button></div> : alerts.length === 0 ? <EmptyPanel icon={<CheckCircle2 className="w-5 h-5" />} title="All systems operational" description="No unread anomalies detected in the last 7 days." /> : (
-              <ul aria-label="Unread anomaly alerts" tabIndex={0} className="mt-5 space-y-3 max-h-[500px] overflow-y-auto pr-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]">
-                {alerts.map(alert => <li key={alert.id} className="dashboard-surface dashboard-surface-subtle p-4 space-y-3">
+              <ul aria-label="Unread anomaly alerts" tabIndex={0} className="dashboard-ai-anomaly-list mt-5 space-y-3 max-h-[500px] overflow-y-auto pr-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]">
+                {alerts.map(alert => <li key={alert.id} className={`dashboard-ai-anomaly-item dashboard-ai-anomaly-${alert.severity} dashboard-surface dashboard-surface-subtle p-4 space-y-3`}>
                   <div className="flex items-center justify-between gap-3"><StatusBadge tone={severityTone(alert.severity)}>{alert.severity}</StatusBadge><time className="text-[9px] font-mono text-[var(--text-muted)]" dateTime={alert.created_at}>{new Date(alert.created_at).toLocaleDateString()}</time></div>
                   <p className="text-sm text-[var(--text-secondary)] leading-relaxed">{alert.alert_text}</p>
                   <button onClick={() => handleMarkAsRead(alert.id)} className="w-full min-h-9 border border-[var(--border-subtle)] hover:border-[var(--text-muted)] text-[10px] font-mono py-1.5 rounded text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors">Mark as Read</button>
@@ -127,7 +127,7 @@ export default function AiInsightsPage() {
               </ul>
             )}
           </Surface>
-          <div className="hidden lg:block dashboard-surface dashboard-surface-subtle p-4"><div className="flex items-start gap-3"><Radar aria-hidden="true" className="w-4 h-4 text-[var(--accent)] mt-0.5" /><p className="text-xs text-[var(--text-muted)] leading-relaxed">Detection watches for meaningful movement so the team can act before a quiet week becomes a missed quarter.</p></div></div>
+          <div className="dashboard-ai-anomaly-note hidden lg:block dashboard-surface dashboard-surface-subtle p-4"><div className="flex items-start gap-3"><Radar aria-hidden="true" className="w-4 h-4 text-[var(--accent)] mt-0.5" /><p className="text-xs text-[var(--text-muted)] leading-relaxed">Detection watches for meaningful movement so the team can act before a quiet week becomes a missed quarter.</p></div></div>
         </section>
       </div>
     </div>

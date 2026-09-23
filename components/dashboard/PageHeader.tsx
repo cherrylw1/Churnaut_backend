@@ -16,7 +16,7 @@ export function PageHeader({ eyebrow, title, ariaLabel, description, actions }: 
         <h1 className="dashboard-title" aria-label={ariaLabel}>{title}</h1>
         {description ? <p className="dashboard-description">{description}</p> : null}
       </div>
-      {actions ? <div className="dashboard-page-actions">{actions}</div> : null}
+      {actions ? <div className="dashboard-page-actions min-w-0">{actions}</div> : null}
     </div>
   );
 }

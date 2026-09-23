@@ -109,7 +109,7 @@ export default function BillingPage() {
 
   if (profileState === 'loading') {
     return (
-      <div className="space-y-6 max-w-4xl mx-auto">
+      <div className="dashboard-billing space-y-6 max-w-4xl mx-auto">
         <PageHeader eyebrow="Signal Field · Commercial controls" title="Billing & plan" description="Manage your Churnaut subscription. Changes take effect immediately after payment." />
         <div role="status" aria-busy="true" aria-label="Loading billing account"><Skeleton variant="card" height={80} />
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
@@ -124,7 +124,7 @@ export default function BillingPage() {
   if (profileState === 'error') return <div className="space-y-6 max-w-4xl mx-auto"><PageHeader eyebrow="Signal Field · Commercial controls" title="Billing & plan" description="Manage your Churnaut subscription. Changes take effect immediately after payment." /><div role="alert" className="dashboard-surface p-6 text-sm text-[var(--red)]">Billing account unavailable. <button type="button" onClick={() => window.location.reload()} className="font-semibold underline">TRY AGAIN</button></div></div>;
 
   return (
-    <div className="space-y-8 max-w-5xl mx-auto font-sans">
+    <div className="dashboard-billing space-y-8 max-w-5xl mx-auto font-sans">
 
       <PageHeader eyebrow="Signal Field · Commercial controls" title="Billing & plan" description="Manage your Churnaut subscription. Changes take effect immediately after payment." />
 

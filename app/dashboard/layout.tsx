@@ -19,7 +19,7 @@ import {
   CreditCard,
   Search,
 } from 'lucide-react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { ToastContainer } from '@/components/ui/Toast';
 import KeyboardShortcutsModal from '@/components/ui/KeyboardShortcutsModal';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
@@ -57,6 +57,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     colorScheme: 'light',
   } as React.CSSProperties : undefined;
   const router = useRouter();
+  const reduceMotion = useReducedMotion();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [authReady, setAuthReady] = useState(false);
@@ -237,6 +238,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const activeItem = allItems.find(item => item.href === pathname) || allItems.find(item => pathname.startsWith(item.href) && item.href !== '/dashboard');
   const pageLabel = activeItem ? activeItem.label : 'Dashboard';
 
+  const groupAccent: Record<string, string> = {
+    OBSERVE: 'var(--signal-observe)',
+    ACTIVATE: 'var(--signal-activate)',
+    INTELLIGENCE: 'var(--signal-intelligence)',
+    CONNECT: 'var(--accent)',
+    WORKSPACE: 'var(--text-secondary)',
+  };
+
   const renderNavGroup = (title: string, items: Array<{ label: string; href: string; icon: React.ComponentType<{ className?: string }> }>) => (
     <div className="space-y-1.5">
       <div className="px-4 text-[10px] font-mono font-semibold uppercase tracking-[0.13em] text-[var(--text-muted)]">
@@ -251,15 +260,15 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               href={item.href}
               onClick={() => setSidebarOpen(false)}
               aria-current={isActive ? 'page' : undefined}
-              className={`flex items-center gap-2.5 px-3.5 py-2 rounded-[7px] text-[13px] font-sans font-medium transition-all duration-150 relative overflow-hidden ${
+              className={`dashboard-nav-item flex items-center gap-2.5 px-3.5 py-2 text-[13px] font-sans font-medium transition-all duration-150 relative overflow-hidden ${
                 isActive
                   ? 'bg-[var(--accent)]/10 text-[var(--text-primary)] font-semibold'
                   : 'text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)]'
               }`}
             >
-              <div 
-                className="absolute left-0 top-1.5 bottom-1.5 rounded-r bg-[var(--accent)] transition-[width] duration-150 ease-out"
-                style={{ width: isActive ? '2px' : '0px' }}
+              <div
+                className="dashboard-nav-rail absolute left-0 top-1.5 bottom-1.5 transition-[width] duration-150 ease-out"
+                style={{ width: isActive ? '3px' : '0px', backgroundColor: groupAccent[title] }}
               />
               {item.icon && <item.icon className="w-4 h-4" />}
               <span>{item.label}</span>
@@ -285,15 +294,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         {renderNavGroup('CONNECT', connectGroup)}
         {renderNavGroup('WORKSPACE', workspaceGroup)}
 
-        {/* Sidebar Status Indicator */}
-        <div className="pt-4 border-t border-[var(--border-subtle)] flex items-center space-x-3">
-          <span className="relative flex h-2.5 w-2.5">
-            <span className="absolute inline-flex h-full w-full rounded-full bg-[var(--green)] opacity-20 motion-safe:animate-ping"></span>
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[var(--green)] shadow-[0_0_12px_rgba(120,184,139,0.35)]"></span>
-          </span>
-          <span className="text-[11px] font-mono uppercase tracking-[0.06em] text-[var(--text-muted)]">
-            Workspace <span className="text-[var(--green)]">ready</span>
-          </span>
+        <div className="dashboard-nav-footer mt-auto border-t border-[var(--border-subtle)] px-4 pt-4">
+          <p className="text-[10px] font-mono uppercase tracking-[0.13em] text-[var(--text-muted)]">Workspace</p>
+          <p className="mt-1 text-xs text-[var(--text-secondary)]">Your signal system, in one place.</p>
         </div>
       </nav>
     </div>
@@ -304,8 +307,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   // effects from racing the cookie refresh and failing with a transient 401.
   if (!authReady) {
     return (
-      <div className="dashboard-app min-h-screen bg-[var(--bg-base)] text-[var(--text-secondary)] flex items-center justify-center font-sans">
-        Securing your workspace…
+      <div className="dashboard-app dashboard-auth-state min-h-screen bg-[var(--bg-base)] text-[var(--text-secondary)] flex items-center justify-center font-sans" role="status" aria-live="polite">
+        <div className="dashboard-auth-state-card dashboard-surface dashboard-surface-owner px-6 py-5 text-center">
+          <ChurnautMark href="/" />
+          <p className="mt-4 text-sm font-semibold text-[var(--text-primary)]">Securing your workspace…</p>
+          <p className="mt-1 text-xs text-[var(--text-muted)]">Checking your session before opening Signal Field.</p>
+        </div>
       </div>
     );
   }
@@ -313,7 +320,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <div className="dashboard-app min-h-screen bg-[var(--bg-base)] text-[var(--text-primary)] flex" data-overview-pilot={overviewPilot ? 'true' : undefined} style={overviewPilotStyle}>
       {/* Sidebar Panel - Desktop */}
-      <aside aria-label="Primary navigation" className="hidden md:flex w-60 bg-[var(--bg-surface)] border-r border-[var(--border-subtle)] flex-col select-none flex-shrink-0 shadow-[8px_0_30px_rgba(0,0,0,0.12)]">
+      <aside aria-label="Primary navigation" className="dashboard-sidebar hidden lg:flex w-60 bg-[var(--bg-surface)] border-r border-[var(--border-subtle)] flex-col select-none flex-shrink-0">
         {renderSidebarContent()}
       </aside>
 
@@ -327,20 +334,20 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               animate={{ opacity: 0.5 }}
               exit={{ opacity: 0 }}
               onClick={() => setSidebarOpen(false)}
-              className="fixed inset-0 bg-black z-40 md:hidden"
+              className="fixed inset-0 bg-black z-40 lg:hidden"
             />
             {/* Slide-out Sidebar */}
             <motion.aside
-              initial={{ x: -280 }}
-              animate={{ x: 0 }}
-              exit={{ x: -280 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              initial={reduceMotion ? false : { x: -280 }}
+              animate={reduceMotion ? { opacity: 1 } : { x: 0 }}
+              exit={reduceMotion ? { opacity: 0 } : { x: -280 }}
+              transition={reduceMotion ? { duration: 0 } : { type: 'spring', damping: 25, stiffness: 200 }}
               role="dialog"
               aria-modal="true"
               aria-label="Primary navigation"
               id="mobile-navigation"
               ref={mobileNavRef}
-              className="fixed top-0 bottom-0 left-0 w-72 max-w-[calc(100vw-2rem)] bg-[var(--bg-surface)] border-r border-[var(--border-subtle)] z-50 md:hidden flex flex-col select-none shadow-2xl"
+              className="dashboard-mobile-drawer fixed top-0 bottom-0 left-0 w-72 max-w-[calc(100vw-2rem)] bg-[var(--bg-surface)] border-r border-[var(--border-subtle)] z-50 lg:hidden flex flex-col select-none shadow-2xl"
             >
               {renderSidebarContent()}
             </motion.aside>
@@ -349,7 +356,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       </AnimatePresence>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-h-screen overflow-x-hidden bg-[var(--bg-base)]">
+      <div className="dashboard-main flex-1 flex flex-col min-h-screen bg-[var(--bg-base)] min-w-0">
         {/* Top Header */}
         <header className="h-[68px] border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]/95 backdrop-blur-sm flex items-center justify-between px-4 md:px-8 flex-shrink-0" aria-label="Workspace toolbar">
           <div className="flex items-center space-x-3">
@@ -360,7 +367,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               aria-label="Open navigation"
               aria-expanded={sidebarOpen}
               aria-controls="mobile-navigation"
-              className="md:hidden inline-flex h-10 w-10 items-center justify-center rounded-lg text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)] transition-colors"
+              className="dashboard-menu-button lg:hidden inline-flex h-10 w-10 items-center justify-center text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)] transition-colors"
             >
               <Menu className="w-5 h-5" />
             </button>
@@ -375,7 +382,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button type="button" onClick={() => setCommandOpen(true)} className="hidden sm:inline-flex h-9 items-center gap-2 rounded-[8px] border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 text-xs text-[var(--text-muted)] hover:border-[var(--accent)]/60 hover:bg-[var(--accent)]/5 hover:text-[var(--text-primary)]" aria-label="Search workspace">
+            <button type="button" onClick={() => setCommandOpen(true)} className="dashboard-toolbar-control hidden sm:inline-flex h-9 items-center gap-2 border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 text-xs text-[var(--text-muted)] hover:border-[var(--accent)]/60 hover:bg-[var(--accent)]/5 hover:text-[var(--text-primary)]" aria-label="Search workspace">
               <Search className="h-4 w-4" aria-hidden="true" />
               <span>Search workspace</span><kbd className="ml-2 rounded border border-[var(--border-default)] px-1.5 py-0.5 text-[10px]">⌘K</kbd>
             </button>
@@ -387,7 +394,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 router.push('/login');
                 router.refresh();
               }}
-              className="min-h-9 rounded-[8px] px-3 text-[12px] font-mono uppercase tracking-[0.05em] font-medium text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)] transition-colors"
+              className="dashboard-toolbar-control min-h-9 px-3 text-[12px] font-mono uppercase tracking-[0.05em] font-medium text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)] transition-colors"
             >
               Sign Out
             </button>
@@ -395,14 +402,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         </header>
 
         {/* Dynamic Children Panel */}
-        <main className="flex-1 p-4 md:p-8 bg-[var(--bg-base)]" id="main-content">
+        <main className="dashboard-main-content flex-1 min-w-0 p-4 md:p-8 bg-[var(--bg-base)]" id="main-content">
           <AnimatePresence mode="wait">
             <motion.div
               key={pathname}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.2, ease: 'easeOut' }}
+              initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+              animate={reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
+              exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -8 }}
+              transition={reduceMotion ? { duration: 0 } : { duration: 0.2, ease: 'easeOut' }}
             >
               {children}
             </motion.div>

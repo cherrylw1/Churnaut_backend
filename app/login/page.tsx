@@ -56,11 +56,11 @@ export default function LoginPage() {
       subtitle="Sign in to your personalization workspace and pick up from the signal that needs a decision next."
       footer={<p className="text-center text-xs text-[var(--field-ink-muted)]">New to Churnaut? <a href="/signup" className="font-semibold text-[var(--signal-primary)] underline-offset-4 hover:underline">Create an account</a></p>}
     >
-      {errorMsg ? <div className="mb-5 rounded-2xl border border-[var(--signal-critical)]/25 bg-[var(--signal-critical)]/8 p-4 text-sm leading-5 text-[var(--signal-critical)]" role="alert">{errorMsg}</div> : null}
-      <form onSubmit={handleLogin} className="space-y-5">
+      {errorMsg ? <div className="mb-5 rounded-[var(--radius-nested)] border border-[var(--signal-critical)]/25 bg-[var(--signal-critical)]/8 p-4 text-sm leading-5 text-[var(--signal-critical)]" role="alert">{errorMsg}</div> : null}
+      <form onSubmit={handleLogin} className="space-y-5" aria-busy={loading}>
         <div className="space-y-2"><label htmlFor="email" className="auth-field-label">Email Address</label><input id="email" type="email" required disabled={loading} value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@company.com" className="auth-input" /></div>
         <div className="space-y-2"><div className="flex items-center justify-between gap-3"><label htmlFor="password" className="auth-field-label">Password</label><span className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--field-ink-muted)]">Private session</span></div><input id="password" type="password" required disabled={loading} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className="auth-input" /></div>
-        <button type="submit" disabled={loading} className="auth-submit-button">{loading ? 'AUTHENTICATING…' : <><LockKeyhole className="h-4 w-4" aria-hidden="true" /> SIGN IN <ArrowRight className="ml-auto h-4 w-4" aria-hidden="true" /></>}</button>
+        <button type="submit" disabled={loading} aria-busy={loading} className="auth-submit-button">{loading ? 'AUTHENTICATING…' : <><LockKeyhole className="h-4 w-4" aria-hidden="true" /> SIGN IN <ArrowRight className="ml-auto h-4 w-4" aria-hidden="true" /></>}</button>
       </form>
     </AuthShell>
   );

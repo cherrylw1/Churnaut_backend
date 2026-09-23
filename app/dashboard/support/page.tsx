@@ -75,7 +75,7 @@ export default function SupportPage() {
   }
 
   return (
-    <div className="mx-auto flex min-h-[calc(100dvh-80px)] max-w-3xl flex-col">
+    <div className="dashboard-support mx-auto flex min-h-[calc(100dvh-80px)] max-w-3xl flex-col">
       <div className="flex-shrink-0 mb-4">
         <PageHeader eyebrow="Signal Field · Support desk" title="Support" description="Ask anything about Churnaut." actions={<div className="flex items-center gap-2 text-xs text-[var(--text-muted)]"><Bot className="h-4 w-4 text-[var(--accent)]" aria-hidden="true" />AI support</div>} />
       </div>
