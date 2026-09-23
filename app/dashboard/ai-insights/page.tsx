@@ -98,36 +98,36 @@ export default function AiInsightsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
         <section className="dashboard-ai-briefing lg:col-span-3 space-y-4" aria-labelledby="weekly-briefing-heading">
-          <Surface tone="elevated" className="dashboard-ai-briefing-canvas">
+          <Surface tone="elevated" className="dashboard-ai-briefing-canvas p-6 md:p-8 space-y-6">
             <SectionHeader title="Weekly briefing" headingId="weekly-briefing-heading" description="The clearest read on what changed in your pipeline." action={<button onClick={handleGenerateDigest} disabled={generatingDigest} className="dashboard-button-primary disabled:opacity-50 text-xs font-semibold">{generatingDigest ? 'COMPILING...' : 'GENERATE DIGEST'}</button>} />
-            {digest ? <p className="mt-3 text-[10px] text-[var(--text-muted)] font-mono uppercase tracking-widest">Week of {digest.week_start}</p> : null}
+            {digest ? <p className="text-[10px] text-[var(--text-muted)] font-mono uppercase tracking-widest">Week of {digest.week_start}</p> : null}
             {loadingDigest ? <div className="py-16 text-center text-[var(--text-muted)] font-mono text-xs" role="status" aria-busy="true">Retrieving briefing...</div> : digestError ? <div role="alert" className="mt-5 space-y-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700"><p>{digestError}</p><button type="button" onClick={fetchDigest} className="dashboard-button-secondary min-h-9 px-3 text-xs">TRY AGAIN</button></div> : !digest ? <EmptyPanel icon={<Sparkles className="w-5 h-5" />} title="No briefing compiled" description="Generate a digest to see the latest pipeline story and the next best action." /> : (
               <div className="dashboard-ai-briefing-story mt-6 space-y-4">
-                <div className="dashboard-ai-briefing-summary" aria-label="This week summary"><p className="dashboard-eyebrow font-mono">THIS WEEK</p><p className="mt-2 text-sm leading-relaxed text-[var(--text-primary)]">{digest.summary}</p></div>
+                <div className="dashboard-ai-briefing-summary rounded-2xl p-5 md:p-6" aria-label="This week summary"><p className="dashboard-eyebrow font-mono text-xs text-[var(--text-muted)]">THIS WEEK</p><p className="mt-2 text-sm leading-relaxed text-[var(--text-primary)]">{digest.summary}</p></div>
                 <div className="dashboard-ai-briefing-signals grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="dashboard-ai-briefing-signal"><p className="dashboard-eyebrow font-mono">TOP SIGNAL</p><p className="mt-2 text-sm leading-relaxed text-[var(--text-primary)]">{digest.top_signal}</p></div>
-                  <div className="dashboard-ai-briefing-signal"><p className="dashboard-eyebrow font-mono">REP SPOTLIGHT</p><p className="mt-2 text-sm leading-relaxed text-[var(--text-primary)]">{digest.rep_spotlight}</p></div>
+                  <div className="dashboard-ai-briefing-signal rounded-2xl p-5 md:p-6"><p className="dashboard-eyebrow font-mono text-xs text-[var(--text-muted)]">TOP SIGNAL</p><p className="mt-2 text-sm leading-relaxed text-[var(--text-primary)]">{digest.top_signal}</p></div>
+                  <div className="dashboard-ai-briefing-signal rounded-2xl p-5 md:p-6"><p className="dashboard-eyebrow font-mono text-xs text-[var(--text-muted)]">REP SPOTLIGHT</p><p className="mt-2 text-sm leading-relaxed text-[var(--text-primary)]">{digest.rep_spotlight}</p></div>
                 </div>
-                <div className="dashboard-ai-briefing-recommendation border-l-4 border-l-[var(--accent)]"><p className="dashboard-eyebrow font-mono">RECOMMENDED ACTION</p><p className="mt-2 text-sm leading-relaxed font-semibold text-[var(--text-primary)]">{digest.recommendation}</p></div>
+                <div className="dashboard-ai-briefing-recommendation rounded-2xl p-5 md:p-6 border-l-4 border-l-[var(--accent)]"><p className="dashboard-eyebrow font-mono text-xs text-[var(--text-muted)]">RECOMMENDED ACTION</p><p className="mt-2 text-sm leading-relaxed font-semibold text-[var(--text-primary)]">{digest.recommendation}</p></div>
               </div>
             )}
           </Surface>
         </section>
 
         <section className="dashboard-ai-anomaly lg:col-span-2 space-y-4" aria-labelledby="anomaly-watch-heading">
-          <Surface tone="elevated" className="dashboard-ai-anomaly-canvas">
+          <Surface tone="elevated" className="dashboard-ai-anomaly-canvas p-6 md:p-8 space-y-6">
             <SectionHeader title="Anomaly watch" headingId="anomaly-watch-heading" description="Unread deviations from your normal pattern." action={<button onClick={handleRunDetection} disabled={runningDetection} className="dashboard-button-secondary disabled:opacity-50 text-xs font-semibold">{runningDetection ? 'SCANNING...' : 'RUN DETECTION'}</button>} />
             {loadingAlerts ? <div className="py-12 text-center text-[var(--text-muted)] font-mono text-xs" role="status" aria-busy="true">Scanning alerts...</div> : alertsError ? <div role="alert" className="mt-5 space-y-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700"><p>{alertsError}</p><button type="button" onClick={fetchAlerts} className="dashboard-button-secondary min-h-9 px-3 text-xs">TRY AGAIN</button></div> : alerts.length === 0 ? <EmptyPanel icon={<CheckCircle2 className="w-5 h-5" />} title="All systems operational" description="No unread anomalies detected in the last 7 days." /> : (
-              <ul aria-label="Unread anomaly alerts" tabIndex={0} className="dashboard-ai-anomaly-list mt-5 space-y-3 max-h-[500px] overflow-y-auto pr-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]">
-                {alerts.map(alert => <li key={alert.id} className={`dashboard-ai-anomaly-item dashboard-ai-anomaly-${alert.severity} dashboard-surface dashboard-surface-subtle p-4 space-y-3`}>
+              <ul aria-label="Unread anomaly alerts" tabIndex={0} className="dashboard-ai-anomaly-list space-y-3.5 max-h-[500px] overflow-y-auto pr-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]">
+                {alerts.map(alert => <li key={alert.id} className={`dashboard-ai-anomaly-item dashboard-ai-anomaly-${alert.severity} dashboard-surface dashboard-surface-subtle rounded-2xl p-5 space-y-3`}>
                   <div className="flex items-center justify-between gap-3"><StatusBadge tone={severityTone(alert.severity)}>{alert.severity}</StatusBadge><time className="text-[9px] font-mono text-[var(--text-muted)]" dateTime={alert.created_at}>{new Date(alert.created_at).toLocaleDateString()}</time></div>
                   <p className="text-sm text-[var(--text-secondary)] leading-relaxed">{alert.alert_text}</p>
-                  <button onClick={() => handleMarkAsRead(alert.id)} className="dashboard-button-secondary w-full text-xs font-semibold py-1.5">Mark as Read</button>
+                  <button onClick={() => handleMarkAsRead(alert.id)} className="dashboard-button-secondary rounded-full w-full text-xs font-semibold py-2">Mark as Read</button>
                 </li>)}
               </ul>
             )}
           </Surface>
-          <div className="dashboard-ai-anomaly-note hidden lg:block dashboard-surface dashboard-surface-subtle p-4"><div className="flex items-start gap-3"><Radar aria-hidden="true" className="w-4 h-4 text-[var(--accent)] mt-0.5" /><p className="text-xs text-[var(--text-muted)] leading-relaxed">Detection watches for meaningful movement so the team can act before a quiet week becomes a missed quarter.</p></div></div>
+          <div className="dashboard-ai-anomaly-note hidden lg:block dashboard-surface dashboard-surface-subtle rounded-2xl p-5"><div className="flex items-start gap-3"><Radar aria-hidden="true" className="w-4 h-4 text-[var(--accent)] mt-0.5" /><p className="text-xs text-[var(--text-muted)] leading-relaxed">Detection watches for meaningful movement so the team can act before a quiet week becomes a missed quarter.</p></div></div>
         </section>
       </div>
     </div>

@@ -7,5 +7,5 @@ interface SurfaceProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 export function Surface({ children, className, tone = 'default', ...props }: SurfaceProps) {
-  return <div data-surface-owner="true" className={cn('dashboard-surface dashboard-surface-owner', `dashboard-surface-${tone}`, className)} {...props}>{children}</div>;
+  return <div data-surface-owner="true" className={cn('dashboard-surface dashboard-surface-owner p-6', `dashboard-surface-${tone}`, className)} {...props}>{children}</div>;
 }

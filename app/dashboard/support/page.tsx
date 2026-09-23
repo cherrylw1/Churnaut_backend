@@ -80,7 +80,7 @@ export default function SupportPage() {
         <PageHeader eyebrow="Signal Field · Support desk" title="Support" description="Ask anything about Churnaut." actions={<div className="flex items-center gap-2 text-xs text-[var(--text-muted)]"><Bot className="h-4 w-4 text-[var(--accent)]" aria-hidden="true" />AI support</div>} />
       </div>
 
-      <Surface role="log" aria-label="Support conversation" aria-live="polite" className="flex-1 space-y-4 overflow-y-auto pb-4 pr-1">
+      <Surface role="log" aria-label="Support conversation" aria-live="polite" className="flex-1 space-y-4 overflow-y-auto p-5 md:p-6 pb-6">
         {messages.map(msg => (
           <div key={msg.id} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             {msg.role === 'assistant' && (

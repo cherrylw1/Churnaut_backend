@@ -175,7 +175,7 @@ export default function AnalyticsPage() {
       <section aria-labelledby="outcome-telemetry-title" className="space-y-3">
         <SectionHeader headingId="outcome-telemetry-title" title="Outcome telemetry" description="The measures that tell you whether personalization is moving the pipeline." />
         {liftReport && liftReport.personalized_sessions > 0 ? (
-          <Surface tone="elevated" className={`space-y-4 border-l-4 ${liftReport.overall_lift_pp > 0 ? 'border-l-[var(--green)]' : liftReport.overall_lift_pp < 0 ? 'border-l-[var(--red)]' : 'border-l-[var(--border-strong)]'}`}>
+          <Surface tone="elevated" className={`p-6 md:p-8 space-y-4 border-l-4 ${liftReport.overall_lift_pp > 0 ? 'border-l-[var(--green)]' : liftReport.overall_lift_pp < 0 ? 'border-l-[var(--red)]' : 'border-l-[var(--border-strong)]'}`}>
             <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
               <div>
                 <p className="dashboard-eyebrow font-mono">MEASURED LIFT</p>

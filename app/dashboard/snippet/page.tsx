@@ -24,5 +24,142 @@ export default function SnippetPage() {
   const copyCode = async (text: string) => { if (!text) return; await navigator.clipboard.writeText(text); setCopied(true); window.setTimeout(() => setCopied(false), 2000); };
   const checkStatus = async () => { setChecking(true); setStatusError(false); try { const res = await fetch('/api/snippet-status'); if (!res.ok) throw new Error('status'); setStatus(await res.json()); } catch (error) { console.error('Failed to query snippet status:', error); setStatusError(true); } finally { setChecking(false); } };
   const toggleGuide = (name: string) => setOpenGuide((prev) => prev === name ? null : name);
-  return <div className="space-y-6"><PageHeader eyebrow="Signal Field · Deployment" title="Snippet installation" description="Connect your website to Churnaut and verify the first live signal." />{loading ? <div role="status" aria-busy="true" className="dashboard-surface p-8 text-sm text-[var(--text-muted)]">RETRIEVING SNIPPET CONFIGURATION…</div> : clientError ? <div role="alert" className="dashboard-surface p-8 text-sm text-[var(--red)]">Snippet configuration unavailable. <button type="button" onClick={loadClient} className="font-semibold underline">TRY AGAIN</button></div> : !client?.snippet_key ? <div role="alert" className="dashboard-surface p-8 text-sm text-[var(--red)]">No website client key is available yet. Complete onboarding before installing the runtime.</div> : <><Surface><SectionHeader eyebrow="1 · Install runtime" title="Your installation code" description="Paste this script block in the head of every page you want to personalize." /><div className="mt-5 relative overflow-x-auto rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4"><pre className="min-w-max select-all font-mono text-xs leading-6 text-[var(--text-secondary)]">{getSnippetCode()}</pre><button type="button" onClick={() => copyCode(getSnippetCode())} className="dashboard-button-primary absolute right-3 top-3">{copied ? 'COPIED!' : 'COPY'}</button></div></Surface><Surface><SectionHeader eyebrow="2 · Mark target elements" title="Choose what to personalize" description="Add the sr-target class to headings, descriptions, buttons, or calendar wrappers where content swaps should happen." /><pre className="mt-5 overflow-x-auto rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 font-mono text-xs leading-6 text-[var(--text-secondary)] select-all">{`<!-- Swap a headline copy -->\n<h1 class="sr-target font-bold">Welcome to Churnaut</h1>\n\n<!-- Swap a direct scheduling button -->\n<div class="sr-target">\n  <a href="/pricing">View Plans</a>\n</div>`}</pre></Surface><Surface><SectionHeader eyebrow="3 · Verify connection" title="Check the first live ping" description="Verification is user-triggered so you always know when a status request was made." /><div className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><button type="button" onClick={checkStatus} disabled={checking} className="dashboard-button-primary shrink-0">{checking ? 'VERIFYING…' : 'CHECK STATUS'}</button><div className="flex flex-col gap-3">{statusError && <div role="alert" className="rounded-[var(--radius-md)] border border-[var(--red)]/40 bg-[var(--red)]/10 p-4 text-sm text-[var(--red)]">Status unavailable. Your last verified state is preserved.</div>}{status && (status.active ? <div role="status" aria-live="polite" className="rounded-[var(--radius-md)] border border-[var(--green)]/40 bg-[var(--green)]/10 p-4"><div className="flex items-center gap-3"><StatusBadge tone="success">CONNECTION CONFIRMED</StatusBadge><span className="text-sm text-[var(--text-secondary)]">Live signal received.</span></div><p className="mt-2 text-xs text-[var(--text-muted)]">Last ping detected: {status.lastPing ? new Date(status.lastPing).toLocaleString() : 'Not available'}</p></div> : <div role="status" aria-live="polite" className="rounded-[var(--radius-md)] border border-[var(--amber)]/40 bg-[var(--amber)]/10 p-4"><StatusBadge tone="warning">WAITING FOR PINGS</StatusBadge><p className="mt-2 text-xs leading-5 text-[var(--text-secondary)]">Ensure the script is before the closing head tag, visit your site with a tracking parameter, and reload after clearing cache.</p></div>)}</div></div></Surface><Surface><SectionHeader eyebrow="4 · Platform guides" title="Installation guides" description="Choose the platform that hosts your site." /><div className="mt-4 space-y-2">{Object.entries(guides).map(([key, guide]) => { const open = openGuide === key; const trigger = `snippet-guide-trigger-${key}`; const panel = `snippet-guide-${key}`; return <div key={key} className="overflow-hidden rounded-[var(--radius-md)] border border-[var(--border-subtle)]"><button id={trigger} type="button" aria-expanded={open} aria-controls={panel} onClick={() => toggleGuide(key)} className="flex w-full items-center justify-between p-4 text-left text-sm font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)]"><span>{guide.title}</span><span aria-hidden="true">{open ? '−' : '+'}</span></button>{open && <div id={panel} role="region" aria-labelledby={trigger} className="border-t border-[var(--border-subtle)] p-4 text-sm leading-6 text-[var(--text-secondary)]"><p>{guide.body}</p>{key === 'custom' && <pre className="mt-3 overflow-x-auto rounded border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3 font-mono text-xs leading-6 select-all">{getSnippetCode()}</pre>}</div>}</div>; })}</div></Surface></>}</div>;
+  return (
+    <div className="dashboard-snippet max-w-5xl space-y-8">
+      <PageHeader
+        eyebrow="Signal Field · Deployment"
+        title="Snippet installation"
+        description="Connect your website to Churnaut and verify the first live signal."
+      />
+      {loading ? (
+        <div role="status" aria-busy="true" className="dashboard-surface p-8 text-sm text-[var(--text-muted)]">
+          RETRIEVING SNIPPET CONFIGURATION…
+        </div>
+      ) : clientError ? (
+        <div role="alert" className="dashboard-surface p-8 text-sm text-[var(--red)]">
+          Snippet configuration unavailable. <button type="button" onClick={loadClient} className="font-semibold underline">TRY AGAIN</button>
+        </div>
+      ) : !client?.snippet_key ? (
+        <div role="alert" className="dashboard-surface p-8 text-sm text-[var(--red)]">
+          No website client key is available yet. Complete onboarding before installing the runtime.
+        </div>
+      ) : (
+        <>
+          <Surface className="p-6 md:p-8 space-y-5">
+            <SectionHeader
+              eyebrow="1 · Install runtime"
+              title="Your installation code"
+              description="Paste this script block in the head of every page you want to personalize."
+            />
+            <div className="relative overflow-x-auto rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4">
+              <pre className="min-w-max select-all font-mono text-xs leading-6 text-[var(--text-secondary)]">{getSnippetCode()}</pre>
+              <button
+                type="button"
+                onClick={() => copyCode(getSnippetCode())}
+                className="dashboard-button-primary absolute right-3 top-3"
+              >
+                {copied ? 'COPIED!' : 'COPY'}
+              </button>
+            </div>
+          </Surface>
+
+          <Surface className="p-6 md:p-8 space-y-5">
+            <SectionHeader
+              eyebrow="2 · Mark target elements"
+              title="Choose what to personalize"
+              description="Add the sr-target class to headings, descriptions, buttons, or calendar wrappers where content swaps should happen."
+            />
+            <pre className="overflow-x-auto rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 font-mono text-xs leading-6 text-[var(--text-secondary)] select-all">{`<!-- Swap a headline copy -->
+<h1 class="sr-target font-bold">Welcome to Churnaut</h1>
+
+<!-- Swap a direct scheduling button -->
+<div class="sr-target">
+  <a href="/pricing">View Plans</a>
+</div>`}</pre>
+          </Surface>
+
+          <Surface className="p-6 md:p-8 space-y-5">
+            <SectionHeader
+              eyebrow="3 · Verify connection"
+              title="Check the first live ping"
+              description="Verification is user-triggered so you always know when a status request was made."
+            />
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <button
+                type="button"
+                onClick={checkStatus}
+                disabled={checking}
+                className="dashboard-button-primary shrink-0"
+              >
+                {checking ? 'VERIFYING…' : 'CHECK STATUS'}
+              </button>
+              <div className="flex flex-col gap-3 flex-1 sm:max-w-xl">
+                {statusError && (
+                  <div role="alert" className="rounded-xl border border-[var(--red)]/40 bg-[var(--red)]/10 p-4 text-sm text-[var(--red)]">
+                    Status unavailable. Your last verified state is preserved.
+                  </div>
+                )}
+                {status && (status.active ? (
+                  <div role="status" aria-live="polite" className="rounded-xl border border-[var(--green)]/40 bg-[var(--green)]/10 p-4">
+                    <div className="flex items-center gap-3">
+                      <StatusBadge tone="success">CONNECTION CONFIRMED</StatusBadge>
+                      <span className="text-sm text-[var(--text-secondary)]">Live signal received.</span>
+                    </div>
+                    <p className="mt-2 text-xs text-[var(--text-muted)]">
+                      Last ping detected: {status.lastPing ? new Date(status.lastPing).toLocaleString() : 'Not available'}
+                    </p>
+                  </div>
+                ) : (
+                  <div role="status" aria-live="polite" className="rounded-xl border border-[var(--amber)]/40 bg-[var(--amber)]/10 p-4">
+                    <StatusBadge tone="warning">WAITING FOR PINGS</StatusBadge>
+                    <p className="mt-2 text-xs leading-5 text-[var(--text-secondary)]">
+                      Ensure the script is before the closing head tag, visit your site with a tracking parameter, and reload after clearing cache.
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Surface>
+
+          <Surface className="p-6 md:p-8 space-y-5">
+            <SectionHeader
+              eyebrow="4 · Platform guides"
+              title="Installation guides"
+              description="Choose the platform that hosts your site."
+            />
+            <div className="space-y-3">
+              {Object.entries(guides).map(([key, guide]) => {
+                const open = openGuide === key;
+                const trigger = `snippet-guide-trigger-${key}`;
+                const panel = `snippet-guide-${key}`;
+                return (
+                  <div key={key} className="overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-slate-50/50">
+                    <button
+                      id={trigger}
+                      type="button"
+                      aria-expanded={open}
+                      aria-controls={panel}
+                      onClick={() => toggleGuide(key)}
+                      className="flex w-full items-center justify-between p-4 text-left text-sm font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                    >
+                      <span>{guide.title}</span>
+                      <span aria-hidden="true">{open ? '−' : '+'}</span>
+                    </button>
+                    {open && (
+                      <div id={panel} role="region" aria-labelledby={trigger} className="border-t border-[var(--border-subtle)] bg-white p-4 text-sm leading-6 text-[var(--text-secondary)]">
+                        <p>{guide.body}</p>
+                        {key === 'custom' && (
+                          <pre className="mt-3 overflow-x-auto rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3 font-mono text-xs leading-6 select-all">{getSnippetCode()}</pre>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </Surface>
+        </>
+      )}
+    </div>
+  );
 }

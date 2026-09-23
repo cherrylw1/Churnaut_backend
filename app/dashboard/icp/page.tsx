@@ -113,7 +113,7 @@ export default function IcpBuilderPage() {
         <EmptyPanel icon={<Target className="w-5 h-5" />} title="No ICP model yet" description="Build an evidence model from your closed-won deals when your CRM data is ready." action={<button onClick={handleBuildIcp} disabled={building} className="dashboard-button-primary inline-flex items-center gap-2">{building ? 'ANALYZING...' : 'BUILD MY ICP'}</button>} />
       ) : profile ? (
         <div className="dashboard-icp-workbench space-y-8">
-          <Surface tone="elevated" className="dashboard-icp-dossier border-l-4 border-l-[var(--amber)]" aria-labelledby="icp-evidence-heading">
+          <Surface tone="elevated" className="dashboard-icp-dossier border-l-4 border-l-[var(--amber)] p-6 md:p-8" aria-labelledby="icp-evidence-heading">
             <div className="flex items-start gap-3">
               <div className="dashboard-empty-icon shrink-0"><Target aria-hidden="true" className="w-5 h-5" /></div>
               <div className="min-w-0">
@@ -145,7 +145,7 @@ export default function IcpBuilderPage() {
             {profile.top_deal_stages && profile.top_deal_stages.length > 0 ? <div className="dashboard-icp-stage-group mt-6"><p className="dashboard-eyebrow font-mono">DEAL STAGES</p><div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">{profile.top_deal_stages.map((stage) => <div key={stage.sequence} className="dashboard-icp-stage-row dashboard-surface dashboard-surface-subtle flex items-center justify-between gap-3 p-4"><span className="dashboard-wrap-anywhere text-sm font-semibold text-[var(--text-primary)]">{stage.sequence}</span><span className="font-mono text-xs text-[var(--text-muted)]">{stage.count} {stage.count === 1 ? 'WIN' : 'WINS'}</span></div>)}</div></div> : null}
           </section>
 
-          <Surface tone="subtle" className="dashboard-icp-routing" aria-labelledby="routing-output-heading">
+          <Surface tone="subtle" className="dashboard-icp-routing p-6 md:p-8" aria-labelledby="routing-output-heading">
             <SectionHeader title="Routing output" headingId="routing-output-heading" description="The model can turn these patterns into live website decisions." action={<Link href="/dashboard/rules" className="text-xs text-[var(--accent)] hover:text-[var(--accent-hover)] font-semibold uppercase tracking-wider inline-flex items-center gap-1">View routing rules <ArrowRight aria-hidden="true" className="w-3.5 h-3.5" /></Link>} />
             <p className="mt-4 text-sm text-[var(--text-secondary)] leading-relaxed">ICP generation creates routing rules that can swap custom copy for high-fit prospects.</p>
           </Surface>

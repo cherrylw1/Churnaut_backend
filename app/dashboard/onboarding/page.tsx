@@ -59,7 +59,7 @@ export default function OnboardingPage() {
   return (
     <div className="mx-auto w-full max-w-[1120px] space-y-7">
       <PageHeader eyebrow="Signal Field · First signal" title="Initialize personalization" description="Answer five questions so Churnaut can shape your first routing rules around the way your team sells." />
-      <Surface className="dashboard-onboarding-workbench dashboard-surface-owner" aria-busy={loading}>
+      <Surface className="dashboard-onboarding-workbench dashboard-surface-owner p-0 overflow-hidden" aria-busy={loading}>
         <div className="dashboard-onboarding-header px-5 py-5 sm:px-8"><div className="flex items-start justify-between gap-4"><div><p className="dashboard-eyebrow font-mono">Five signals, one focused setup</p><h2 className="mt-1 text-sm font-bold uppercase tracking-[0.14em] text-[var(--text-primary)]">Build your first signal</h2></div><span className="shrink-0 text-right text-xs font-mono text-[var(--text-secondary)]">{completed ? 'Complete' : `Step ${step} of 5`}</span></div><div className="mt-5"><ProgressBar value={(step / 5) * 100} label={`Step ${step} of 5`} /></div></div>
         <div className="grid gap-0 lg:grid-cols-[220px_minmax(0,1fr)]">
           <aside className="dashboard-onboarding-rail border-b border-[var(--border-subtle)] bg-[var(--bg-base)]/35 p-5 lg:border-b-0 lg:border-r lg:p-6" aria-label="Onboarding steps">
