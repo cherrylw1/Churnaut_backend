@@ -809,33 +809,39 @@ export default function RulesPage() {
         <>
 
       {/* Live Personalization Simulator Hero Widget */}
-      <div className="rounded-3xl border border-emerald-800/30 bg-gradient-to-br from-slate-900 via-slate-900 to-[#123828] text-white p-6 md:p-8 shadow-md space-y-4">
+      <div className="rounded-3xl border border-slate-200/90 bg-white p-6 md:p-7 shadow-xs hover:shadow-md transition-all space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-xs font-mono font-bold uppercase tracking-wider text-emerald-300">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#165B40] animate-pulse" />
+            <span className="text-xs font-mono font-bold uppercase tracking-wider text-[#165B40]">
               Live Personalization Simulator
             </span>
           </div>
-          <span className="text-[11px] font-mono bg-white/10 px-3 py-1 rounded-full text-slate-300 w-fit">
-            Rules Active: {rules.filter(r => r.active).length} / {rules.length} · 12ms Edge Latency
+          <span className="text-[11px] font-mono bg-slate-100 border border-slate-200/80 px-3 py-1 rounded-full text-slate-600 w-fit">
+            Rules Active: <strong className="text-slate-800">{rules.filter(r => r.active).length} / {rules.length}</strong> · 12ms Edge Latency
           </span>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
-          <div className="rounded-2xl bg-white/5 border border-white/10 p-4 space-y-2">
-            <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 block">Baseline Visitor Experience</span>
-            <p className="text-sm font-semibold text-slate-300">"Turn website visitors into customer pipeline with intelligent routing."</p>
-            <span className="inline-block rounded-full bg-white/10 px-2.5 py-0.5 text-[10px] font-mono text-slate-400">Standard Generic Landing</span>
+          <div className="rounded-2xl bg-slate-50/80 border border-slate-200/80 p-5 space-y-2.5">
+            <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400 block">
+              Baseline Visitor Experience
+            </span>
+            <p className="text-sm font-semibold text-slate-700 italic leading-snug">
+              "Turn website visitors into customer pipeline with intelligent routing."
+            </p>
+            <span className="inline-flex items-center rounded-full bg-white border border-slate-200 px-2.5 py-0.5 text-[10px] font-mono text-slate-500 shadow-2xs">
+              Standard Generic Landing
+            </span>
           </div>
-          <div className="rounded-2xl bg-emerald-950/70 border border-emerald-500/40 p-4 space-y-2 shadow-inner">
-            <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-300 block flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+          <div className="rounded-2xl bg-emerald-50/50 border border-emerald-200/90 p-5 space-y-2.5 shadow-2xs relative">
+            <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#165B40] block flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-[#165B40]" />
               Targeted Variant (Live Injection)
             </span>
-            <p className="text-sm font-bold text-white">
+            <p className="text-sm font-bold text-slate-900 leading-snug">
               {rules.find(r => r.active && r.variant_content)?.variant_content || "Welcome enterprise lead — book your executive demo directly below."}
             </p>
-            <span className="inline-block rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 px-2.5 py-0.5 text-[10px] font-mono">
+            <span className="inline-flex items-center rounded-full bg-emerald-100 text-[#165B40] border border-emerald-300/80 px-2.5 py-0.5 text-[10px] font-mono font-semibold">
               Dynamic Swap Active
             </span>
           </div>

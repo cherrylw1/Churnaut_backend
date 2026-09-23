@@ -666,9 +666,6 @@
   .dashboard-ai-insights { min-width: 0; }
   .dashboard-icp-workbench,
   .dashboard-ai-insights > * { min-width: 0; }
-  .dashboard-icp .dashboard-surface,
-  .dashboard-ai-insights .dashboard-surface { border-radius: var(--radius-major); background-clip: padding-box; }
-  .dashboard-icp-dossier { background: linear-gradient(120deg, color-mix(in srgb, var(--signal-activate) 9%, var(--bg-surface)), var(--bg-surface)); }
   .dashboard-icp-dossier p,
   .dashboard-icp-feedback,
   .dashboard-icp-routing p { overflow-wrap: anywhere; word-break: break-word; }

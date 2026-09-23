@@ -164,42 +164,39 @@ export default function IcpBuilderPage() {
       ) : profile ? (
         <div className="dashboard-icp-workbench space-y-8">
           {/* 1. IDEAL BUYER PERSONA HERO BENTO */}
-          <div className="dashboard-icp-dossier relative overflow-hidden rounded-3xl bg-[#165B40] text-white p-7 md:p-9 shadow-lg border border-emerald-800/40 transition-all" aria-labelledby="icp-evidence-heading">
-            <div className="absolute -right-16 -top-16 h-72 w-72 rounded-full bg-emerald-400/15 blur-3xl pointer-events-none" />
-            <div className="absolute -left-12 -bottom-12 h-64 w-64 rounded-full bg-emerald-600/20 blur-3xl pointer-events-none" />
-
+          <div className="relative overflow-hidden rounded-3xl bg-white text-slate-900 p-7 md:p-9 shadow-xs hover:shadow-md border border-slate-200/90 transition-all" aria-labelledby="icp-evidence-heading">
             <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
               <div className="lg:col-span-8 space-y-4">
-                <div className="inline-flex items-center gap-2 rounded-full bg-emerald-900/60 border border-emerald-400/30 px-3.5 py-1 text-xs font-mono font-medium text-emerald-300">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 border border-emerald-200/80 px-3.5 py-1 text-xs font-mono font-bold text-[#165B40]">
+                  <span className="w-2 h-2 rounded-full bg-[#165B40] animate-pulse" />
                   SYNTHESIZED ICP MODEL
                 </div>
 
                 <div>
-                  <h2 id="icp-evidence-heading" className="text-2xl sm:text-3xl font-bold font-sans tracking-tight text-white">
+                  <h2 id="icp-evidence-heading" className="text-2xl sm:text-3xl font-bold font-sans tracking-tight text-slate-900">
                     Ideal Customer Persona
                   </h2>
-                  <p className="mt-3 text-sm text-emerald-100/90 leading-relaxed max-w-2xl font-sans">
+                  <p className="mt-3 text-sm text-slate-600 leading-relaxed max-w-2xl font-sans">
                     {profile.icp_summary}
                   </p>
                 </div>
 
                 {/* 3 Telemetry Pills */}
                 <div className="grid grid-cols-3 gap-3 pt-2 max-w-lg">
-                  <div className="rounded-2xl bg-emerald-900/50 border border-emerald-500/30 p-3.5 text-center">
-                    <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-300 block">Win Count</span>
-                    <span className="text-xl font-bold font-mono text-white block mt-1">{profile.win_count}</span>
-                    <span className="text-[10px] text-emerald-200/70 font-mono">closed deals</span>
+                  <div className="rounded-2xl bg-slate-50/80 border border-slate-200/90 p-4 text-center shadow-2xs">
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500 font-bold block">Win Count</span>
+                    <span className="text-2xl font-bold font-mono text-slate-900 block mt-1">{profile.win_count}</span>
+                    <span className="text-[10px] text-slate-400 font-mono">closed deals</span>
                   </div>
-                  <div className="rounded-2xl bg-emerald-900/50 border border-emerald-500/30 p-3.5 text-center">
-                    <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-300 block">Avg ACV</span>
-                    <span className="text-xl font-bold font-mono text-white block mt-1">{formatCurrency(profile.avg_deal_value)}</span>
-                    <span className="text-[10px] text-emerald-200/70 font-mono">contract value</span>
+                  <div className="rounded-2xl bg-slate-50/80 border border-slate-200/90 p-4 text-center shadow-2xs">
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500 font-bold block">Avg ACV</span>
+                    <span className="text-2xl font-bold font-mono text-[#165B40] block mt-1">{formatCurrency(profile.avg_deal_value)}</span>
+                    <span className="text-[10px] text-slate-400 font-mono">contract value</span>
                   </div>
-                  <div className="rounded-2xl bg-emerald-900/50 border border-emerald-500/30 p-3.5 text-center">
-                    <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-300 block">Sales Cycle</span>
-                    <span className="text-xl font-bold font-mono text-white block mt-1">{profile.avg_days_to_close}d</span>
-                    <span className="text-[10px] text-emerald-200/70 font-mono">avg velocity</span>
+                  <div className="rounded-2xl bg-slate-50/80 border border-slate-200/90 p-4 text-center shadow-2xs">
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500 font-bold block">Sales Cycle</span>
+                    <span className="text-2xl font-bold font-mono text-slate-900 block mt-1">{profile.avg_days_to_close}d</span>
+                    <span className="text-[10px] text-slate-400 font-mono">avg velocity</span>
                   </div>
                 </div>
               </div>
@@ -213,7 +210,7 @@ export default function IcpBuilderPage() {
                       cy="60"
                       r={arcRadius}
                       fill="none"
-                      stroke="rgba(255, 255, 255, 0.15)"
+                      stroke="#F1F5F9"
                       strokeWidth="10"
                       strokeDasharray={arcCircumference * 0.75}
                       strokeLinecap="round"
@@ -223,7 +220,7 @@ export default function IcpBuilderPage() {
                       cy="60"
                       r={arcRadius}
                       fill="none"
-                      stroke="#34D399"
+                      stroke="#165B40"
                       strokeWidth="10"
                       strokeDasharray={arcCircumference}
                       strokeDashoffset={arcOffset}
@@ -232,15 +229,15 @@ export default function IcpBuilderPage() {
                     />
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                    <span className="text-3xl font-extrabold font-mono text-white tracking-tight">
+                    <span className="text-3xl font-extrabold font-mono text-slate-900 tracking-tight">
                       {fitScore}%
                     </span>
-                    <span className="text-[10px] font-mono uppercase tracking-widest text-emerald-200">
+                    <span className="text-[10px] font-mono uppercase tracking-widest text-[#165B40] font-bold">
                       Fit Index
                     </span>
                   </div>
                 </div>
-                <span className="mt-3 text-xs font-mono text-emerald-200/80">
+                <span className="mt-3 text-xs font-mono text-slate-500 font-medium">
                   Confidence: High
                 </span>
               </div>
@@ -341,7 +338,7 @@ export default function IcpBuilderPage() {
                         className="rounded-2xl border border-slate-200/80 bg-slate-50/50 p-3.5 flex items-center justify-between shadow-2xs hover:bg-white transition-colors"
                       >
                         <span className="text-xs font-bold text-slate-800">{stage.sequence}</span>
-                        <span className="rounded-full bg-slate-200 px-2.5 py-0.5 font-mono text-[11px] font-bold text-slate-700">
+                        <span className="rounded-full bg-emerald-50 text-[#165B40] border border-emerald-200/80 px-2.5 py-0.5 font-mono text-[11px] font-bold">
                           {stage.count} {stage.count === 1 ? 'WIN' : 'WINS'}
                         </span>
                       </div>

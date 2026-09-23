@@ -66,12 +66,16 @@ export function GeometricIcon({
   bg?: string;
   className?: string;
 }) {
+  const hasTextClass = bg ? /\btext-/.test(bg) : false;
+  const isDarkBg = bg ? /\b(bg-(blue|emerald|indigo|purple|slate|zinc|gray)-(600|700|800|900)|bg-\[#165B40\]|bg-amber-500|bg-emerald-500)\b/.test(bg) : false;
+  const textClass = hasTextClass ? '' : isDarkBg ? 'text-white' : 'text-slate-800';
+
   let svgContent: React.ReactNode = null;
 
   switch (type) {
     case 'stripes':
       svgContent = (
-        <svg viewBox="0 0 24 24" className={`w-5 h-5 fill-current ${bg ? 'text-white' : ''} ${className}`}>
+        <svg viewBox="0 0 24 24" className={`w-5 h-5 fill-current ${className}`}>
           <rect x="3" y="4" width="4" height="16" rx="2" transform="rotate(-25 5 12)" />
           <rect x="11" y="4" width="4" height="16" rx="2" transform="rotate(-25 13 12)" />
         </svg>
@@ -79,26 +83,26 @@ export function GeometricIcon({
       break;
     case 'rings':
       svgContent = (
-        <svg viewBox="0 0 24 24" className={`w-5 h-5 fill-none stroke-current ${bg ? 'text-white' : ''} ${className}`} strokeWidth="2.5">
+        <svg viewBox="0 0 24 24" className={`w-5 h-5 fill-none stroke-current ${className}`} strokeWidth="2.5">
           <circle cx="12" cy="12" r="8" />
-          <circle cx="12" cy="12" r="4" fill="currentColor" />
+          <circle cx="12" cy="12" r="3.5" fill="currentColor" stroke="none" />
         </svg>
       );
       break;
     case 'flower':
       svgContent = (
         <svg viewBox="0 0 24 24" className={`w-5 h-5 ${className}`}>
-          <circle cx="8" cy="8" r="4" fill={bg ? '#FFFFFF' : '#3B82F6'} />
-          <circle cx="16" cy="8" r="4" fill={bg ? '#D1FAE5' : '#10B981'} />
-          <circle cx="8" cy="16" r="4" fill={bg ? '#FEF3C7' : '#F59E0B'} />
-          <circle cx="16" cy="16" r="4" fill={bg ? '#FCE7F3' : '#EC4899'} />
+          <circle cx="8" cy="8" r="4" fill="#2563EB" />
+          <circle cx="16" cy="8" r="4" fill="#059669" />
+          <circle cx="8" cy="16" r="4" fill="#D97706" />
+          <circle cx="16" cy="16" r="4" fill="#E11D48" />
         </svg>
       );
       break;
     case 'slice':
     case 'slices':
       svgContent = (
-        <svg viewBox="0 0 24 24" className={`w-5 h-5 fill-current ${bg ? 'text-white' : 'text-amber-500'} ${className}`}>
+        <svg viewBox="0 0 24 24" className={`w-5 h-5 fill-current ${className}`}>
           <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" />
         </svg>
       );
@@ -106,7 +110,7 @@ export function GeometricIcon({
     case 'cluster':
     case 'clusters':
       svgContent = (
-        <svg viewBox="0 0 24 24" className={`w-5 h-5 fill-current ${bg ? 'text-white' : 'text-purple-600'} ${className}`}>
+        <svg viewBox="0 0 24 24" className={`w-5 h-5 fill-current ${className}`}>
           <circle cx="6" cy="12" r="3.5" />
           <circle cx="18" cy="12" r="3.5" />
           <circle cx="12" cy="6" r="3.5" />
@@ -116,7 +120,7 @@ export function GeometricIcon({
       break;
     case 'sun':
       svgContent = (
-        <svg viewBox="0 0 24 24" className={`w-5 h-5 fill-current ${bg ? 'text-white' : 'text-amber-500'} ${className}`}>
+        <svg viewBox="0 0 24 24" className={`w-5 h-5 fill-current ${className}`}>
           <circle cx="12" cy="12" r="5" />
           <path d="M12 1v3m0 16v3M4.22 4.22l2.12 2.12m11.32 11.32l2.12 2.12M1 12h3m16 0h3M4.22 19.78l2.12-2.12m11.32-11.32l2.12-2.12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
         </svg>
@@ -128,7 +132,7 @@ export function GeometricIcon({
 
   if (bg) {
     return (
-      <div className={`h-9 w-9 rounded-xl flex items-center justify-center flex-shrink-0 ${bg}`}>
+      <div className={`h-10 w-10 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-2xs border border-black/5 ${bg} ${textClass}`}>
         {svgContent}
       </div>
     );
