@@ -62,6 +62,16 @@ export function useKeyboardShortcuts(onOpenHelp: () => void) {
           router.push('/dashboard/analytics');
           lastKey = '';
           return;
+        } else if (key === 'p') {
+          e.preventDefault();
+          router.push('/dashboard/playbooks');
+          lastKey = '';
+          return;
+        } else if (key === 'i') {
+          e.preventDefault();
+          router.push('/dashboard/icp');
+          lastKey = '';
+          return;
         }
       }
 
