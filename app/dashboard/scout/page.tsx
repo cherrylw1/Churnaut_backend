@@ -837,8 +837,8 @@ export default function ScoutDashboard() {
                   className="overflow-hidden"
                 >
                   <div className="p-5 space-y-4">
-                {/* Tabs Header */}
-                <div role="tablist" aria-label="Pipeline health states" className="dashboard-scout-health-tabs flex border-b border-[var(--border-subtle)] font-sans text-xs mb-4">
+                {/* Tabs Header: Segmented pill tabs */}
+                <div role="tablist" aria-label="Pipeline health states" className="dashboard-scout-health-tabs dashboard-segmented-tabs w-full flex mb-4">
                   <button
                     role="tab"
                     id="scout-tab-red"
@@ -848,10 +848,8 @@ export default function ScoutDashboard() {
                     ref={(node) => { healthTabRefs.current.red = node; }}
                     onKeyDown={(event) => handleHealthTabKeyDown(event, 'red')}
                     onClick={() => setActiveTab('red')}
-                    className={`flex-1 py-3 text-center border-b-2 font-bold transition-all uppercase ${
-                      activeTab === 'red'
-                        ? 'border-[var(--red)] text-[var(--red)] bg-[var(--red)]/5'
-                        : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-elevated)]'
+                    className={`dashboard-segmented-tab flex-1 font-semibold ${
+                      activeTab === 'red' ? 'is-active !text-red-600' : 'text-slate-600'
                     }`}
                   >
                     AT RISK ({redDeals.length})
@@ -865,10 +863,8 @@ export default function ScoutDashboard() {
                     ref={(node) => { healthTabRefs.current.amber = node; }}
                     onKeyDown={(event) => handleHealthTabKeyDown(event, 'amber')}
                     onClick={() => setActiveTab('amber')}
-                    className={`flex-1 py-3 text-center border-b-2 font-bold transition-all uppercase ${
-                      activeTab === 'amber'
-                        ? 'border-[var(--amber)] text-[var(--amber)] bg-[var(--amber)]/5'
-                        : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-elevated)]'
+                    className={`dashboard-segmented-tab flex-1 font-semibold ${
+                      activeTab === 'amber' ? 'is-active !text-amber-600' : 'text-slate-600'
                     }`}
                   >
                     WARNING ({amberDeals.length})
@@ -882,10 +878,8 @@ export default function ScoutDashboard() {
                     ref={(node) => { healthTabRefs.current.green = node; }}
                     onKeyDown={(event) => handleHealthTabKeyDown(event, 'green')}
                     onClick={() => setActiveTab('green')}
-                    className={`flex-1 py-3 text-center border-b-2 font-bold transition-all uppercase ${
-                      activeTab === 'green'
-                        ? 'border-[var(--green)] text-[var(--green)] bg-[var(--green)]/5'
-                        : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-elevated)]'
+                    className={`dashboard-segmented-tab flex-1 font-semibold ${
+                      activeTab === 'green' ? 'is-active !text-emerald-700' : 'text-slate-600'
                     }`}
                   >
                     HEALTHY ({greenDeals.length})

@@ -15,6 +15,7 @@ import { ProgressBar } from '@/components/dashboard/ProgressBar';
 import { SignalFeed } from '@/components/dashboard/SignalFeed';
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
 import { PressureInstrument } from '@/components/dashboard/PressureInstrument';
+import { MetricCard } from '@/components/dashboard/MetricCard';
 
 interface ScoutInboxData {
   top_red_deal: { deal_name: string; next_action: string } | null;
@@ -177,11 +178,6 @@ export default function DashboardPage() {
     return `${Math.floor(diffHours / 24)}d ago`;
   };
 
-  const metricCards: Array<{ label: string; value: number; detail: string; Icon: React.ElementType }> = summary ? [
-    { label: 'Active rules', value: summary.active_rules_count, detail: 'Personalization logic running', Icon: Target },
-    { label: 'Tracked links', value: summary.tracked_links_count, detail: 'Prospect paths measured', Icon: Link2 },
-    { label: 'Sessions this week', value: summary.sessions_this_week, detail: 'Engagement captured', Icon: Zap },
-  ] : [];
   const capacity = useMemo(() => {
     const limit = PLAN_LIMITS[plan as keyof typeof PLAN_LIMITS]?.tracked_visits ?? 500;
     if (limit === Infinity) return null;
@@ -203,10 +199,64 @@ export default function DashboardPage() {
       {onboarding && !onboardingDismissed && !allComplete && <Surface tone="subtle" className="dashboard-readiness dashboard-surface-owner p-5 md:p-6" aria-labelledby="room-setup-title"><div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div><p className="dashboard-eyebrow font-mono">Launch readiness</p><h2 id="room-setup-title" className="mt-1 text-xl font-semibold text-[var(--text-primary)]">Finish setting up your workspace</h2><p className="mt-1 dashboard-wrap-anywhere text-sm text-[var(--text-secondary)]">Five signals take you from installed to confidently personalizing.</p></div><button onClick={() => { localStorage.setItem('churnaut_onboarding_dismissed', 'true'); setOnboardingDismissed(true); }} aria-label="Dismiss onboarding checklist" className="dashboard-toolbar-control min-h-10 px-3 text-xs font-semibold text-[var(--text-muted)] transition hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)]">Dismiss</button></div><div className="mt-5"><ProgressBar value={(setupCount / 5) * 100} label="Setup progress" /></div><ol className="dashboard-readiness-ledger mt-5" aria-label="Launch readiness steps">{setupSteps.map((step, index) => { const done = Boolean(onboarding[step.key]); return <li key={step.key} className={`dashboard-readiness-row group flex min-w-0 items-start gap-3 border-t py-3 ${done ? 'is-complete' : ''}`}><span className="dashboard-readiness-index flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-xs font-bold" aria-hidden="true">{done ? <Check className="h-4 w-4" /> : String(index + 1).padStart(2, '0')}</span><div className="min-w-0 flex-1"><p className={`dashboard-wrap-anywhere text-sm font-semibold ${done ? 'text-[var(--text-muted)] line-through' : 'text-[var(--text-primary)]'}`}>{step.title}</p><p className="dashboard-wrap-anywhere mt-0.5 text-xs text-[var(--text-muted)]">{step.description}</p></div>{!done && <Link href={step.href} className="dashboard-toolbar-control shrink-0 px-2 py-2 text-xs font-semibold text-[var(--accent)]">{step.cta} <ArrowRight className="inline h-3.5 w-3.5" aria-hidden="true" /></Link>}</li>; })}</ol></Surface>}
       {onboarding && !onboardingDismissed && allComplete && <Surface tone="subtle" className="dashboard-complete-rail flex items-center gap-3 p-4" role="status"><span className="h-2.5 w-2.5 rounded-full bg-[var(--green)]" aria-hidden="true" /><p className="text-sm font-semibold text-[var(--green)]">Setup complete — Churnaut is fully configured and running.</p></Surface>}
 
-      {loading ? <div className="dashboard-overview-loading space-y-5" role="status" aria-busy="true" aria-label="Loading signal overview"><span className="sr-only">Loading signal overview.</span><div className="grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]"><Skeleton variant="card" height={300} /><Skeleton variant="card" height={180} /></div><Skeleton variant="card" height={86} /><Skeleton variant="card" height={260} /></div> : summary && <motion.div initial={reduceMotion ? false : 'hidden'} animate="visible" variants={{ visible: { transition: { staggerChildren: reduceMotion ? 0 : 0.06 } } }} className="space-y-5">
-        <section className="dashboard-decision-band grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]" aria-label="Pipeline decision band"><motion.div variants={entryMotion}><PressureInstrument score={summary.pressure_score} status={summary.pipeline_status} value={<CountUp value={summary.pressure_score} />} /></motion.div><motion.div variants={entryMotion} className="dashboard-next-move dashboard-surface dashboard-surface-owner p-5"><div className="flex items-start justify-between gap-3"><div><p className="dashboard-eyebrow font-mono">Next move</p><h2 className="mt-1 text-xl font-semibold text-[var(--text-primary)]">Turn the strongest signal into momentum.</h2></div><Zap className="h-5 w-5 text-[var(--signal-activate)]" aria-hidden="true" /></div><p className="dashboard-wrap-anywhere mt-4 text-sm leading-6 text-[var(--text-secondary)]">Use a tracked link or routing rule to give the next high-intent visitor a more relevant path.</p><div className="mt-5 flex flex-wrap gap-2"><Link href="/dashboard/links" className="dashboard-button-primary">Create a link <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" /></Link><Link href="/dashboard/rules" className="dashboard-button-secondary">Review rules</Link></div></motion.div></section>
+      {loading ? <div className="dashboard-overview-loading space-y-5" role="status" aria-busy="true" aria-label="Loading signal overview"><span className="sr-only">Loading signal overview.</span><div className="grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]"><Skeleton variant="card" height={300} /><Skeleton variant="card" height={180} /></div><Skeleton variant="card" height={86} /><Skeleton variant="card" height={260} /></div> : summary && <motion.div initial={reduceMotion ? false : 'hidden'} animate="visible" variants={{ visible: { transition: { staggerChildren: reduceMotion ? 0 : 0.06 } } }} className="space-y-6">
+        {/* Top 4 Bento Metric Cards: Donezo Hero Green Card + 3 White Bento Cards */}
+        <motion.section variants={entryMotion} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5" aria-label="Workspace metrics">
+          <MetricCard
+            label="Active Rules"
+            value={<CountUp value={summary.active_rules_count} />}
+            detail="Personalization logic running"
+            trend={12}
+            emphasis="primary"
+          />
+          <MetricCard
+            label="Tracked Links"
+            value={<CountUp value={summary.tracked_links_count} />}
+            detail="Prospect paths measured"
+            trend={8}
+          />
+          <MetricCard
+            label="Sessions This Week"
+            value={<CountUp value={summary.sessions_this_week} />}
+            detail="Engagement captured"
+            trend={18}
+          />
+          <MetricCard
+            label="Pipeline Risk Status"
+            value={summary.pipeline_status === 'HEALTHY' ? 'Healthy' : summary.pipeline_status === 'AT RISK' ? 'At Risk' : 'Attention'}
+            detail={`Pressure score: ${summary.pressure_score}/100`}
+            trend={summary.pipeline_status === 'HEALTHY' ? 4 : -6}
+          />
+        </motion.section>
 
-        <motion.section variants={entryMotion} className="dashboard-telemetry-rail dashboard-surface dashboard-surface-owner" aria-label="Workspace telemetry">{metricCards.map(({ label, value, detail, Icon }, index) => <div key={label} className="dashboard-telemetry-item" aria-label={`${label}: ${value}`}><span className="dashboard-telemetry-icon" aria-hidden="true"><Icon className="h-4 w-4" /></span><div className="min-w-0"><p className="dashboard-eyebrow font-mono">{label}</p><p className="dashboard-telemetry-value font-mono tabular-nums"><CountUp value={value} /></p><p className="dashboard-wrap-anywhere text-xs text-[var(--text-muted)]">{detail}</p></div>{index < metricCards.length - 1 && <span className="dashboard-telemetry-divider" aria-hidden="true" />}</div>)}</motion.section>
+        {/* Mid Row: Donezo Semi-Circular Gauge & Next Action Card */}
+        <section className="dashboard-decision-band grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]" aria-label="Pipeline decision band">
+          <motion.div variants={entryMotion}>
+            <PressureInstrument score={summary.pressure_score} status={summary.pipeline_status} value={<CountUp value={summary.pressure_score} />} />
+          </motion.div>
+          <motion.div variants={entryMotion} className="dashboard-next-move dashboard-surface dashboard-surface-owner p-6 flex flex-col justify-between">
+            <div>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-mono font-semibold uppercase tracking-wider text-slate-400">Next Recommended Move</p>
+                  <h2 className="mt-1 text-xl font-bold text-slate-900">Turn the strongest signal into momentum.</h2>
+                </div>
+                <Zap className="h-5 w-5 text-amber-500 flex-shrink-0" aria-hidden="true" />
+              </div>
+              <p className="dashboard-wrap-anywhere mt-3 text-sm leading-relaxed text-slate-600">
+                Use a tracked link or routing rule to give the next high-intent visitor a personalized path when they land on your site.
+              </p>
+            </div>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Link href="/dashboard/links" className="dashboard-button-primary">
+                Create a link <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+              </Link>
+              <Link href="/dashboard/rules" className="dashboard-button-secondary">
+                Review rules
+              </Link>
+            </div>
+          </motion.div>
+        </section>
 
         <div className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(300px,0.65fr)]"><motion.section variants={entryMotion}><Surface className="dashboard-feed-surface dashboard-surface-owner p-5 md:p-6" aria-labelledby="feed-title"><div className="flex items-end justify-between gap-3"><div><p className="dashboard-eyebrow font-mono">What changed</p><h2 id="feed-title" className="mt-1 text-xl font-semibold text-[var(--text-primary)]">Signal feed</h2><p className="mt-1 dashboard-wrap-anywhere text-sm text-[var(--text-secondary)]">The latest signals captured across your workspace.</p></div><Link href="/dashboard/analytics" className="hidden items-center gap-1 text-xs font-semibold text-[var(--accent)] sm:flex">View analytics <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" /></Link></div><SignalFeed events={summary.recent_activity} formatRelativeTime={formatRelativeTime} /><Link href="/dashboard/analytics" className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-[var(--accent)] sm:hidden">View full analytics <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" /></Link></Surface></motion.section><motion.aside variants={entryMotion} className="dashboard-support-rail space-y-5"><Surface tone="subtle" className="dashboard-priority-surface dashboard-surface-owner border-[var(--amber)]/25 p-5" aria-labelledby="attention-title"><div className="flex items-start justify-between gap-3"><div><p className="dashboard-eyebrow font-mono">Priority queue</p><h2 id="attention-title" className="mt-1 text-xl font-semibold text-[var(--text-primary)]">Needs attention</h2></div><ShieldAlert className="h-5 w-5 text-[var(--amber)]" aria-hidden="true" /></div>{!summary.scout_inbox.has_red_deals ? <div className="dashboard-priority-empty mt-5"><p className="text-sm font-semibold text-[var(--text-primary)]">No urgent items today.</p><p className="mt-1 text-xs text-[var(--text-secondary)]">Scout will surface the next meaningful change here.</p></div> : <div className="mt-5 space-y-3">{summary.scout_inbox.top_red_deal && <div className="dashboard-priority-item dashboard-wrap-anywhere"><p className="text-[10px] font-mono font-bold uppercase tracking-[0.14em] text-[var(--red)]">Critical signal · deal</p><p className="dashboard-wrap-anywhere mt-1 text-sm font-semibold text-[var(--text-primary)]">{summary.scout_inbox.top_red_deal.deal_name}</p><p className="dashboard-wrap-anywhere mt-1 text-xs text-[var(--text-secondary)]">Next action: {summary.scout_inbox.top_red_deal.next_action}</p></div>}{summary.scout_inbox.top_rep && <div className="dashboard-priority-item dashboard-wrap-anywhere is-warning"><p className="text-[10px] font-mono font-bold uppercase tracking-[0.14em] text-[var(--amber)]">Warning signal · rep</p><p className="dashboard-wrap-anywhere mt-1 text-sm font-semibold text-[var(--text-primary)]">{summary.scout_inbox.top_rep.rep_name}</p><p className="mt-1 text-xs text-[var(--text-secondary)]">{summary.scout_inbox.top_rep.count} red deals need a closer look.</p></div>}</div>}<Link href="/dashboard/scout" className="mt-5 inline-flex items-center gap-1 text-xs font-semibold text-[var(--accent)]">View full Scout analysis <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" /></Link></Surface>{capacity && <Surface className="dashboard-capacity-surface dashboard-surface-owner p-5" aria-label="Capacity telemetry"><div className="flex items-center justify-between gap-3"><div><p className="dashboard-eyebrow font-mono">Capacity</p><h3 className="mt-1 text-lg font-semibold text-[var(--text-primary)]">Monthly tracked visits</h3></div><span className="font-mono text-sm font-semibold text-[var(--text-primary)]">{monthlyVisits.toLocaleString()} / {capacity.limit.toLocaleString()}</span></div><div className="mt-4"><ProgressBar value={capacity.pct} label="Visit capacity" tone={capacity.tone} /></div>{capacity.pct >= 80 && <p className={`dashboard-wrap-anywhere mt-3 text-xs ${capacity.pct >= 90 ? 'text-[var(--red)]' : 'text-[var(--amber)]'}`}>{capacity.pct >= 100 ? 'Visit limit reached.' : `You've used ${Math.round(capacity.pct)}% of your monthly limit.`} {(plan === 'starter' || plan === 'growth') && <Link href="/dashboard/billing" className="font-semibold underline">Review plan <ArrowRight className="inline h-3 w-3" aria-hidden="true" /></Link>}</p>}</Surface>}</motion.aside></div>
 

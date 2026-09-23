@@ -746,36 +746,52 @@ export default function RulesPage() {
 
   return (
     <div className="dashboard-rules space-y-6">
-      <PageHeader eyebrow="Signal Field · Routing logic" title="Routing rules" ariaLabel="ROUTING RULES" description="Configure personalized web variants based on inbound context" actions={
-        <div role="tablist" aria-label="Routing workspace" className="flex border-b border-[var(--border-subtle)] mt-4 md:mt-0">
-          <button
-            role="tab" id="rules-tab" aria-selected={activeTab === 'rules'} aria-controls="rules-panel" tabIndex={activeTab === 'rules' ? 0 : -1}
-            ref={(node) => { ruleTabRefs.current.rules = node; }}
-            onKeyDown={(event) => handleRuleTabKeyDown(event, 'rules')}
-            onClick={() => setActiveTab('rules')}
-            className={`px-5 py-2.5 text-xs font-mono font-bold uppercase tracking-wider border-b-2 transition-all ${
-              activeTab === 'rules'
-                ? 'border-[var(--accent)] text-[var(--accent)]'
-                : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
-            }`}
-          >
-            My Rules
-          </button>
-          <button
-            role="tab" id="playbooks-tab" aria-selected={activeTab === 'playbooks'} aria-controls="playbooks-panel" tabIndex={activeTab === 'playbooks' ? 0 : -1}
-            ref={(node) => { ruleTabRefs.current.playbooks = node; }}
-            onKeyDown={(event) => handleRuleTabKeyDown(event, 'playbooks')}
-            onClick={() => setActiveTab('playbooks')}
-            className={`px-5 py-2.5 text-xs font-mono font-bold uppercase tracking-wider border-b-2 transition-all ${
-              activeTab === 'playbooks'
-                ? 'border-[var(--accent)] text-[var(--accent)]'
-                : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
-            }`}
-          >
-            Playbook Library
-          </button>
-        </div>
-      } />
+      <PageHeader
+        eyebrow="Signal Field · Routing logic"
+        title="Routing rules"
+        ariaLabel="ROUTING RULES"
+        description="Configure personalized web variants based on inbound context"
+        actions={
+          <div className="flex items-center gap-3 flex-wrap">
+            <div role="tablist" aria-label="Routing workspace" className="dashboard-segmented-tabs">
+              <button
+                role="tab"
+                id="rules-tab"
+                aria-selected={activeTab === 'rules'}
+                aria-controls="rules-panel"
+                tabIndex={activeTab === 'rules' ? 0 : -1}
+                ref={(node) => { ruleTabRefs.current.rules = node; }}
+                onKeyDown={(event) => handleRuleTabKeyDown(event, 'rules')}
+                onClick={() => setActiveTab('rules')}
+                className={`dashboard-segmented-tab ${activeTab === 'rules' ? 'is-active' : ''}`}
+              >
+                My Rules ({rules.length})
+              </button>
+              <button
+                role="tab"
+                id="playbooks-tab"
+                aria-selected={activeTab === 'playbooks'}
+                aria-controls="playbooks-panel"
+                tabIndex={activeTab === 'playbooks' ? 0 : -1}
+                ref={(node) => { ruleTabRefs.current.playbooks = node; }}
+                onKeyDown={(event) => handleRuleTabKeyDown(event, 'playbooks')}
+                onClick={() => setActiveTab('playbooks')}
+                className={`dashboard-segmented-tab ${activeTab === 'playbooks' ? 'is-active' : ''}`}
+              >
+                Playbook Library ({playbooks.length})
+              </button>
+            </div>
+            {!(plan === 'starter' && ruleCount >= 5) && (
+              <button
+                onClick={() => setCreateModalOpen(true)}
+                className="dashboard-button-primary"
+              >
+                + Add Rule
+              </button>
+            )}
+          </div>
+        }
+      />
 
       {activeTab === 'rules' && (
         <div id="rules-panel" role="tabpanel" aria-labelledby="rules-tab">

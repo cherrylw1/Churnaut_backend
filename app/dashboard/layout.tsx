@@ -18,6 +18,9 @@ import {
   HelpCircle,
   CreditCard,
   Search,
+  Keyboard,
+  LogOut,
+  BookOpen,
 } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { ToastContainer } from '@/components/ui/Toast';
@@ -34,34 +37,13 @@ interface DashboardLayoutProps {
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = usePathname();
-  const overviewPilot = pathname === '/dashboard';
-  const overviewPilotStyle = overviewPilot ? {
-    '--room-bg': '#F4F1E9',
-    '--room-panel': '#FFFDF8',
-    '--room-panel-raised': '#EEEAE1',
-    '--room-panel-muted': '#F7F4EE',
-    '--room-line': '#DED7CC',
-    '--room-line-strong': '#C8BFB3',
-    '--signal-text': '#17221E',
-    '--signal-text-secondary': '#5D6963',
-    '--signal-text-muted': '#7E8883',
-    '--signal-primary': '#176B4F',
-    '--signal-primary-strong': '#10563F',
-    '--signal-primary-soft': 'rgba(23, 107, 79, 0.10)',
-    '--signal-positive': '#2F8D68',
-    '--signal-warning': '#A66E10',
-    '--signal-critical': '#B94A3C',
-    '--signal-info': '#507F95',
-    '--signal-glow': 'rgba(23, 107, 79, 0.16)',
-    '--signal-focus': '#176B4F',
-    colorScheme: 'light',
-  } as React.CSSProperties : undefined;
   const router = useRouter();
   const reduceMotion = useReducedMotion();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [authReady, setAuthReady] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
+  const [userProfile, setUserProfile] = useState<{ name: string; email: string }>({ name: 'Admin', email: '' });
   const menuButtonRef = React.useRef<HTMLButtonElement>(null);
   const mobileNavRef = React.useRef<HTMLElement>(null);
 
@@ -158,6 +140,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           if (mounted) router.replace('/login');
           return;
         }
+        if (session.user) {
+          const email = session.user.email || '';
+          const name = session.user.user_metadata?.full_name || session.user.user_metadata?.name || email.split('@')[0] || 'User';
+          setUserProfile({ name, email });
+        }
         if (mounted) {
           window.clearTimeout(authTimeout);
           setAuthReady(true);
@@ -172,6 +159,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
     const { data: authListener } = supabaseBrowser.auth.onAuthStateChange((event, session) => {
       if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session) {
+        if (session.user) {
+          const email = session.user.email || '';
+          const name = session.user.user_metadata?.full_name || session.user.user_metadata?.name || email.split('@')[0] || 'User';
+          setUserProfile({ name, email });
+        }
         void (async () => {
           try {
             const response = await withTimeout(fetch('/api/auth/session', {
@@ -205,15 +197,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   // Bind keyboard shortcuts hook
   useKeyboardShortcuts(() => setShortcutsOpen(true));
 
-  const observeGroup = [
-    { label: 'Home', href: '/dashboard', icon: HomeIcon },
+  const menuGroup = [
+    { label: 'Dashboard', href: '/dashboard', icon: HomeIcon },
     { label: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
-    { label: 'Scout', href: '/dashboard/scout', icon: Radar },
-  ];
-
-  const activateGroup = [
+    { label: 'Scout AI', href: '/dashboard/scout', icon: Radar },
     { label: 'Tracked Links', href: '/dashboard/links', icon: Link2 },
     { label: 'Routing Rules', href: '/dashboard/rules', icon: Sliders },
+    { label: 'Playbook Library', href: '/dashboard/playbooks', icon: BookOpen },
   ];
 
   const intelligenceGroup = [
@@ -221,34 +211,20 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { label: 'AI Insights', href: '/dashboard/ai-insights', icon: Sparkles },
   ];
 
-  const connectGroup = [
+  const generalGroup = [
     { label: 'Integrations', href: '/dashboard/integrations', icon: Plug },
     { label: 'Snippet', href: '/dashboard/snippet', icon: Code2 },
-  ];
-
-  const workspaceGroup = [
     { label: 'Settings', href: '/dashboard/settings', icon: Settings },
     { label: 'Billing', href: '/dashboard/billing', icon: CreditCard },
-    { label: 'Support', href: '/dashboard/support', icon: HelpCircle },
+    { label: 'Help & Support', href: '/dashboard/support', icon: HelpCircle },
   ];
 
-  // Combine to find the current active page label for breadcrumbs
-  const allItems = [...observeGroup, ...activateGroup, ...intelligenceGroup, ...connectGroup, ...workspaceGroup];
-  const commandItems = [...allItems, { label: 'Playbook Library', href: '/dashboard/playbooks', icon: Sliders }];
-  const activeItem = allItems.find(item => item.href === pathname) || allItems.find(item => pathname.startsWith(item.href) && item.href !== '/dashboard');
-  const pageLabel = activeItem ? activeItem.label : 'Dashboard';
-
-  const groupAccent: Record<string, string> = {
-    OBSERVE: 'var(--signal-observe)',
-    ACTIVATE: 'var(--signal-activate)',
-    INTELLIGENCE: 'var(--signal-intelligence)',
-    CONNECT: 'var(--accent)',
-    WORKSPACE: 'var(--text-secondary)',
-  };
+  const allItems = [...menuGroup, ...intelligenceGroup, ...generalGroup];
+  const commandItems = allItems;
 
   const renderNavGroup = (title: string, items: Array<{ label: string; href: string; icon: React.ComponentType<{ className?: string }> }>) => (
-    <div className="space-y-1.5">
-      <div className="px-4 text-[10px] font-mono font-semibold uppercase tracking-[0.13em] text-[var(--text-muted)]">
+    <div className="space-y-1">
+      <div className="px-3.5 text-[10px] font-mono font-bold uppercase tracking-[0.14em] text-slate-400">
         {title}
       </div>
       <div className="space-y-0.5">
@@ -260,18 +236,21 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               href={item.href}
               onClick={() => setSidebarOpen(false)}
               aria-current={isActive ? 'page' : undefined}
-              className={`dashboard-nav-item flex items-center gap-2.5 px-3.5 py-2 text-[13px] font-sans font-medium transition-all duration-150 relative overflow-hidden ${
+              className={`group flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[13px] font-medium transition-all relative ${
                 isActive
-                  ? 'bg-[var(--accent)]/10 text-[var(--text-primary)] font-semibold'
-                  : 'text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)]'
+                  ? 'bg-[#165B40]/10 text-[#165B40] font-semibold'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
               }`}
             >
-              <div
-                className="dashboard-nav-rail absolute left-0 top-1.5 bottom-1.5 transition-[width] duration-150 ease-out"
-                style={{ width: isActive ? '3px' : '0px', backgroundColor: groupAccent[title] }}
-              />
-              {item.icon && <item.icon className="w-4 h-4" />}
-              <span>{item.label}</span>
+              {isActive && (
+                <div className="absolute left-0 top-2 bottom-2 w-1 bg-[#165B40] rounded-r-full" />
+              )}
+              {item.icon && (
+                <item.icon className={`w-4 h-4 flex-shrink-0 transition-colors ${
+                  isActive ? 'text-[#165B40]' : 'text-slate-400 group-hover:text-slate-700'
+                }`} />
+              )}
+              <span className="truncate">{item.label}</span>
             </Link>
           );
         })}
@@ -280,25 +259,40 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   );
 
   const renderSidebarContent = () => (
-    <div className="flex flex-col h-full bg-[var(--bg-surface)]">
+    <div className="flex flex-col h-full bg-white">
       {/* Header Brand */}
-      <div className="flex h-[84px] flex-shrink-0 items-center border-b border-[var(--border-subtle)] px-6">
+      <div className="flex h-[76px] flex-shrink-0 items-center border-b border-slate-100 px-6">
         <ChurnautMark href="/dashboard" onClick={() => setSidebarOpen(false)} />
       </div>
 
       {/* Navigation Links */}
-      <nav aria-label="Primary navigation" className="p-4 space-y-7 flex-1 overflow-y-auto">
-        {renderNavGroup('OBSERVE', observeGroup)}
-        {renderNavGroup('ACTIVATE', activateGroup)}
+      <nav aria-label="Primary navigation" className="p-3.5 space-y-6 flex-1 overflow-y-auto">
+        {renderNavGroup('MENU', menuGroup)}
         {renderNavGroup('INTELLIGENCE', intelligenceGroup)}
-        {renderNavGroup('CONNECT', connectGroup)}
-        {renderNavGroup('WORKSPACE', workspaceGroup)}
-
-        <div className="dashboard-nav-footer mt-auto border-t border-[var(--border-subtle)] px-4 pt-4">
-          <p className="text-[10px] font-mono uppercase tracking-[0.13em] text-[var(--text-muted)]">Workspace</p>
-          <p className="mt-1 text-xs text-[var(--text-secondary)]">Your signal system, in one place.</p>
-        </div>
+        {renderNavGroup('GENERAL', generalGroup)}
       </nav>
+
+      {/* Bottom Promo Bento Card */}
+      <div className="p-3.5 mt-auto border-t border-slate-100">
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#123828] via-[#165B40] to-[#0D2E20] p-4 text-white shadow-sm">
+          <div className="flex items-center gap-2 mb-1.5">
+            <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center">
+              <Radar className="w-3.5 h-3.5 text-emerald-300" />
+            </div>
+            <span className="text-xs font-bold text-emerald-100">Scout AI Radar</span>
+          </div>
+          <p className="text-[11px] text-emerald-100/80 leading-relaxed mb-3">
+            Real-time intent signals & account pressure monitoring.
+          </p>
+          <Link
+            href="/dashboard/scout"
+            onClick={() => setSidebarOpen(false)}
+            className="flex items-center justify-center w-full rounded-full bg-white text-[#165B40] hover:bg-emerald-50 text-xs font-semibold py-2 px-3 transition-colors shadow-xs"
+          >
+            Launch Scout ↗
+          </Link>
+        </div>
+      </div>
     </div>
   );
 
@@ -318,9 +312,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   }
 
   return (
-    <div className="dashboard-app min-h-screen bg-[var(--bg-base)] text-[var(--text-primary)] flex" data-overview-pilot={overviewPilot ? 'true' : undefined} style={overviewPilotStyle}>
+    <div className="dashboard-app min-h-screen bg-[var(--bg-base)] text-[var(--text-primary)] flex">
       {/* Sidebar Panel - Desktop */}
-      <aside aria-label="Primary navigation" className="dashboard-sidebar hidden lg:flex w-60 bg-[var(--bg-surface)] border-r border-[var(--border-subtle)] flex-col select-none flex-shrink-0">
+      <aside aria-label="Primary navigation" className="dashboard-sidebar hidden lg:flex w-64 bg-white border-r border-slate-200/80 flex-col select-none flex-shrink-0">
         {renderSidebarContent()}
       </aside>
 
@@ -358,8 +352,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       {/* Main Content Area */}
       <div className="dashboard-main flex-1 flex flex-col min-h-screen bg-[var(--bg-base)] min-w-0">
         {/* Top Header */}
-        <header className="h-[68px] border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]/95 backdrop-blur-sm flex items-center justify-between px-4 md:px-8 flex-shrink-0" aria-label="Workspace toolbar">
-          <div className="flex items-center space-x-3">
+        <header className="h-[74px] border-b border-slate-200/80 bg-white/95 backdrop-blur-sm flex items-center justify-between px-5 md:px-8 flex-shrink-0" aria-label="Workspace toolbar">
+          <div className="flex items-center gap-3">
             {/* Hamburger Button */}
             <button
               ref={menuButtonRef}
@@ -367,37 +361,68 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               aria-label="Open navigation"
               aria-expanded={sidebarOpen}
               aria-controls="mobile-navigation"
-              className="dashboard-menu-button lg:hidden inline-flex h-10 w-10 items-center justify-center text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)] transition-colors"
+              className="dashboard-menu-button lg:hidden inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-600 hover:bg-slate-100 transition-colors"
             >
-              <Menu className="w-5 h-5" />
+              <Menu className="w-4 h-4" />
             </button>
-            <div className="flex items-center space-x-2 text-[12px] font-mono uppercase tracking-[0.05em] text-[var(--text-muted)] font-medium">
-              <Link href="/dashboard" className="hover:text-[var(--text-primary)] transition-colors">Signal Field</Link>
-              {pageLabel !== 'Home' && (
-                <>
-                  <span className="text-[var(--border-default)] font-normal">/</span>
-                  <span className="text-[var(--text-primary)] font-semibold">{pageLabel}</span>
-                </>
-              )}
-            </div>
+
+            {/* Donezo-style Pill Search Bar */}
+            <button 
+              type="button" 
+              onClick={() => setCommandOpen(true)} 
+              className="dashboard-search-trigger relative flex items-center gap-2.5 rounded-full border border-slate-200 bg-[#F4F5F7]/80 hover:bg-white hover:border-slate-300 px-4 py-2 text-xs text-slate-500 hover:text-slate-900 transition-all shadow-xs w-48 sm:w-72 md:w-80 text-left" 
+              aria-label="Search workspace"
+            >
+              <Search className="h-4 w-4 text-slate-400 flex-shrink-0" aria-hidden="true" />
+              <span className="truncate">Search signals, rules, deals...</span>
+              <kbd className="ml-auto hidden sm:inline-flex rounded-full bg-white border border-slate-200/90 px-2 py-0.5 text-[10px] font-mono text-slate-500 font-semibold shadow-xs">⌘K</kbd>
+            </button>
           </div>
-          <div className="flex items-center gap-2">
-            <button type="button" onClick={() => setCommandOpen(true)} className="dashboard-toolbar-control hidden sm:inline-flex h-9 items-center gap-2 border border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 text-xs text-[var(--text-muted)] hover:border-[var(--accent)]/60 hover:bg-[var(--accent)]/5 hover:text-[var(--text-primary)]" aria-label="Search workspace">
-              <Search className="h-4 w-4" aria-hidden="true" />
-              <span>Search workspace</span><kbd className="ml-2 rounded border border-[var(--border-default)] px-1.5 py-0.5 text-[10px]">⌘K</kbd>
-            </button>
+
+          <div className="flex items-center gap-2.5">
             <button
               type="button"
-              onClick={async () => {
-                await supabaseBrowser.auth.signOut();
-                await fetch('/api/auth/session', { method: 'DELETE' });
-                router.push('/login');
-                router.refresh();
-              }}
-              className="dashboard-toolbar-control min-h-9 px-3 text-[12px] font-mono uppercase tracking-[0.05em] font-medium text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)] transition-colors"
+              onClick={() => setShortcutsOpen(true)}
+              className="dashboard-circle-button hidden sm:inline-flex"
+              title="Keyboard Shortcuts"
+              aria-label="Keyboard Shortcuts"
             >
-              Sign Out
+              <Keyboard className="w-4 h-4 text-slate-600" />
             </button>
+
+            <Link
+              href="/dashboard/support"
+              className="dashboard-circle-button hidden sm:inline-flex"
+              title="Help & Support"
+              aria-label="Help & Support"
+            >
+              <HelpCircle className="w-4 h-4 text-slate-600" />
+            </Link>
+
+            {/* User Profile Chip */}
+            <div className="flex items-center gap-2.5 pl-2 sm:border-l sm:border-slate-200">
+              <div className="w-9 h-9 rounded-full bg-[#165B40]/10 text-[#165B40] font-bold text-xs flex items-center justify-center border border-[#165B40]/25 flex-shrink-0">
+                {userProfile.name.slice(0, 2).toUpperCase()}
+              </div>
+              <div className="hidden sm:block text-left leading-tight">
+                <div className="text-xs font-semibold text-slate-900 truncate max-w-[130px]">{userProfile.name}</div>
+                <div className="text-[11px] text-slate-400 truncate max-w-[130px]">{userProfile.email || 'Admin'}</div>
+              </div>
+              <button
+                type="button"
+                onClick={async () => {
+                  await supabaseBrowser.auth.signOut();
+                  await fetch('/api/auth/session', { method: 'DELETE' });
+                  router.push('/login');
+                  router.refresh();
+                }}
+                className="dashboard-circle-button !w-8 !h-8 text-slate-400 hover:text-red-600 hover:bg-red-50 hover:border-red-200 transition-colors ml-1"
+                title="Sign Out"
+                aria-label="Sign Out"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
         </header>
 

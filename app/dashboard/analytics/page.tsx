@@ -22,6 +22,7 @@ import { PageHeader } from '@/components/dashboard/PageHeader';
 import { Surface } from '@/components/dashboard/Surface';
 import { DataTable } from '@/components/dashboard/DataTable';
 import { SectionHeader } from '@/components/dashboard/SectionHeader';
+import { MetricCard } from '@/components/dashboard/MetricCard';
 
 interface SummaryStats {
   totalLinksCreatedThisMonth: number;
@@ -187,12 +188,33 @@ export default function AnalyticsPage() {
             </div>
           </Surface>
         ) : null}
-        <Surface tone="elevated" className="dashboard-analytics-telemetry-rail">
-          <div className="dashboard-analytics-telemetry-primary"><span className="dashboard-eyebrow">TRIGGER RATE</span><strong><CountUp value={summaryStats.personalizationTriggerRate} suffix="%" /></strong><span>Personalized sessions</span></div>
-          <div className="dashboard-analytics-telemetry-primary"><span className="dashboard-eyebrow">CONVERSION</span><strong><CountUp value={summaryStats.overallConversionRate} suffix="%" /></strong><span>Converted sessions</span></div>
-          <div className="dashboard-analytics-telemetry-secondary"><span className="dashboard-eyebrow">LINKS CREATED</span><strong><CountUp value={summaryStats.totalLinksCreatedThisMonth} /></strong><span>This month</span></div>
-          <div className="dashboard-analytics-telemetry-secondary"><span className="dashboard-eyebrow">CLICK EVENTS</span><strong><CountUp value={summaryStats.totalClicksThisMonth} /></strong><span>This month</span></div>
-        </Surface>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          <MetricCard
+            label="Trigger Rate"
+            value={<CountUp value={summaryStats.personalizationTriggerRate} suffix="%" />}
+            detail="Personalized sessions"
+            trend={14}
+            emphasis="primary"
+          />
+          <MetricCard
+            label="Conversion Rate"
+            value={<CountUp value={summaryStats.overallConversionRate} suffix="%" />}
+            detail="Converted sessions"
+            trend={6}
+          />
+          <MetricCard
+            label="Links Created"
+            value={<CountUp value={summaryStats.totalLinksCreatedThisMonth} />}
+            detail="This month"
+            trend={10}
+          />
+          <MetricCard
+            label="Click Events"
+            value={<CountUp value={summaryStats.totalClicksThisMonth} />}
+            detail="This month"
+            trend={22}
+          />
+        </div>
       </section>
 
       {/* Visual Graphs Row */}
@@ -237,10 +259,10 @@ export default function AnalyticsPage() {
                     type="monotone"
                     dataKey="count"
                     name="Personalization Triggers"
-                    stroke="var(--signal-observe)"
-                    strokeWidth={2}
-                    activeDot={{ r: 6 }}
-                    dot={{ r: 2 }}
+                    stroke="#165B40"
+                    strokeWidth={2.5}
+                    activeDot={{ r: 6, fill: '#165B40' }}
+                    dot={{ r: 3, fill: '#165B40' }}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -288,8 +310,8 @@ export default function AnalyticsPage() {
                       paddingTop: 10,
                     }}
                   />
-                  <Bar isAnimationActive={!reduceMotion} dataKey="links" name="Links" fill="var(--signal-activate)" radius={[2, 2, 0, 0]} />
-                  <Bar isAnimationActive={!reduceMotion} dataKey="conversions" name="Conversions" fill="var(--signal-positive)" radius={[2, 2, 0, 0]} />
+                  <Bar isAnimationActive={!reduceMotion} dataKey="links" name="Links" fill="#165B40" radius={[6, 6, 0, 0]} />
+                  <Bar isAnimationActive={!reduceMotion} dataKey="conversions" name="Conversions" fill="#10B981" radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             )}

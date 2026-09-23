@@ -167,28 +167,30 @@ export default function BillingPage() {
         </Surface>
       )}
 
-      {/* Monthly / Yearly toggle */}
-      <div className="flex items-center justify-center gap-4">
-        <span className={`text-sm font-sans ${!yearly ? 'text-[var(--text-primary)] font-semibold' : 'text-[var(--text-muted)]'}`}>
-          Monthly
-        </span>
-        <button
-          onClick={() => setYearly(v => !v)}
-          role="switch"
-          aria-label="Switch between monthly and yearly billing"
-          aria-checked={yearly}
-          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] ${yearly ? 'bg-[var(--accent)]' : 'bg-[var(--border-subtle)]'}`}
-        >
-          <span
-            className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${yearly ? 'translate-x-6' : 'translate-x-1'}`}
-          />
-        </button>
-        <span className={`text-sm font-sans ${yearly ? 'text-[var(--text-primary)] font-semibold' : 'text-[var(--text-muted)]'}`}>
-          Yearly <span className="ml-1 text-[10px] font-mono text-[var(--accent)]">2 MONTHS FREE</span>
-        </span>
+      {/* Monthly / Yearly segmented pill control */}
+      <div className="flex items-center justify-center my-2">
+        <div className="dashboard-segmented-tabs p-1" role="group" aria-label="Billing frequency">
+          <button
+            type="button"
+            onClick={() => setYearly(false)}
+            className={`dashboard-segmented-tab ${!yearly ? 'is-active' : ''}`}
+          >
+            Monthly billing
+          </button>
+          <button
+            type="button"
+            onClick={() => setYearly(true)}
+            className={`dashboard-segmented-tab ${yearly ? 'is-active' : ''}`}
+          >
+            Yearly billing
+            <span className="ml-1.5 rounded-full bg-emerald-100 text-[#165B40] px-2 py-0.5 text-[10px] font-bold">
+              2 MONTHS FREE
+            </span>
+          </button>
+        </div>
       </div>
 
-      {/* Plan cards */}
+      {/* Plan cards: Clean Bento Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
         {PLANS.map((plan) => {
           const isCurrent = currentPlan === plan.key;
@@ -200,12 +202,16 @@ export default function BillingPage() {
           return (
             <div
               key={plan.key}
-              className={`relative flex flex-col rounded-[14px] border-2 ${plan.accent} ${isCurrent ? 'bg-[var(--bg-elevated)]' : 'bg-[var(--bg-surface)]'} space-y-5 p-6 transition-all`}
+              className={`relative flex flex-col rounded-2xl border ${
+                isCurrent 
+                  ? 'border-[#165B40] bg-white shadow-md ring-2 ring-[#165B40]/20' 
+                  : 'border-slate-200/90 bg-white shadow-xs hover:border-slate-300 hover:shadow-sm'
+              } space-y-5 p-7 transition-all`}
             >
               {/* Badge */}
               {plan.badge && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  <span className="rounded-full bg-[var(--accent)] px-3 py-1 text-[10px] font-mono font-bold uppercase tracking-wider text-white">
+                  <span className="rounded-full bg-[#165B40] px-3 py-1 text-[10px] font-mono font-bold uppercase tracking-wider text-white shadow-xs">
                     {plan.badge}
                   </span>
                 </div>
@@ -213,61 +219,75 @@ export default function BillingPage() {
 
               {/* Current plan tag */}
               {isCurrent && (
-                <div className="absolute top-4 right-4">
+                <div className="absolute top-5 right-5">
                   <StatusBadge tone="info">Current</StatusBadge>
                 </div>
               )}
 
               {/* Plan name + price */}
-              <div className="space-y-1 pt-2">
-                <h2 className="text-[15px] font-bold text-[var(--text-primary)] uppercase tracking-wide font-mono">
+              <div className="space-y-1 pt-1">
+                <h2 className="text-base font-bold text-slate-900 tracking-tight font-sans">
                   {plan.name}
                 </h2>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-[30px] font-bold text-[var(--text-primary)] leading-none">
+                  <span className="text-3xl font-bold text-slate-900 leading-none">
                     ${price}
                   </span>
-                  <span className="text-[12px] text-[var(--text-muted)] font-sans">/mo</span>
+                  <span className="text-xs text-slate-500 font-sans">/month</span>
                 </div>
                 {yearly && (
-                  <p className="text-[10px] font-mono text-[var(--text-muted)]">
+                  <p className="text-[11px] font-medium text-slate-400">
                     Billed ${plan.yearlyPrice.toLocaleString()}/yr
                   </p>
                 )}
               </div>
 
               {/* Features */}
-              <ul className="space-y-2 flex-1">
+              <ul className="space-y-2.5 flex-1 pt-2">
                 {plan.features.map((f) => (
-                  <li key={f} className="flex items-start gap-2 text-[12px] text-[var(--text-secondary)] font-sans">
-                    <Check aria-hidden="true" className="mt-0.5 w-3.5 h-3.5 flex-shrink-0 text-[var(--accent)]" />
-                    {f}
+                  <li key={f} className="flex items-start gap-2.5 text-xs text-slate-600 font-sans">
+                    <Check aria-hidden="true" className="mt-0.5 w-3.5 h-3.5 flex-shrink-0 text-[#165B40]" />
+                    <span>{f}</span>
                   </li>
                 ))}
               </ul>
 
               {/* CTA */}
-              <div className="pt-2">
+              <div className="pt-3">
                 {isCurrent ? (
-        <div className="space-y-2 w-full">
-                    <div className="w-full text-center text-[12px] font-mono text-[var(--text-muted)] border border-[var(--border-subtle)] rounded-[8px] py-2.5">
+                  <div className="space-y-2 w-full">
+                    <div className="w-full text-center text-xs font-semibold text-slate-500 bg-slate-100 border border-slate-200 rounded-full py-2.5">
                       Current Plan
                     </div>
-                    {currentPlan !== 'starter' && (portalLoading ? <div role="status" aria-busy="true" className="w-full rounded-[8px] border border-[var(--border-subtle)] py-2.5 text-center text-[12px] text-[var(--text-muted)]">Loading billing portal…</div> : portalUrl ? <a href={portalUrl} target="_blank" rel="noopener noreferrer" className="block w-full rounded-[8px] border border-[var(--accent)]/30 py-2.5 text-center text-[12px] font-sans text-[var(--accent)] transition-all hover:bg-[var(--accent)] hover:text-white">Manage subscription →</a> : portalError ? <div role="alert" className="rounded-[8px] border border-[var(--red)]/30 bg-[var(--red)]/5 p-3 text-center text-[12px] text-[var(--red)]">Billing portal unavailable. <button type="button" onClick={() => window.location.reload()} className="font-semibold underline">TRY AGAIN</button></div> : null)}
+                    {currentPlan !== 'starter' && (
+                      portalLoading ? (
+                        <div role="status" aria-busy="true" className="w-full rounded-full border border-slate-200 py-2 text-center text-xs text-slate-400">
+                          Loading billing portal…
+                        </div>
+                      ) : portalUrl ? (
+                        <a href={portalUrl} target="_blank" rel="noopener noreferrer" className="block w-full rounded-full border border-[#165B40]/40 py-2 text-center text-xs font-semibold text-[#165B40] transition-all hover:bg-[#165B40]/10">
+                          Manage subscription →
+                        </a>
+                      ) : portalError ? (
+                        <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-2.5 text-center text-xs text-red-600">
+                          Billing portal unavailable. <button type="button" onClick={() => window.location.reload()} className="font-semibold underline">Retry</button>
+                        </div>
+                      ) : null
+                    )}
                   </div>
                 ) : isUpgrade ? (
                   <a
                     href={buildCheckoutUrl(variantId)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="block w-full rounded-[8px] bg-[var(--accent)] py-2.5 text-center text-[13px] font-semibold font-sans text-white transition-all hover:bg-[var(--accent-hover)] motion-safe:active:scale-[0.98]"
+                    className="block w-full rounded-full bg-[#165B40] py-2.5 text-center text-xs font-bold text-white transition-all hover:bg-[#114933] shadow-sm active:scale-[0.98]"
                   >
                     Upgrade to {plan.name} &rarr;
                   </a>
                 ) : isDowngrade ? (
                   <a
                     href="mailto:support@churnaut.com?subject=Downgrade request"
-                    className="block w-full text-center border border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-primary)] text-[12px] font-sans py-2.5 rounded-[8px] transition-all"
+                    className="block w-full text-center border border-slate-200 text-slate-500 hover:text-slate-800 text-xs font-semibold py-2.5 rounded-full transition-all hover:bg-slate-50"
                   >
                     Contact us to downgrade
                   </a>

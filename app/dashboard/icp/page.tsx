@@ -88,7 +88,7 @@ export default function IcpBuilderPage() {
         eyebrow="Signal Field · Evidence model"
         title="ICP builder"
         description="Turn closed-won evidence into a practical model for who to route and why."
-        actions={<button onClick={handleBuildIcp} disabled={building} className="dashboard-button-primary min-h-10 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-sans text-sm font-semibold py-2.5 px-4 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50">
+        actions={<button onClick={handleBuildIcp} disabled={building} className="dashboard-button-primary disabled:opacity-50">
           <RefreshCw aria-hidden="true" className={`w-3.5 h-3.5 ${building ? 'motion-safe:animate-spin' : ''}`} />
           {building ? 'ANALYZING...' : 'BUILD MY ICP'}
         </button>}

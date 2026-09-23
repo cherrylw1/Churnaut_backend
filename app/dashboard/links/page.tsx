@@ -407,45 +407,39 @@ export default function LinksPage() {
       {modalOpen && (
         <ModalShell open={modalOpen} onClose={() => setModalOpen(false)} title="Generate Tracked Link" className="max-w-2xl" contentClassName="p-0">
 
-            {/* Modal Tabs */}
-            <div className="flex border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]" role="tablist" aria-label="Link generation mode">
-              <button
-                role="tab"
-                id="single-link-tab"
-                aria-controls="single-link-panel"
-                aria-selected={activeTab === 'single'}
-                onClick={() => {
-                  selectLinkTab('single');
-                }}
-                tabIndex={activeTab === 'single' ? 0 : -1}
-                ref={(node) => { linkTabRefs.current.single = node; }}
-                onKeyDown={(event) => handleLinkTabKeyDown(event, 'single')}
-                className={`flex-1 py-3 font-mono text-xs tracking-wider uppercase border-b-2 text-center transition-all ${
-                  activeTab === 'single'
-                    ? 'border-[var(--accent)] text-[var(--accent)] bg-[var(--bg-elevated)]'
-                    : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                }`}
-              >
-                Single Link
-              </button>
-              <button
-                role="tab"
-                id="bulk-link-tab"
-                aria-controls="bulk-link-panel"
-                aria-selected={activeTab === 'bulk'}
-                disabled={plan === 'starter'}
-                onClick={() => selectLinkTab('bulk')}
-                tabIndex={activeTab === 'bulk' ? 0 : -1}
-                ref={(node) => { linkTabRefs.current.bulk = node; }}
-                onKeyDown={(event) => handleLinkTabKeyDown(event, 'bulk')}
-                className={`flex-1 py-3 font-mono text-xs tracking-wider uppercase border-b-2 text-center transition-all disabled:opacity-40 ${
-                  activeTab === 'bulk'
-                    ? 'border-[var(--accent)] text-[var(--accent)] bg-[var(--bg-elevated)]'
-                    : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                }`}
-              >
-                {plan === 'starter' ? 'Bulk Upload — Growth' : 'Bulk Upload (CSV)'}
-              </button>
+            {/* Modal Tabs: Segmented pill tabs with safe inset padding */}
+            <div className="px-6 pt-5 pb-2">
+              <div className="dashboard-segmented-tabs w-full flex" role="tablist" aria-label="Link generation mode">
+                <button
+                  role="tab"
+                  id="single-link-tab"
+                  aria-controls="single-link-panel"
+                  aria-selected={activeTab === 'single'}
+                  onClick={() => {
+                    selectLinkTab('single');
+                  }}
+                  tabIndex={activeTab === 'single' ? 0 : -1}
+                  ref={(node) => { linkTabRefs.current.single = node; }}
+                  onKeyDown={(event) => handleLinkTabKeyDown(event, 'single')}
+                  className={`dashboard-segmented-tab flex-1 ${activeTab === 'single' ? 'is-active' : ''}`}
+                >
+                  Single Link
+                </button>
+                <button
+                  role="tab"
+                  id="bulk-link-tab"
+                  aria-controls="bulk-link-panel"
+                  aria-selected={activeTab === 'bulk'}
+                  disabled={plan === 'starter'}
+                  onClick={() => selectLinkTab('bulk')}
+                  tabIndex={activeTab === 'bulk' ? 0 : -1}
+                  ref={(node) => { linkTabRefs.current.bulk = node; }}
+                  onKeyDown={(event) => handleLinkTabKeyDown(event, 'bulk')}
+                  className={`dashboard-segmented-tab flex-1 disabled:opacity-40 ${activeTab === 'bulk' ? 'is-active' : ''}`}
+                >
+                  {plan === 'starter' ? 'Bulk Upload — Growth' : 'Bulk Upload (CSV)'}
+                </button>
+              </div>
             </div>
 
             {/* Modal Content Scroll Area */}

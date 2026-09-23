@@ -87,12 +87,17 @@ export function ModalShell({
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className={cn('dashboard-modal relative w-full max-w-2xl max-h-[90vh] overflow-hidden border border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-2xl', className)}
+        className={cn('dashboard-modal relative w-full max-w-2xl max-h-[90vh] overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-2xl', className)}
       >
-        <div className="dashboard-modal-header border-b border-[var(--border-subtle)] px-5 py-4">
-          <h2 id={titleId} className="text-sm font-semibold text-[var(--text-primary)]">{title}</h2>
-          <button type="button" onClick={onClose} aria-label={closeLabel} className="rounded-[var(--radius-control)] px-2 py-1 text-xs text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)]">
-            <span aria-hidden="true">×</span>
+        <div className="dashboard-modal-header flex items-center justify-between border-b border-slate-100 px-6 py-4">
+          <h2 id={titleId} className="text-base font-bold text-slate-900">{title}</h2>
+          <button 
+            type="button" 
+            onClick={onClose} 
+            aria-label={closeLabel} 
+            className="dashboard-circle-button !w-8 !h-8 text-slate-400 hover:text-slate-800 hover:bg-slate-100"
+          >
+            <span aria-hidden="true" className="text-lg leading-none">×</span>
           </button>
         </div>
         <div className={cn('max-h-[calc(90vh-65px)] overflow-y-auto', contentClassName)}>{children}</div>

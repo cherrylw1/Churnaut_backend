@@ -84,40 +84,40 @@ export default function SupportPage() {
         {messages.map(msg => (
           <div key={msg.id} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             {msg.role === 'assistant' && (
-              <div className="w-7 h-7 rounded-full bg-[var(--accent)]/10 border border-[var(--accent)]/20 flex items-center justify-center flex-shrink-0 mt-1">
-                <Bot aria-hidden="true" className="w-3.5 h-3.5 text-[var(--accent)]" />
+              <div className="w-8 h-8 rounded-full bg-[#165B40]/10 border border-[#165B40]/25 flex items-center justify-center flex-shrink-0 mt-1">
+                <Bot aria-hidden="true" className="w-4 h-4 text-[#165B40]" />
               </div>
             )}
             <div className={`max-w-[80%] ${msg.role === 'user' ? 'items-end flex flex-col' : ''}`}>
               {msg.loading ? (
-                <div role="status" aria-busy="true" className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-[12px] px-4 py-3 flex items-center gap-2">
-                  <Loader2 aria-hidden="true" className="w-3.5 h-3.5 motion-safe:animate-spin text-[var(--accent)]" />
-                  <span className="text-xs font-mono text-[var(--text-muted)]">Thinking...</span>
+                <div role="status" aria-busy="true" className="border border-slate-200 bg-white rounded-2xl px-5 py-3.5 flex items-center gap-2 shadow-xs">
+                  <Loader2 aria-hidden="true" className="w-4 h-4 motion-safe:animate-spin text-[#165B40]" />
+                  <span className="text-xs font-mono text-slate-400">Thinking...</span>
                 </div>
               ) : (
-                <div role={msg.retry ? 'alert' : undefined} className={`rounded-[12px] px-4 py-3 text-sm font-sans leading-relaxed whitespace-pre-wrap ${
+                <div role={msg.retry ? 'alert' : undefined} className={`rounded-2xl px-5 py-3.5 text-sm font-sans leading-relaxed whitespace-pre-wrap ${
                   msg.role === 'user'
-                    ? 'bg-[var(--accent)] text-white'
-                    : msg.retry ? 'border border-[var(--red)]/30 bg-[var(--red)]/5 text-[var(--red)]' : 'border border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[var(--text-primary)]'
+                    ? 'bg-[#165B40] text-white shadow-xs'
+                    : msg.retry ? 'border border-red-200 bg-red-50 text-red-700' : 'border border-slate-200/90 bg-white text-slate-800 shadow-xs'
                 }`}>
                   {msg.content}{msg.retry && <button type="button" onClick={() => { setInput(msg.retry || ''); inputRef.current?.focus() }} className="mt-3 block text-xs font-semibold underline">TRY AGAIN</button>}
                 </div>
               )}
             </div>
             {msg.role === 'user' && (
-              <div className="w-7 h-7 rounded-full bg-[var(--bg-elevated)] border border-[var(--border-subtle)] flex items-center justify-center flex-shrink-0 mt-1">
-                <span className="text-[10px] font-mono text-[var(--text-secondary)]">U</span>
+              <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center flex-shrink-0 mt-1">
+                <span className="text-xs font-semibold text-slate-600">U</span>
               </div>
             )}
           </div>
         ))}
         {messages.length === 1 && (
-          <div className="space-y-2 pt-2">
-            <p className="text-[10px] font-mono text-[var(--text-muted)] uppercase tracking-wider">Common questions</p>
+          <div className="space-y-2.5 pt-3">
+            <p className="text-[11px] font-mono text-slate-400 uppercase tracking-wider font-semibold">Common questions</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {SUGGESTED.map(q => (
                 <button key={q} onClick={() => { setInput(q); inputRef.current?.focus() }}
-                  className="text-left text-xs font-sans text-[var(--text-secondary)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] hover:bg-[var(--bg-elevated)] hover:border-[var(--accent)]/30 hover:text-[var(--text-primary)] px-3 py-2.5 rounded-[8px] transition-all">
+                  className="text-left text-xs font-sans text-slate-600 border border-slate-200 bg-white hover:bg-emerald-50/50 hover:border-[#165B40]/40 hover:text-[#165B40] px-4 py-2.5 rounded-full transition-all shadow-xs">
                   {q}
                 </button>
               ))}
@@ -127,19 +127,20 @@ export default function SupportPage() {
         <div ref={bottomRef} aria-hidden="true" />
       </Surface>
 
-      <div className="flex-shrink-0 border-t border-[var(--border-subtle)] pt-4">
+      <div className="flex-shrink-0 border-t border-slate-200 pt-4">
         <div className="flex gap-3 items-end">
-          <label htmlFor="support-message" className="sr-only">Support message</label><textarea id="support-message" ref={inputRef} value={input} onChange={e => setInput(e.target.value)}
+          <label htmlFor="support-message" className="sr-only">Support message</label>
+          <textarea id="support-message" ref={inputRef} value={input} onChange={e => setInput(e.target.value)}
             onKeyDown={handleKeyDown} placeholder="Ask a question about Churnaut..."
             rows={1} disabled={loading}
-            className="flex-1 bg-[var(--bg-surface)] border border-[var(--border-subtle)] focus:border-[var(--accent)]/50 rounded-[10px] px-4 py-3 text-sm font-sans text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none resize-none transition-all disabled:opacity-50"
+            className="flex-1 bg-white border border-slate-200 focus:border-[#165B40] rounded-2xl px-5 py-3 text-sm font-sans text-slate-900 placeholder:text-slate-400 outline-none resize-none transition-all shadow-xs disabled:opacity-50"
             style={{ minHeight: '46px', maxHeight: '120px' }} />
           <button onClick={handleSend} disabled={loading || !input.trim()} aria-label="Send message" aria-busy={loading}
-            className="flex-shrink-0 rounded-[10px] bg-[var(--accent)] p-3 text-white transition-all hover:bg-[var(--accent-hover)] motion-safe:active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-40">
+            className="dashboard-circle-button !w-11 !h-11 !bg-[#165B40] !text-white hover:!bg-[#114933] shadow-sm disabled:cursor-not-allowed disabled:opacity-40">
             {loading ? <Loader2 aria-hidden="true" className="h-4 w-4 motion-safe:animate-spin" /> : <Send aria-hidden="true" className="h-4 w-4" />}
           </button>
         </div>
-        <p className="text-[10px] font-mono text-[var(--text-muted)] mt-2 text-center uppercase tracking-wider">
+        <p className="text-[10px] font-mono text-slate-400 mt-2 text-center uppercase tracking-wider">
           Enter to send · Shift+Enter for new line
         </p>
       </div>

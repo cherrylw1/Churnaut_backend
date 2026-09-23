@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-import { Activity } from 'lucide-react';
 import { Surface } from './Surface';
 import { StatusBadge } from './StatusBadge';
 
@@ -9,37 +8,77 @@ const toneForStatus = (status: PressureStatus) => (
   status === 'HEALTHY' ? 'success' : status === 'AT RISK' ? 'danger' : 'warning'
 );
 
-const fillForStatus = (status: PressureStatus) => (
-  status === 'HEALTHY' ? 'bg-[var(--signal-positive)]' : status === 'AT RISK' ? 'bg-[var(--signal-critical)]' : 'bg-[var(--signal-warning)]'
-);
-
 export function PressureInstrument({ score, status, value }: { score: number; status: PressureStatus; value?: ReactNode }) {
   const clamped = Math.max(0, Math.min(100, score));
+  // Semi-circle arc calculations: radius 70, cx 100, cy 95
+  // Perimeter of semi-circle = PI * r = 3.14159 * 70 = 219.9
+  const arcLength = Math.PI * 70;
+  const strokeDashoffset = arcLength * (1 - clamped / 100);
+
+  const strokeColor = status === 'HEALTHY' 
+    ? '#165B40' 
+    : status === 'AT RISK' 
+    ? '#EF4444' 
+    : '#F59E0B';
+
   return (
-    <Surface className="dashboard-pressure-instrument dashboard-instrument relative overflow-hidden p-5 md:p-6" aria-label={`Pipeline pressure ${score}, ${status}`}>
-      <div className="absolute inset-x-0 top-0 h-px bg-[var(--accent)]/70" aria-hidden="true" />
+    <Surface className="dashboard-pressure-instrument dashboard-surface relative flex flex-col justify-between p-6" aria-label={`Pipeline pressure ${score}, ${status}`}>
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="dashboard-metric-label">Pipeline pressure</p>
-          <p className="mt-1 text-xs text-[var(--text-muted)]">Revenue risk across the signals Churnaut can see.</p>
+          <h3 className="text-base font-bold text-slate-900">Pipeline Pressure</h3>
+          <p className="mt-0.5 text-xs text-slate-500">Revenue risk across signals Churnaut detects</p>
         </div>
-        <span className="dashboard-metric-icon" aria-hidden="true"><Activity className="h-4 w-4" /></span>
+        <StatusBadge tone={toneForStatus(status)}>{status}</StatusBadge>
       </div>
-      <div className="mt-8 flex items-end gap-4">
-        <span className="dashboard-instrument-score font-mono text-5xl font-semibold leading-none tracking-[-0.08em] tabular-nums">{value ?? score}</span>
-        <div className="pb-1">
-          <StatusBadge tone={toneForStatus(status)}>{status}</StatusBadge>
-          <p className="dashboard-instrument-muted mt-2 flex items-center gap-1 text-[10px] font-mono uppercase tracking-[0.08em]">
-            Current readout
-          </p>
+
+      {/* Donezo-style Semi-Circular Progress Arc */}
+      <div className="relative my-4 flex flex-col items-center justify-center">
+        <svg viewBox="0 0 200 115" className="w-52 max-w-full overflow-visible">
+          {/* Background Track Arc */}
+          <path
+            d="M 25 100 A 75 75 0 0 1 175 100"
+            fill="none"
+            stroke="#E2E8F0"
+            strokeWidth="18"
+            strokeLinecap="round"
+          />
+          {/* Filled Foreground Arc */}
+          <path
+            d="M 25 100 A 75 75 0 0 1 175 100"
+            fill="none"
+            stroke={strokeColor}
+            strokeWidth="18"
+            strokeDasharray={arcLength}
+            strokeDashoffset={strokeDashoffset}
+            strokeLinecap="round"
+            className="transition-all duration-1000 ease-out"
+          />
+        </svg>
+
+        {/* Center Readout Text */}
+        <div className="absolute bottom-2 flex flex-col items-center text-center">
+          <span className="font-sans text-4xl font-bold tracking-tight text-slate-900 tabular-nums">
+            {value ?? `${clamped}%`}
+          </span>
+          <span className="mt-0.5 text-[11px] font-medium text-slate-400">
+            Signal Pressure
+          </span>
         </div>
       </div>
-      <div className="mt-6" role="img" aria-label={`${score} out of 100 pipeline pressure`}>
-        <div className="dashboard-instrument-track h-2 overflow-hidden rounded-full">
-          <span className={`block h-full rounded-full transition-[width] duration-700 motion-reduce:transition-none ${fillForStatus(status)}`} style={{ width: `${clamped}%` }} />
+
+      {/* Legend Dots */}
+      <div className="flex items-center justify-center gap-4 pt-1 text-xs text-slate-500 font-medium border-t border-slate-100">
+        <div className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-full bg-[#165B40]" />
+          <span>Healthy (0-40)</span>
         </div>
-        <div className="dashboard-instrument-muted mt-2 flex justify-between text-[10px] font-mono uppercase tracking-[0.08em]" aria-hidden="true">
-          <span>Stable</span><span>Pressure</span>
+        <div className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-full bg-[#F59E0B]" />
+          <span>Attention (41-70)</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-full bg-[#EF4444]" />
+          <span>At Risk (71+)</span>
         </div>
       </div>
     </Surface>
